@@ -1,0 +1,25 @@
+# Godot local/editor state
+.godot/
+.import/
+
+# Godot export output
+export/
+exports/
+*.pck
+*.exe
+*.zip
+*.apk
+*.aab
+*.ipa
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.old
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
