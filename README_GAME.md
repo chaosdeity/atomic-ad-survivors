@@ -24,6 +24,19 @@ Open this folder in Godot 4.x and run `res://scenes/main.tscn`.
 - HUD: HP, charge meter, time, level, kills, enemy count
 - Minimal level-up card pause
 
+## Long-Term RPG Direction
+
+The prototype is evolving toward a run-based action RPG:
+
+- A small silence outpost/hub between runs
+- Human and liberated robot perspectives
+- The Campaign as a world-scale advertising environment, not a simple villain
+- Character-specific charge skills using one mobile-friendly active input
+- Run results that change NPCs, faction state, regions, and future expeditions
+
+See `RPG_ARCHITECTURE_PLAN.md` for the current high-level architecture.
+Use `STORY_DEVELOPMENT_PROMPT.md` when starting a dedicated story/worldbuilding session.
+
 ## Art Direction Lock
 
 Chosen tone: `B - bright dystopian atomic`.
