@@ -42,8 +42,22 @@ func update(delta: float) -> void:
 func add_auto_shot(from_pos: Vector2, to_pos: Vector2) -> void:
 	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "color": C.NEON_RED})
 
+func add_alt_shot(from_pos: Vector2, to_pos: Vector2) -> void:
+	shots.append({"from": from_pos, "to": to_pos, "life": 0.11, "color": C.TOXIC_GREEN})
+
 func add_burst(pos: Vector2, dir: Vector2, life: float, directed: bool) -> void:
 	bursts.append({"pos": pos, "dir": dir, "life": life, "directed": directed})
+
+func add_small_burst(pos: Vector2) -> void:
+	bursts.append({"pos": pos, "dir": Vector2.RIGHT, "life": 0.18, "directed": false})
+
+func add_floater(pos: Vector2, text: String, color: Color) -> void:
+	floaters.append({
+		"pos": pos + Vector2(0, -22),
+		"text": text,
+		"life": 0.55,
+		"color": color,
+	})
 
 func add_charge_warning_ring(pos: Vector2) -> void:
 	warning_rings.append({"pos": pos, "life": C.CHARGE_WARNING_TIME, "duration": C.CHARGE_WARNING_TIME})

@@ -36,6 +36,8 @@ var charge_warning_played := false
 var charge_miss_notice := 0.0
 var last_move_dir := Vector2.DOWN
 var player_is_moving := false
+var auto_shot_counter := 0
+var charge_puddles: Array[Dictionary] = []
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -95,6 +97,7 @@ func _process(delta: float) -> void:
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 	_update_auto_fire(delta)
 	_update_charge(delta)
+	_update_charge_puddles(delta)
 	effects.update(delta)
 	_update_hud()
 	camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -176,6 +179,9 @@ func _update_auto_fire(delta: float) -> void:
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
 	_handle_dead_positions(enemies.damage_enemy(target_idx, _auto_damage_per_tick()))
 	effects.add_auto_shot(player_pos, target_pos)
+	if paused_for_card:
+		return
+	_try_split_shot(target_idx)
 
 func _update_charge(delta: float) -> void:
 	charge_miss_notice = maxf(0.0, charge_miss_notice - delta)
@@ -203,6 +209,19 @@ func _update_charge(delta: float) -> void:
 			charge_audio.play()
 	charge_ready_flash = maxf(0.0, charge_ready_flash - delta)
 
+func _update_charge_puddles(delta: float) -> void:
+	for puddle in charge_puddles:
+		puddle["life"] = float(puddle["life"]) - delta
+		puddle["tick"] = float(puddle.get("tick", 0.0)) + delta
+		if float(puddle["tick"]) < 0.16:
+			continue
+		var tick_delta := float(puddle["tick"])
+		puddle["tick"] = 0.0
+		var center: Vector2 = puddle["pos"]
+		enemies.damage_enemies_in_radius(center, float(puddle["radius"]), float(puddle["dps"]) * tick_delta)
+		_handle_dead_positions(enemies.cleanup_dead())
+	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
+
 func _charge_missed() -> void:
 	charge_miss_notice = 0.48
 	effects.show_charge_missed(player_pos)
@@ -216,14 +235,24 @@ func _fire_charge() -> void:
 	var hit_indices := _charge_hit_indices(directed, aim_dir)
 	var limit := _charge_target_limit(directed)
 	var damage := _charge_damage(directed)
+	var perfect := _is_perfect_charge()
+	if perfect:
+		damage *= 1.0 + 0.25 * float(player_stats["perfect_charge_level"])
+		limit += 2 * int(player_stats["perfect_charge_level"])
+	if _emergency_charge_active():
+		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
 
+	var hit_count := 0
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
 		if idx < enemies.enemies.size():
 			effects.spawn_hit_spark(enemies.enemies[idx]["pos"], directed, rng)
 			enemies.enemies[idx]["hp"] = float(enemies.enemies[idx]["hp"]) - damage
+			_apply_charge_hit_modifiers(idx, directed, aim_dir)
+			hit_count += 1
 
 	_handle_dead_positions(enemies.cleanup_dead())
+	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	_fire_feedback(directed)
 	effects.spawn_charge_particles(player_pos, aim_dir, directed, rng)
 	effects.add_burst(player_pos, aim_dir, 0.36 if directed else 0.28, directed)
@@ -250,12 +279,109 @@ func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 	)
 	return hit_indices
 
+func _try_split_shot(primary_idx: int) -> void:
+	var split_level := int(player_stats["split_shot_level"])
+	if split_level <= 0:
+		return
+	auto_shot_counter += 1
+	var cadence := maxi(2, 5 - split_level)
+	if auto_shot_counter % cadence != 0:
+		return
+	var secondary_idx := enemies.nearest_enemy_excluding(player_pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx])
+	if secondary_idx == -1:
+		return
+	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
+	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
+	_handle_dead_positions(enemies.damage_enemy(secondary_idx, split_damage))
+	effects.add_alt_shot(player_pos, target_pos)
+	effects.add_floater(target_pos, "분열!", C.TOXIC_GREEN)
+
+func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
+	var burst_level := int(player_stats["kill_burst_level"])
+	var dead_positions: Array[Vector2] = []
+	if burst_level <= 0:
+		return dead_positions
+	var chance := minf(0.85, 0.25 * burst_level)
+	if rng.randf() > chance:
+		return dead_positions
+	var radius := 58.0 + 8.0 * burst_level
+	var max_targets := 1 + mini(2, burst_level)
+	var damage := 22.0 + 8.0 * burst_level
+	var hits := enemies.damage_enemies_in_radius(pos, radius, damage, max_targets)
+	if hits > 0:
+		effects.add_small_burst(pos)
+		effects.add_floater(pos, "연쇄!", C.CORAL_PINK)
+		dead_positions = enemies.cleanup_dead()
+	return dead_positions
+
+func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> void:
+	var slow_level := int(player_stats["charge_slow_level"])
+	if slow_level > 0:
+		var slow_mult := maxf(0.20, 0.58 - 0.08 * slow_level)
+		enemies.apply_slow(idx, 1.0 + 0.25 * slow_level, slow_mult)
+	var knockback_level := int(player_stats["charge_knockback_level"])
+	if knockback_level > 0:
+		var dir := aim_dir if directed else Vector2(enemies.enemies[idx]["pos"] - player_pos).normalized()
+		enemies.knockback_enemy(idx, dir, 18.0 + 10.0 * knockback_level)
+
+func _apply_charge_aftereffects(hit_count: int, directed: bool, aim_dir: Vector2, perfect: bool) -> void:
+	if perfect:
+		effects.add_floater(player_pos, "완벽!", C.VITAMIN_YELLOW)
+	if _emergency_charge_active():
+		effects.add_floater(player_pos, "역송출!", C.NEON_RED)
+	if int(player_stats["charge_slow_level"]) > 0 and hit_count > 0:
+		effects.add_floater(player_pos + Vector2(16, -8), "오류!", C.TOXIC_GREEN)
+	_spawn_charge_puddle(directed, aim_dir)
+	_try_charge_heal(hit_count)
+
+func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
+	var puddle_level := int(player_stats["charge_puddle_level"])
+	if puddle_level <= 0:
+		return
+	var pos := player_pos + (aim_dir * C.CHARGE_RANGE * 0.62 if directed else Vector2.ZERO)
+	charge_puddles.append({
+		"pos": pos,
+		"radius": 42.0 + 6.0 * puddle_level,
+		"dps": 18.0 + 7.0 * puddle_level,
+		"life": 2.0 + 0.25 * puddle_level,
+		"duration": 2.0 + 0.25 * puddle_level,
+		"tick": 0.0,
+	})
+	while charge_puddles.size() > 2 + puddle_level:
+		charge_puddles.pop_front()
+	effects.add_floater(pos, "잔류!", C.TOXIC_GREEN)
+
+func _try_charge_heal(hit_count: int) -> void:
+	var heal_level := int(player_stats["charge_heal_level"])
+	if heal_level <= 0:
+		return
+	var threshold := maxi(3, 6 - heal_level)
+	if hit_count < threshold:
+		return
+	var heal_amount := 3.0 + 2.0 * heal_level
+	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
+	effects.add_floater(player_pos + Vector2(-16, -8), "회복!", C.TOXIC_GREEN)
+
+func _is_perfect_charge() -> bool:
+	return int(player_stats["perfect_charge_level"]) > 0 and charge_open_age <= 0.25
+
+func _emergency_charge_active() -> bool:
+	return int(player_stats["emergency_charge_level"]) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.30
+
 func _handle_dead_positions(dead_positions: Array[Vector2]) -> void:
+	_handle_dead_positions_internal(dead_positions, true)
+
+func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_bursts: bool) -> void:
+	var burst_dead_positions: Array[Vector2] = []
 	for pos in dead_positions:
 		kills += 1
 		xp += _xp_gain()
 		effects.spawn_pop_particles(pos, rng)
 		effects.add_burst(pos, Vector2.RIGHT, 0.18, false)
+		if allow_kill_bursts:
+			burst_dead_positions.append_array(_try_kill_burst(pos))
+	if burst_dead_positions.size() > 0:
+		_handle_dead_positions_internal(burst_dead_positions, false)
 	if xp >= _xp_requirement():
 		xp -= _xp_requirement()
 		level += 1
@@ -333,6 +459,8 @@ func _apply_card_effect(card: Dictionary) -> void:
 		"auto_range_bonus", "charge_period_bonus":
 			player_stats[effect] = float(player_stats[effect]) + value
 		"charge_target_bonus":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+		"split_shot_level", "kill_burst_level", "charge_puddle_level", "perfect_charge_level", "emergency_charge_level", "charge_slow_level", "charge_heal_level", "charge_knockback_level":
 			player_stats[effect] = int(player_stats[effect]) + int(value)
 		"max_hp_bonus":
 			player_stats["max_hp"] = float(player_stats["max_hp"]) + value
@@ -457,6 +585,7 @@ func _debug_spawn_swarm() -> void:
 
 func _draw() -> void:
 	_draw_arena()
+	_draw_charge_puddles()
 	effects.draw_behind(self)
 	_draw_player()
 	_draw_enemies()
@@ -476,6 +605,14 @@ func _draw_arena() -> void:
 		var p := Vector2((i * 83) % int(C.ARENA_HALF.x * 2.0) - C.ARENA_HALF.x, (i * 47) % int(C.ARENA_HALF.y * 2.0) - C.ARENA_HALF.y)
 		draw_rect(Rect2(p, Vector2(36, 18)), C.LEMON_YELLOW)
 		draw_rect(Rect2(p, Vector2(36, 18)), C.COCOA, false, 1.0)
+
+func _draw_charge_puddles() -> void:
+	for puddle in charge_puddles:
+		var ratio := float(puddle["life"]) / maxf(0.001, float(puddle["duration"]))
+		var pos: Vector2 = puddle["pos"]
+		var radius := float(puddle["radius"])
+		draw_circle(pos, radius, Color(0.62, 1.0, 0.36, 0.12 + 0.10 * ratio))
+		draw_arc(pos, radius * (0.72 + 0.12 * sin(elapsed * 8.0)), 0.0, TAU, 32, Color(1.0, 0.3, 0.36, 0.30 * ratio), 2.0)
 
 func _draw_player() -> void:
 	var charge_state := _charge_state()
@@ -573,6 +710,7 @@ func _restart() -> void:
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
 	auto_timer = 0.0
+	auto_shot_counter = 0
 	charge_timer = 0.0
 	charge_window_left = 0.0
 	charge_open_age = 0.0
@@ -581,6 +719,7 @@ func _restart() -> void:
 	charge_miss_notice = 0.0
 	enemies.clear()
 	effects.clear()
+	charge_puddles.clear()
 	hud.reset()
 
 func _reset_player_stats() -> void:
@@ -593,6 +732,14 @@ func _reset_player_stats() -> void:
 		"charge_target_bonus": 0,
 		"charge_period_bonus": 0.0,
 		"xp_gain_mult": 0.0,
+		"split_shot_level": 0,
+		"kill_burst_level": 0,
+		"charge_puddle_level": 0,
+		"perfect_charge_level": 0,
+		"emergency_charge_level": 0,
+		"charge_slow_level": 0,
+		"charge_heal_level": 0,
+		"charge_knockback_level": 0,
 	}
 
 func _move_speed() -> float:
@@ -605,7 +752,8 @@ func _auto_damage_per_tick() -> float:
 	return C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK
 
 func _charge_period() -> float:
-	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]))
+	var emergency_bonus := -0.45 * float(player_stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0
+	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]) + emergency_bonus)
 
 func _charge_state() -> String:
 	if charge_window_left > 0.0:

@@ -73,6 +73,81 @@ const CARDS := [
 		"effect": "xp_gain_mult",
 		"value": 0.15,
 	},
+	{
+		"id": "split_ad_round",
+		"name": "분열 광고탄",
+		"description": "자동 사격이 주기적으로 다른 적에게 튑니다.",
+		"effect_text": "보조 사격 해금/강화",
+		"effect": "split_shot_level",
+		"value": 1,
+	},
+	{
+		"id": "coupon_chain_pop",
+		"name": "쿠폰 연쇄 폭죽",
+		"description": "처치 시 주변 적에게 폭죽 피해를 줍니다.",
+		"effect_text": "처치 폭발 확률 +25%",
+		"effect": "kill_burst_level",
+		"value": 1,
+	},
+	{
+		"id": "toxic_ad_puddle",
+		"name": "잔류 광고잉크",
+		"description": "차징 후 짧게 남는 피해 장판을 깝니다.",
+		"effect_text": "차징 장판 해금/강화",
+		"effect": "charge_puddle_level",
+		"value": 1,
+	},
+	{
+		"id": "perfect_airtime",
+		"name": "황금 송출각",
+		"description": "차징이 열리자마자 쏘면 더 강합니다.",
+		"effect_text": "완벽 차징 보너스 강화",
+		"effect": "perfect_charge_level",
+		"value": 1,
+	},
+	{
+		"id": "emergency_rebroadcast",
+		"name": "긴급 역송출",
+		"description": "낮은 HP에서 차징이 더 자주, 더 아픕니다.",
+		"effect_text": "위기 차징 강화",
+		"effect": "emergency_charge_level",
+		"value": 1,
+	},
+	{
+		"id": "resync_error",
+		"name": "재동기화 오류",
+		"description": "차징에 맞은 적이 잠깐 느려집니다.",
+		"effect_text": "차징 감속 강화",
+		"effect": "charge_slow_level",
+		"value": 1,
+	},
+	{
+		"id": "restorative_ad",
+		"name": "회복성 광고",
+		"description": "차징으로 많이 맞히면 HP를 회복합니다.",
+		"effect_text": "다중 명중 회복 강화",
+		"effect": "charge_heal_level",
+		"value": 1,
+	},
+	{
+		"id": "recall_knockback",
+		"name": "리콜 강제반품",
+		"description": "차징에 맞은 적을 뒤로 밀어냅니다.",
+		"effect_text": "차징 넉백 강화",
+		"effect": "charge_knockback_level",
+		"value": 1,
+	},
+]
+
+const TACTICAL_CARD_IDS := [
+	"split_ad_round",
+	"coupon_chain_pop",
+	"toxic_ad_puddle",
+	"perfect_airtime",
+	"emergency_rebroadcast",
+	"resync_error",
+	"restorative_ad",
+	"recall_knockback",
 ]
 
 static func pick_three(rng: RandomNumberGenerator) -> Array[Dictionary]:
@@ -89,4 +164,14 @@ static func pick_three(rng: RandomNumberGenerator) -> Array[Dictionary]:
 	var picked: Array[Dictionary] = []
 	for i in range(mini(3, pool.size())):
 		picked.append(pool[i])
+	if not _has_tactical_card(picked):
+		var tactical_pool := pool.filter(func(card: Dictionary) -> bool: return TACTICAL_CARD_IDS.has(String(card["id"])))
+		if tactical_pool.size() > 0 and picked.size() > 0:
+			picked[picked.size() - 1] = tactical_pool[rng.randi_range(0, tactical_pool.size() - 1)].duplicate(true)
 	return picked
+
+static func _has_tactical_card(cards: Array[Dictionary]) -> bool:
+	for card in cards:
+		if TACTICAL_CARD_IDS.has(String(card["id"])):
+			return true
+	return false

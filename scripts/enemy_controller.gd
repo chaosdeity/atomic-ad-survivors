@@ -48,6 +48,8 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"elite": elite,
 		"sprite_kind": sprite_kind,
 		"age": 0.0,
+		"slow_timer": 0.0,
+		"slow_mult": 1.0,
 	})
 
 func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
@@ -62,23 +64,56 @@ func update_enemies(delta: float, player_pos: Vector2) -> float:
 	var contact_damage := 0.0
 	for enemy in enemies:
 		enemy["age"] = float(enemy.get("age", 0.0)) + delta
+		enemy["slow_timer"] = maxf(0.0, float(enemy.get("slow_timer", 0.0)) - delta)
 		var pos: Vector2 = enemy["pos"]
 		var to_player := player_pos - pos
 		var dist := maxf(1.0, to_player.length())
-		enemy["pos"] = pos + to_player / dist * float(enemy["speed"]) * delta
+		var slow_mult := float(enemy.get("slow_mult", 1.0)) if float(enemy.get("slow_timer", 0.0)) > 0.0 else 1.0
+		enemy["pos"] = pos + to_player / dist * float(enemy["speed"]) * slow_mult * delta
 		if dist < C.PLAYER_RADIUS + float(enemy["radius"]):
 			contact_damage += C.ENEMY_CONTACT_DPS * delta * float(enemy.get("contact_damage_mult", 1.0)) * (1.7 if enemy["elite"] else 1.0)
 	return contact_damage
 
 func nearest_enemy(player_pos: Vector2, max_range: float) -> int:
+	return nearest_enemy_excluding(player_pos, max_range, [])
+
+func nearest_enemy_excluding(player_pos: Vector2, max_range: float, excluded: Array) -> int:
 	var best := -1
 	var best_dist := max_range * max_range
 	for i in range(enemies.size()):
+		if excluded.has(i):
+			continue
 		var dist := player_pos.distance_squared_to(enemies[i]["pos"])
 		if dist < best_dist:
 			best_dist = dist
 			best = i
 	return best
+
+func damage_enemies_in_radius(center: Vector2, radius: float, damage: float, max_targets: int = -1) -> int:
+	var hits := 0
+	var radius_sq := radius * radius
+	for i in range(enemies.size()):
+		if center.distance_squared_to(enemies[i]["pos"]) > radius_sq:
+			continue
+		enemies[i]["hp"] = float(enemies[i]["hp"]) - damage
+		hits += 1
+		if max_targets > 0 and hits >= max_targets:
+			break
+	return hits
+
+func apply_slow(index: int, duration: float, mult: float) -> void:
+	if index < 0 or index >= enemies.size():
+		return
+	enemies[index]["slow_timer"] = maxf(float(enemies[index].get("slow_timer", 0.0)), duration)
+	enemies[index]["slow_mult"] = minf(float(enemies[index].get("slow_mult", 1.0)), mult)
+
+func knockback_enemy(index: int, dir: Vector2, distance: float) -> void:
+	if index < 0 or index >= enemies.size() or dir.length_squared() <= 0.0:
+		return
+	var pos: Vector2 = enemies[index]["pos"] + dir.normalized() * distance
+	pos.x = clampf(pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
+	pos.y = clampf(pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+	enemies[index]["pos"] = pos
 
 func damage_enemy(index: int, damage: float) -> Array[Vector2]:
 	if index < 0 or index >= enemies.size():
