@@ -18,6 +18,21 @@ var restart_callback := Callable()
 var debug_panel: Panel
 var debug_label: Label
 
+func _panel_style(fill_color: Color = C.AD_PAPER, border_color: Color = C.COCOA, border_width: int = 2, corner_radius: int = 4) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(corner_radius)
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
+
+func _button_style(fill_color: Color, border_width: int = 2) -> StyleBoxFlat:
+	return _panel_style(fill_color, C.COCOA, border_width, 3)
+
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
 	hud.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -58,16 +73,22 @@ func build(parent: Node) -> void:
 	charge_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	charge_button.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	charge_button.text = "차징\n대기중"
+	charge_button.add_theme_font_size_override("font_size", 10)
 	charge_button.add_theme_color_override("font_color", C.INK)
 	root.add_child(charge_button)
 
 	stat_label = Label.new()
-	stat_label.position = Vector2(132, 7)
+	stat_label.position = Vector2(130, 7)
+	stat_label.size = Vector2(336, 13)
+	stat_label.add_theme_font_size_override("font_size", 9)
 	stat_label.add_theme_color_override("font_color", C.INK)
 	root.add_child(stat_label)
 
 	prompt_label = Label.new()
-	prompt_label.position = Vector2(118, 226)
+	prompt_label.position = Vector2(96, 230)
+	prompt_label.size = Vector2(288, 16)
+	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	prompt_label.add_theme_font_size_override("font_size", 10)
 	prompt_label.add_theme_color_override("font_color", C.INK)
 	prompt_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	prompt_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -76,49 +97,62 @@ func build(parent: Node) -> void:
 	root.add_child(prompt_label)
 
 	card_panel = Panel.new()
-	card_panel.position = Vector2(34, 54)
-	card_panel.size = Vector2(412, 150)
+	card_panel.position = Vector2(22, 45)
+	card_panel.size = Vector2(436, 162)
+	card_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf")))
 	card_panel.visible = false
 	root.add_child(card_panel)
 
 	var title := Label.new()
 	title.position = Vector2(12, 8)
-	title.size = Vector2(388, 18)
+	title.size = Vector2(412, 18)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.text = "레벨 업 보너스"
+	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", C.INK)
 	card_panel.add_child(title)
 
 	for i in range(3):
 		var button := Button.new()
-		button.position = Vector2(12 + i * 132, 32)
-		button.size = Vector2(124, 106)
+		button.position = Vector2(12 + i * 140, 32)
+		button.size = Vector2(132, 118)
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.add_theme_font_size_override("font_size", 9)
 		button.add_theme_color_override("font_color", C.INK)
+		button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
+		button.add_theme_stylebox_override("hover", _button_style(Color("#ffe7a8")))
+		button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, 3))
+		button.add_theme_stylebox_override("focus", _button_style(Color(1, 1, 1, 0), 1))
 		button.pressed.connect(_on_card_button_pressed.bind(i))
 		card_panel.add_child(button)
 		card_buttons.append(button)
 
 	result_panel = Panel.new()
-	result_panel.position = Vector2(118, 48)
-	result_panel.size = Vector2(244, 174)
+	result_panel.position = Vector2(90, 36)
+	result_panel.size = Vector2(300, 198)
+	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
 	result_panel.visible = false
 	root.add_child(result_panel)
 
 	result_label = Label.new()
-	result_label.position = Vector2(14, 12)
-	result_label.size = Vector2(216, 112)
+	result_label.position = Vector2(16, 12)
+	result_label.size = Vector2(268, 132)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_label.add_theme_font_size_override("font_size", 10)
 	result_label.add_theme_color_override("font_color", C.INK)
 	result_panel.add_child(result_label)
 
 	restart_button = Button.new()
-	restart_button.position = Vector2(24, 130)
-	restart_button.size = Vector2(196, 32)
+	restart_button.position = Vector2(34, 154)
+	restart_button.size = Vector2(232, 30)
 	restart_button.text = "스페이스 / 클릭으로 다시 시작"
+	restart_button.add_theme_font_size_override("font_size", 10)
 	restart_button.add_theme_color_override("font_color", C.INK)
+	restart_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
+	restart_button.add_theme_stylebox_override("hover", _button_style(Color("#ffe7a8")))
+	restart_button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, 3))
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	result_panel.add_child(restart_button)
 
@@ -193,7 +227,7 @@ func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> vo
 			var card := cards[i]
 			button.visible = true
 			button.disabled = false
-			button.text = "%d\n%s\n\n%s\n%s" % [i + 1, card["name"], card["description"], card["effect_text"]]
+			button.text = "%d\n%s\n\n%s" % [i + 1, card["name"], card["effect_text"]]
 		else:
 			button.visible = false
 			button.disabled = true
@@ -211,9 +245,9 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	result_panel.visible = true
-	prompt_label.visible = true
+	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 시작"
-	result_label.text = "%s\n\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d" % [
+	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
 		int(C.MATCH_DURATION),
