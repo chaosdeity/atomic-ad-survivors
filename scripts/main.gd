@@ -5,6 +5,7 @@ const AudioFactory := preload("res://scripts/audio_factory.gd")
 const HudController := preload("res://scripts/hud_controller.gd")
 const EffectsController := preload("res://scripts/effects_controller.gd")
 const EnemyController := preload("res://scripts/enemy_controller.gd")
+const LevelUpCards := preload("res://scripts/level_up_cards.gd")
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -14,6 +15,8 @@ var level := 1
 var kills := 0
 var game_over := false
 var paused_for_card := false
+var player_stats := {}
+var offered_cards: Array[Dictionary] = []
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -32,6 +35,8 @@ var enemies := EnemyController.new()
 
 func _ready() -> void:
 	rng.seed = 42
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	_reset_player_stats()
 	_ensure_input_map()
 	_build_camera()
 	_build_audio()
@@ -58,13 +63,17 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
+	if paused_for_card:
+		var choice := _card_choice_from_event(event)
+		if choice != -1:
+			_apply_card_choice(choice)
+		return
+
 	var pressed_charge := event.is_action_pressed("charge")
 	if event is InputEventScreenTouch and event.pressed:
 		pressed_charge = true
 	if pressed_charge:
-		if paused_for_card:
-			_apply_card_choice()
-		elif game_over:
+		if game_over:
 			_restart()
 		elif charge_window_left > 0.0:
 			_fire_charge()
@@ -91,7 +100,7 @@ func _build_audio() -> void:
 
 func _update_player(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	player_pos += input_dir * C.PLAYER_SPEED * delta
+	player_pos += input_dir * _move_speed() * delta
 	player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
 	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 
@@ -109,11 +118,11 @@ func _update_auto_fire(delta: float) -> void:
 	if auto_timer > 0.0:
 		return
 	auto_timer = C.AUTO_TICK
-	var target_idx := enemies.nearest_enemy(player_pos, C.AUTO_RANGE)
+	var target_idx := enemies.nearest_enemy(player_pos, _auto_range())
 	if target_idx == -1:
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
-	_handle_dead_positions(enemies.damage_enemy(target_idx, C.BASE_DPS * C.AUTO_TICK))
+	_handle_dead_positions(enemies.damage_enemy(target_idx, _auto_damage_per_tick()))
 	effects.add_auto_shot(player_pos, target_pos)
 
 func _update_charge(delta: float) -> void:
@@ -125,7 +134,7 @@ func _update_charge(delta: float) -> void:
 			charge_open_age = 0.0
 	else:
 		charge_timer += delta
-		if charge_timer >= C.CHARGE_PERIOD:
+		if charge_timer >= _charge_period():
 			charge_window_left = C.CHARGE_WINDOW
 			charge_open_age = 0.0
 			charge_ready_flash = 0.22
@@ -139,8 +148,8 @@ func _fire_charge() -> void:
 	var directed := aim.length() > 18.0
 	var aim_dir := aim.normalized() if directed else Vector2.RIGHT
 	var hit_indices := _charge_hit_indices(directed, aim_dir)
-	var limit := C.DIRECTED_AOE_TARGETS if directed else C.CHARGE_AOE_TARGETS
-	var damage := C.CHARGE_DAMAGE * (C.DIRECTED_BONUS if directed else 1.0)
+	var limit := _charge_target_limit(directed)
+	var damage := _charge_damage(directed)
 
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
@@ -175,23 +184,59 @@ func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 func _handle_dead_positions(dead_positions: Array[Vector2]) -> void:
 	for pos in dead_positions:
 		kills += 1
-		xp += 1.0
+		xp += _xp_gain()
 		effects.spawn_pop_particles(pos, rng)
 		effects.add_burst(pos, Vector2.RIGHT, 0.18, false)
-	if xp >= level * 10.0:
-		xp = 0.0
+	if xp >= _xp_requirement():
+		xp -= _xp_requirement()
 		level += 1
 		hit_audio.play()
 		_show_level_card()
 
 func _show_level_card() -> void:
 	paused_for_card = true
-	hud.show_level_card()
+	get_tree().paused = true
+	offered_cards = LevelUpCards.pick_three(rng)
+	hud.show_level_cards(offered_cards, Callable(self, "_apply_card_choice"))
 
-func _apply_card_choice() -> void:
+func _apply_card_choice(index: int) -> void:
+	if index < 0 or index >= offered_cards.size():
+		return
+	var card := offered_cards[index]
+	_apply_card_effect(card)
+	offered_cards.clear()
 	paused_for_card = false
+	get_tree().paused = false
 	hud.hide_level_card()
-	player_hp = minf(C.PLAYER_MAX_HP, player_hp + 18.0)
+
+func _apply_card_effect(card: Dictionary) -> void:
+	var effect: String = card["effect"]
+	var value: float = float(card["value"])
+	match effect:
+		"auto_damage_mult", "move_speed_mult", "charge_damage_mult", "xp_gain_mult":
+			player_stats[effect] = float(player_stats[effect]) + value
+		"auto_range_bonus", "charge_period_bonus":
+			player_stats[effect] = float(player_stats[effect]) + value
+		"charge_target_bonus":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+		"max_hp_bonus":
+			player_stats["max_hp"] = float(player_stats["max_hp"]) + value
+			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
+		"heal":
+			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
+
+func _card_choice_from_event(event: InputEvent) -> int:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return -1
+	match event.keycode:
+		KEY_1, KEY_KP_1:
+			return 0
+		KEY_2, KEY_KP_2:
+			return 1
+		KEY_3, KEY_KP_3:
+			return 2
+		_:
+			return -1
 
 func _fire_feedback(directed: bool) -> void:
 	fire_audio.pitch_scale = 1.08 if directed else 0.92
@@ -199,7 +244,7 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _update_hud() -> void:
-	hud.update(player_hp, charge_window_left, charge_timer, elapsed, level, kills, enemies.enemies.size(), paused_for_card, game_over)
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), elapsed, level, kills, enemies.enemies.size(), paused_for_card, game_over)
 
 func _draw() -> void:
 	_draw_arena()
@@ -283,14 +328,17 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 			InputMap.action_add_event(action, event)
 
 func _restart() -> void:
+	get_tree().paused = false
+	_reset_player_stats()
 	player_pos = Vector2.ZERO
-	player_hp = C.PLAYER_MAX_HP
+	player_hp = float(player_stats["max_hp"])
 	elapsed = 0.0
 	xp = 0.0
 	level = 1
 	kills = 0
 	game_over = false
 	paused_for_card = false
+	offered_cards.clear()
 	auto_timer = 0.0
 	charge_timer = 0.0
 	charge_window_left = 0.0
@@ -299,3 +347,41 @@ func _restart() -> void:
 	enemies.clear()
 	effects.clear()
 	hud.reset()
+
+func _reset_player_stats() -> void:
+	player_stats = {
+		"max_hp": C.PLAYER_MAX_HP,
+		"move_speed_mult": 0.0,
+		"auto_damage_mult": 0.0,
+		"auto_range_bonus": 0.0,
+		"charge_damage_mult": 0.0,
+		"charge_target_bonus": 0,
+		"charge_period_bonus": 0.0,
+		"xp_gain_mult": 0.0,
+	}
+
+func _move_speed() -> float:
+	return C.PLAYER_SPEED * (1.0 + float(player_stats["move_speed_mult"]))
+
+func _auto_range() -> float:
+	return C.AUTO_RANGE + float(player_stats["auto_range_bonus"])
+
+func _auto_damage_per_tick() -> float:
+	return C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK
+
+func _charge_period() -> float:
+	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]))
+
+func _charge_target_limit(directed: bool) -> int:
+	var base_limit := C.DIRECTED_AOE_TARGETS if directed else C.CHARGE_AOE_TARGETS
+	return base_limit + int(player_stats["charge_target_bonus"])
+
+func _charge_damage(directed: bool) -> float:
+	var directed_mult := C.DIRECTED_BONUS if directed else 1.0
+	return C.CHARGE_DAMAGE * directed_mult * (1.0 + float(player_stats["charge_damage_mult"]))
+
+func _xp_gain() -> float:
+	return 1.0 * (1.0 + float(player_stats["xp_gain_mult"]))
+
+func _xp_requirement() -> float:
+	return level * 10.0
