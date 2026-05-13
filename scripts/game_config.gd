@@ -21,6 +21,7 @@ const PLAYER_MAX_HP := 100.0
 const BASE_DPS := 100.0
 const AUTO_RANGE := 155.0
 const AUTO_TICK := 0.12
+const MATCH_DURATION := 300.0
 
 const ENEMY_HP := 30.0
 const ELITE_HP := 90.0

@@ -11,6 +11,10 @@ var stat_label: Label
 var card_panel: Panel
 var card_buttons: Array[Button] = []
 var card_chosen_callback := Callable()
+var result_panel: Panel
+var result_label: Label
+var restart_button: Button
+var restart_callback := Callable()
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -95,7 +99,28 @@ func build(parent: Node) -> void:
 		card_panel.add_child(button)
 		card_buttons.append(button)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool) -> void:
+	result_panel = Panel.new()
+	result_panel.position = Vector2(118, 48)
+	result_panel.size = Vector2(244, 174)
+	result_panel.visible = false
+	root.add_child(result_panel)
+
+	result_label = Label.new()
+	result_label.position = Vector2(14, 12)
+	result_label.size = Vector2(216, 112)
+	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_label.add_theme_color_override("font_color", C.INK)
+	result_panel.add_child(result_label)
+
+	restart_button = Button.new()
+	restart_button.position = Vector2(24, 130)
+	restart_button.size = Vector2(196, 32)
+	restart_button.text = "스페이스 / 클릭으로 다시 시작"
+	restart_button.add_theme_color_override("font_color", C.INK)
+	restart_button.pressed.connect(_on_restart_button_pressed)
+	result_panel.add_child(restart_button)
+
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String) -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / C.CHARGE_WINDOW if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
@@ -124,17 +149,20 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 		_:
 			charge_button.text = "차징\n%.1f초" % maxf(0.0, charge_period - charge_timer)
 			charge_button.add_theme_color_override("font_color", C.INK)
-	stat_label.text = "시간 %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), level, kills, enemy_count]
-	if charge_state == "open" and not paused_for_card:
+	stat_label.text = "시간 %03d / %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
+	if notice_text != "" and not paused_for_card and not game_over and not result_panel.visible:
+		prompt_label.visible = true
+		prompt_label.text = notice_text
+	elif charge_state == "open" and not paused_for_card and not result_panel.visible:
 		prompt_label.visible = true
 		prompt_label.text = "차징 윈도우: 포인터로 조준하고 클릭/탭"
-	elif charge_state == "warning" and not paused_for_card:
+	elif charge_state == "warning" and not paused_for_card and not result_panel.visible:
 		prompt_label.visible = true
 		prompt_label.text = "차징 준비: 곧 누를 타이밍"
-	elif charge_state == "missed" and not paused_for_card:
+	elif charge_state == "missed" and not paused_for_card and not result_panel.visible:
 		prompt_label.visible = true
 		prompt_label.text = "차징 만료"
-	elif not game_over and not paused_for_card:
+	elif not game_over and not paused_for_card and not result_panel.visible:
 		prompt_label.visible = false
 
 func show_game_over() -> void:
@@ -162,11 +190,38 @@ func hide_level_card() -> void:
 	prompt_label.visible = false
 	card_chosen_callback = Callable()
 
+func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> void:
+	restart_callback = chosen_callback
+	card_panel.visible = false
+	card_chosen_callback = Callable()
+	result_panel.visible = true
+	prompt_label.visible = true
+	prompt_label.text = "스페이스 / 클릭으로 다시 시작"
+	result_label.text = "%s\n\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d" % [
+		result_data["result"],
+		int(result_data["survival_time"]),
+		int(C.MATCH_DURATION),
+		int(result_data["level"]),
+		int(result_data["kills"]),
+		int(result_data["card_count"]),
+		int(result_data["peak_enemy_count"]),
+		int(result_data["final_enemy_count"]),
+	]
+
+func hide_result_screen() -> void:
+	result_panel.visible = false
+	restart_callback = Callable()
+
 func _on_card_button_pressed(index: int) -> void:
 	if card_chosen_callback.is_valid():
 		card_chosen_callback.call(index)
+
+func _on_restart_button_pressed() -> void:
+	if restart_callback.is_valid():
+		restart_callback.call()
 
 func reset() -> void:
 	prompt_label.visible = false
 	card_panel.visible = false
 	card_chosen_callback = Callable()
+	hide_result_screen()

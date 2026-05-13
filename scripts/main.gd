@@ -6,6 +6,7 @@ const HudController := preload("res://scripts/hud_controller.gd")
 const EffectsController := preload("res://scripts/effects_controller.gd")
 const EnemyController := preload("res://scripts/enemy_controller.gd")
 const LevelUpCards := preload("res://scripts/level_up_cards.gd")
+const WaveDirector := preload("res://scripts/wave_director.gd")
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -13,10 +14,16 @@ var elapsed := 0.0
 var xp := 0.0
 var level := 1
 var kills := 0
+var match_state := "playing"
 var game_over := false
 var paused_for_card := false
 var player_stats := {}
 var offered_cards: Array[Dictionary] = []
+var selected_card_count := 0
+var peak_enemy_count := 0
+var mid_event_triggered := false
+var wave_notice_timer := 0.0
+var wave_notice_text := ""
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -48,7 +55,11 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	if game_over:
+	if match_state == "game_over" or match_state == "victory":
+		effects.update(delta)
+		_update_hud()
+		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		queue_redraw()
 		if Input.is_action_just_pressed("charge"):
 			_restart()
 		return
@@ -60,9 +71,20 @@ func _process(delta: float) -> void:
 		return
 
 	elapsed += delta
+	_check_victory()
+	if match_state == "victory":
+		effects.update(delta)
+		_update_hud()
+		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		queue_redraw()
+		return
+	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
 	_update_player(delta)
-	enemies.update_spawning(delta, elapsed, player_pos, rng)
+	var wave_params := WaveDirector.params_for_time(elapsed)
+	enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
+	_update_wave_events(wave_params)
 	_update_enemies(delta)
+	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 	_update_auto_fire(delta)
 	_update_charge(delta)
 	effects.update(delta)
@@ -81,7 +103,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		pressed_charge = true
 	if pressed_charge:
-		if game_over:
+		if match_state == "game_over" or match_state == "victory":
 			_restart()
 		elif charge_window_left > 0.0:
 			_fire_charge()
@@ -126,8 +148,7 @@ func _update_enemies(delta: float) -> void:
 		return
 	player_hp = maxf(0.0, player_hp - contact_damage)
 	if player_hp <= 0.0:
-		game_over = true
-		hud.show_game_over()
+		_finish_match("game_over")
 
 func _update_auto_fire(delta: float) -> void:
 	auto_timer -= delta
@@ -226,9 +247,52 @@ func _handle_dead_positions(dead_positions: Array[Vector2]) -> void:
 		hit_audio.play()
 		_show_level_card()
 
+func _update_wave_events(wave_params: Dictionary) -> void:
+	if not mid_event_triggered and elapsed >= WaveDirector.MID_EVENT_TIME:
+		mid_event_triggered = true
+		enemies.spawn_elite_group(4, elapsed, player_pos, rng, wave_params)
+		peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
+		_show_wave_notice("대형 광고 마스코트 진입")
+	elif WaveDirector.is_finale(elapsed) and wave_notice_timer <= 0.0:
+		_show_wave_notice("피날레: 마지막 광고 공세")
+
+func _show_wave_notice(text: String) -> void:
+	wave_notice_text = text
+	wave_notice_timer = 2.8
+
+func _check_victory() -> void:
+	if match_state == "playing" and elapsed >= C.MATCH_DURATION:
+		elapsed = C.MATCH_DURATION
+		_finish_match("victory")
+
+func _finish_match(result_state: String) -> void:
+	match_state = result_state
+	game_over = result_state == "game_over"
+	paused_for_card = false
+	if is_inside_tree():
+		get_tree().paused = false
+	offered_cards.clear()
+	hud.hide_level_card()
+	hud.show_result_screen(_result_data(result_state), Callable(self, "_restart"))
+
+func _result_data(result_state: String) -> Dictionary:
+	return {
+		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
+		"survival_time": elapsed,
+		"level": level,
+		"kills": kills,
+		"card_count": selected_card_count,
+		"peak_enemy_count": peak_enemy_count,
+		"final_enemy_count": enemies.enemies.size(),
+	}
+
 func _show_level_card() -> void:
+	if match_state != "playing":
+		return
+	match_state = "level_up"
 	paused_for_card = true
-	get_tree().paused = true
+	if is_inside_tree():
+		get_tree().paused = true
 	offered_cards = LevelUpCards.pick_three(rng)
 	hud.show_level_cards(offered_cards, Callable(self, "_apply_card_choice"))
 
@@ -237,9 +301,12 @@ func _apply_card_choice(index: int) -> void:
 		return
 	var card := offered_cards[index]
 	_apply_card_effect(card)
+	selected_card_count += 1
 	offered_cards.clear()
+	match_state = "playing"
 	paused_for_card = false
-	get_tree().paused = false
+	if is_inside_tree():
+		get_tree().paused = false
 	hud.hide_level_card()
 
 func _apply_card_effect(card: Dictionary) -> void:
@@ -277,7 +344,7 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _update_hud() -> void:
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, level, kills, enemies.enemies.size(), paused_for_card, game_over)
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, game_over, wave_notice_text if wave_notice_timer > 0.0 else "")
 
 func _draw() -> void:
 	_draw_arena()
@@ -380,7 +447,8 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 			InputMap.action_add_event(action, event)
 
 func _restart() -> void:
-	get_tree().paused = false
+	if is_inside_tree():
+		get_tree().paused = false
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
@@ -388,9 +456,15 @@ func _restart() -> void:
 	xp = 0.0
 	level = 1
 	kills = 0
+	match_state = "playing"
 	game_over = false
 	paused_for_card = false
 	offered_cards.clear()
+	selected_card_count = 0
+	peak_enemy_count = 0
+	mid_event_triggered = false
+	wave_notice_timer = 0.0
+	wave_notice_text = ""
 	auto_timer = 0.0
 	charge_timer = 0.0
 	charge_window_left = 0.0
