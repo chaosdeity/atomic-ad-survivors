@@ -33,6 +33,23 @@ static func make_burst_stream(seconds: float, rng: RandomNumberGenerator) -> Aud
 		data.encode_s16(i * 2, sample)
 	return _wav_from_data(sample_rate, data)
 
+static func make_double_tone_stream(first_hz: float, second_hz: float, seconds: float, volume: float) -> AudioStreamWAV:
+	var sample_rate := 22050
+	var count := int(sample_rate * seconds)
+	var data := PackedByteArray()
+	data.resize(count * 2)
+	var phase := 0.0
+	for i in range(count):
+		var t := float(i) / float(maxi(1, count - 1))
+		var split := 0.46
+		var hz := first_hz if t < split else second_hz
+		phase += TAU * hz / sample_rate
+		var local_t := t / split if t < split else (t - split) / (1.0 - split)
+		var env := sin(PI * clampf(local_t, 0.0, 1.0)) * (1.0 - t * 0.25)
+		var sample := int(clampf(sin(phase) * env * volume, -1.0, 1.0) * 32767.0)
+		data.encode_s16(i * 2, sample)
+	return _wav_from_data(sample_rate, data)
+
 static func _wav_from_data(sample_rate: int, data: PackedByteArray) -> AudioStreamWAV:
 	var stream := AudioStreamWAV.new()
 	stream.format = AudioStreamWAV.FORMAT_16_BITS

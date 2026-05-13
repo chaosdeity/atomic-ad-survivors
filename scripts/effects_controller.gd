@@ -6,7 +6,11 @@ var shots: Array[Dictionary] = []
 var bursts: Array[Dictionary] = []
 var particles: Array[Dictionary] = []
 var floaters: Array[Dictionary] = []
+var warning_rings: Array[Dictionary] = []
+var miss_rings: Array[Dictionary] = []
 var screen_flash := 0.0
+var screen_flash_duration := 0.0
+var screen_flash_color := Color(1.0, 0.91, 0.25, 1.0)
 var shake_left := 0.0
 var shake_power := 0.0
 
@@ -24,16 +28,25 @@ func update(delta: float) -> void:
 	for item in floaters:
 		item["life"] = float(item["life"]) - delta
 		item["pos"] = Vector2(item["pos"]) + Vector2(0, -18) * delta
+	for item in warning_rings:
+		item["life"] = float(item["life"]) - delta
+	for item in miss_rings:
+		item["life"] = float(item["life"]) - delta
 	shots = shots.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	bursts = bursts.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	particles = particles.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	floaters = floaters.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	warning_rings = warning_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	miss_rings = miss_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 
 func add_auto_shot(from_pos: Vector2, to_pos: Vector2) -> void:
 	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "color": C.NEON_RED})
 
 func add_burst(pos: Vector2, dir: Vector2, life: float, directed: bool) -> void:
 	bursts.append({"pos": pos, "dir": dir, "life": life, "directed": directed})
+
+func add_charge_warning_ring(pos: Vector2) -> void:
+	warning_rings.append({"pos": pos, "life": C.CHARGE_WARNING_TIME, "duration": C.CHARGE_WARNING_TIME})
 
 func add_charge_floater(pos: Vector2, directed: bool) -> void:
 	floaters.append({
@@ -44,12 +57,22 @@ func add_charge_floater(pos: Vector2, directed: bool) -> void:
 	})
 
 func show_charge_ready() -> void:
-	screen_flash = 0.12
+	_set_screen_flash(C.CHARGE_READY_FLASH, Color(1.0, 0.91, 0.25, 1.0))
+
+func show_charge_missed(pos: Vector2) -> void:
+	_set_screen_flash(C.CHARGE_MISS_FLASH, Color(0.35, 0.70, 0.95, 1.0))
+	miss_rings.append({"pos": pos, "life": 0.34, "duration": 0.34})
+	floaters.append({
+		"pos": pos + Vector2(0, -22),
+		"text": "놓침",
+		"life": 0.45,
+		"color": Color(0.35, 0.70, 0.95, 0.95),
+	})
 
 func fire_feedback(directed: bool) -> void:
-	screen_flash = 0.24
-	shake_left = 0.22 if directed else 0.15
-	shake_power = 6.5 if directed else 4.0
+	_set_screen_flash(0.28 if directed else 0.20, Color(0.62, 1.0, 0.36, 1.0) if directed else Color(1.0, 0.91, 0.25, 1.0))
+	shake_left = 0.25 if directed else 0.15
+	shake_power = C.CHARGE_FOCUS_SHAKE if directed else C.CHARGE_NORMAL_SHAKE
 
 func shake_offset(rng: RandomNumberGenerator) -> Vector2:
 	if shake_left <= 0.0:
@@ -57,19 +80,20 @@ func shake_offset(rng: RandomNumberGenerator) -> Vector2:
 	return Vector2(rng.randf_range(-shake_power, shake_power), rng.randf_range(-shake_power, shake_power))
 
 func spawn_charge_particles(origin: Vector2, dir: Vector2, directed: bool, rng: RandomNumberGenerator) -> void:
-	var count := 42 if directed else 28
+	var count := 54 if directed else 30
 	for i in range(count):
-		var spread := rng.randf_range(-0.8, 0.8) if directed else rng.randf_range(-PI, PI)
+		var spread := rng.randf_range(-0.55, 0.55) if directed else rng.randf_range(-PI, PI)
 		var out_dir := dir.rotated(spread) if directed else Vector2.RIGHT.rotated(spread)
-		var speed := rng.randf_range(80.0, 230.0 if directed else 170.0)
+		var speed := rng.randf_range(95.0, 285.0 if directed else 175.0)
 		particles.append({
 			"pos": origin + out_dir * rng.randf_range(6.0, 26.0),
 			"vel": out_dir * speed,
-			"life": rng.randf_range(0.22, 0.55),
+			"life": rng.randf_range(0.24, 0.64 if directed else 0.48),
 			"color": [C.TOXIC_GREEN, C.NEON_RED, C.VITAMIN_YELLOW][rng.randi_range(0, 2)],
-			"size": rng.randf_range(2.0, 5.0),
-			"shape": "star" if rng.randf() < 0.55 else "dot",
+			"size": rng.randf_range(2.0, 6.0 if directed else 4.5),
+			"shape": "line" if directed and rng.randf() < 0.42 else ("star" if rng.randf() < 0.55 else "dot"),
 		})
+	_trim_particles()
 
 func spawn_hit_spark(pos: Vector2, directed: bool, rng: RandomNumberGenerator) -> void:
 	for i in range(5 if directed else 3):
@@ -82,6 +106,7 @@ func spawn_hit_spark(pos: Vector2, directed: bool, rng: RandomNumberGenerator) -
 			"size": rng.randf_range(1.5, 3.5),
 			"shape": "star",
 		})
+	_trim_particles()
 
 func spawn_pop_particles(pos: Vector2, rng: RandomNumberGenerator) -> void:
 	for i in range(8):
@@ -94,12 +119,25 @@ func spawn_pop_particles(pos: Vector2, rng: RandomNumberGenerator) -> void:
 			"size": rng.randf_range(1.5, 3.0),
 			"shape": "dot",
 		})
+	_trim_particles()
 
 func draw_behind(canvas: CanvasItem) -> void:
+	for ring in warning_rings:
+		var progress := 1.0 - float(ring["life"]) / float(ring["duration"])
+		var pos: Vector2 = ring["pos"]
+		var alpha := (1.0 - progress) * 0.52
+		canvas.draw_circle(pos, 42.0 + progress * 28.0, Color(1.0, 0.91, 0.25, alpha * 0.22))
+		canvas.draw_arc(pos, 34.0 + progress * 36.0, 0.0, TAU, 48, Color(1.0, 0.3, 0.36, alpha), 2.0)
+	for ring in miss_rings:
+		var progress := 1.0 - float(ring["life"]) / float(ring["duration"])
+		var pos: Vector2 = ring["pos"]
+		var alpha := (1.0 - progress) * 0.42
+		canvas.draw_arc(pos, 24.0 + progress * 30.0, -PI * 0.86, PI * 0.86, 32, Color(0.35, 0.70, 0.95, alpha), 2.0)
 	for burst in bursts:
 		var pos: Vector2 = burst["pos"]
 		var life := float(burst["life"])
-		var r := (1.0 - life / 0.28) * 54.0
+		var total := 0.36 if burst["directed"] else 0.28
+		var r := (1.0 - life / total) * (78.0 if burst["directed"] else 54.0)
 		var color := C.TOXIC_GREEN if burst["directed"] else C.VITAMIN_YELLOW
 		color.a = clampf(life * 3.0, 0.0, 0.75)
 		canvas.draw_circle(pos, r, color)
@@ -115,15 +153,20 @@ func draw_front(canvas: CanvasItem) -> void:
 		var directed: bool = burst["directed"]
 		if directed:
 			var dir: Vector2 = burst["dir"]
-			var left := dir.rotated(-0.55) * 90.0
-			var right := dir.rotated(0.55) * 90.0
-			canvas.draw_colored_polygon(PackedVector2Array([pos, pos + left, pos + right]), Color(0.62, 1.0, 0.36, 0.25))
+			var length := 150.0
+			var left := dir.rotated(-0.55) * length
+			var right := dir.rotated(0.55) * length
+			canvas.draw_colored_polygon(PackedVector2Array([pos, pos + left, pos + right]), Color(0.62, 1.0, 0.36, 0.24))
+			canvas.draw_line(pos, pos + dir * (length + 28.0), Color(1.0, 0.3, 0.36, 0.78), 4.0)
 	for particle in particles:
 		var color: Color = particle["color"]
 		color.a = clampf(float(particle["life"]) * 4.0, 0.0, 1.0)
 		var pos: Vector2 = particle["pos"]
 		var size := float(particle["size"])
-		if particle["shape"] == "star":
+		if particle["shape"] == "line":
+			var vel_dir := Vector2(particle["vel"]).normalized()
+			canvas.draw_line(pos - vel_dir * size, pos + vel_dir * size * 3.2, color, 2.0)
+		elif particle["shape"] == "star":
 			_draw_star(canvas, pos, size, color)
 		else:
 			canvas.draw_circle(pos, size, color)
@@ -133,17 +176,32 @@ func draw_front(canvas: CanvasItem) -> void:
 func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
 	if screen_flash <= 0.0:
 		return
-	var alpha := clampf(screen_flash * 2.8, 0.0, 0.38)
-	canvas.draw_rect(Rect2(camera_pos - C.VIEWPORT_SIZE * 0.5, C.VIEWPORT_SIZE), Color(1.0, 0.91, 0.25, alpha))
+	var ratio := screen_flash / maxf(0.001, screen_flash_duration)
+	var color := screen_flash_color
+	color.a = clampf(ratio * 0.36, 0.0, 0.38)
+	canvas.draw_rect(Rect2(camera_pos - C.VIEWPORT_SIZE * 0.5, C.VIEWPORT_SIZE), color)
 
 func clear() -> void:
 	shots.clear()
 	bursts.clear()
 	particles.clear()
 	floaters.clear()
+	warning_rings.clear()
+	miss_rings.clear()
 	screen_flash = 0.0
+	screen_flash_duration = 0.0
 	shake_left = 0.0
 	shake_power = 0.0
+
+func _set_screen_flash(duration: float, color: Color) -> void:
+	screen_flash = duration
+	screen_flash_duration = duration
+	screen_flash_color = color
+
+func _trim_particles() -> void:
+	if particles.size() <= C.CHARGE_MAX_PARTICLES:
+		return
+	particles = particles.slice(particles.size() - C.CHARGE_MAX_PARTICLES)
 
 func _draw_star(canvas: CanvasItem, pos: Vector2, radius: float, color: Color) -> void:
 	var points := PackedVector2Array()

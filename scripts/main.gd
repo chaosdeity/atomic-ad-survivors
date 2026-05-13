@@ -23,12 +23,16 @@ var charge_timer := 0.0
 var charge_window_left := 0.0
 var charge_ready_flash := 0.0
 var charge_open_age := 0.0
+var charge_warning_played := false
+var charge_miss_notice := 0.0
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
+var charge_warning_audio: AudioStreamPlayer
 var charge_audio: AudioStreamPlayer
 var fire_audio: AudioStreamPlayer
 var hit_audio: AudioStreamPlayer
+var miss_audio: AudioStreamPlayer
 var hud := HudController.new()
 var effects := EffectsController.new()
 var enemies := EnemyController.new()
@@ -49,6 +53,10 @@ func _process(delta: float) -> void:
 			_restart()
 		return
 	if paused_for_card:
+		effects.update(delta)
+		_update_hud()
+		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		queue_redraw()
 		return
 
 	elapsed += delta
@@ -86,8 +94,12 @@ func _build_camera() -> void:
 	camera.make_current()
 
 func _build_audio() -> void:
+	charge_warning_audio = AudioStreamPlayer.new()
+	charge_warning_audio.stream = AudioFactory.make_double_tone_stream(360.0, 540.0, 0.22, 0.12)
+	add_child(charge_warning_audio)
+
 	charge_audio = AudioStreamPlayer.new()
-	charge_audio.stream = AudioFactory.make_tone_stream(520.0, 0.32, 0.18, 920.0)
+	charge_audio.stream = AudioFactory.make_tone_stream(620.0, 0.24, 0.20, 1180.0)
 	add_child(charge_audio)
 
 	fire_audio = AudioStreamPlayer.new()
@@ -97,6 +109,10 @@ func _build_audio() -> void:
 	hit_audio = AudioStreamPlayer.new()
 	hit_audio.stream = AudioFactory.make_tone_stream(740.0, 0.13, 0.10, 980.0)
 	add_child(hit_audio)
+
+	miss_audio = AudioStreamPlayer.new()
+	miss_audio.stream = AudioFactory.make_tone_stream(280.0, 0.16, 0.11, 180.0)
+	add_child(miss_audio)
 
 func _update_player(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -126,26 +142,40 @@ func _update_auto_fire(delta: float) -> void:
 	effects.add_auto_shot(player_pos, target_pos)
 
 func _update_charge(delta: float) -> void:
+	charge_miss_notice = maxf(0.0, charge_miss_notice - delta)
 	if charge_window_left > 0.0:
 		charge_window_left = maxf(0.0, charge_window_left - delta)
 		charge_open_age += delta
 		if charge_window_left <= 0.0:
+			_charge_missed()
 			charge_timer = 0.0
 			charge_open_age = 0.0
+			charge_warning_played = false
 	else:
 		charge_timer += delta
+		var warning_left := _charge_period() - charge_timer
+		if not charge_warning_played and warning_left <= C.CHARGE_WARNING_TIME:
+			charge_warning_played = true
+			effects.add_charge_warning_ring(player_pos)
+			charge_warning_audio.play()
 		if charge_timer >= _charge_period():
 			charge_window_left = C.CHARGE_WINDOW
 			charge_open_age = 0.0
-			charge_ready_flash = 0.22
+			charge_warning_played = false
+			charge_ready_flash = C.CHARGE_READY_FLASH
 			effects.show_charge_ready()
 			charge_audio.play()
 	charge_ready_flash = maxf(0.0, charge_ready_flash - delta)
 
+func _charge_missed() -> void:
+	charge_miss_notice = 0.48
+	effects.show_charge_missed(player_pos)
+	miss_audio.play()
+
 func _fire_charge() -> void:
 	var mouse_world := get_global_mouse_position()
 	var aim := mouse_world - player_pos
-	var directed := aim.length() > 18.0
+	var directed := aim.length() > C.CHARGE_AIM_DEADZONE
 	var aim_dir := aim.normalized() if directed else Vector2.RIGHT
 	var hit_indices := _charge_hit_indices(directed, aim_dir)
 	var limit := _charge_target_limit(directed)
@@ -160,10 +190,13 @@ func _fire_charge() -> void:
 	_handle_dead_positions(enemies.cleanup_dead())
 	_fire_feedback(directed)
 	effects.spawn_charge_particles(player_pos, aim_dir, directed, rng)
-	effects.add_burst(player_pos, aim_dir, 0.28, directed)
+	effects.add_burst(player_pos, aim_dir, 0.36 if directed else 0.28, directed)
 	effects.add_charge_floater(player_pos, directed)
 	charge_window_left = 0.0
 	charge_timer = 0.0
+	charge_open_age = 0.0
+	charge_warning_played = false
+	charge_miss_notice = 0.0
 
 func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 	var hit_indices: Array[int] = []
@@ -244,7 +277,7 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _update_hud() -> void:
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), elapsed, level, kills, enemies.enemies.size(), paused_for_card, game_over)
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, level, kills, enemies.enemies.size(), paused_for_card, game_over)
 
 func _draw() -> void:
 	_draw_arena()
@@ -269,6 +302,9 @@ func _draw_arena() -> void:
 		draw_rect(Rect2(p, Vector2(36, 18)), C.COCOA, false, 1.0)
 
 func _draw_player() -> void:
+	var charge_state := _charge_state()
+	var aim := get_global_mouse_position() - player_pos
+	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
 	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
 	draw_circle(player_pos, 11.0, C.MINT_FADE)
 	draw_circle(player_pos + Vector2(0, -2), 7.0, C.AD_PAPER)
@@ -276,21 +312,37 @@ func _draw_player() -> void:
 	draw_circle(player_pos + Vector2(3, -3), 1.5, C.INK)
 	draw_arc(player_pos + Vector2(0, 1), 4.0, 0.15, PI - 0.15, 10, C.COCOA, 1.0)
 	draw_arc(player_pos, 11.0, 0.0, TAU, 28, C.INK, 1.0)
-	if charge_ready_flash > 0.0 or charge_window_left > 0.0:
+	if charge_state == "warning":
+		var warning_left := maxf(0.0, _charge_period() - charge_timer)
+		var warning_ratio := 1.0 - clampf(warning_left / C.CHARGE_WARNING_TIME, 0.0, 1.0)
+		var pulse := 1.0 + sin(warning_ratio * PI * 5.0) * 0.12
+		draw_arc(player_pos, 23.0 * pulse, -PI / 2.0, TAU * warning_ratio - PI / 2.0, 36, C.NEON_RED, 3.0)
+		draw_arc(player_pos, C.CHARGE_RANGE * (0.82 + warning_ratio * 0.18), 0.0, TAU, 72, Color(1.0, 0.91, 0.25, 0.20 + warning_ratio * 0.24), 2.0)
+		draw_circle(player_pos, 34.0 + warning_ratio * 15.0, Color(1.0, 0.91, 0.25, 0.08))
+		if has_aim:
+			var dir := aim.normalized()
+			draw_colored_polygon(PackedVector2Array([
+				player_pos,
+				player_pos + dir.rotated(-0.46) * C.CHARGE_RANGE * 0.74,
+				player_pos + dir.rotated(0.46) * C.CHARGE_RANGE * 0.74,
+			]), Color(1.0, 0.91, 0.25, 0.11))
+	elif charge_ready_flash > 0.0 or charge_window_left > 0.0:
 		var ratio := charge_window_left / C.CHARGE_WINDOW
 		var pulse := 1.0 + sin(charge_open_age * 28.0) * 0.13
-		draw_arc(player_pos, C.CHARGE_RANGE, -PI, PI, 72, Color(1.0, 0.3, 0.36, 0.28), 2.0)
-		draw_arc(player_pos, 18.0 * pulse, -PI / 2.0, TAU * ratio - PI / 2.0, 32, C.TOXIC_GREEN, 3.0)
-		draw_arc(player_pos, 25.0 + charge_open_age * 42.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.65), 2.0)
-		draw_circle(player_pos, 34.0 + charge_open_age * 20.0, Color(0.62, 1.0, 0.36, 0.12))
-		var aim := get_global_mouse_position() - player_pos
-		if aim.length() > 18.0:
+		var focus_color := Color(0.62, 1.0, 0.36, 0.22) if has_aim else Color(1.0, 0.91, 0.25, 0.20)
+		draw_arc(player_pos, C.CHARGE_RANGE, -PI, PI, 72, Color(1.0, 0.3, 0.36, 0.32), 3.0)
+		draw_arc(player_pos, 18.0 * pulse, -PI / 2.0, TAU * ratio - PI / 2.0, 32, C.TOXIC_GREEN if has_aim else C.VITAMIN_YELLOW, 4.0)
+		draw_arc(player_pos, 25.0 + charge_open_age * 42.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.70), 2.0)
+		draw_circle(player_pos, 34.0 + charge_open_age * 20.0, focus_color)
+		if has_aim:
 			var dir := aim.normalized()
 			draw_colored_polygon(PackedVector2Array([
 				player_pos,
 				player_pos + dir.rotated(-0.55) * C.CHARGE_RANGE,
 				player_pos + dir.rotated(0.55) * C.CHARGE_RANGE,
-			]), Color(0.62, 1.0, 0.36, 0.16))
+			]), Color(0.62, 1.0, 0.36, 0.22))
+			draw_line(player_pos, player_pos + dir * C.CHARGE_RANGE, Color(1.0, 0.3, 0.36, 0.78), 3.0)
+			draw_arc(player_pos, C.CHARGE_RANGE * 0.58, -0.55 + dir.angle(), 0.55 + dir.angle(), 28, C.TOXIC_GREEN, 3.0)
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
@@ -344,6 +396,8 @@ func _restart() -> void:
 	charge_window_left = 0.0
 	charge_open_age = 0.0
 	charge_ready_flash = 0.0
+	charge_warning_played = false
+	charge_miss_notice = 0.0
 	enemies.clear()
 	effects.clear()
 	hud.reset()
@@ -371,6 +425,15 @@ func _auto_damage_per_tick() -> float:
 
 func _charge_period() -> float:
 	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]))
+
+func _charge_state() -> String:
+	if charge_window_left > 0.0:
+		return "open"
+	if charge_miss_notice > 0.0:
+		return "missed"
+	if _charge_period() - charge_timer <= C.CHARGE_WARNING_TIME:
+		return "warning"
+	return "cooldown"
 
 func _charge_target_limit(directed: bool) -> int:
 	var base_limit := C.DIRECTED_AOE_TARGETS if directed else C.CHARGE_AOE_TARGETS

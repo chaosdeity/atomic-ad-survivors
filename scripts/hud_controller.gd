@@ -95,22 +95,45 @@ func build(parent: Node) -> void:
 		card_panel.add_child(button)
 		card_buttons.append(button)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, elapsed: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool) -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool) -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / C.CHARGE_WINDOW if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
-	charge_bar.color = C.VITAMIN_YELLOW if charge_window_left > 0.0 else C.TOXIC_GREEN
+	match charge_state:
+		"open":
+			charge_bar.color = C.VITAMIN_YELLOW
+		"warning":
+			charge_bar.color = C.NEON_RED
+		"missed":
+			charge_bar.color = Color(0.35, 0.70, 0.95)
+		_:
+			charge_bar.color = C.TOXIC_GREEN
 	charge_button.modulate = Color.WHITE
-	if charge_window_left > 0.0:
-		charge_button.text = "지금!\n클릭/스페이스"
-		charge_button.add_theme_color_override("font_color", C.NEON_RED)
-	else:
-		charge_button.text = "차징\n%.1f초" % maxf(0.0, charge_period - charge_timer)
-		charge_button.add_theme_color_override("font_color", C.INK)
+	match charge_state:
+		"open":
+			charge_button.text = "지금!\n클릭/스페이스"
+			charge_button.add_theme_color_override("font_color", C.NEON_RED)
+			charge_button.modulate = Color(1.0, 0.96, 0.72, 1.0)
+		"warning":
+			charge_button.text = "곧 열림\n%.1f초" % maxf(0.0, charge_period - charge_timer)
+			charge_button.add_theme_color_override("font_color", C.NEON_RED)
+			charge_button.modulate = Color(1.0, 0.9, 0.82, 1.0)
+		"missed":
+			charge_button.text = "놓침\n재충전"
+			charge_button.add_theme_color_override("font_color", Color(0.2, 0.42, 0.72))
+		_:
+			charge_button.text = "차징\n%.1f초" % maxf(0.0, charge_period - charge_timer)
+			charge_button.add_theme_color_override("font_color", C.INK)
 	stat_label.text = "시간 %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), level, kills, enemy_count]
-	if charge_window_left > 0.0 and not paused_for_card:
+	if charge_state == "open" and not paused_for_card:
 		prompt_label.visible = true
 		prompt_label.text = "차징 윈도우: 포인터로 조준하고 클릭/탭"
+	elif charge_state == "warning" and not paused_for_card:
+		prompt_label.visible = true
+		prompt_label.text = "차징 준비: 곧 누를 타이밍"
+	elif charge_state == "missed" and not paused_for_card:
+		prompt_label.visible = true
+		prompt_label.text = "차징 만료"
 	elif not game_over and not paused_for_card:
 		prompt_label.visible = false
 
