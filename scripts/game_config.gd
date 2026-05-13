@@ -1,5 +1,7 @@
 extends RefCounted
 
+const DEBUG_TOOLS_ENABLED := true
+
 const VIEWPORT_SIZE := Vector2(480, 270)
 const ARENA_HALF := Vector2(760, 430)
 

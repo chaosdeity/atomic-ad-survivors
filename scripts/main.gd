@@ -7,6 +7,7 @@ const EffectsController := preload("res://scripts/effects_controller.gd")
 const EnemyController := preload("res://scripts/enemy_controller.gd")
 const LevelUpCards := preload("res://scripts/level_up_cards.gd")
 const WaveDirector := preload("res://scripts/wave_director.gd")
+const DebugTools := preload("res://scripts/debug_tools.gd")
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -43,6 +44,7 @@ var miss_audio: AudioStreamPlayer
 var hud := HudController.new()
 var effects := EffectsController.new()
 var enemies := EnemyController.new()
+var debug_tools := DebugTools.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -93,6 +95,10 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
+	if debug_tools.handle_input(event, self):
+		_update_hud()
+		return
+
 	if paused_for_card:
 		var choice := _card_choice_from_event(event)
 		if choice != -1:
@@ -345,6 +351,100 @@ func _fire_feedback(directed: bool) -> void:
 
 func _update_hud() -> void:
 	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, game_over, wave_notice_text if wave_notice_timer > 0.0 else "")
+	hud.set_debug_text(_debug_overlay_text())
+
+func _debug_overlay_text() -> String:
+	if not C.DEBUG_TOOLS_ENABLED:
+		return ""
+	var sections: Array[String] = []
+	var help := debug_tools.help_text()
+	if help != "":
+		sections.append(help)
+	var detail := debug_tools.detail_text(_debug_info())
+	if detail != "":
+		sections.append(detail)
+	return "\n\n".join(sections)
+
+func _debug_info() -> Dictionary:
+	var wave_params := WaveDirector.params_for_time(elapsed)
+	return {
+		"match_state": match_state,
+		"elapsed": elapsed,
+		"match_duration": C.MATCH_DURATION,
+		"wave_name": wave_params["name"],
+		"enemy_count": enemies.enemies.size(),
+		"enemy_cap": C.ENEMY_CAP,
+		"player_hp": player_hp,
+		"max_hp": float(player_stats["max_hp"]),
+		"level": level,
+		"xp": xp,
+		"charge_state": _charge_state(),
+		"charge_timer": charge_timer,
+		"charge_period": _charge_period(),
+		"charge_window_left": charge_window_left,
+		"selected_card_count": selected_card_count,
+		"mid_event_triggered": mid_event_triggered,
+		"fps": Engine.get_frames_per_second(),
+	}
+
+func _debug_force_level_up() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	_show_level_card()
+
+func _debug_open_charge() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	charge_timer = _charge_period()
+	charge_window_left = C.CHARGE_WINDOW
+	charge_open_age = 0.0
+	charge_warning_played = false
+	charge_ready_flash = C.CHARGE_READY_FLASH
+	charge_miss_notice = 0.0
+	effects.show_charge_ready()
+	charge_audio.play()
+
+func _debug_drop_hp() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	player_hp = minf(player_hp, 20.0)
+
+func _debug_jump_time(seconds: float) -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	elapsed = clampf(seconds, 0.0, C.MATCH_DURATION)
+	if elapsed >= WaveDirector.MID_EVENT_TIME:
+		mid_event_triggered = true
+	if WaveDirector.is_finale(elapsed):
+		_show_wave_notice("피날레: 마지막 광고 공세")
+	enemies.spawn_timer = 0.0
+	_check_victory()
+
+func _debug_force_victory() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	elapsed = C.MATCH_DURATION
+	_finish_match("victory")
+
+func _debug_force_game_over() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	player_hp = 0.0
+	_finish_match("game_over")
+
+func _debug_clear_enemies() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	enemies.clear()
+
+func _debug_spawn_swarm() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	var wave_params := WaveDirector.params_for_time(elapsed)
+	var count := mini(24, C.ENEMY_CAP - enemies.enemies.size())
+	for i in range(count):
+		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
+	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
 func _draw() -> void:
 	_draw_arena()

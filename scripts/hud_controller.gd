@@ -15,6 +15,8 @@ var result_panel: Panel
 var result_label: Label
 var restart_button: Button
 var restart_callback := Callable()
+var debug_panel: Panel
+var debug_label: Label
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -120,6 +122,20 @@ func build(parent: Node) -> void:
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	result_panel.add_child(restart_button)
 
+	debug_panel = Panel.new()
+	debug_panel.position = Vector2(8, 38)
+	debug_panel.size = Vector2(182, 184)
+	debug_panel.visible = false
+	root.add_child(debug_panel)
+
+	debug_label = Label.new()
+	debug_label.position = Vector2(8, 6)
+	debug_label.size = Vector2(166, 172)
+	debug_label.add_theme_font_size_override("font_size", 8)
+	debug_label.add_theme_color_override("font_color", C.INK)
+	debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	debug_panel.add_child(debug_label)
+
 func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String) -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / C.CHARGE_WINDOW if charge_window_left > 0.0 else charge_timer / charge_period
@@ -211,6 +227,14 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 func hide_result_screen() -> void:
 	result_panel.visible = false
 	restart_callback = Callable()
+
+func set_debug_text(text: String) -> void:
+	if text == "":
+		debug_panel.visible = false
+		debug_label.text = ""
+		return
+	debug_label.text = text
+	debug_panel.visible = true
 
 func _on_card_button_pressed(index: int) -> void:
 	if card_chosen_callback.is_valid():
