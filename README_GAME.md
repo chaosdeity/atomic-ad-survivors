@@ -29,3 +29,5 @@ Open this folder in Godot 4.x and run `res://scenes/main.tscn`.
 Chosen tone: `B - bright dystopian atomic`.
 
 Reference art is copied into `res://assets/reference_bright_dystopian/`. The current prototype uses code-drawn shapes in the B palette so mechanics can be tested before sprite slicing/import cleanup.
+
+Asset production priorities and image-generation prompts are documented in `ASSET_PRODUCTION_PLAN.md`.
