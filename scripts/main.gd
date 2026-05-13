@@ -8,6 +8,7 @@ const EnemyController := preload("res://scripts/enemy_controller.gd")
 const LevelUpCards := preload("res://scripts/level_up_cards.gd")
 const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
+const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -33,6 +34,8 @@ var charge_ready_flash := 0.0
 var charge_open_age := 0.0
 var charge_warning_played := false
 var charge_miss_notice := 0.0
+var last_move_dir := Vector2.DOWN
+var player_is_moving := false
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -45,14 +48,17 @@ var hud := HudController.new()
 var effects := EffectsController.new()
 var enemies := EnemyController.new()
 var debug_tools := DebugTools.new()
+var sprite_assets := SpriteAssets.new()
 
 func _ready() -> void:
 	rng.seed = 42
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_reset_player_stats()
 	_ensure_input_map()
 	_build_camera()
 	_build_audio()
+	sprite_assets.load_all()
 	hud.build(self)
 	set_process(true)
 
@@ -144,6 +150,9 @@ func _build_audio() -> void:
 
 func _update_player(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	player_is_moving = input_dir.length_squared() > 0.0
+	if player_is_moving:
+		last_move_dir = input_dir
 	player_pos += input_dir * _move_speed() * delta
 	player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
 	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
@@ -473,12 +482,9 @@ func _draw_player() -> void:
 	var aim := get_global_mouse_position() - player_pos
 	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
 	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
-	draw_circle(player_pos, 11.0, C.MINT_FADE)
-	draw_circle(player_pos + Vector2(0, -2), 7.0, C.AD_PAPER)
-	draw_circle(player_pos + Vector2(-3, -3), 1.5, C.INK)
-	draw_circle(player_pos + Vector2(3, -3), 1.5, C.INK)
-	draw_arc(player_pos + Vector2(0, 1), 4.0, 0.15, PI - 0.15, 10, C.COCOA, 1.0)
-	draw_arc(player_pos, 11.0, 0.0, TAU, 28, C.INK, 1.0)
+	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
+	if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+		sprite_assets.draw_player_fallback(self, player_pos)
 	if charge_state == "warning":
 		var warning_left := maxf(0.0, _charge_period() - charge_timer)
 		var warning_ratio := 1.0 - clampf(warning_left / C.CHARGE_WARNING_TIME, 0.0, 1.0)
@@ -514,15 +520,16 @@ func _draw_player() -> void:
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
 		var pos: Vector2 = enemy["pos"]
-		var elite: bool = enemy["elite"]
 		var radius := float(enemy["radius"])
 		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
-		draw_circle(pos, radius, C.CORAL_PINK if elite else C.LEMON_YELLOW)
-		draw_circle(pos + Vector2(-3, -2), 1.7, C.INK)
-		draw_circle(pos + Vector2(3, -2), 1.7, C.INK)
-		draw_arc(pos + Vector2(0, 2), 4.0, 0.0, PI, 10, C.INK, 1.0)
-		draw_circle(pos + Vector2(0, 5), 2.0, C.TOXIC_GREEN)
-		draw_arc(pos, radius, 0.0, TAU, 24, C.INK, 1.0)
+		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
+		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
+			sprite_assets.draw_enemy_fallback(self, enemy)
+
+func _player_sprite_row() -> int:
+	if absf(last_move_dir.x) > absf(last_move_dir.y):
+		return 2 if last_move_dir.x > 0.0 else 1
+	return 0 if last_move_dir.y >= 0.0 else 3
 
 func _ensure_input_map() -> void:
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])

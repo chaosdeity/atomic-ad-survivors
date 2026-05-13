@@ -2,6 +2,8 @@ extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
 
+const TIER1_SPRITE_KINDS := ["billboard", "appliance", "coupon"]
+
 var enemies: Array[Dictionary] = []
 var spawn_timer := 0.0
 
@@ -33,6 +35,9 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 	var speed_mult := float(wave_params.get("speed_mult", 1.0))
 	var contact_damage_mult := float(wave_params.get("contact_damage_mult", 1.0))
 	var elite := rng.randf() < elite_chance
+	var sprite_kind := "housewife"
+	if not elite:
+		sprite_kind = TIER1_SPRITE_KINDS[rng.randi_range(0, TIER1_SPRITE_KINDS.size() - 1)]
 	enemies.append({
 		"pos": pos,
 		"hp": (C.ELITE_HP if elite else C.ENEMY_HP) * hp_mult,
@@ -41,6 +46,8 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"speed": (C.ELITE_SPEED if elite else C.ENEMY_SPEED) * speed_mult,
 		"contact_damage_mult": contact_damage_mult,
 		"elite": elite,
+		"sprite_kind": sprite_kind,
+		"age": 0.0,
 	})
 
 func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
@@ -54,6 +61,7 @@ func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: Ran
 func update_enemies(delta: float, player_pos: Vector2) -> float:
 	var contact_damage := 0.0
 	for enemy in enemies:
+		enemy["age"] = float(enemy.get("age", 0.0)) + delta
 		var pos: Vector2 = enemy["pos"]
 		var to_player := player_pos - pos
 		var dist := maxf(1.0, to_player.length())
