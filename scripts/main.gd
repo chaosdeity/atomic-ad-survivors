@@ -294,7 +294,8 @@ func _try_split_shot(primary_idx: int) -> void:
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
 	_handle_dead_positions(enemies.damage_enemy(secondary_idx, split_damage))
 	effects.add_alt_shot(player_pos, target_pos)
-	effects.add_floater(target_pos, "분열!", C.TOXIC_GREEN)
+	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 14.0, 0.24)
+	effects.add_floater(target_pos, "분열!", C.TOXIC_GREEN, 14)
 
 func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var burst_level := int(player_stats["kill_burst_level"])
@@ -310,7 +311,8 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var hits := enemies.damage_enemies_in_radius(pos, radius, damage, max_targets)
 	if hits > 0:
 		effects.add_small_burst(pos)
-		effects.add_floater(pos, "연쇄!", C.CORAL_PINK)
+		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
+		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
 		dead_positions = enemies.cleanup_dead()
 	return dead_positions
 
@@ -319,18 +321,23 @@ func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> 
 	if slow_level > 0:
 		var slow_mult := maxf(0.20, 0.58 - 0.08 * slow_level)
 		enemies.apply_slow(idx, 1.0 + 0.25 * slow_level, slow_mult)
+		effects.add_status_ring(enemies.enemies[idx]["pos"], C.TOXIC_GREEN, 13.0, 0.28)
 	var knockback_level := int(player_stats["charge_knockback_level"])
 	if knockback_level > 0:
+		var from_pos: Vector2 = enemies.enemies[idx]["pos"]
 		var dir := aim_dir if directed else Vector2(enemies.enemies[idx]["pos"] - player_pos).normalized()
 		enemies.knockback_enemy(idx, dir, 18.0 + 10.0 * knockback_level)
+		var to_pos: Vector2 = enemies.enemies[idx]["pos"]
+		effects.add_impact_line(from_pos, to_pos, C.NEON_RED)
 
 func _apply_charge_aftereffects(hit_count: int, directed: bool, aim_dir: Vector2, perfect: bool) -> void:
 	if perfect:
-		effects.add_floater(player_pos, "완벽!", C.VITAMIN_YELLOW)
+		effects.add_floater(player_pos + Vector2(0, -8), "완벽!", C.VITAMIN_YELLOW, 18)
+		effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 34.0, 0.38)
 	if _emergency_charge_active():
-		effects.add_floater(player_pos, "역송출!", C.NEON_RED)
+		effects.add_floater(player_pos, "역송출!", C.NEON_RED, 14)
 	if int(player_stats["charge_slow_level"]) > 0 and hit_count > 0:
-		effects.add_floater(player_pos + Vector2(16, -8), "오류!", C.TOXIC_GREEN)
+		effects.add_floater(player_pos + Vector2(16, -8), "오류!", C.TOXIC_GREEN, 14)
 	_spawn_charge_puddle(directed, aim_dir)
 	_try_charge_heal(hit_count)
 
@@ -342,14 +349,15 @@ func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 	charge_puddles.append({
 		"pos": pos,
 		"radius": 42.0 + 6.0 * puddle_level,
-		"dps": 18.0 + 7.0 * puddle_level,
+		"dps": 17.0 + 6.0 * puddle_level,
 		"life": 2.0 + 0.25 * puddle_level,
 		"duration": 2.0 + 0.25 * puddle_level,
 		"tick": 0.0,
 	})
 	while charge_puddles.size() > 2 + puddle_level:
 		charge_puddles.pop_front()
-	effects.add_floater(pos, "잔류!", C.TOXIC_GREEN)
+	effects.add_status_ring(pos, C.TOXIC_GREEN, 42.0 + 6.0 * puddle_level, 0.42)
+	effects.add_floater(pos, "잔류!", C.TOXIC_GREEN, 14)
 
 func _try_charge_heal(hit_count: int) -> void:
 	var heal_level := int(player_stats["charge_heal_level"])
@@ -360,7 +368,7 @@ func _try_charge_heal(hit_count: int) -> void:
 		return
 	var heal_amount := 3.0 + 2.0 * heal_level
 	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
-	effects.add_floater(player_pos + Vector2(-16, -8), "회복!", C.TOXIC_GREEN)
+	effects.add_floater(player_pos + Vector2(-16, -8), "회복!", C.TOXIC_GREEN, 14)
 
 func _is_perfect_charge() -> bool:
 	return int(player_stats["perfect_charge_level"]) > 0 and charge_open_age <= 0.25
@@ -454,7 +462,17 @@ func _apply_card_effect(card: Dictionary) -> void:
 	var effect: String = card["effect"]
 	var value: float = float(card["value"])
 	match effect:
-		"auto_damage_mult", "move_speed_mult", "charge_damage_mult", "xp_gain_mult":
+		"auto_damage_mult":
+			player_stats[effect] = float(player_stats[effect]) + value
+			player_stats["auto_range_bonus"] = float(player_stats["auto_range_bonus"]) + 6.0
+			auto_timer = 0.0
+			effects.add_floater(player_pos, "문구 강화!", C.NEON_RED, 13)
+		"xp_gain_mult":
+			player_stats[effect] = float(player_stats[effect]) + value
+			var instant_xp := minf(_xp_requirement() * 0.35, 4.0 + float(level) * 1.5)
+			xp = minf(_xp_requirement() - 0.1, xp + instant_xp)
+			effects.add_floater(player_pos, "학습 완료!", C.VITAMIN_YELLOW, 13)
+		"move_speed_mult", "charge_damage_mult":
 			player_stats[effect] = float(player_stats[effect]) + value
 		"auto_range_bonus", "charge_period_bonus":
 			player_stats[effect] = float(player_stats[effect]) + value
@@ -611,8 +629,10 @@ func _draw_charge_puddles() -> void:
 		var ratio := float(puddle["life"]) / maxf(0.001, float(puddle["duration"]))
 		var pos: Vector2 = puddle["pos"]
 		var radius := float(puddle["radius"])
-		draw_circle(pos, radius, Color(0.62, 1.0, 0.36, 0.12 + 0.10 * ratio))
-		draw_arc(pos, radius * (0.72 + 0.12 * sin(elapsed * 8.0)), 0.0, TAU, 32, Color(1.0, 0.3, 0.36, 0.30 * ratio), 2.0)
+		var pulse := 0.86 + 0.10 * sin(elapsed * 10.0)
+		draw_circle(pos, radius, Color(0.62, 1.0, 0.36, 0.18 + 0.12 * ratio))
+		draw_arc(pos, radius, 0.0, TAU, 40, Color(0.62, 1.0, 0.36, 0.56 * ratio), 3.0)
+		draw_arc(pos, radius * pulse, 0.0, TAU, 32, Color(1.0, 0.3, 0.36, 0.42 * ratio), 2.5)
 
 func _draw_player() -> void:
 	var charge_state := _charge_state()
@@ -659,9 +679,29 @@ func _draw_enemies() -> void:
 		var pos: Vector2 = enemy["pos"]
 		var radius := float(enemy["radius"])
 		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
+		_draw_enemy_role_marker(enemy)
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
+
+func _draw_enemy_role_marker(enemy: Dictionary) -> void:
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	var role := String(enemy.get("role", "basic"))
+	if bool(enemy.get("aura_boosted", false)):
+		draw_arc(pos, radius + 5.0, 0.0, TAU, 24, Color(1.0, 0.3, 0.36, 0.45), 1.5)
+	match role:
+		"fast":
+			draw_arc(pos, radius + 3.0, -0.8, 0.8, 12, C.NEON_RED, 2.0)
+			draw_line(pos + Vector2(-radius, -radius), pos + Vector2(-radius - 7.0, -radius - 2.0), C.NEON_RED, 2.0)
+		"tank":
+			draw_arc(pos, radius + 4.0, 0.0, TAU, 28, C.COCOA, 2.5)
+			draw_circle(pos, radius + 2.0, Color(0.0, 0.0, 0.0, 0.08))
+		"signal":
+			var aura_alpha := 0.16 + 0.06 * sin(elapsed * 5.0)
+			draw_circle(pos, 92.0, Color(1.0, 0.91, 0.25, aura_alpha))
+			draw_arc(pos, 92.0, 0.0, TAU, 42, Color(1.0, 0.3, 0.36, 0.38), 2.0)
+			draw_arc(pos, radius + 5.0, 0.0, TAU, 24, C.VITAMIN_YELLOW, 2.5)
 
 func _player_sprite_row() -> int:
 	if absf(last_move_dir.x) > absf(last_move_dir.y):

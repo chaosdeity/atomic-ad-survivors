@@ -8,6 +8,8 @@ var particles: Array[Dictionary] = []
 var floaters: Array[Dictionary] = []
 var warning_rings: Array[Dictionary] = []
 var miss_rings: Array[Dictionary] = []
+var status_rings: Array[Dictionary] = []
+var impact_lines: Array[Dictionary] = []
 var screen_flash := 0.0
 var screen_flash_duration := 0.0
 var screen_flash_color := Color(1.0, 0.91, 0.25, 1.0)
@@ -32,32 +34,45 @@ func update(delta: float) -> void:
 		item["life"] = float(item["life"]) - delta
 	for item in miss_rings:
 		item["life"] = float(item["life"]) - delta
+	for item in status_rings:
+		item["life"] = float(item["life"]) - delta
+	for item in impact_lines:
+		item["life"] = float(item["life"]) - delta
 	shots = shots.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	bursts = bursts.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	particles = particles.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	floaters = floaters.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	warning_rings = warning_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	miss_rings = miss_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	status_rings = status_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	impact_lines = impact_lines.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 
 func add_auto_shot(from_pos: Vector2, to_pos: Vector2) -> void:
-	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "color": C.NEON_RED})
+	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "duration": 0.08, "color": C.NEON_RED, "width": 2.0})
 
 func add_alt_shot(from_pos: Vector2, to_pos: Vector2) -> void:
-	shots.append({"from": from_pos, "to": to_pos, "life": 0.11, "color": C.TOXIC_GREEN})
+	shots.append({"from": from_pos, "to": to_pos, "life": 0.16, "duration": 0.16, "color": C.TOXIC_GREEN, "width": 4.0})
 
 func add_burst(pos: Vector2, dir: Vector2, life: float, directed: bool) -> void:
 	bursts.append({"pos": pos, "dir": dir, "life": life, "directed": directed})
 
 func add_small_burst(pos: Vector2) -> void:
-	bursts.append({"pos": pos, "dir": Vector2.RIGHT, "life": 0.18, "directed": false})
+	bursts.append({"pos": pos, "dir": Vector2.RIGHT, "life": 0.24, "directed": false, "radius": 70.0, "color": C.CORAL_PINK})
 
-func add_floater(pos: Vector2, text: String, color: Color) -> void:
+func add_floater(pos: Vector2, text: String, color: Color, size: int = 12) -> void:
 	floaters.append({
 		"pos": pos + Vector2(0, -22),
 		"text": text,
 		"life": 0.55,
 		"color": color,
+		"size": size,
 	})
+
+func add_status_ring(pos: Vector2, color: Color, radius: float = 15.0, life: float = 0.34) -> void:
+	status_rings.append({"pos": pos, "color": color, "radius": radius, "life": life, "duration": life})
+
+func add_impact_line(from_pos: Vector2, to_pos: Vector2, color: Color) -> void:
+	impact_lines.append({"from": from_pos, "to": to_pos, "color": color, "life": 0.18, "duration": 0.18})
 
 func add_charge_warning_ring(pos: Vector2) -> void:
 	warning_rings.append({"pos": pos, "life": C.CHARGE_WARNING_TIME, "duration": C.CHARGE_WARNING_TIME})
@@ -68,6 +83,7 @@ func add_charge_floater(pos: Vector2, directed: bool) -> void:
 		"text": "집중!" if directed else "차징!",
 		"life": 0.65,
 		"color": C.TOXIC_GREEN if directed else C.VITAMIN_YELLOW,
+		"size": 13,
 	})
 
 func show_charge_ready() -> void:
@@ -81,6 +97,7 @@ func show_charge_missed(pos: Vector2) -> void:
 		"text": "놓침",
 		"life": 0.45,
 		"color": Color(0.35, 0.70, 0.95, 0.95),
+		"size": 12,
 	})
 
 func fire_feedback(directed: bool) -> void:
@@ -147,12 +164,22 @@ func draw_behind(canvas: CanvasItem) -> void:
 		var pos: Vector2 = ring["pos"]
 		var alpha := (1.0 - progress) * 0.42
 		canvas.draw_arc(pos, 24.0 + progress * 30.0, -PI * 0.86, PI * 0.86, 32, Color(0.35, 0.70, 0.95, alpha), 2.0)
+	for ring in status_rings:
+		var progress := 1.0 - float(ring["life"]) / float(ring["duration"])
+		var pos: Vector2 = ring["pos"]
+		var color: Color = ring["color"]
+		color.a = (1.0 - progress) * 0.72
+		var radius := float(ring["radius"]) + progress * 16.0
+		canvas.draw_arc(pos, radius, 0.0, TAU, 28, color, 2.5)
+		color.a *= 0.22
+		canvas.draw_circle(pos, radius * 0.72, color)
 	for burst in bursts:
 		var pos: Vector2 = burst["pos"]
 		var life := float(burst["life"])
-		var total := 0.36 if burst["directed"] else 0.28
-		var r := (1.0 - life / total) * (78.0 if burst["directed"] else 54.0)
-		var color := C.TOXIC_GREEN if burst["directed"] else C.VITAMIN_YELLOW
+		var total := 0.36 if burst["directed"] else 0.24
+		var target_radius := float(burst.get("radius", 78.0 if burst["directed"] else 54.0))
+		var r := (1.0 - life / total) * target_radius
+		var color: Color = burst.get("color", C.TOXIC_GREEN if burst["directed"] else C.VITAMIN_YELLOW)
 		color.a = clampf(life * 3.0, 0.0, 0.75)
 		canvas.draw_circle(pos, r, color)
 		canvas.draw_arc(pos, r + 12.0, 0.0, TAU, 40, Color(1.0, 0.3, 0.36, color.a), 3.0)
@@ -160,8 +187,12 @@ func draw_behind(canvas: CanvasItem) -> void:
 func draw_front(canvas: CanvasItem) -> void:
 	for shot in shots:
 		var color: Color = shot["color"]
-		color.a = clampf(float(shot["life"]) * 12.0, 0.0, 1.0)
-		canvas.draw_line(shot["from"], shot["to"], color, 2.0)
+		color.a = clampf(float(shot["life"]) / maxf(0.001, float(shot.get("duration", 0.08))), 0.0, 1.0)
+		canvas.draw_line(shot["from"], shot["to"], color, float(shot.get("width", 2.0)))
+	for line in impact_lines:
+		var color: Color = line["color"]
+		color.a = clampf(float(line["life"]) / maxf(0.001, float(line["duration"])), 0.0, 1.0)
+		canvas.draw_line(line["from"], line["to"], color, 3.0)
 	for burst in bursts:
 		var pos: Vector2 = burst["pos"]
 		var directed: bool = burst["directed"]
@@ -185,7 +216,7 @@ func draw_front(canvas: CanvasItem) -> void:
 		else:
 			canvas.draw_circle(pos, size, color)
 	for floater in floaters:
-		canvas.draw_string(ThemeDB.get_fallback_font(), floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, 12, floater["color"])
+		canvas.draw_string(ThemeDB.get_fallback_font(), floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
 
 func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
 	if screen_flash <= 0.0:
@@ -202,6 +233,8 @@ func clear() -> void:
 	floaters.clear()
 	warning_rings.clear()
 	miss_rings.clear()
+	status_rings.clear()
+	impact_lines.clear()
 	screen_flash = 0.0
 	screen_flash_duration = 0.0
 	shake_left = 0.0

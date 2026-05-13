@@ -4,10 +4,10 @@ const CARDS := [
 	{
 		"id": "auto_damage",
 		"name": "광고 문구 강화",
-		"description": "자동 사격 피해량이 증가합니다.",
-		"effect_text": "자동 사격 피해 +15%",
+		"description": "자동 사격 피해와 추적 보정이 증가합니다.",
+		"effect_text": "자동 사격 피해 +20% / 사거리 +6",
 		"effect": "auto_damage_mult",
-		"value": 0.15,
+		"value": 0.20,
 	},
 	{
 		"id": "auto_range",
@@ -68,10 +68,10 @@ const CARDS := [
 	{
 		"id": "xp_gain",
 		"name": "학습용 전단지",
-		"description": "처치로 얻는 XP가 증가합니다.",
-		"effect_text": "XP 획득량 +15%",
+		"description": "처치 XP가 늘고 즉시 학습 진도가 찹니다.",
+		"effect_text": "XP 획득량 +20% / 즉시 XP",
 		"effect": "xp_gain_mult",
-		"value": 0.15,
+		"value": 0.20,
 	},
 	{
 		"id": "split_ad_round",
