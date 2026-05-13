@@ -48,7 +48,7 @@ func update(delta: float) -> void:
 	impact_lines = impact_lines.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 
 func add_auto_shot(from_pos: Vector2, to_pos: Vector2) -> void:
-	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "duration": 0.08, "color": C.NEON_RED, "width": 2.0})
+	shots.append({"from": from_pos, "to": to_pos, "life": 0.10, "duration": 0.10, "color": C.NEON_RED, "width": 2.6})
 
 func add_alt_shot(from_pos: Vector2, to_pos: Vector2) -> void:
 	shots.append({"from": from_pos, "to": to_pos, "life": 0.16, "duration": 0.16, "color": C.TOXIC_GREEN, "width": 4.0})

@@ -11,6 +11,7 @@ const ROLE_STATS := {
 }
 const SIGNAL_AURA_RADIUS := 92.0
 const SIGNAL_AURA_SPEED_MULT := 1.13
+const PRESSURE_REPLACE_START := 150.0
 
 var enemies: Array[Dictionary] = []
 var spawn_timer := 0.0
@@ -18,12 +19,24 @@ var spawn_timer := 0.0
 func update_spawning(delta: float, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
 	spawn_timer -= delta
 	var spawn_rate := float(wave_params["spawn_pressure"])
-	if spawn_timer <= 0.0 and enemies.size() < C.ENEMY_CAP:
-		spawn_timer = maxf(0.08, 1.0 / spawn_rate)
-		var count := rng.randi_range(int(wave_params["spawn_count_min"]), int(wave_params["spawn_count_max"]))
-		count = mini(count, C.ENEMY_CAP - enemies.size())
-		for i in range(count):
-			spawn_enemy(elapsed, player_pos, rng, wave_params)
+	if spawn_timer > 0.0:
+		return
+	spawn_timer = maxf(0.07, 1.0 / spawn_rate)
+	if enemies.size() >= C.ENEMY_CAP and elapsed < PRESSURE_REPLACE_START:
+		return
+	var count := rng.randi_range(int(wave_params["spawn_count_min"]), int(wave_params["spawn_count_max"]))
+	var pressure_params := _pressure_spawn_params(wave_params, elapsed)
+	var over_cap := enemies.size() + count - C.ENEMY_CAP
+	if over_cap > 0:
+		if elapsed < PRESSURE_REPLACE_START:
+			count = mini(count, C.ENEMY_CAP - enemies.size())
+		else:
+			_make_room_for_pressure_spawns(over_cap, player_pos)
+			count = mini(count, C.ENEMY_CAP - enemies.size())
+	if count <= 0:
+		return
+	for i in range(count):
+		spawn_enemy(elapsed, player_pos, rng, pressure_params)
 
 func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary = {}) -> void:
 	var side := rng.randi_range(0, 3)
@@ -54,9 +67,9 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"pos": pos,
 		"hp": base_hp * hp_mult,
 		"max_hp": base_hp * hp_mult,
-		"radius": 12.0 if elite else float(role_stats.get("radius", 8.0)),
+		"radius": 15.0 if elite else float(role_stats.get("radius", 8.0)),
 		"speed": base_speed * speed_mult,
-		"contact_damage_mult": contact_damage_mult * (1.7 if elite else float(role_stats.get("contact", 1.0))),
+		"contact_damage_mult": contact_damage_mult * (2.15 if elite else float(role_stats.get("contact", 1.0))),
 		"elite": elite,
 		"role": role,
 		"sprite_kind": sprite_kind,
@@ -68,10 +81,49 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
 	var params := wave_params.duplicate(true)
 	params["elite_chance"] = 1.0
-	params["hp_mult"] = float(params.get("hp_mult", 1.0)) * 1.35
-	params["speed_mult"] = float(params.get("speed_mult", 1.0)) * 0.92
+	params["hp_mult"] = float(params.get("hp_mult", 1.0)) * 1.55
+	params["speed_mult"] = float(params.get("speed_mult", 1.0)) * 0.98
+	params["contact_damage_mult"] = float(params.get("contact_damage_mult", 1.0)) * 1.15
+	if enemies.size() + count > C.ENEMY_CAP:
+		_make_room_for_pressure_spawns(enemies.size() + count - C.ENEMY_CAP, player_pos)
 	for i in range(mini(count, C.ENEMY_CAP - enemies.size())):
 		spawn_enemy(elapsed, player_pos, rng, params)
+
+func _pressure_spawn_params(wave_params: Dictionary, elapsed: float) -> Dictionary:
+	if elapsed < PRESSURE_REPLACE_START or enemies.size() < C.ENEMY_SOFT_CAP:
+		return wave_params
+	var params := wave_params.duplicate(true)
+	params["elite_chance"] = minf(0.60, float(params.get("elite_chance", 0.0)) + 0.10)
+	var weights: Dictionary = params.get("role_weights", {}).duplicate(true)
+	weights["basic"] = maxf(0.18, float(weights.get("basic", 1.0)) - 0.16)
+	weights["fast"] = float(weights.get("fast", 0.0)) + 0.05
+	weights["tank"] = float(weights.get("tank", 0.0)) + 0.06
+	weights["signal"] = float(weights.get("signal", 0.0)) + 0.05
+	params["role_weights"] = weights
+	return params
+
+func _make_room_for_pressure_spawns(count: int, player_pos: Vector2) -> void:
+	for n in range(count):
+		var remove_idx := _pressure_replacement_index(player_pos)
+		if remove_idx == -1:
+			return
+		enemies.remove_at(remove_idx)
+
+func _pressure_replacement_index(player_pos: Vector2) -> int:
+	var best_idx := -1
+	var best_score := -INF
+	for i in range(enemies.size()):
+		var enemy := enemies[i]
+		if bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) in ["tank", "signal"]:
+			continue
+		var dist_sq := player_pos.distance_squared_to(enemy["pos"])
+		if dist_sq < 150.0 * 150.0:
+			continue
+		var score := dist_sq + (40000.0 if String(enemy.get("role", "basic")) == "basic" else 0.0)
+		if score > best_score:
+			best_score = score
+			best_idx = i
+	return best_idx
 
 func update_enemies(delta: float, player_pos: Vector2) -> float:
 	var contact_damage := 0.0

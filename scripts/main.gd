@@ -464,8 +464,11 @@ func _apply_card_effect(card: Dictionary) -> void:
 	match effect:
 		"auto_damage_mult":
 			player_stats[effect] = float(player_stats[effect]) + value
-			player_stats["auto_range_bonus"] = float(player_stats["auto_range_bonus"]) + 6.0
+			player_stats["auto_range_bonus"] = float(player_stats["auto_range_bonus"]) + 8.0
 			auto_timer = 0.0
+			if int(player_stats["split_shot_level"]) > 0:
+				auto_shot_counter = maxi(auto_shot_counter, maxi(0, 4 - int(player_stats["split_shot_level"])))
+				effects.add_floater(player_pos + Vector2(0, -10), "분열 증폭!", C.TOXIC_GREEN, 13)
 			effects.add_floater(player_pos, "문구 강화!", C.NEON_RED, 13)
 		"xp_gain_mult":
 			player_stats[effect] = float(player_stats[effect]) + value
@@ -688,6 +691,11 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
 	var role := String(enemy.get("role", "basic"))
+	if bool(enemy.get("elite", false)):
+		var pulse := 0.82 + 0.10 * sin(elapsed * 7.0)
+		draw_circle(pos, radius + 9.0, Color(1.0, 0.3, 0.36, 0.16))
+		draw_arc(pos, (radius + 10.0) * pulse, 0.0, TAU, 36, C.NEON_RED, 3.0)
+		draw_arc(pos, radius + 16.0, -PI * 0.22, PI * 1.22, 28, C.VITAMIN_YELLOW, 2.5)
 	if bool(enemy.get("aura_boosted", false)):
 		draw_arc(pos, radius + 5.0, 0.0, TAU, 24, Color(1.0, 0.3, 0.36, 0.45), 1.5)
 	match role:

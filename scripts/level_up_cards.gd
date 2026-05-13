@@ -5,9 +5,9 @@ const CARDS := [
 		"id": "auto_damage",
 		"name": "광고 문구 강화",
 		"description": "자동 사격 피해와 추적 보정이 증가합니다.",
-		"effect_text": "자동 사격 피해 +20% / 사거리 +6",
+		"effect_text": "자동 사격 피해 +25% / 사거리 +8",
 		"effect": "auto_damage_mult",
-		"value": 0.20,
+		"value": 0.25,
 	},
 	{
 		"id": "auto_range",
