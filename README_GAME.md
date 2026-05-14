@@ -6,6 +6,8 @@ Godot 4 prototype for the B tone: bright dystopian atomic suburb.
 
 Open this folder in Godot 4.x and run `res://scenes/main.tscn`.
 
+For a browser build, see `EXPORT_WEB.md`. The prepared Web preset exports to `exports/web/index.html`, and the local server helper opens it at `http://localhost:8000`.
+
 ## Controls
 
 - Move: WASD or arrow keys
