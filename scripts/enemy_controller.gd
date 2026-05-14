@@ -3,11 +3,29 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 
 const TIER1_SPRITE_KINDS := ["billboard", "appliance", "coupon"]
+const DAMAGE_TYPE_AUTO := "auto"
+const DAMAGE_TYPE_CHARGE := "charge"
+const DAMAGE_TYPE_FOCUSED := "focused"
+const DAMAGE_TYPE_BURST := "burst"
+const DAMAGE_TYPE_PUDDLE := "puddle"
+const DEFENSE_TYPE_NORMAL := "normal"
+const DEFENSE_TYPE_ANTI_AUTO := "anti_auto"
+const DEFENSE_TYPE_ANTI_CHARGE := "anti_charge"
+const DEFENSE_TYPE_PLATED := "plated"
+const DEFENSE_TYPE_EXPOSED_CORE := "exposed_core"
 const ROLE_STATS := {
-	"basic": {"hp": 1.0, "speed": 1.0, "radius": 8.0, "contact": 1.0, "sprite": "billboard"},
-	"fast": {"hp": 0.80, "speed": 1.55, "radius": 7.0, "contact": 0.82, "sprite": "coupon"},
-	"tank": {"hp": 2.85, "speed": 0.62, "radius": 13.0, "contact": 1.35, "sprite": "appliance"},
-	"signal": {"hp": 1.65, "speed": 0.82, "radius": 11.0, "contact": 1.15, "sprite": "billboard"},
+	"basic": {"hp": 1.0, "speed": 1.0, "radius": 8.0, "contact": 1.0, "sprite": "billboard", "defense": DEFENSE_TYPE_NORMAL},
+	"fast": {"hp": 0.80, "speed": 1.55, "radius": 7.0, "contact": 0.82, "sprite": "coupon", "defense": DEFENSE_TYPE_ANTI_CHARGE},
+	"tank": {"hp": 2.85, "speed": 0.62, "radius": 13.0, "contact": 1.35, "sprite": "appliance", "defense": DEFENSE_TYPE_ANTI_AUTO},
+	"signal": {"hp": 1.65, "speed": 0.82, "radius": 11.0, "contact": 1.15, "sprite": "billboard", "defense": DEFENSE_TYPE_EXPOSED_CORE},
+}
+const ELITE_DEFENSE_TYPE := DEFENSE_TYPE_PLATED
+const DEFENSE_MULTIPLIERS := {
+	"normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
+	"anti_auto": {"auto": 0.58, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
+	"anti_charge": {"auto": 1.00, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
+	"plated": {"auto": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
+	"exposed_core": {"auto": 0.82, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
 }
 const SIGNAL_AURA_RADIUS := 92.0
 const SIGNAL_AURA_SPEED_MULT := 1.13
@@ -72,6 +90,7 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"contact_damage_mult": contact_damage_mult * (2.15 if elite else float(role_stats.get("contact", 1.0))),
 		"elite": elite,
 		"role": role,
+		"defense_type": ELITE_DEFENSE_TYPE if elite else String(role_stats.get("defense", DEFENSE_TYPE_NORMAL)),
 		"sprite_kind": sprite_kind,
 		"age": 0.0,
 		"hit_flash": 0.0,
@@ -194,19 +213,20 @@ func nearest_enemy_excluding(player_pos: Vector2, max_range: float, excluded: Ar
 			best = i
 	return best
 
-func damage_enemies_in_radius(center: Vector2, radius: float, damage: float, max_targets: int = -1) -> int:
-	return damage_enemies_in_radius_with_hits(center, radius, damage, max_targets).size()
+func damage_enemies_in_radius(center: Vector2, radius: float, damage: float, max_targets: int = -1, damage_type: String = DAMAGE_TYPE_BURST) -> int:
+	return damage_enemies_in_radius_with_hits(center, radius, damage, max_targets, damage_type).size()
 
-func damage_enemies_in_radius_with_hits(center: Vector2, radius: float, damage: float, max_targets: int = -1) -> Array[Dictionary]:
+func damage_enemies_in_radius_with_hits(center: Vector2, radius: float, damage: float, max_targets: int = -1, damage_type: String = DAMAGE_TYPE_BURST) -> Array[Dictionary]:
 	var hit_enemies: Array[Dictionary] = []
 	var hits := 0
 	var radius_sq := radius * radius
 	for i in range(enemies.size()):
 		if center.distance_squared_to(enemies[i]["pos"]) > radius_sq:
 			continue
-		enemies[i]["hp"] = float(enemies[i]["hp"]) - damage
-		mark_hit(i)
-		hit_enemies.append({"index": i, "pos": Vector2(enemies[i]["pos"]), "damage": damage})
+		var result := apply_damage(i, damage, damage_type)
+		if result.is_empty():
+			continue
+		hit_enemies.append(result)
 		hits += 1
 		if max_targets > 0 and hits >= max_targets:
 			break
@@ -234,13 +254,39 @@ func knockback_enemy(index: int, dir: Vector2, distance: float) -> void:
 	pos.y = clampf(pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 	enemies[index]["pos"] = pos
 
-func damage_enemy(index: int, damage: float) -> Array[Vector2]:
+func apply_damage(index: int, base_damage: float, damage_type: String) -> Dictionary:
 	if index < 0 or index >= enemies.size():
-		var dead_positions: Array[Vector2] = []
-		return dead_positions
-	enemies[index]["hp"] = float(enemies[index]["hp"]) - damage
+		return {}
+	var enemy := enemies[index]
+	var multiplier := damage_multiplier(String(enemy.get("defense_type", DEFENSE_TYPE_NORMAL)), damage_type)
+	var final_damage := base_damage * multiplier
+	enemy["hp"] = float(enemy["hp"]) - final_damage
 	mark_hit(index)
+	return {
+		"index": index,
+		"pos": Vector2(enemy["pos"]),
+		"damage": final_damage,
+		"base_damage": base_damage,
+		"damage_type": damage_type,
+		"defense_type": String(enemy.get("defense_type", DEFENSE_TYPE_NORMAL)),
+		"multiplier": multiplier,
+		"effectiveness": damage_effectiveness(multiplier),
+	}
+
+func damage_enemy(index: int, damage: float, damage_type: String = DAMAGE_TYPE_AUTO) -> Array[Vector2]:
+	apply_damage(index, damage, damage_type)
 	return cleanup_dead()
+
+func damage_multiplier(defense_type: String, damage_type: String) -> float:
+	var defense: Dictionary = DEFENSE_MULTIPLIERS.get(defense_type, DEFENSE_MULTIPLIERS[DEFENSE_TYPE_NORMAL])
+	return float(defense.get(damage_type, 1.0))
+
+func damage_effectiveness(multiplier: float) -> String:
+	if multiplier <= 0.90:
+		return "reduced"
+	if multiplier >= 1.10:
+		return "weak"
+	return "normal"
 
 func cleanup_dead() -> Array[Vector2]:
 	var dead_positions: Array[Vector2] = []

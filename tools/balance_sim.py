@@ -21,11 +21,11 @@ LEVEL_UP_CARDS = ROOT / "scripts" / "level_up_cards.gd"
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 
 DEFENSE_TYPES = {
-    "normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00},
-    "anti_auto": {"auto": 0.60, "charge": 1.00, "focused": 1.00},
-    "anti_charge": {"auto": 1.00, "charge": 0.60, "focused": 0.60},
-    "plated": {"auto": 0.75, "charge": 0.75, "focused": 0.75},
-    "exposed_core": {"auto": 0.80, "charge": 1.00, "focused": 1.30},
+    "normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
+    "anti_auto": {"auto": 0.58, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
+    "anti_charge": {"auto": 1.00, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
+    "plated": {"auto": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
+    "exposed_core": {"auto": 0.82, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
 }
 
 
@@ -37,6 +37,7 @@ class BalanceConfig:
     focused_charge_damage: float
     charge_period: float
     enemy_hp: dict[str, float]
+    enemy_defense: dict[str, str]
     auto_damage_card: float
     charge_damage_card: float
 
@@ -66,6 +67,34 @@ def parse_role_hp_mults(text: str) -> dict[str, float]:
     return role_hp
 
 
+def parse_string_consts(text: str) -> dict[str, str]:
+    return {
+        name: value
+        for name, value in re.findall(r"const\s+([A-Z0-9_]+)\s*:=\s*\"([^\"]+)\"", text)
+    }
+
+
+def parse_role_defenses(text: str) -> dict[str, str]:
+    role_stats_match = re.search(r"const\s+ROLE_STATS\s*:=\s*\{(?P<body>.*?)\n\}", text, re.S)
+    if not role_stats_match:
+        raise ValueError("Could not find ROLE_STATS")
+
+    string_consts = parse_string_consts(text)
+    role_defenses: dict[str, str] = {}
+    for role, body in re.findall(r'"([^"]+)":\s*\{([^}]*)\}', role_stats_match.group("body")):
+        defense_match = re.search(r'"defense":\s*([A-Z0-9_"]+)', body)
+        if defense_match:
+            token = defense_match.group(1).strip('"')
+            role_defenses[role] = string_consts.get(token, token)
+    elite_match = re.search(r"const\s+ELITE_DEFENSE_TYPE\s*:=\s*([A-Z0-9_]+|\"[^\"]+\")", text)
+    if elite_match:
+        token = elite_match.group(1).strip('"')
+        role_defenses["elite"] = string_consts.get(token, token)
+    else:
+        role_defenses["elite"] = "plated"
+    return role_defenses
+
+
 def parse_card_value(text: str, card_id: str) -> float:
     card_match = re.search(rf'"id":\s*"{re.escape(card_id)}".*?"value":\s*([-+]?\d+(?:\.\d+)?)', text, re.S)
     if not card_match:
@@ -86,6 +115,7 @@ def load_config() -> BalanceConfig:
     directed_bonus = parse_const(game_config, "DIRECTED_BONUS")
     charge_period = parse_const(game_config, "CHARGE_PERIOD")
     role_hp_mults = parse_role_hp_mults(enemy_controller)
+    role_defenses = parse_role_defenses(enemy_controller)
 
     enemy_hp = {role: enemy_base_hp * role_hp_mults[role] for role in role_hp_mults}
     enemy_hp["elite"] = elite_hp
@@ -97,6 +127,7 @@ def load_config() -> BalanceConfig:
         focused_charge_damage=charge_damage * directed_bonus,
         charge_period=charge_period,
         enemy_hp=enemy_hp,
+        enemy_defense=role_defenses,
         auto_damage_card=parse_card_value(level_up_cards, "auto_damage"),
         charge_damage_card=parse_card_value(level_up_cards, "charge_damage"),
     )
@@ -136,6 +167,11 @@ def fmt_sec(value: float) -> str:
     return f"{fmt_num(value)}s"
 
 
+def effective_damage(config: BalanceConfig, enemy: str, damage_type: str, base_damage: float) -> float:
+    defense = config.enemy_defense.get(enemy, "normal")
+    return base_damage * DEFENSE_TYPES.get(defense, DEFENSE_TYPES["normal"]).get(damage_type, 1.0)
+
+
 def markdown_table(headers: list[str], rows: list[list[object]]) -> str:
     lines = [
         "| " + " | ".join(headers) + " |",
@@ -150,21 +186,27 @@ def base_ttk_table(config: BalanceConfig) -> str:
     rows: list[list[object]] = []
     for enemy in ENEMY_ORDER:
         hp = config.enemy_hp[enemy]
-        auto_shots = shots_to_kill(hp, config.auto_damage)
-        after_charge = max(0.0, hp - config.charge_damage)
-        after_focus = max(0.0, hp - config.focused_charge_damage)
+        auto_damage = effective_damage(config, enemy, "auto", config.auto_damage)
+        charge_damage = effective_damage(config, enemy, "charge", config.charge_damage)
+        focused_damage = effective_damage(config, enemy, "focused", config.focused_charge_damage)
+        auto_shots = shots_to_kill(hp, auto_damage)
+        after_charge = max(0.0, hp - charge_damage)
+        after_focus = max(0.0, hp - focused_damage)
         rows.append(
             [
                 enemy,
+                config.enemy_defense.get(enemy, "normal"),
                 fmt_num(hp),
+                fmt_num(auto_damage),
+                fmt_num(focused_damage),
                 auto_shots,
                 fmt_sec(ttk_for_auto(auto_shots, config.auto_tick)),
-                shots_to_kill(after_charge, config.auto_damage),
-                shots_to_kill(after_focus, config.auto_damage),
+                shots_to_kill(after_charge, auto_damage),
+                shots_to_kill(after_focus, auto_damage),
             ]
         )
     return markdown_table(
-        ["enemy", "hp", "auto shots", "auto ttk", "normal charge + shots", "focused charge + shots"],
+        ["enemy", "defense", "hp", "auto dmg", "focused dmg", "auto shots", "auto ttk", "normal charge + shots", "focused charge + shots"],
         rows,
     )
 
@@ -173,12 +215,17 @@ def charge_efficiency_table(config: BalanceConfig) -> str:
     rows: list[list[object]] = []
     for enemy in ENEMY_ORDER:
         hp = config.enemy_hp[enemy]
-        normal_casts = casts_to_kill(hp, config.charge_damage)
-        focused_casts = casts_to_kill(hp, config.focused_charge_damage)
+        charge_damage = effective_damage(config, enemy, "charge", config.charge_damage)
+        focused_damage = effective_damage(config, enemy, "focused", config.focused_charge_damage)
+        normal_casts = casts_to_kill(hp, charge_damage)
+        focused_casts = casts_to_kill(hp, focused_damage)
         rows.append(
             [
                 enemy,
+                config.enemy_defense.get(enemy, "normal"),
                 fmt_num(hp),
+                fmt_num(charge_damage),
+                fmt_num(focused_damage),
                 normal_casts,
                 fmt_sec(repeated_charge_time(normal_casts, config.charge_period)),
                 focused_casts,
@@ -186,7 +233,7 @@ def charge_efficiency_table(config: BalanceConfig) -> str:
             ]
         )
     return markdown_table(
-        ["enemy", "hp", "normal casts", "normal time", "focused casts", "focused time"],
+        ["enemy", "defense", "hp", "charge dmg", "focused dmg", "normal casts", "normal time", "focused casts", "focused time"],
         rows,
     )
 
@@ -211,10 +258,12 @@ def growth_stage_table(config: BalanceConfig) -> str:
         auto_row: list[object] = [label, fmt_num(auto_damage), fmt_num(charge_damage), fmt_num(focused_damage)]
         focus_row: list[object] = [label, fmt_num(auto_damage), fmt_num(focused_damage)]
         for enemy in ENEMY_ORDER:
-            auto_shots = shots_to_kill(config.enemy_hp[enemy], auto_damage)
+            enemy_auto_damage = effective_damage(config, enemy, "auto", auto_damage)
+            enemy_focused_damage = effective_damage(config, enemy, "focused", focused_damage)
+            auto_shots = shots_to_kill(config.enemy_hp[enemy], enemy_auto_damage)
             auto_row.append(fmt_sec(ttk_for_auto(auto_shots, config.auto_tick)))
 
-            cleanup_shots = shots_to_kill(max(0.0, config.enemy_hp[enemy] - focused_damage), auto_damage)
+            cleanup_shots = shots_to_kill(max(0.0, config.enemy_hp[enemy] - enemy_focused_damage), enemy_auto_damage)
             focus_row.append(fmt_sec(ttk_for_auto(cleanup_shots, config.auto_tick)))
         auto_rows.append(auto_row)
         focus_rows.append(focus_row)
@@ -241,6 +290,8 @@ def defense_type_table(config: BalanceConfig) -> str:
         auto_damage = config.auto_damage * mults["auto"]
         normal_charge = config.charge_damage * mults["charge"]
         focused_charge = config.focused_charge_damage * mults["focused"]
+        burst_damage = 30.0 * mults["burst"]
+        puddle_tick = 23.0 * 0.16 * mults["puddle"]
         basic_hp = config.enemy_hp["basic"]
         rows.append(
             [
@@ -248,28 +299,34 @@ def defense_type_table(config: BalanceConfig) -> str:
                 fmt_num(auto_damage),
                 fmt_num(normal_charge),
                 fmt_num(focused_charge),
+                fmt_num(burst_damage),
+                fmt_num(puddle_tick),
                 shots_to_kill(basic_hp, auto_damage),
                 shots_to_kill(max(0.0, basic_hp - focused_charge), auto_damage),
                 casts_to_kill(basic_hp, focused_charge),
             ]
         )
     return markdown_table(
-        ["defense", "auto dmg", "normal charge", "focused charge", "basic auto shots", "focus + shots", "focus casts"],
+        ["defense", "auto dmg", "normal charge", "focused charge", "burst", "puddle", "basic auto shots", "focus + shots", "focus casts"],
         rows,
     )
 
 
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
-    basic_survives_focus = config.focused_charge_damage < basic_hp
-    focused_followup = shots_to_kill(basic_hp - config.focused_charge_damage, config.auto_damage)
-    tank_auto = shots_to_kill(config.enemy_hp["tank"], config.auto_damage)
-    elite_focus = casts_to_kill(config.enemy_hp["elite"], config.focused_charge_damage)
+    basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
+    basic_focus = effective_damage(config, "basic", "focused", config.focused_charge_damage)
+    basic_survives_focus = basic_focus < basic_hp
+    focused_followup = shots_to_kill(basic_hp - basic_focus, basic_auto)
+    tank_auto = shots_to_kill(config.enemy_hp["tank"], effective_damage(config, "tank", "auto", config.auto_damage))
+    signal_focus_cleanup = shots_to_kill(max(0.0, config.enemy_hp["signal"] - effective_damage(config, "signal", "focused", config.focused_charge_damage)), effective_damage(config, "signal", "auto", config.auto_damage))
+    elite_focus = casts_to_kill(config.enemy_hp["elite"], effective_damage(config, "elite", "focused", config.focused_charge_damage))
 
     rows = [
         ["focused charge deletes basic?", "no" if basic_survives_focus else "yes", "target: no for weak first sortie"],
         ["basic follow-up after focus", f"{focused_followup} auto shot(s)", "keeps auto-fire relevant"],
-        ["tank auto shots", tank_auto, "role clearly tests sustained DPS"],
+        ["tank auto shots", tank_auto, "anti-auto armor pushes players toward charge, burst, or puddle"],
+        ["signal focused opener cleanup", f"{signal_focus_cleanup} auto shot(s)", "exposed core rewards directional focus"],
         ["elite focused casts", elite_focus, "charge-only kill is intentionally slow"],
     ]
     return markdown_table(["check", "current", "note"], rows)

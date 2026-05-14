@@ -187,8 +187,10 @@ func _update_auto_fire(delta: float) -> void:
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
 	var damage := _auto_damage_per_tick()
-	effects.add_damage_number(target_pos, damage, "auto")
-	_handle_dead_positions(enemies.damage_enemy(target_idx, damage))
+	var hit := enemies.apply_damage(target_idx, damage, "auto")
+	if not hit.is_empty():
+		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
+	_handle_dead_positions(enemies.cleanup_dead())
 	effects.add_auto_shot(player_pos, target_pos)
 	if paused_for_card:
 		return
@@ -231,11 +233,11 @@ func _update_charge_puddles(delta: float) -> void:
 		puddle["display_tick"] = float(puddle.get("display_tick", 0.0)) + tick_delta
 		var center: Vector2 = puddle["pos"]
 		var damage := float(puddle["dps"]) * tick_delta
-		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage)
+		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage, -1, "puddle")
 		if float(puddle["display_tick"]) >= 0.32:
 			puddle["display_tick"] = 0.0
 			for n in range(mini(6, hit_enemies.size())):
-				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), damage, "puddle")
+				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), float(hit_enemies[n]["damage"]), "puddle", String(hit_enemies[n]["effectiveness"]))
 		_handle_dead_positions(enemies.cleanup_dead())
 	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
@@ -260,14 +262,14 @@ func _fire_charge() -> void:
 		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
 
 	var hit_count := 0
+	var damage_type := "focused" if directed else "charge"
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
 		if idx < enemies.enemies.size():
 			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
 			effects.spawn_hit_spark(hit_pos, directed, rng)
-			effects.add_damage_number(hit_pos, damage, "focused" if directed else "charge")
-			enemies.enemies[idx]["hp"] = float(enemies.enemies[idx]["hp"]) - damage
-			enemies.mark_hit(idx)
+			var hit := enemies.apply_damage(idx, damage, damage_type)
+			effects.add_damage_number(hit_pos, float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
 			hit_count += 1
 
@@ -312,8 +314,10 @@ func _try_split_shot(primary_idx: int) -> void:
 		return
 	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
-	effects.add_damage_number(target_pos, split_damage, "auto")
-	_handle_dead_positions(enemies.damage_enemy(secondary_idx, split_damage))
+	var hit := enemies.apply_damage(secondary_idx, split_damage, "auto")
+	if not hit.is_empty():
+		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
+	_handle_dead_positions(enemies.cleanup_dead())
 	effects.add_alt_shot(player_pos, target_pos)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 14.0, 0.24)
 	effects.add_floater(target_pos, "분열!", C.TOXIC_GREEN, 14)
@@ -329,10 +333,10 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var radius := 58.0 + 8.0 * burst_level
 	var max_targets := 1 + mini(2, burst_level)
 	var damage := 22.0 + 8.0 * burst_level
-	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, max_targets)
+	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, max_targets, "burst")
 	if hit_enemies.size() > 0:
 		for hit in hit_enemies:
-			effects.add_damage_number(Vector2(hit["pos"]), damage, "burst")
+			effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
@@ -802,6 +806,7 @@ func _draw_enemies() -> void:
 		var radius := float(enemy["radius"])
 		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
 		_draw_enemy_role_marker(enemy)
+		_draw_enemy_defense_marker(enemy)
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
@@ -857,6 +862,47 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 			draw_circle(pos, 92.0, Color(1.0, 0.91, 0.25, aura_alpha))
 			draw_arc(pos, 92.0, 0.0, TAU, 42, Color(1.0, 0.3, 0.36, 0.38), 2.0)
 			draw_arc(pos, radius + 5.0, 0.0, TAU, 24, C.VITAMIN_YELLOW, 2.5)
+
+func _draw_enemy_defense_marker(enemy: Dictionary) -> void:
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	var defense := String(enemy.get("defense_type", "normal"))
+	var color := _defense_color(defense)
+	if defense != "normal":
+		draw_arc(pos, radius + 7.0, PI * 0.18, PI * 0.82, 12, color, 2.0)
+		draw_arc(pos, radius + 7.0, PI * 1.18, PI * 1.82, 12, color, 2.0)
+	var icon_pos := pos + Vector2(radius + 3.0, -radius - 3.0)
+	match defense:
+		"anti_auto":
+			draw_rect(Rect2(icon_pos - Vector2(3, 3), Vector2(6, 6)), color)
+			draw_line(icon_pos + Vector2(-5, 4), icon_pos + Vector2(5, -4), C.INK, 1.5)
+		"anti_charge":
+			draw_arc(icon_pos, 5.0, -PI * 0.35, PI * 1.35, 12, color, 2.0)
+			draw_line(icon_pos + Vector2(-4, 4), icon_pos + Vector2(5, -5), C.INK, 1.5)
+		"plated":
+			draw_colored_polygon(PackedVector2Array([
+				icon_pos + Vector2(0, -5),
+				icon_pos + Vector2(5, -1),
+				icon_pos + Vector2(3, 5),
+				icon_pos + Vector2(-3, 5),
+				icon_pos + Vector2(-5, -1),
+			]), color)
+		"exposed_core":
+			draw_circle(icon_pos, 5.0, color)
+			draw_circle(icon_pos, 2.0, C.NEON_RED)
+
+func _defense_color(defense: String) -> Color:
+	match defense:
+		"anti_auto":
+			return Color(0.62, 0.68, 0.72, 0.90)
+		"anti_charge":
+			return Color(0.35, 0.70, 0.95, 0.90)
+		"plated":
+			return Color(0.74, 0.64, 0.48, 0.92)
+		"exposed_core":
+			return Color(0.62, 1.0, 0.36, 0.95)
+		_:
+			return Color(1.0, 0.96, 0.72, 0.70)
 
 func _player_sprite_row() -> int:
 	if absf(last_move_dir.x) > absf(last_move_dir.y):

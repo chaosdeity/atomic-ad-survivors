@@ -75,8 +75,8 @@ func add_floater(pos: Vector2, text: String, color: Color, size: int = 12) -> vo
 		"size": size,
 	})
 
-func add_damage_number(pos: Vector2, amount: float, kind: String) -> void:
-	var style := _damage_number_style(kind)
+func add_damage_number(pos: Vector2, amount: float, kind: String, effectiveness: String = "normal") -> void:
+	var style := _damage_number_style(kind, effectiveness)
 	damage_numbers.append({
 		"pos": pos + Vector2(float(style["x_offset"]), float(style["y_offset"])),
 		"text": _damage_text(amount, kind),
@@ -292,7 +292,19 @@ func _damage_text(amount: float, kind: String) -> String:
 		return sign + str(int(roundf(amount)))
 	return sign + ("%.1f" % amount)
 
-func _damage_number_style(kind: String) -> Dictionary:
+func _damage_number_style(kind: String, effectiveness: String = "normal") -> Dictionary:
+	if effectiveness == "reduced":
+		return {"color": Color(0.64, 0.67, 0.68, 0.86), "size": 9, "life": 0.38, "drift": Vector2(-2, -18), "x_offset": -3.0, "y_offset": -10.0}
+	if effectiveness == "weak":
+		match kind:
+			"focused":
+				return {"color": Color(0.78, 1.0, 0.44, 1.0), "size": 20, "life": 0.76, "drift": Vector2(7, -44), "x_offset": 5.0, "y_offset": -22.0}
+			"burst":
+				return {"color": Color(1.0, 0.62, 0.22, 1.0), "size": 17, "life": 0.66, "drift": Vector2(8, -38), "x_offset": 3.0, "y_offset": -20.0}
+			"puddle":
+				return {"color": Color(0.74, 1.0, 0.42, 0.98), "size": 13, "life": 0.50, "drift": Vector2(-2, -28), "x_offset": -3.0, "y_offset": -12.0}
+			_:
+				return {"color": Color(1.0, 0.98, 0.62, 1.0), "size": 15, "life": 0.62, "drift": Vector2(0, -34), "x_offset": 0.0, "y_offset": -17.0}
 	match kind:
 		"auto":
 			return {"color": Color(1.0, 0.96, 0.72, 0.98), "size": 11, "life": 0.48, "drift": Vector2(-5, -28), "x_offset": -5.0, "y_offset": -14.0}
