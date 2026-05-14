@@ -5,7 +5,7 @@ const C := preload("res://scripts/game_config.gd")
 const TIER1_SPRITE_KINDS := ["billboard", "appliance", "coupon"]
 const ROLE_STATS := {
 	"basic": {"hp": 1.0, "speed": 1.0, "radius": 8.0, "contact": 1.0, "sprite": "billboard"},
-	"fast": {"hp": 0.62, "speed": 1.55, "radius": 7.0, "contact": 0.82, "sprite": "coupon"},
+	"fast": {"hp": 0.80, "speed": 1.55, "radius": 7.0, "contact": 0.82, "sprite": "coupon"},
 	"tank": {"hp": 2.85, "speed": 0.62, "radius": 13.0, "contact": 1.35, "sprite": "appliance"},
 	"signal": {"hp": 1.65, "speed": 0.82, "radius": 11.0, "contact": 1.15, "sprite": "billboard"},
 }

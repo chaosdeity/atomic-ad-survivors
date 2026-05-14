@@ -25,8 +25,8 @@ const AUTO_RANGE := 170.0
 const AUTO_TICK := 0.50
 const MATCH_DURATION := 300.0
 
-const ENEMY_HP := 76.0
-const ELITE_HP := 300.0
+const ENEMY_HP := 400.0
+const ELITE_HP := 1400.0
 const ENEMY_SPEED := 36.0
 const ELITE_SPEED := 28.0
 const ENEMY_CONTACT_DPS := 10.5
