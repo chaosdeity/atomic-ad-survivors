@@ -1,7 +1,7 @@
 extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
-const UI_FONT := preload("res://assets/fonts/NotoSansKR-VF.ttf")
+const UIFont := preload("res://scripts/ui_font.gd")
 
 var hud: CanvasLayer
 var hp_bar: ColorRect
@@ -18,6 +18,7 @@ var restart_button: Button
 var restart_callback := Callable()
 var supply_upgrade_buttons: Array[Button] = []
 var supply_upgrade_callback := Callable()
+var supply_feedback_label: Label
 var debug_panel: Panel
 var debug_label: Label
 
@@ -36,8 +37,14 @@ func _panel_style(fill_color: Color = C.AD_PAPER, border_color: Color = C.COCOA,
 func _button_style(fill_color: Color, border_width: int = 2) -> StyleBoxFlat:
 	return _panel_style(fill_color, C.COCOA, border_width, 3)
 
+func _supply_applied_style() -> StyleBoxFlat:
+	return _panel_style(Color("#e9ffd8"), C.TOXIC_GREEN, 2, 3)
+
+func _supply_disabled_style() -> StyleBoxFlat:
+	return _panel_style(Color("#e1d4bc"), Color("#8a7962"), 1, 3)
+
 func _apply_font(control: Control) -> void:
-	control.add_theme_font_override("font", UI_FONT)
+	control.add_theme_font_override("font", UIFont.get_font())
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -186,10 +193,23 @@ func build(parent: Node) -> void:
 		supply_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
 		supply_button.add_theme_stylebox_override("hover", _button_style(Color("#ffe7a8")))
 		supply_button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, 3))
+		supply_button.add_theme_stylebox_override("disabled", _supply_disabled_style())
 		supply_button.pressed.connect(_on_supply_upgrade_button_pressed.bind(i))
 		supply_button.visible = false
 		result_panel.add_child(supply_button)
 		supply_upgrade_buttons.append(supply_button)
+
+	supply_feedback_label = Label.new()
+	supply_feedback_label.position = Vector2(16, 154)
+	supply_feedback_label.size = Vector2(360, 20)
+	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	supply_feedback_label.add_theme_font_size_override("font_size", 9)
+	supply_feedback_label.add_theme_color_override("font_color", C.NEON_RED)
+	supply_feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	supply_feedback_label.visible = false
+	_apply_font(supply_feedback_label)
+	result_panel.add_child(supply_feedback_label)
 
 	debug_panel = Panel.new()
 	debug_panel.position = Vector2(8, 38)
@@ -281,9 +301,11 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	_set_supply_buttons_visible(false)
+	supply_feedback_label.visible = false
 	supply_upgrade_callback = Callable()
 	result_panel.position = Vector2(90, 36)
 	result_panel.size = Vector2(300, 198)
+	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
 	result_label.position = Vector2(16, 12)
 	result_label.size = Vector2(268, 132)
 	restart_button.position = Vector2(34, 154)
@@ -312,26 +334,37 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines,
 	]
 
-func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable) -> void:
+func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "") -> void:
 	restart_callback = sortie_callback
 	supply_upgrade_callback = upgrade_callback
 	card_panel.visible = false
 	card_chosen_callback = Callable()
-	result_panel.position = Vector2(44, 24)
-	result_panel.size = Vector2(392, 222)
-	result_label.position = Vector2(14, 10)
-	result_label.size = Vector2(364, 56)
-	restart_button.position = Vector2(80, 184)
-	restart_button.size = Vector2(232, 28)
+	result_panel.position = Vector2(32, 16)
+	result_panel.size = Vector2(416, 238)
+	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
+	result_label.position = Vector2(14, 8)
+	result_label.size = Vector2(388, 83)
+	restart_button.position = Vector2(74, 204)
+	restart_button.size = Vector2(268, 25)
 	result_panel.visible = true
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
-	restart_button.text = "선택하지 않고 다음 출격"
+	restart_button.text = "강화 적용 후 다시 출격" if meta_progression.has_any_upgrade() else "선택하지 않고 다시 출격"
 	result_label.add_theme_font_size_override("font_size", 9)
-	result_label.text = "침묵 보급소\n%s\n영구 강화: %s\n작은 보정 하나만 골라도 다음 출격이 달라집니다." % [
-		meta_progression.trace_label(),
-		meta_progression.upgrade_summary(),
+	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n전단은 보급소 금고에 잠시 남겨둘 수 있습니다." % [
+		meta_progression.held_trace_label(),
+		"   ".join(meta_progression.upgrade_summary_lines()),
 	]
+	supply_feedback_label.visible = true
+	if applied_upgrade_name != "":
+		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
+		supply_feedback_label.text = "영구 강화 적용: %s" % applied_upgrade_name
+	elif meta_progression.trace_count() > 0:
+		supply_feedback_label.add_theme_color_override("font_color", C.INK)
+		supply_feedback_label.text = "흔적 하나로 다음 출격의 빈틈을 조금 줄일 수 있습니다."
+	else:
+		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
+		supply_feedback_label.text = "남은 흔적이 없습니다. 보급소 문이 다시 열립니다."
 	var upgrades: Array = meta_progression.upgrade_defs()
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
@@ -340,21 +373,32 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 			continue
 		var upgrade: Dictionary = upgrades[i]
 		var can_buy: bool = meta_progression.can_buy(String(upgrade["id"]))
+		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
 		button.visible = true
 		button.disabled = not can_buy
-		button.text = "%d. %s  | 비용 %d  | %s%s" % [
+		button.position = Vector2(18, 96 + i * 34)
+		button.size = Vector2(380, 29)
+		button.add_theme_font_size_override("font_size", 9)
+		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
+		button.add_theme_stylebox_override("normal", _supply_applied_style() if level > 0 else _button_style(Color("#fff7df")))
+		button.add_theme_stylebox_override("hover", _supply_applied_style() if level > 0 else _button_style(Color("#ffe7a8")))
+		button.add_theme_stylebox_override("disabled", _supply_applied_style() if level > 0 else _supply_disabled_style())
+		var state_text := "적용됨" if level > 0 else ("선택 가능" if can_buy else "흔적 부족")
+		button.text = "%d. %s  [%s]\n비용 %d 전단  |  %s" % [
 			i + 1,
 			upgrade["name"],
+			state_text,
 			int(upgrade["cost"]),
 			upgrade["effect_text"],
-			"" if can_buy else "  (흔적 부족)",
 		]
 
 func hide_result_screen() -> void:
+	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
 	result_panel.visible = false
 	restart_callback = Callable()
 	supply_upgrade_callback = Callable()
 	_set_supply_buttons_visible(false)
+	supply_feedback_label.visible = false
 
 func set_debug_text(text: String) -> void:
 	if text == "":

@@ -1,7 +1,7 @@
 extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
-const UI_FONT := preload("res://assets/fonts/NotoSansKR-VF.ttf")
+const UIFont := preload("res://scripts/ui_font.gd")
 
 const MAX_DAMAGE_NUMBERS := 100
 
@@ -270,7 +270,7 @@ func draw_front(canvas: CanvasItem) -> void:
 		else:
 			canvas.draw_circle(pos, size, color)
 	for floater in floaters:
-		canvas.draw_string(UI_FONT, floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
+		canvas.draw_string(UIFont.get_font(), floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
 	for number in damage_numbers:
 		var ratio := float(number["life"]) / maxf(0.001, float(number["duration"]))
 		var color: Color = number["color"]
@@ -279,8 +279,8 @@ func draw_front(canvas: CanvasItem) -> void:
 		var pos: Vector2 = number["pos"]
 		var text: String = number["text"]
 		var size := int(number.get("size", 12))
-		canvas.draw_string(UI_FONT, pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, shadow)
-		canvas.draw_string(UI_FONT, pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, color)
+		canvas.draw_string(UIFont.get_font(), pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, shadow)
+		canvas.draw_string(UIFont.get_font(), pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, color)
 
 func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
 	if screen_flash > 0.0:
@@ -300,8 +300,8 @@ func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
 	canvas.draw_line(center + Vector2(-width * 0.5, -height * 0.5), center + Vector2(width * 0.5, -height * 0.5), banner_color, 3.0)
 	canvas.draw_line(center + Vector2(-width * 0.5, height * 0.5), center + Vector2(width * 0.5, height * 0.5), banner_color, 3.0)
 	var text_color := Color(1.0, 0.93, 0.58, clampf(banner_ratio * 1.25, 0.0, 1.0))
-	canvas.draw_string(UI_FONT, center + Vector2(2, 9), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(0.05, 0.02, 0.02, text_color.a))
-	canvas.draw_string(UI_FONT, center + Vector2(0, 7), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, text_color)
+	canvas.draw_string(UIFont.get_font(), center + Vector2(2, 9), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(0.05, 0.02, 0.02, text_color.a))
+	canvas.draw_string(UIFont.get_font(), center + Vector2(0, 7), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, text_color)
 
 func clear() -> void:
 	shots.clear()

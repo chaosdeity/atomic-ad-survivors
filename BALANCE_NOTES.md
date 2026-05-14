@@ -12,6 +12,8 @@ The first sortie should collapse before the player can approach boss pacing: war
 
 The first emergency recall grants one `torn_ad_flyer` trace, shown to the player as a torn ad flyer. The Silent Supply Depot can spend that trace on one small permanent upgrade: +1 auto-fire damage, +2 charge damage, or +5 max HP. These values are intentionally low so the protagonist still starts weak, while the next sortie feels slightly less hopeless. Runtime level-up cards reset each sortie; these meta bonuses persist for the current session and are structured so they can later move into save/load data.
 
+The depot upgrade loop is session-only meta growth for now; save/load is not implemented yet. After the first recall, the Silent Supply Depot should act as the emotional start of the next loop: review the trace, choose or hold one small upgrade, and make redeployment feel intentional rather than like a simple retry.
+
 ## Early Damage Scale
 
 Keep early combat numbers small so RPG and roguelite growth has room to inflate later. Baseline auto-fire is 15 damage per 0.5 second shot, normal charge is 20 damage, focused charge is 30 damage, and a basic enemy has 45 HP. This means a focused charge wounds a fresh basic enemy but does not delete it, while follow-up auto-fire or combined effects still matter.

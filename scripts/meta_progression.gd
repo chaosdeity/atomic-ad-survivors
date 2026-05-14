@@ -96,6 +96,26 @@ func trace_count(trace_id: String = TRACE_TORN_AD_FLYER) -> int:
 func trace_label() -> String:
 	return "찢어진 광고 전단 %d개" % trace_count()
 
+func held_trace_label() -> String:
+	return "보유 흔적: 찢어진 광고 전단 %d개" % trace_count()
+
+func upgrade_level(upgrade_id: String) -> int:
+	return int(upgrades.get(upgrade_id, 0))
+
+func has_any_upgrade() -> bool:
+	for upgrade_id in upgrades.keys():
+		if int(upgrades.get(upgrade_id, 0)) > 0:
+			return true
+	return false
+
+func upgrade_summary_lines() -> Array[String]:
+	var bonus := bonuses()
+	return [
+		"일반공격 +%s" % _fmt_bonus(float(bonus["auto_damage_bonus"])),
+		"차징 +%s" % _fmt_bonus(float(bonus["charge_damage_bonus"])),
+		"최대 HP +%s" % _fmt_bonus(float(bonus["max_hp_bonus"])),
+	]
+
 func upgrade_summary() -> String:
 	var bonus := bonuses()
 	return "auto+%s / charge+%s / hp+%s" % [

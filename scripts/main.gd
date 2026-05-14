@@ -1,7 +1,7 @@
 extends Node2D
 
 const C := preload("res://scripts/game_config.gd")
-const UI_FONT := preload("res://assets/fonts/NotoSansKR-VF.ttf")
+const UIFont := preload("res://scripts/ui_font.gd")
 const AudioFactory := preload("res://scripts/audio_factory.gd")
 const HudController := preload("res://scripts/hud_controller.gd")
 const EffectsController := preload("res://scripts/effects_controller.gd")
@@ -84,7 +84,7 @@ func _process(delta: float) -> void:
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
 		queue_redraw()
-		if Input.is_action_just_pressed("charge"):
+		if match_state != "supply" and Input.is_action_just_pressed("charge"):
 			_handle_terminal_action()
 		return
 	if paused_for_card:
@@ -590,11 +590,15 @@ func _apply_supply_upgrade_choice(index: int) -> void:
 	if index < 0 or index >= upgrades.size():
 		return
 	var upgrade: Dictionary = upgrades[index]
+	var upgrade_name := String(upgrade["name"])
 	if meta_progression.buy(String(upgrade["id"])):
-		effects.add_floater(player_pos, "영구 강화 적용", C.TOXIC_GREEN, 14)
+		effects.show_combat_banner("영구 강화 적용: %s" % upgrade_name, C.TOXIC_GREEN)
+		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
+		effects.add_impact_shake(0.14, 2.2)
 	else:
 		effects.add_floater(player_pos, "흔적 부족", C.NEON_RED, 13)
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"))
+		upgrade_name = ""
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), upgrade_name)
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -899,7 +903,7 @@ func _draw_enemy_nameplate(enemy: Dictionary) -> void:
 	var width := 42.0 if label != "SIGNAL" else 50.0
 	var y := -radius - 20.0
 	draw_rect(Rect2(pos + Vector2(-width * 0.5, y - 7.0), Vector2(width, 10.0)), Color(0.10, 0.06, 0.04, 0.62))
-	draw_string(UI_FONT, pos + Vector2(0, y), label, HORIZONTAL_ALIGNMENT_CENTER, width, 8, _defense_color(String(enemy.get("defense_type", "normal"))))
+	draw_string(UIFont.get_font(), pos + Vector2(0, y), label, HORIZONTAL_ALIGNMENT_CENTER, width, 8, _defense_color(String(enemy.get("defense_type", "normal"))))
 
 func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
