@@ -8,6 +8,8 @@ Open this folder in Godot 4.x and run `res://scenes/main.tscn`.
 
 For a browser build, see `EXPORT_WEB.md`. The prepared Web preset exports to `exports/web/index.html`, and the local server helper opens it at `http://localhost:8000`.
 
+Balance simulation: `python tools/balance_sim.py`.
+
 ## Controls
 
 - Move: WASD or arrow keys
