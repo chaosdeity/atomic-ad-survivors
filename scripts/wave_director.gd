@@ -83,11 +83,28 @@ const WAVES := [
 	},
 ]
 
-static func params_for_time(elapsed: float) -> Dictionary:
+static func params_for_time(elapsed: float, sortie_index: int = 1) -> Dictionary:
 	for wave in WAVES:
 		if elapsed >= float(wave["start"]) and elapsed < float(wave["end"]):
-			return wave.duplicate(true)
-	return WAVES[WAVES.size() - 1].duplicate(true)
+			return _apply_preboss_pressure(wave.duplicate(true), elapsed, sortie_index)
+	return _apply_preboss_pressure(WAVES[WAVES.size() - 1].duplicate(true), elapsed, sortie_index)
 
 static func is_finale(elapsed: float) -> bool:
 	return elapsed >= 270.0
+
+static func _apply_preboss_pressure(params: Dictionary, elapsed: float, sortie_index: int) -> Dictionary:
+	if sortie_index >= 3 and elapsed >= 150.0:
+		params["spawn_pressure"] = float(params.get("spawn_pressure", 1.0)) * 1.05
+		var weights: Dictionary = params.get("role_weights", {}).duplicate(true)
+		weights["basic"] = maxf(0.0, float(weights.get("basic", 0.0)) - 0.05)
+		weights["tank"] = float(weights.get("tank", 0.0)) + 0.03
+		weights["signal"] = float(weights.get("signal", 0.0)) + 0.02
+		params["role_weights"] = weights
+	if sortie_index >= 4 and elapsed >= 210.0:
+		params["spawn_pressure"] = float(params.get("spawn_pressure", 1.0)) * 1.06
+		params["elite_chance"] = minf(0.60, float(params.get("elite_chance", 0.0)) + 0.05)
+		var weights: Dictionary = params.get("role_weights", {}).duplicate(true)
+		weights["basic"] = maxf(0.0, float(weights.get("basic", 0.0)) - 0.04)
+		weights["signal"] = float(weights.get("signal", 0.0)) + 0.04
+		params["role_weights"] = weights
+	return params

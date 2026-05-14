@@ -200,8 +200,8 @@ func build(parent: Node) -> void:
 		supply_upgrade_buttons.append(supply_button)
 
 	supply_feedback_label = Label.new()
-	supply_feedback_label.position = Vector2(16, 154)
-	supply_feedback_label.size = Vector2(360, 20)
+	supply_feedback_label.position = Vector2(16, 188)
+	supply_feedback_label.size = Vector2(360, 18)
 	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	supply_feedback_label.add_theme_font_size_override("font_size", 9)
@@ -319,6 +319,8 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines += "\n%s" % description
 	if trace != "":
 		extra_lines += "\n회수한 흔적  %s" % trace
+	for line in Array(result_data.get("progress_lines", [])):
+		extra_lines += "\n%s" % str(line)
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
 	result_label.add_theme_font_size_override("font_size", 9 if result_data.get("result", "") == "긴급 회수" else 10)
@@ -334,24 +336,30 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines,
 	]
 
-func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "") -> void:
+func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "", session_progress: Dictionary = {}) -> void:
 	restart_callback = sortie_callback
 	supply_upgrade_callback = upgrade_callback
 	card_panel.visible = false
 	card_chosen_callback = Callable()
-	result_panel.position = Vector2(32, 16)
-	result_panel.size = Vector2(416, 238)
+	result_panel.position = Vector2(32, 12)
+	result_panel.size = Vector2(416, 244)
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
 	result_label.position = Vector2(14, 8)
-	result_label.size = Vector2(388, 83)
-	restart_button.position = Vector2(74, 204)
-	restart_button.size = Vector2(268, 25)
+	result_label.size = Vector2(388, 80)
+	restart_button.position = Vector2(74, 213)
+	restart_button.size = Vector2(268, 24)
 	result_panel.visible = true
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
 	restart_button.text = "강화 적용 후 다시 출격" if meta_progression.has_any_upgrade() else "선택하지 않고 다시 출격"
 	result_label.add_theme_font_size_override("font_size", 9)
-	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n전단은 보급소 금고에 잠시 남겨둘 수 있습니다." % [
+	var progress_text := "출격 기록: %d회   보스 신호: %s\n다음 목표: %s" % [
+		int(session_progress.get("sortie_index", 1)),
+		str(session_progress.get("boss_signal_label", "없음")),
+		str(session_progress.get("next_objective", "재출격")),
+	]
+	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n%s\n전단은 보급소 금고에 잠시 남겨둘 수 있습니다." % [
+		progress_text,
 		meta_progression.held_trace_label(),
 		"   ".join(meta_progression.upgrade_summary_lines()),
 	]
@@ -376,8 +384,8 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
 		button.visible = true
 		button.disabled = not can_buy
-		button.position = Vector2(18, 96 + i * 34)
-		button.size = Vector2(380, 29)
+		button.position = Vector2(18, 92 + i * 33)
+		button.size = Vector2(380, 28)
 		button.add_theme_font_size_override("font_size", 9)
 		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
 		button.add_theme_stylebox_override("normal", _supply_applied_style() if level > 0 else _button_style(Color("#fff7df")))

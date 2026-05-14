@@ -15,6 +15,12 @@ const MetaProgression := preload("res://scripts/meta_progression.gd")
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
 const FIRST_RECALL_COLLAPSE_TIME := 108.0
+const BOSS_SIGNAL_LABELS := {
+	"none": "없음",
+	"faint": "미약함",
+	"detected": "감지됨",
+	"near": "근접",
+}
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -36,6 +42,10 @@ var first_sortie := true
 var first_recall_done := false
 var recall_event_stage := 0
 var recall_pressure_spawn_timer := 0.0
+var sortie_index := 1
+var preboss_signal_event_stage := 0
+var boss_signal_state := "none"
+var boss_signal_unlocked := false
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -96,6 +106,7 @@ func _process(delta: float) -> void:
 
 	elapsed += delta
 	_update_first_recall_event(delta)
+	_update_preboss_signal_events()
 	_check_victory()
 	if match_state == "victory" or match_state == "recalled":
 		effects.update(delta)
@@ -107,7 +118,7 @@ func _process(delta: float) -> void:
 	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	_update_player(delta)
-	var wave_params := WaveDirector.params_for_time(elapsed)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
 	enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 	_update_wave_events(wave_params)
 	_update_enemies(delta)
@@ -510,10 +521,48 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 	elif WaveDirector.is_finale(elapsed) and wave_notice_timer <= 0.0:
 		_show_wave_notice("피날레: 마지막 광고 공세")
 
+func _update_preboss_signal_events() -> void:
+	if _first_recall_active():
+		return
+	if preboss_signal_event_stage < 1 and sortie_index >= 2 and elapsed >= 120.0:
+		preboss_signal_event_stage = 1
+		_set_boss_signal_state("faint")
+		_show_wave_notice("대형 광고 송출의 잔향이 감지됩니다")
+	elif preboss_signal_event_stage < 2 and sortie_index >= 3 and elapsed >= 180.0:
+		preboss_signal_event_stage = 2
+		_set_boss_signal_state("detected")
+		_show_wave_notice("보스 신호가 근처에서 회전합니다")
+	elif preboss_signal_event_stage < 3 and sortie_index >= 4 and elapsed >= 240.0:
+		preboss_signal_event_stage = 3
+		_set_boss_signal_state("near")
+		boss_signal_unlocked = true
+		_show_wave_notice("대형 송출체가 다음 출격에서 포착될 수 있습니다")
+
+func _set_boss_signal_state(state: String) -> void:
+	if _boss_signal_rank(state) < _boss_signal_rank(boss_signal_state):
+		return
+	boss_signal_state = state
+	var color := C.VITAMIN_YELLOW
+	if state == "detected" or state == "near":
+		color = C.NEON_RED
+	effects.add_status_ring(player_pos, color, 72.0, 0.50)
+	effects.add_floater(player_pos, "보스 신호 %s" % _boss_signal_label(), color, 14)
+
+func _boss_signal_rank(state: String) -> int:
+	match state:
+		"faint":
+			return 1
+		"detected":
+			return 2
+		"near":
+			return 3
+		_:
+			return 0
+
 func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
 	wave_notice_timer = 2.8
-	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력")
+	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력") or text.contains("보스")
 	effects.show_combat_banner(text, C.NEON_RED if danger else C.VITAMIN_YELLOW)
 
 func _update_first_recall_event(delta: float) -> void:
@@ -538,7 +587,44 @@ func _update_first_recall_event(delta: float) -> void:
 		_finish_match("recalled")
 
 func _first_recall_active() -> bool:
-	return first_sortie and not first_recall_done and match_state == "playing"
+	return sortie_index == 1 and first_sortie and not first_recall_done and match_state == "playing"
+
+func _boss_signal_label() -> String:
+	return String(BOSS_SIGNAL_LABELS.get(boss_signal_state, boss_signal_state))
+
+func _preboss_stage_label() -> String:
+	if sortie_index <= 1:
+		return "강제 회수"
+	if sortie_index == 2:
+		return "재출격 안정화"
+	if sortie_index == 3:
+		return "신호 압력"
+	return "보스 신호 근접"
+
+func _next_objective_label() -> String:
+	if sortie_index <= 1:
+		return "보급소 재출격"
+	if sortie_index == 2:
+		return "180초까지 생존"
+	if sortie_index == 3:
+		return "보스 신호 추적"
+	return "근접 신호 확인"
+
+func _session_progress_data() -> Dictionary:
+	return {
+		"sortie_index": sortie_index,
+		"preboss_stage": _preboss_stage_label(),
+		"boss_signal_state": boss_signal_state,
+		"boss_signal_label": _boss_signal_label(),
+		"boss_signal_unlocked": boss_signal_unlocked,
+		"next_objective": _next_objective_label(),
+	}
+
+func _session_progress_lines() -> Array[String]:
+	return [
+		"출격 기록: %d회   보스 신호: %s" % [sortie_index, _boss_signal_label()],
+		"다음 목표: %s" % _next_objective_label(),
+	]
 
 func _apply_first_recall_collapse(delta: float) -> void:
 	recall_pressure_spawn_timer -= delta
@@ -556,7 +642,7 @@ func _apply_first_recall_collapse(delta: float) -> void:
 		_finish_match("recalled")
 
 func _spawn_recall_pressure(count: int) -> void:
-	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0))
+	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0), sortie_index)
 	wave_params["spawn_count_min"] = 7
 	wave_params["spawn_count_max"] = 10
 	wave_params["elite_chance"] = 0.48
@@ -594,6 +680,7 @@ func _result_data(result_state: String) -> Dictionary:
 			"result": "긴급 회수",
 			"description": "캠페인 신호에 삼켜지기 직전, 침묵 보급소가 당신을 끌어냈습니다.",
 			"trace": "찢어진 광고 전단",
+			"progress_lines": _session_progress_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
 			"survival_time": elapsed,
@@ -605,6 +692,7 @@ func _result_data(result_state: String) -> Dictionary:
 		}
 	return {
 		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
+		"progress_lines": _session_progress_lines(),
 		"survival_time": elapsed,
 		"level": level,
 		"kills": kills,
@@ -621,7 +709,7 @@ func _show_supply_depot() -> void:
 	paused_for_card = false
 	if is_inside_tree():
 		get_tree().paused = false
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"))
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
 
 func _handle_terminal_action() -> void:
 	match match_state:
@@ -645,7 +733,7 @@ func _apply_supply_upgrade_choice(index: int) -> void:
 	else:
 		effects.add_floater(player_pos, "흔적 부족", C.NEON_RED, 13)
 		upgrade_name = ""
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), upgrade_name)
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), upgrade_name, _session_progress_data())
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -756,7 +844,7 @@ func _debug_overlay_text() -> String:
 	return "\n\n".join(sections)
 
 func _debug_info() -> Dictionary:
-	var wave_params := WaveDirector.params_for_time(elapsed)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
@@ -774,6 +862,11 @@ func _debug_info() -> Dictionary:
 		"charge_window_left": charge_window_left,
 		"selected_card_count": selected_card_count,
 		"mid_event_triggered": mid_event_triggered,
+		"sortie_index": sortie_index,
+		"session_depth": sortie_index,
+		"preboss_stage": _preboss_stage_label(),
+		"boss_signal_state": boss_signal_state,
+		"boss_signal_unlocked": boss_signal_unlocked,
 		"first_sortie": first_sortie,
 		"first_recall_done": first_recall_done,
 		"recall_stage": recall_event_stage,
@@ -810,6 +903,7 @@ func _debug_jump_time(seconds: float) -> void:
 	elapsed = clampf(seconds, 0.0, C.MATCH_DURATION)
 	if elapsed >= WaveDirector.MID_EVENT_TIME:
 		mid_event_triggered = true
+	_update_preboss_signal_events()
 	if WaveDirector.is_finale(elapsed):
 		_show_wave_notice("피날레: 마지막 광고 공세")
 	enemies.spawn_timer = 0.0
@@ -835,7 +929,7 @@ func _debug_clear_enemies() -> void:
 func _debug_spawn_swarm() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
-	var wave_params := WaveDirector.params_for_time(elapsed)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
 	var count := mini(24, C.ENEMY_CAP - enemies.enemies.size())
 	for i in range(count):
 		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
@@ -1064,8 +1158,13 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 			InputMap.action_add_event(action, event)
 
 func _restart() -> void:
+	var was_supply := match_state == "supply"
+	var was_terminal_redeploy := (match_state == "game_over" or match_state == "victory") and first_recall_done
 	if is_inside_tree():
 		get_tree().paused = false
+	if was_supply or was_terminal_redeploy:
+		sortie_index += 1
+		first_sortie = false
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
@@ -1080,6 +1179,7 @@ func _restart() -> void:
 	selected_card_count = 0
 	peak_enemy_count = 0
 	mid_event_triggered = false
+	preboss_signal_event_stage = 0
 	recall_event_stage = 0
 	recall_pressure_spawn_timer = 0.0
 	wave_notice_timer = 0.0

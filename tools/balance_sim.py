@@ -394,6 +394,16 @@ def build_preview_table(config: BalanceConfig) -> str:
     return markdown_table(["build", "preview package", "headline number", "TTK/effect", "expected note"], rows)
 
 
+def preboss_progression_table() -> str:
+    rows = [
+        ["sortie 1", "forced recall", "1.00x", "warning 70s, surge 88s, recall ~108s"],
+        ["sortie 2", "baseline 5-min run", "1.00x", "faint boss signal event at 120s"],
+        ["sortie 3", "signal/tank pressure", "~1.05x after 150s", "+tank/+signal weights after 150s; detected event at 180s"],
+        ["sortie 4", "boss signal near", "~1.11x after 210s", "+elite chance/+signal weight after 210s; near event at 240s"],
+    ]
+    return markdown_table(["session step", "preboss role", "wave pressure note", "expected event"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -441,6 +451,10 @@ def main() -> None:
     print("## Build Preview")
     print()
     print(build_preview_table(config))
+    print()
+    print("## Preboss Progression Preview")
+    print()
+    print(preboss_progression_table())
     print()
     print("## Current Findings")
     print()

@@ -14,6 +14,12 @@ The first emergency recall grants one `torn_ad_flyer` trace, shown to the player
 
 The depot upgrade loop is session-only meta growth for now; save/load is not implemented yet. After the first recall, the Silent Supply Depot should act as the emotional start of the next loop: review the trace, choose or hold one small upgrade, and make redeployment feel intentional rather than like a simple retry.
 
+## Preboss Session Loop
+
+The first boss is still not implemented. Before that fight exists, the player should learn the loop through several recall/redeployment cycles: runtime card builds, enemy defense types, and one small Silent Supply Depot upgrade in the current session only.
+
+Current combat code tracks only the boss signal state: none, faint, detected, and near. Sortie 1 remains the forced recall. Sortie 2 is a baseline 5-minute run with a faint signal event, sortie 3 slightly raises signal/tank pressure, and sortie 4 can mark the boss signal as near without spawning a boss, boss health bar, boss AI, or boss scene.
+
 ## Early Damage Scale
 
 Keep early combat numbers small so RPG and roguelite growth has room to inflate later. Baseline auto-fire is 15 damage per 0.5 second shot, normal charge is 20 damage, focused charge is 30 damage, and a basic enemy has 45 HP. This means a focused charge wounds a fresh basic enemy but does not delete it, while follow-up auto-fire or combined effects still matter.
@@ -40,6 +46,7 @@ The simulator reads current constants from `scripts/game_config.gd`, enemy role 
 - Defense type preview: virtual armor profiles for anti-auto, anti-charge, plated, and exposed-core enemies.
 - Meta progression preview: first trace upgrade comparisons for auto +1, charge +2, and max HP +5.
 - Build preview: rough package checks for auto, charge, area, and survival card directions.
+- Preboss progression preview: session sortie steps, boss signal events, and small wave pressure changes before any boss body exists.
 
 Use the output as a numeric gate before changing live balance:
 
