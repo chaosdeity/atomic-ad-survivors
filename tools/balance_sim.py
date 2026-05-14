@@ -351,6 +351,49 @@ def meta_progression_table(config: BalanceConfig) -> str:
     )
 
 
+def build_preview_table(config: BalanceConfig) -> str:
+    auto_damage = config.auto_damage * (1.0 + config.auto_damage_card * 2)
+    auto_split_damage = auto_damage * 0.70
+    charge_damage = config.charge_damage * (1.0 + config.charge_damage_card * 2)
+    focused_damage = config.focused_charge_damage * (1.0 + config.charge_damage_card * 2)
+    charge_period = max(1.2, config.charge_period - 0.4)
+    burst_damage = 30.0
+    puddle_dps = 23.0 * 1.10
+    residue_total = (10.0 + 3.0) * 1.05
+
+    rows = [
+        [
+            "Auto",
+            "auto damage x2 + split shot",
+            fmt_num(auto_damage),
+            fmt_sec(ttk_for_auto(shots_to_kill(config.enemy_hp["basic"], auto_damage), config.auto_tick)),
+            "split cadence improves to every 3 shots; secondary hit ~%s" % fmt_num(auto_split_damage),
+        ],
+        [
+            "Charge",
+            "charge damage x2 + cooldown",
+            "%s focused / %ss period" % (fmt_num(focused_damage), fmt_num(charge_period)),
+            "%s cleanup shot(s)" % shots_to_kill(max(0.0, config.enemy_hp["signal"] - effective_damage(config, "signal", "focused", focused_damage)), effective_damage(config, "signal", "auto", config.auto_damage)),
+            "2+ charge tags add a small focused follow-through hit (~%s)" % fmt_num(focused_damage * 0.28),
+        ],
+        [
+            "Area",
+            "burst + puddle",
+            "%s burst / %s puddle dps" % (fmt_num(burst_damage), fmt_num(puddle_dps)),
+            "basic survives burst alone: %s" % ("yes" if burst_damage < config.enemy_hp["basic"] else "no"),
+            "burst can leave a short residue puddle; expected residue total ~%s before defense" % fmt_num(residue_total),
+        ],
+        [
+            "Survival",
+            "max HP + heal + emergency",
+            "120 max hp / 8 low-HP heal",
+            "TTK unchanged",
+            "low HP lowers charge-heal threshold by 1 so the recovery feedback appears sooner",
+        ],
+    ]
+    return markdown_table(["build", "preview package", "headline number", "TTK/effect", "expected note"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -394,6 +437,10 @@ def main() -> None:
     print("## Meta Progression Preview")
     print()
     print(meta_progression_table(config))
+    print()
+    print("## Build Preview")
+    print()
+    print(build_preview_table(config))
     print()
     print("## Current Findings")
     print()

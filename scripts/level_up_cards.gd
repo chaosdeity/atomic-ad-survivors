@@ -8,6 +8,8 @@ const CARDS := [
 		"effect_text": "자동 사격 피해 +25% / 사거리 +8",
 		"effect": "auto_damage_mult",
 		"value": 0.25,
+		"build_tags": ["auto"],
+		"build_label": "자동",
 	},
 	{
 		"id": "auto_range",
@@ -16,6 +18,8 @@ const CARDS := [
 		"effect_text": "자동 사격 사거리 +20",
 		"effect": "auto_range_bonus",
 		"value": 20.0,
+		"build_tags": ["auto", "utility"],
+		"build_label": "자동",
 	},
 	{
 		"id": "charge_damage",
@@ -24,6 +28,8 @@ const CARDS := [
 		"effect_text": "차징 피해 +20%",
 		"effect": "charge_damage_mult",
 		"value": 0.20,
+		"build_tags": ["charge"],
+		"build_label": "차징",
 	},
 	{
 		"id": "charge_targets",
@@ -32,6 +38,8 @@ const CARDS := [
 		"effect_text": "차징 타겟 수 +3",
 		"effect": "charge_target_bonus",
 		"value": 3,
+		"build_tags": ["charge", "area"],
+		"build_label": "차징",
 	},
 	{
 		"id": "charge_cooldown",
@@ -40,6 +48,8 @@ const CARDS := [
 		"effect_text": "차징 쿨다운 -0.4초",
 		"effect": "charge_period_bonus",
 		"value": -0.4,
+		"build_tags": ["charge", "utility"],
+		"build_label": "차징",
 	},
 	{
 		"id": "move_speed",
@@ -48,6 +58,8 @@ const CARDS := [
 		"effect_text": "이동 속도 +8%",
 		"effect": "move_speed_mult",
 		"value": 0.08,
+		"build_tags": ["utility", "survival"],
+		"build_label": "보조",
 	},
 	{
 		"id": "max_hp",
@@ -56,6 +68,8 @@ const CARDS := [
 		"effect_text": "최대 HP +20 / 현재 HP +20",
 		"effect": "max_hp_bonus",
 		"value": 20.0,
+		"build_tags": ["survival"],
+		"build_label": "생존",
 	},
 	{
 		"id": "heal_now",
@@ -64,6 +78,8 @@ const CARDS := [
 		"effect_text": "즉시 HP +25 회복",
 		"effect": "heal",
 		"value": 25.0,
+		"build_tags": ["survival"],
+		"build_label": "생존",
 	},
 	{
 		"id": "xp_gain",
@@ -72,6 +88,8 @@ const CARDS := [
 		"effect_text": "XP 획득량 +20% / 즉시 XP",
 		"effect": "xp_gain_mult",
 		"value": 0.20,
+		"build_tags": ["utility"],
+		"build_label": "보조",
 	},
 	{
 		"id": "split_ad_round",
@@ -80,6 +98,8 @@ const CARDS := [
 		"effect_text": "보조 사격 해금/강화",
 		"effect": "split_shot_level",
 		"value": 1,
+		"build_tags": ["auto", "area"],
+		"build_label": "자동",
 	},
 	{
 		"id": "coupon_chain_pop",
@@ -88,6 +108,8 @@ const CARDS := [
 		"effect_text": "처치 폭발 확률 +25%",
 		"effect": "kill_burst_level",
 		"value": 1,
+		"build_tags": ["area"],
+		"build_label": "광역",
 	},
 	{
 		"id": "toxic_ad_puddle",
@@ -96,6 +118,8 @@ const CARDS := [
 		"effect_text": "차징 장판 해금/강화",
 		"effect": "charge_puddle_level",
 		"value": 1,
+		"build_tags": ["area", "charge"],
+		"build_label": "광역",
 	},
 	{
 		"id": "perfect_airtime",
@@ -104,6 +128,8 @@ const CARDS := [
 		"effect_text": "완벽 차징 보너스 강화",
 		"effect": "perfect_charge_level",
 		"value": 1,
+		"build_tags": ["charge"],
+		"build_label": "차징",
 	},
 	{
 		"id": "emergency_rebroadcast",
@@ -112,6 +138,8 @@ const CARDS := [
 		"effect_text": "위기 차징 강화",
 		"effect": "emergency_charge_level",
 		"value": 1,
+		"build_tags": ["survival", "charge"],
+		"build_label": "생존",
 	},
 	{
 		"id": "resync_error",
@@ -120,6 +148,8 @@ const CARDS := [
 		"effect_text": "차징 감속 강화",
 		"effect": "charge_slow_level",
 		"value": 1,
+		"build_tags": ["charge", "utility"],
+		"build_label": "차징",
 	},
 	{
 		"id": "restorative_ad",
@@ -128,6 +158,8 @@ const CARDS := [
 		"effect_text": "다중 명중 회복 강화",
 		"effect": "charge_heal_level",
 		"value": 1,
+		"build_tags": ["survival", "charge"],
+		"build_label": "생존",
 	},
 	{
 		"id": "recall_knockback",
@@ -136,6 +168,8 @@ const CARDS := [
 		"effect_text": "차징 넉백 강화",
 		"effect": "charge_knockback_level",
 		"value": 1,
+		"build_tags": ["charge", "survival"],
+		"build_label": "차징",
 	},
 ]
 
@@ -150,24 +184,23 @@ const TACTICAL_CARD_IDS := [
 	"recall_knockback",
 ]
 
-static func pick_three(rng: RandomNumberGenerator) -> Array[Dictionary]:
+static func pick_three(rng: RandomNumberGenerator, player_stats: Dictionary = {}) -> Array[Dictionary]:
 	var pool: Array[Dictionary] = []
 	for card in CARDS:
 		pool.append(card.duplicate(true))
 
-	for i in range(pool.size() - 1, 0, -1):
-		var swap_idx := rng.randi_range(0, i)
-		var temp := pool[i]
-		pool[i] = pool[swap_idx]
-		pool[swap_idx] = temp
-
 	var picked: Array[Dictionary] = []
 	for i in range(mini(3, pool.size())):
-		picked.append(pool[i])
+		var card := _weighted_take(pool, picked, player_stats, rng)
+		if not card.is_empty():
+			picked.append(card)
 	if not _has_tactical_card(picked):
-		var tactical_pool := pool.filter(func(card: Dictionary) -> bool: return TACTICAL_CARD_IDS.has(String(card["id"])))
-		if tactical_pool.size() > 0 and picked.size() > 0:
-			picked[picked.size() - 1] = tactical_pool[rng.randi_range(0, tactical_pool.size() - 1)].duplicate(true)
+		_replace_last_with(pool, picked, player_stats, rng, func(card: Dictionary) -> bool: return TACTICAL_CARD_IDS.has(String(card["id"])))
+	if _primary_tag_count(picked).size() < 2:
+		var current_tag := _primary_tag(picked[0]) if picked.size() > 0 else ""
+		_replace_last_with(pool, picked, player_stats, rng, func(card: Dictionary) -> bool: return _primary_tag(card) != current_tag)
+	for card in picked:
+		_apply_display_label(card)
 	return picked
 
 static func _has_tactical_card(cards: Array[Dictionary]) -> bool:
@@ -175,3 +208,73 @@ static func _has_tactical_card(cards: Array[Dictionary]) -> bool:
 		if TACTICAL_CARD_IDS.has(String(card["id"])):
 			return true
 	return false
+
+static func _replace_last_with(pool: Array[Dictionary], picked: Array[Dictionary], player_stats: Dictionary, rng: RandomNumberGenerator, predicate: Callable) -> void:
+	if picked.size() == 0:
+		return
+	var replacement_pool: Array[Dictionary] = []
+	for card in pool:
+		if predicate.call(card) and not _has_card_id(picked, String(card["id"])):
+			replacement_pool.append(card)
+	if replacement_pool.size() == 0:
+		return
+	var previous_picks: Array[Dictionary] = []
+	for i in range(picked.size() - 1):
+		previous_picks.append(picked[i])
+	picked[picked.size() - 1] = _weighted_take(replacement_pool, previous_picks, player_stats, rng)
+
+static func _weighted_take(pool: Array[Dictionary], picked: Array[Dictionary], player_stats: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
+	if pool.size() == 0:
+		return {}
+	var weights: Array[float] = []
+	var total := 0.0
+	var tag_counts := _primary_tag_count(picked)
+	for card in pool:
+		var tag := _primary_tag(card)
+		var weight := 1.0
+		var chosen_count := _chosen_build_count(player_stats, tag)
+		if chosen_count >= 2:
+			weight += 0.35
+		elif chosen_count == 1:
+			weight += 0.12
+		if int(tag_counts.get(tag, 0)) >= 2:
+			weight *= 0.15
+		weights.append(weight)
+		total += weight
+	var roll := rng.randf() * total
+	for i in range(pool.size()):
+		roll -= weights[i]
+		if roll <= 0.0:
+			return pool.pop_at(i).duplicate(true)
+	return pool.pop_back().duplicate(true)
+
+static func _chosen_build_count(player_stats: Dictionary, tag: String) -> int:
+	if not player_stats.has("build_counts"):
+		return 0
+	var counts: Dictionary = player_stats["build_counts"]
+	return int(counts.get(tag, 0))
+
+static func _primary_tag(card: Dictionary) -> String:
+	var tags: Array = card.get("build_tags", [])
+	if tags.size() == 0:
+		return "utility"
+	return String(tags[0])
+
+static func _primary_tag_count(cards: Array[Dictionary]) -> Dictionary:
+	var counts := {}
+	for card in cards:
+		var tag := _primary_tag(card)
+		counts[tag] = int(counts.get(tag, 0)) + 1
+	return counts
+
+static func _has_card_id(cards: Array[Dictionary], card_id: String) -> bool:
+	for card in cards:
+		if String(card["id"]) == card_id:
+			return true
+	return false
+
+static func _apply_display_label(card: Dictionary) -> void:
+	var label := String(card.get("build_label", "보조"))
+	var name := String(card["name"])
+	if not name.begins_with("["):
+		card["name"] = "[%s] %s" % [label, name]

@@ -20,6 +20,10 @@ Keep early combat numbers small so RPG and roguelite growth has room to inflate 
 
 Future enemy families should include defensive identity, not just larger HP: examples include anti-auto armor, charge-resistant plating, signal shields, and enemies that must be softened by one damage type before another becomes efficient.
 
+## Level-Up Build Tags
+
+Level-up cards now carry build tags for `auto`, `charge`, `area`, `survival`, and `utility`. The 3-card offer is corrected to show at least two visible build directions, while selected build tags weakly bias future offers once the player has taken two or more cards in that direction. The bias is intentionally soft and still prevents all three cards from collapsing into one build. This structure should later connect to character identity, weapon kits, and session-only or longer-term growth.
+
 ## Balance Simulator
 
 Run the combat balance simulator from the repository root:
@@ -35,6 +39,7 @@ The simulator reads current constants from `scripts/game_config.gd`, enemy role 
 - Growth stages: current card logic comparisons for no growth, auto damage cards, charge damage cards, and combined damage cards.
 - Defense type preview: virtual armor profiles for anti-auto, anti-charge, plated, and exposed-core enemies.
 - Meta progression preview: first trace upgrade comparisons for auto +1, charge +2, and max HP +5.
+- Build preview: rough package checks for auto, charge, area, and survival card directions.
 
 Use the output as a numeric gate before changing live balance:
 

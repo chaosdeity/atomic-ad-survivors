@@ -298,6 +298,8 @@ func _fire_charge() -> void:
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
 			hit_count += 1
 
+	if directed:
+		_try_charge_followthrough(hit_indices, limit, damage, aim_dir)
 	_handle_dead_positions(enemies.cleanup_dead())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	_fire_feedback(directed)
@@ -332,6 +334,9 @@ func _try_split_shot(primary_idx: int) -> void:
 		return
 	auto_shot_counter += 1
 	var cadence := maxi(2, 5 - split_level)
+	var auto_damage_synergy := _card_count("auto_damage") >= 2
+	if auto_damage_synergy:
+		cadence = maxi(2, cadence - 1)
 	if auto_shot_counter % cadence != 0:
 		return
 	var secondary_idx := enemies.nearest_enemy_excluding(player_pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx])
@@ -339,14 +344,16 @@ func _try_split_shot(primary_idx: int) -> void:
 		return
 	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
+	if auto_damage_synergy:
+		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
 	var hit := enemies.apply_damage(secondary_idx, split_damage, "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
 	_handle_dead_positions(enemies.cleanup_dead())
 	effects.add_alt_shot(player_pos, target_pos)
-	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 14.0, 0.24)
-	effects.add_floater(target_pos, "분열!", C.TOXIC_GREEN, 14)
+	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0 if auto_damage_synergy else 14.0, 0.28 if auto_damage_synergy else 0.24)
+	effects.add_floater(target_pos, "증폭 분열!" if auto_damage_synergy else "분열!", C.TOXIC_GREEN, 14)
 
 func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var burst_level := int(player_stats["kill_burst_level"])
@@ -367,6 +374,8 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
+		if int(player_stats["charge_puddle_level"]) > 0:
+			_spawn_burst_residue_puddle(pos)
 		dead_positions = enemies.cleanup_dead()
 	return dead_positions
 
@@ -395,15 +404,33 @@ func _apply_charge_aftereffects(hit_count: int, directed: bool, aim_dir: Vector2
 	_spawn_charge_puddle(directed, aim_dir)
 	_try_charge_heal(hit_count)
 
+func _try_charge_followthrough(hit_indices: Array[int], limit: int, damage: float, aim_dir: Vector2) -> void:
+	if _build_count("charge") < 2 or hit_indices.size() <= limit:
+		return
+	var idx: int = hit_indices[limit]
+	if idx < 0 or idx >= enemies.enemies.size():
+		return
+	var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+	var follow_damage := damage * 0.28
+	var hit := enemies.apply_damage(idx, follow_damage, "focused")
+	if not hit.is_empty():
+		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
+		_apply_hit_knockback(idx, player_pos, 10.0)
+		effects.add_impact_line(player_pos + aim_dir * 18.0, hit_pos, C.TOXIC_GREEN)
+		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 16.0, 0.26)
+		effects.add_floater(hit_pos, "관통!", C.TOXIC_GREEN, 13)
+	_handle_dead_positions(enemies.cleanup_dead())
+
 func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 	var puddle_level := int(player_stats["charge_puddle_level"])
 	if puddle_level <= 0:
 		return
 	var pos := player_pos + (aim_dir * C.CHARGE_RANGE * 0.62 if directed else Vector2.ZERO)
+	var area_combo := int(player_stats["kill_burst_level"]) > 0
 	charge_puddles.append({
 		"pos": pos,
-		"radius": 42.0 + 6.0 * puddle_level,
-		"dps": 17.0 + 6.0 * puddle_level,
+		"radius": 42.0 + 6.0 * puddle_level + (4.0 if area_combo else 0.0),
+		"dps": (17.0 + 6.0 * puddle_level) * (1.10 if area_combo else 1.0),
 		"life": 2.0 + 0.25 * puddle_level,
 		"duration": 2.0 + 0.25 * puddle_level,
 		"tick": 0.0,
@@ -411,20 +438,40 @@ func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 	})
 	while charge_puddles.size() > 2 + puddle_level:
 		charge_puddles.pop_front()
-	effects.add_status_ring(pos, C.TOXIC_GREEN, 42.0 + 6.0 * puddle_level, 0.42)
-	effects.add_floater(pos, "잔류!", C.TOXIC_GREEN, 14)
+	effects.add_status_ring(pos, C.TOXIC_GREEN, 42.0 + 6.0 * puddle_level + (4.0 if area_combo else 0.0), 0.42)
+	effects.add_floater(pos, "연쇄 잔류!" if area_combo else "잔류!", C.TOXIC_GREEN, 14)
+
+func _spawn_burst_residue_puddle(pos: Vector2) -> void:
+	charge_puddles.append({
+		"pos": pos,
+		"radius": 34.0 + 4.0 * float(player_stats["charge_puddle_level"]),
+		"dps": 10.0 + 3.0 * float(player_stats["kill_burst_level"]),
+		"life": 1.05,
+		"duration": 1.05,
+		"tick": 0.0,
+		"display_tick": 0.0,
+	})
+	while charge_puddles.size() > 2 + int(player_stats["charge_puddle_level"]):
+		charge_puddles.pop_front()
+	effects.add_status_ring(pos, C.TOXIC_GREEN, 36.0, 0.34)
+	effects.add_floater(pos + Vector2(0, 8), "잉크 폭죽!", C.TOXIC_GREEN, 12)
 
 func _try_charge_heal(hit_count: int) -> void:
 	var heal_level := int(player_stats["charge_heal_level"])
 	if heal_level <= 0:
 		return
 	var threshold := maxi(3, 6 - heal_level)
+	var survival_combo := _build_count("survival") >= 2 and player_hp <= float(player_stats["max_hp"]) * 0.45
+	if survival_combo:
+		threshold = maxi(2, threshold - 1)
 	if hit_count < threshold:
 		return
 	var heal_amount := 3.0 + 2.0 * heal_level
+	if survival_combo:
+		heal_amount += 3.0
 	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
 	effects.add_damage_number(player_pos, heal_amount, "heal")
-	effects.add_floater(player_pos + Vector2(-16, -8), "회복!", C.TOXIC_GREEN, 14)
+	effects.add_floater(player_pos + Vector2(-16, -8), "생존 회복!" if survival_combo else "회복!", C.TOXIC_GREEN, 14)
 
 func _is_perfect_charge() -> bool:
 	return int(player_stats["perfect_charge_level"]) > 0 and charge_open_age <= 0.25
@@ -607,13 +654,14 @@ func _show_level_card() -> void:
 	paused_for_card = true
 	if is_inside_tree():
 		get_tree().paused = true
-	offered_cards = LevelUpCards.pick_three(rng)
+	offered_cards = LevelUpCards.pick_three(rng, player_stats)
 	hud.show_level_cards(offered_cards, Callable(self, "_apply_card_choice"))
 
 func _apply_card_choice(index: int) -> void:
 	if index < 0 or index >= offered_cards.size():
 		return
 	var card := offered_cards[index]
+	_record_card_choice(card)
 	_apply_card_effect(card)
 	selected_card_count += 1
 	offered_cards.clear()
@@ -653,6 +701,24 @@ func _apply_card_effect(card: Dictionary) -> void:
 			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
 		"heal":
 			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
+
+func _record_card_choice(card: Dictionary) -> void:
+	var card_counts: Dictionary = player_stats["card_counts"]
+	var card_id := String(card["id"])
+	card_counts[card_id] = int(card_counts.get(card_id, 0)) + 1
+	var build_counts: Dictionary = player_stats["build_counts"]
+	var tags: Array = card.get("build_tags", [])
+	for tag_value in tags:
+		var tag := String(tag_value)
+		build_counts[tag] = int(build_counts.get(tag, 0)) + 1
+
+func _card_count(card_id: String) -> int:
+	var card_counts: Dictionary = player_stats.get("card_counts", {})
+	return int(card_counts.get(card_id, 0))
+
+func _build_count(tag: String) -> int:
+	var build_counts: Dictionary = player_stats.get("build_counts", {})
+	return int(build_counts.get(tag, 0))
 
 func _card_choice_from_event(event: InputEvent) -> int:
 	if not event is InputEventKey or not event.pressed or event.echo:
@@ -1055,6 +1121,8 @@ func _reset_player_stats() -> void:
 		"charge_slow_level": 0,
 		"charge_heal_level": 0,
 		"charge_knockback_level": 0,
+		"build_counts": {},
+		"card_counts": {},
 	}
 
 func _move_speed() -> float:
