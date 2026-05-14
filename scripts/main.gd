@@ -909,6 +909,24 @@ func _debug_jump_time(seconds: float) -> void:
 	enemies.spawn_timer = 0.0
 	_check_victory()
 
+func _debug_jump_preboss_signal(target_sortie_index: int, seconds: float) -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	sortie_index = maxi(target_sortie_index, 1)
+	first_sortie = sortie_index <= 1
+	first_recall_done = sortie_index > 1
+	preboss_signal_event_stage = 0
+	if sortie_index <= 2:
+		boss_signal_state = "none"
+		boss_signal_unlocked = false
+	elif sortie_index == 3:
+		boss_signal_state = "faint"
+		boss_signal_unlocked = false
+	else:
+		boss_signal_state = "detected"
+		boss_signal_unlocked = false
+	_debug_jump_time(seconds)
+
 func _debug_force_victory() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return

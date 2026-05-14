@@ -7,6 +7,11 @@ static var cached_font
 static func get_font():
 	if cached_font != null:
 		return cached_font
+	if ResourceLoader.exists(FONT_PATH, "FontFile"):
+		var loaded_font := ResourceLoader.load(FONT_PATH, "FontFile")
+		if loaded_font != null and loaded_font is Font:
+			cached_font = loaded_font
+			return cached_font
 	var font := FontFile.new()
 	var error := font.load_dynamic_font(FONT_PATH)
 	if error == OK:

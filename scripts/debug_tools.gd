@@ -27,12 +27,21 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_drop_hp()
 			return true
 		KEY_F5:
+			if event.shift_pressed:
+				main._debug_jump_preboss_signal(2, 115.0)
+				return true
 			main._debug_jump_time(175.0)
 			return true
 		KEY_F6:
+			if event.shift_pressed:
+				main._debug_jump_preboss_signal(3, 175.0)
+				return true
 			main._debug_jump_time(270.0)
 			return true
 		KEY_F7:
+			if event.shift_pressed:
+				main._debug_jump_preboss_signal(4, 235.0)
+				return true
 			main._debug_jump_time(299.0)
 			return true
 		KEY_F8:
@@ -62,6 +71,7 @@ func help_text() -> String:
 		"F2 Cards  F3 Charge",
 		"F4 HP=20",
 		"F5 175s  F6 270s  F7 299s",
+		"Shift+F5/6/7 Preboss signal checks",
 		"F8 Win  F9 Game Over",
 		"F10 Clear  F11 Swarm",
 	])
