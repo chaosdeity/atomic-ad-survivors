@@ -10,6 +10,10 @@ const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 
+const FIRST_RECALL_WARNING_TIME := 90.0
+const FIRST_RECALL_SURGE_TIME := 105.0
+const FIRST_RECALL_TIME := 118.0
+
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
 var elapsed := 0.0
@@ -26,6 +30,9 @@ var peak_enemy_count := 0
 var mid_event_triggered := false
 var wave_notice_timer := 0.0
 var wave_notice_text := ""
+var first_sortie := true
+var first_recall_done := false
+var recall_event_stage := 0
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -65,13 +72,13 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	if match_state == "game_over" or match_state == "victory":
+	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply":
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
 		queue_redraw()
 		if Input.is_action_just_pressed("charge"):
-			_restart()
+			_handle_terminal_action()
 		return
 	if paused_for_card:
 		effects.update(delta)
@@ -81,8 +88,9 @@ func _process(delta: float) -> void:
 		return
 
 	elapsed += delta
+	_update_first_recall_event()
 	_check_victory()
-	if match_state == "victory":
+	if match_state == "victory" or match_state == "recalled":
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -118,8 +126,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		pressed_charge = true
 	if pressed_charge:
-		if match_state == "game_over" or match_state == "victory":
-			_restart()
+		if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply":
+			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
 
@@ -397,6 +405,8 @@ func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_
 		_show_level_card()
 
 func _update_wave_events(wave_params: Dictionary) -> void:
+	if _first_recall_active():
+		return
 	if not mid_event_triggered and elapsed >= WaveDirector.MID_EVENT_TIME:
 		mid_event_triggered = true
 		enemies.spawn_elite_group(4, elapsed, player_pos, rng, wave_params)
@@ -408,6 +418,38 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
 	wave_notice_timer = 2.8
+
+func _update_first_recall_event() -> void:
+	if not _first_recall_active():
+		return
+	if recall_event_stage < 1 and elapsed >= FIRST_RECALL_WARNING_TIME:
+		recall_event_stage = 1
+		_show_wave_notice("캠페인 압력이 비정상 상승")
+		effects.add_status_ring(player_pos, C.NEON_RED, 58.0, 0.55)
+		effects.add_floater(player_pos, "압력 상승", C.NEON_RED, 15)
+	elif recall_event_stage < 2 and elapsed >= FIRST_RECALL_SURGE_TIME:
+		recall_event_stage = 2
+		_show_wave_notice("침묵 보급소: 회수 준비 중")
+		effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 78.0, 0.65)
+		effects.add_floater(player_pos, "회수 신호!", C.VITAMIN_YELLOW, 16)
+		_spawn_recall_pressure()
+	elif recall_event_stage < 3 and elapsed >= FIRST_RECALL_TIME:
+		recall_event_stage = 3
+		_finish_match("recalled")
+
+func _first_recall_active() -> bool:
+	return first_sortie and not first_recall_done and match_state == "playing"
+
+func _spawn_recall_pressure() -> void:
+	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0))
+	wave_params["spawn_count_min"] = 4
+	wave_params["spawn_count_max"] = 6
+	wave_params["elite_chance"] = 0.28
+	wave_params["speed_mult"] = float(wave_params.get("speed_mult", 1.0)) * 1.12
+	wave_params["role_weights"] = {"basic": 0.38, "fast": 0.28, "tank": 0.20, "signal": 0.14}
+	for i in range(maxi(0, mini(28, C.ENEMY_CAP - enemies.enemies.size()))):
+		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
+	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
 func _check_victory() -> void:
 	if match_state == "playing" and elapsed >= C.MATCH_DURATION:
@@ -422,9 +464,26 @@ func _finish_match(result_state: String) -> void:
 		get_tree().paused = false
 	offered_cards.clear()
 	hud.hide_level_card()
-	hud.show_result_screen(_result_data(result_state), Callable(self, "_restart"))
+	var callback := Callable(self, "_restart")
+	if result_state == "recalled":
+		callback = Callable(self, "_show_supply_depot")
+	hud.show_result_screen(_result_data(result_state), callback)
 
 func _result_data(result_state: String) -> Dictionary:
+	if result_state == "recalled":
+		return {
+			"result": "긴급 회수",
+			"description": "캠페인 신호에 삼켜지기 직전, 침묵 보급소가 당신을 끌어냈습니다.",
+			"trace": "찢어진 광고 전단",
+			"button_text": "보급소로 돌아가기",
+			"prompt": "스페이스 / 클릭으로 보급소 이동",
+			"survival_time": elapsed,
+			"level": level,
+			"kills": kills,
+			"card_count": selected_card_count,
+			"peak_enemy_count": peak_enemy_count,
+			"final_enemy_count": enemies.enemies.size(),
+		}
 	return {
 		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
 		"survival_time": elapsed,
@@ -434,6 +493,25 @@ func _result_data(result_state: String) -> Dictionary:
 		"peak_enemy_count": peak_enemy_count,
 		"final_enemy_count": enemies.enemies.size(),
 	}
+
+func _show_supply_depot() -> void:
+	match_state = "supply"
+	game_over = false
+	first_recall_done = true
+	first_sortie = false
+	paused_for_card = false
+	if is_inside_tree():
+		get_tree().paused = false
+	hud.show_supply_depot(Callable(self, "_restart"))
+
+func _handle_terminal_action() -> void:
+	match match_state:
+		"recalled":
+			_show_supply_depot()
+		"supply":
+			_restart()
+		_:
+			_restart()
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -508,7 +586,8 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _update_hud() -> void:
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, game_over, wave_notice_text if wave_notice_timer > 0.0 else "")
+	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply"
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "")
 	hud.set_debug_text(_debug_overlay_text())
 
 func _debug_overlay_text() -> String:
@@ -542,6 +621,9 @@ func _debug_info() -> Dictionary:
 		"charge_window_left": charge_window_left,
 		"selected_card_count": selected_card_count,
 		"mid_event_triggered": mid_event_triggered,
+		"first_sortie": first_sortie,
+		"first_recall_done": first_recall_done,
+		"recall_stage": recall_event_stage,
 		"fps": Engine.get_frames_per_second(),
 	}
 
@@ -755,6 +837,7 @@ func _restart() -> void:
 	selected_card_count = 0
 	peak_enemy_count = 0
 	mid_event_triggered = false
+	recall_event_stage = 0
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
 	auto_timer = 0.0

@@ -82,5 +82,8 @@ func detail_text(info: Dictionary) -> String:
 		"charge window: %.1f" % float(info.get("charge_window_left", 0.0)),
 		"cards: %d" % int(info.get("selected_card_count", 0)),
 		"mid event: %s" % str(info.get("mid_event_triggered", false)),
+		"first sortie: %s" % str(info.get("first_sortie", false)),
+		"recall done: %s" % str(info.get("first_recall_done", false)),
+		"recall stage: %d" % int(info.get("recall_stage", 0)),
 		"fps: %d" % int(info.get("fps", 0)),
 	])

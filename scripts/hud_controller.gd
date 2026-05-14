@@ -140,6 +140,7 @@ func build(parent: Node) -> void:
 	result_label.position = Vector2(16, 12)
 	result_label.size = Vector2(268, 132)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	result_label.add_theme_font_size_override("font_size", 10)
 	result_label.add_theme_color_override("font_color", C.INK)
 	result_panel.add_child(result_label)
@@ -246,8 +247,17 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	card_chosen_callback = Callable()
 	result_panel.visible = true
 	prompt_label.visible = false
-	prompt_label.text = "스페이스 / 클릭으로 다시 시작"
-	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d" % [
+	var description := str(result_data.get("description", ""))
+	var trace := str(result_data.get("trace", ""))
+	var extra_lines := ""
+	if description != "":
+		extra_lines += "\n%s" % description
+	if trace != "":
+		extra_lines += "\n회수한 흔적  %s" % trace
+	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
+	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
+	result_label.add_theme_font_size_override("font_size", 9 if result_data.get("result", "") == "긴급 회수" else 10)
+	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
 		int(C.MATCH_DURATION),
@@ -256,7 +266,19 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		int(result_data["card_count"]),
 		int(result_data["peak_enemy_count"]),
 		int(result_data["final_enemy_count"]),
+		extra_lines,
 	]
+
+func show_supply_depot(chosen_callback: Callable) -> void:
+	restart_callback = chosen_callback
+	card_panel.visible = false
+	card_chosen_callback = Callable()
+	result_panel.visible = true
+	prompt_label.visible = false
+	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
+	restart_button.text = "다시 출격"
+	result_label.add_theme_font_size_override("font_size", 10)
+	result_label.text = "침묵 보급소\n\n여기는 캠페인 신호가 닿지 않는 작은 공백입니다.\n\n출격에서 회수한 흔적은 다음 준비에 쓰입니다.\n\n다음 출격부터 5분 생존 목표가 열립니다."
 
 func hide_result_screen() -> void:
 	result_panel.visible = false
