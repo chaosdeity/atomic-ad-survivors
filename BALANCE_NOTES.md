@@ -6,4 +6,4 @@ The current combat tuning intentionally raises pressure for experienced survivor
 
 ## First Sortie Recall
 
-The first sortie should end with an emergency recall around 90-120 seconds, introducing the loop of sortie, recall, Silent Supply Depot, growth, and redeployment. The first boss should be held back until the player has seen a few redeployments and understands that failed runs still return useful traces.
+The first sortie should collapse before the player can approach boss pacing: warning around 70 seconds, campaign signal collapse around 88 seconds, and emergency recall by roughly 108 seconds at the latest. The player should feel overwhelmed by the campaign environment, not simply stopped by a timer. This introduces the loop of sortie, recall, Silent Supply Depot, growth, and redeployment. The first boss should be held back until the player has seen a few redeployments and understands that failed runs still return useful traces.

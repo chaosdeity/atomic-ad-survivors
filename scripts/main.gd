@@ -10,9 +10,9 @@ const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 
-const FIRST_RECALL_WARNING_TIME := 90.0
-const FIRST_RECALL_SURGE_TIME := 105.0
-const FIRST_RECALL_TIME := 118.0
+const FIRST_RECALL_WARNING_TIME := 70.0
+const FIRST_RECALL_SURGE_TIME := 88.0
+const FIRST_RECALL_COLLAPSE_TIME := 108.0
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -33,6 +33,7 @@ var wave_notice_text := ""
 var first_sortie := true
 var first_recall_done := false
 var recall_event_stage := 0
+var recall_pressure_spawn_timer := 0.0
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -88,7 +89,7 @@ func _process(delta: float) -> void:
 		return
 
 	elapsed += delta
-	_update_first_recall_event()
+	_update_first_recall_event(delta)
 	_check_victory()
 	if match_state == "victory" or match_state == "recalled":
 		effects.update(delta)
@@ -174,7 +175,7 @@ func _update_enemies(delta: float) -> void:
 		return
 	player_hp = maxf(0.0, player_hp - contact_damage)
 	if player_hp <= 0.0:
-		_finish_match("game_over")
+		_finish_match("recalled" if _first_recall_active() else "game_over")
 
 func _update_auto_fire(delta: float) -> void:
 	auto_timer -= delta
@@ -419,7 +420,7 @@ func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
 	wave_notice_timer = 2.8
 
-func _update_first_recall_event() -> void:
+func _update_first_recall_event(delta: float) -> void:
 	if not _first_recall_active():
 		return
 	if recall_event_stage < 1 and elapsed >= FIRST_RECALL_WARNING_TIME:
@@ -429,25 +430,45 @@ func _update_first_recall_event() -> void:
 		effects.add_floater(player_pos, "압력 상승", C.NEON_RED, 15)
 	elif recall_event_stage < 2 and elapsed >= FIRST_RECALL_SURGE_TIME:
 		recall_event_stage = 2
-		_show_wave_notice("침묵 보급소: 회수 준비 중")
+		recall_pressure_spawn_timer = 0.0
+		_show_wave_notice("캠페인 신호 붕괴: 생체 한계 초과")
 		effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 78.0, 0.65)
-		effects.add_floater(player_pos, "회수 신호!", C.VITAMIN_YELLOW, 16)
-		_spawn_recall_pressure()
-	elif recall_event_stage < 3 and elapsed >= FIRST_RECALL_TIME:
+		effects.add_floater(player_pos, "신호 붕괴!", C.VITAMIN_YELLOW, 16)
+		_spawn_recall_pressure(72)
+	if recall_event_stage >= 2:
+		_apply_first_recall_collapse(delta)
+	if recall_event_stage < 3 and elapsed >= FIRST_RECALL_COLLAPSE_TIME:
 		recall_event_stage = 3
 		_finish_match("recalled")
 
 func _first_recall_active() -> bool:
 	return first_sortie and not first_recall_done and match_state == "playing"
 
-func _spawn_recall_pressure() -> void:
+func _apply_first_recall_collapse(delta: float) -> void:
+	recall_pressure_spawn_timer -= delta
+	if recall_pressure_spawn_timer <= 0.0:
+		recall_pressure_spawn_timer = 2.2
+		_spawn_recall_pressure(18)
+		effects.add_status_ring(player_pos, C.NEON_RED, 92.0, 0.42)
+	var collapse_ratio := clampf((elapsed - FIRST_RECALL_SURGE_TIME) / maxf(0.1, FIRST_RECALL_COLLAPSE_TIME - FIRST_RECALL_SURGE_TIME), 0.0, 1.0)
+	var pressure_dps := lerpf(10.0, 34.0, collapse_ratio)
+	player_hp = maxf(0.0, player_hp - pressure_dps * delta)
+	if rng.randf() < delta * 1.8:
+		effects.add_floater(player_pos + Vector2(rng.randf_range(-18.0, 18.0), rng.randf_range(-8.0, 8.0)), "회수 임계", C.NEON_RED, 12)
+	if player_hp <= 0.0:
+		recall_event_stage = 3
+		_finish_match("recalled")
+
+func _spawn_recall_pressure(count: int) -> void:
 	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0))
-	wave_params["spawn_count_min"] = 4
-	wave_params["spawn_count_max"] = 6
-	wave_params["elite_chance"] = 0.28
-	wave_params["speed_mult"] = float(wave_params.get("speed_mult", 1.0)) * 1.12
-	wave_params["role_weights"] = {"basic": 0.38, "fast": 0.28, "tank": 0.20, "signal": 0.14}
-	for i in range(maxi(0, mini(28, C.ENEMY_CAP - enemies.enemies.size()))):
+	wave_params["spawn_count_min"] = 7
+	wave_params["spawn_count_max"] = 10
+	wave_params["elite_chance"] = 0.48
+	wave_params["speed_mult"] = float(wave_params.get("speed_mult", 1.0)) * 1.45
+	wave_params["hp_mult"] = float(wave_params.get("hp_mult", 1.0)) * 1.35
+	wave_params["contact_damage_mult"] = float(wave_params.get("contact_damage_mult", 1.0)) * 1.35
+	wave_params["role_weights"] = {"basic": 0.12, "fast": 0.34, "tank": 0.26, "signal": 0.28}
+	for i in range(maxi(0, mini(count, C.ENEMY_CAP - enemies.enemies.size()))):
 		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
@@ -838,6 +859,7 @@ func _restart() -> void:
 	peak_enemy_count = 0
 	mid_event_triggered = false
 	recall_event_stage = 0
+	recall_pressure_spawn_timer = 0.0
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
 	auto_timer = 0.0
