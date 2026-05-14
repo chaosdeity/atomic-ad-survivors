@@ -2,10 +2,13 @@ extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
 
+const MAX_DAMAGE_NUMBERS := 100
+
 var shots: Array[Dictionary] = []
 var bursts: Array[Dictionary] = []
 var particles: Array[Dictionary] = []
 var floaters: Array[Dictionary] = []
+var damage_numbers: Array[Dictionary] = []
 var warning_rings: Array[Dictionary] = []
 var miss_rings: Array[Dictionary] = []
 var status_rings: Array[Dictionary] = []
@@ -30,6 +33,9 @@ func update(delta: float) -> void:
 	for item in floaters:
 		item["life"] = float(item["life"]) - delta
 		item["pos"] = Vector2(item["pos"]) + Vector2(0, -18) * delta
+	for item in damage_numbers:
+		item["life"] = float(item["life"]) - delta
+		item["pos"] = Vector2(item["pos"]) + Vector2(item.get("drift", Vector2.ZERO)) * delta
 	for item in warning_rings:
 		item["life"] = float(item["life"]) - delta
 	for item in miss_rings:
@@ -42,6 +48,7 @@ func update(delta: float) -> void:
 	bursts = bursts.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	particles = particles.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	floaters = floaters.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	damage_numbers = damage_numbers.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	warning_rings = warning_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	miss_rings = miss_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	status_rings = status_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
@@ -67,6 +74,19 @@ func add_floater(pos: Vector2, text: String, color: Color, size: int = 12) -> vo
 		"color": color,
 		"size": size,
 	})
+
+func add_damage_number(pos: Vector2, amount: float, kind: String) -> void:
+	var style := _damage_number_style(kind)
+	damage_numbers.append({
+		"pos": pos + Vector2(float(style["x_offset"]), float(style["y_offset"])),
+		"text": _damage_text(amount, kind),
+		"life": float(style["life"]),
+		"duration": float(style["life"]),
+		"color": style["color"],
+		"size": int(style["size"]),
+		"drift": style["drift"],
+	})
+	_trim_damage_numbers()
 
 func add_status_ring(pos: Vector2, color: Color, radius: float = 15.0, life: float = 0.34) -> void:
 	status_rings.append({"pos": pos, "color": color, "radius": radius, "life": life, "duration": life})
@@ -217,6 +237,16 @@ func draw_front(canvas: CanvasItem) -> void:
 			canvas.draw_circle(pos, size, color)
 	for floater in floaters:
 		canvas.draw_string(ThemeDB.get_fallback_font(), floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
+	for number in damage_numbers:
+		var ratio := float(number["life"]) / maxf(0.001, float(number["duration"]))
+		var color: Color = number["color"]
+		color.a = clampf(ratio * 1.25, 0.0, 1.0)
+		var shadow := Color(0.08, 0.06, 0.05, color.a * 0.75)
+		var pos: Vector2 = number["pos"]
+		var text: String = number["text"]
+		var size := int(number.get("size", 12))
+		canvas.draw_string(ThemeDB.get_fallback_font(), pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, shadow)
+		canvas.draw_string(ThemeDB.get_fallback_font(), pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, color)
 
 func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
 	if screen_flash <= 0.0:
@@ -231,6 +261,7 @@ func clear() -> void:
 	bursts.clear()
 	particles.clear()
 	floaters.clear()
+	damage_numbers.clear()
 	warning_rings.clear()
 	miss_rings.clear()
 	status_rings.clear()
@@ -249,6 +280,34 @@ func _trim_particles() -> void:
 	if particles.size() <= C.CHARGE_MAX_PARTICLES:
 		return
 	particles = particles.slice(particles.size() - C.CHARGE_MAX_PARTICLES)
+
+func _trim_damage_numbers() -> void:
+	if damage_numbers.size() <= MAX_DAMAGE_NUMBERS:
+		return
+	damage_numbers = damage_numbers.slice(damage_numbers.size() - MAX_DAMAGE_NUMBERS)
+
+func _damage_text(amount: float, kind: String) -> String:
+	var sign := "+" if kind == "heal" else ""
+	if absf(amount - roundf(amount)) < 0.05:
+		return sign + str(int(roundf(amount)))
+	return sign + ("%.1f" % amount)
+
+func _damage_number_style(kind: String) -> Dictionary:
+	match kind:
+		"auto":
+			return {"color": Color(1.0, 0.96, 0.72, 0.98), "size": 11, "life": 0.48, "drift": Vector2(-5, -28), "x_offset": -5.0, "y_offset": -14.0}
+		"charge":
+			return {"color": C.VITAMIN_YELLOW, "size": 14, "life": 0.62, "drift": Vector2(0, -34), "x_offset": 0.0, "y_offset": -18.0}
+		"focused":
+			return {"color": C.TOXIC_GREEN, "size": 17, "life": 0.68, "drift": Vector2(6, -38), "x_offset": 5.0, "y_offset": -20.0}
+		"burst":
+			return {"color": Color(1.0, 0.48, 0.16, 0.98), "size": 14, "life": 0.58, "drift": Vector2(8, -32), "x_offset": 3.0, "y_offset": -18.0}
+		"puddle":
+			return {"color": Color(0.78, 0.36, 1.0, 0.95), "size": 10, "life": 0.42, "drift": Vector2(-2, -22), "x_offset": -3.0, "y_offset": -10.0}
+		"heal":
+			return {"color": Color(0.38, 1.0, 0.48, 0.98), "size": 13, "life": 0.56, "drift": Vector2(0, -30), "x_offset": 0.0, "y_offset": -24.0}
+		_:
+			return {"color": Color.WHITE, "size": 12, "life": 0.5, "drift": Vector2(0, -26), "x_offset": 0.0, "y_offset": -14.0}
 
 func _draw_star(canvas: CanvasItem, pos: Vector2, radius: float, color: Color) -> void:
 	var points := PackedVector2Array()

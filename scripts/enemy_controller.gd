@@ -74,6 +74,8 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"role": role,
 		"sprite_kind": sprite_kind,
 		"age": 0.0,
+		"hit_flash": 0.0,
+		"hit_flash_duration": 0.12,
 		"slow_timer": 0.0,
 		"slow_mult": 1.0,
 	})
@@ -130,6 +132,7 @@ func update_enemies(delta: float, player_pos: Vector2) -> float:
 	var signal_positions := _signal_positions()
 	for enemy in enemies:
 		enemy["age"] = float(enemy.get("age", 0.0)) + delta
+		enemy["hit_flash"] = maxf(0.0, float(enemy.get("hit_flash", 0.0)) - delta)
 		enemy["slow_timer"] = maxf(0.0, float(enemy.get("slow_timer", 0.0)) - delta)
 		var pos: Vector2 = enemy["pos"]
 		var to_player := player_pos - pos
@@ -192,16 +195,30 @@ func nearest_enemy_excluding(player_pos: Vector2, max_range: float, excluded: Ar
 	return best
 
 func damage_enemies_in_radius(center: Vector2, radius: float, damage: float, max_targets: int = -1) -> int:
+	return damage_enemies_in_radius_with_hits(center, radius, damage, max_targets).size()
+
+func damage_enemies_in_radius_with_hits(center: Vector2, radius: float, damage: float, max_targets: int = -1) -> Array[Dictionary]:
+	var hit_enemies: Array[Dictionary] = []
 	var hits := 0
 	var radius_sq := radius * radius
 	for i in range(enemies.size()):
 		if center.distance_squared_to(enemies[i]["pos"]) > radius_sq:
 			continue
 		enemies[i]["hp"] = float(enemies[i]["hp"]) - damage
+		mark_hit(i)
+		hit_enemies.append({"index": i, "pos": Vector2(enemies[i]["pos"]), "damage": damage})
 		hits += 1
 		if max_targets > 0 and hits >= max_targets:
 			break
-	return hits
+	return hit_enemies
+
+func mark_hit(index: int) -> void:
+	if index < 0 or index >= enemies.size():
+		return
+	var enemy := enemies[index]
+	var duration := 0.16 if bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) == "tank" else 0.11
+	enemy["hit_flash"] = duration
+	enemy["hit_flash_duration"] = duration
 
 func apply_slow(index: int, duration: float, mult: float) -> void:
 	if index < 0 or index >= enemies.size():
@@ -222,6 +239,7 @@ func damage_enemy(index: int, damage: float) -> Array[Vector2]:
 		var dead_positions: Array[Vector2] = []
 		return dead_positions
 	enemies[index]["hp"] = float(enemies[index]["hp"]) - damage
+	mark_hit(index)
 	return cleanup_dead()
 
 func cleanup_dead() -> Array[Vector2]:

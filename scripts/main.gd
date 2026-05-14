@@ -186,7 +186,9 @@ func _update_auto_fire(delta: float) -> void:
 	if target_idx == -1:
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
-	_handle_dead_positions(enemies.damage_enemy(target_idx, _auto_damage_per_tick()))
+	var damage := _auto_damage_per_tick()
+	effects.add_damage_number(target_pos, damage, "auto")
+	_handle_dead_positions(enemies.damage_enemy(target_idx, damage))
 	effects.add_auto_shot(player_pos, target_pos)
 	if paused_for_card:
 		return
@@ -226,8 +228,14 @@ func _update_charge_puddles(delta: float) -> void:
 			continue
 		var tick_delta := float(puddle["tick"])
 		puddle["tick"] = 0.0
+		puddle["display_tick"] = float(puddle.get("display_tick", 0.0)) + tick_delta
 		var center: Vector2 = puddle["pos"]
-		enemies.damage_enemies_in_radius(center, float(puddle["radius"]), float(puddle["dps"]) * tick_delta)
+		var damage := float(puddle["dps"]) * tick_delta
+		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage)
+		if float(puddle["display_tick"]) >= 0.32:
+			puddle["display_tick"] = 0.0
+			for n in range(mini(6, hit_enemies.size())):
+				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), damage, "puddle")
 		_handle_dead_positions(enemies.cleanup_dead())
 	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
@@ -255,8 +263,11 @@ func _fire_charge() -> void:
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
 		if idx < enemies.enemies.size():
-			effects.spawn_hit_spark(enemies.enemies[idx]["pos"], directed, rng)
+			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+			effects.spawn_hit_spark(hit_pos, directed, rng)
+			effects.add_damage_number(hit_pos, damage, "focused" if directed else "charge")
 			enemies.enemies[idx]["hp"] = float(enemies.enemies[idx]["hp"]) - damage
+			enemies.mark_hit(idx)
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
 			hit_count += 1
 
@@ -301,6 +312,7 @@ func _try_split_shot(primary_idx: int) -> void:
 		return
 	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
+	effects.add_damage_number(target_pos, split_damage, "auto")
 	_handle_dead_positions(enemies.damage_enemy(secondary_idx, split_damage))
 	effects.add_alt_shot(player_pos, target_pos)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 14.0, 0.24)
@@ -317,8 +329,10 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var radius := 58.0 + 8.0 * burst_level
 	var max_targets := 1 + mini(2, burst_level)
 	var damage := 22.0 + 8.0 * burst_level
-	var hits := enemies.damage_enemies_in_radius(pos, radius, damage, max_targets)
-	if hits > 0:
+	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, max_targets)
+	if hit_enemies.size() > 0:
+		for hit in hit_enemies:
+			effects.add_damage_number(Vector2(hit["pos"]), damage, "burst")
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
@@ -362,6 +376,7 @@ func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 		"life": 2.0 + 0.25 * puddle_level,
 		"duration": 2.0 + 0.25 * puddle_level,
 		"tick": 0.0,
+		"display_tick": 0.0,
 	})
 	while charge_puddles.size() > 2 + puddle_level:
 		charge_puddles.pop_front()
@@ -377,6 +392,7 @@ func _try_charge_heal(hit_count: int) -> void:
 		return
 	var heal_amount := 3.0 + 2.0 * heal_level
 	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
+	effects.add_damage_number(player_pos, heal_amount, "heal")
 	effects.add_floater(player_pos + Vector2(-16, -8), "회복!", C.TOXIC_GREEN, 14)
 
 func _is_perfect_charge() -> bool:
@@ -789,6 +805,34 @@ func _draw_enemies() -> void:
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
+		_draw_enemy_hit_feedback(enemy)
+
+func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
+	var hit_flash := float(enemy.get("hit_flash", 0.0))
+	if hit_flash <= 0.0:
+		return
+	var duration := maxf(0.001, float(enemy.get("hit_flash_duration", 0.12)))
+	var ratio := clampf(hit_flash / duration, 0.0, 1.0)
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	var heavy := bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) == "tank"
+	var flash_color := Color(1.0, 0.96, 0.72, 0.32 * ratio)
+	if heavy:
+		flash_color = Color(1.0, 0.91, 0.25, 0.38 * ratio)
+	draw_circle(pos, radius + (3.0 if heavy else 1.5), flash_color)
+	draw_arc(pos, radius + (6.0 if heavy else 4.0), 0.0, TAU, 28, Color(1.0, 1.0, 0.86, 0.82 * ratio), 2.5 if heavy else 1.8)
+	if float(enemy.get("hp", 0.0)) < float(enemy.get("max_hp", 0.0)):
+		_draw_enemy_hit_hp_bar(enemy, ratio)
+
+func _draw_enemy_hit_hp_bar(enemy: Dictionary, alpha_ratio: float) -> void:
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	var width := 25.0 if bool(enemy.get("elite", false)) else 18.0
+	var height := 3.0
+	var hp_ratio := clampf(float(enemy["hp"]) / maxf(0.001, float(enemy["max_hp"])), 0.0, 1.0)
+	var top_left := pos + Vector2(-width * 0.5, -radius - 12.0)
+	draw_rect(Rect2(top_left, Vector2(width, height)), Color(0.08, 0.06, 0.05, 0.58 * alpha_ratio))
+	draw_rect(Rect2(top_left, Vector2(width * hp_ratio, height)), Color(0.62, 1.0, 0.36, 0.86 * alpha_ratio))
 
 func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
