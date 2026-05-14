@@ -22,7 +22,7 @@ const PLAYER_RADIUS := 10.0
 const PLAYER_MAX_HP := 100.0
 const BASE_DPS := 130.0
 const AUTO_RANGE := 170.0
-const AUTO_TICK := 0.12
+const AUTO_TICK := 0.50
 const MATCH_DURATION := 300.0
 
 const ENEMY_HP := 76.0
@@ -33,7 +33,7 @@ const ENEMY_CONTACT_DPS := 10.5
 const ENEMY_SOFT_CAP := 150
 const ENEMY_CAP := 210
 
-const CHARGE_PERIOD := 5.0
+const CHARGE_PERIOD := 8.0
 const CHARGE_WINDOW := 1.0
 const CHARGE_WARNING_TIME := 0.6
 const CHARGE_DAMAGE := 285.0
