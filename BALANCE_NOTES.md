@@ -8,6 +8,10 @@ The current combat tuning intentionally raises pressure for experienced survivor
 
 The first sortie should collapse before the player can approach boss pacing: warning around 70 seconds, campaign signal collapse around 88 seconds, and emergency recall by roughly 108 seconds at the latest. The player should feel overwhelmed by the campaign environment, not simply stopped by a timer. This introduces the loop of sortie, recall, Silent Supply Depot, growth, and redeployment. The first boss should be held back until the player has seen a few redeployments and understands that failed runs still return useful traces.
 
+## First Meta Growth
+
+The first emergency recall grants one `torn_ad_flyer` trace, shown to the player as a torn ad flyer. The Silent Supply Depot can spend that trace on one small permanent upgrade: +1 auto-fire damage, +2 charge damage, or +5 max HP. These values are intentionally low so the protagonist still starts weak, while the next sortie feels slightly less hopeless. Runtime level-up cards reset each sortie; these meta bonuses persist for the current session and are structured so they can later move into save/load data.
+
 ## Early Damage Scale
 
 Keep early combat numbers small so RPG and roguelite growth has room to inflate later. Baseline auto-fire is 15 damage per 0.5 second shot, normal charge is 20 damage, focused charge is 30 damage, and a basic enemy has 45 HP. This means a focused charge wounds a fresh basic enemy but does not delete it, while follow-up auto-fire or combined effects still matter.
@@ -28,6 +32,7 @@ The simulator reads current constants from `scripts/game_config.gd`, enemy role 
 - Charge efficiency: repeated normal/focused charge casts and real kill time using the current 8 second charge period.
 - Growth stages: current card logic comparisons for no growth, auto damage cards, charge damage cards, and combined damage cards.
 - Defense type preview: virtual armor profiles for anti-auto, anti-charge, plated, and exposed-core enemies.
+- Meta progression preview: first trace upgrade comparisons for auto +1, charge +2, and max HP +5.
 
 Use the output as a numeric gate before changing live balance:
 

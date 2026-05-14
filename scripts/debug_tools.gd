@@ -85,5 +85,7 @@ func detail_text(info: Dictionary) -> String:
 		"first sortie: %s" % str(info.get("first_sortie", false)),
 		"recall done: %s" % str(info.get("first_recall_done", false)),
 		"recall stage: %d" % int(info.get("recall_stage", 0)),
+		"traces: torn_ad_flyer=%d" % int(info.get("trace_torn_ad_flyer", 0)),
+		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])

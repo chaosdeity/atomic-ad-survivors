@@ -1,6 +1,7 @@
 extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
+const UI_FONT := preload("res://assets/fonts/NotoSansKR-VF.ttf")
 
 const MAX_DAMAGE_NUMBERS := 100
 
@@ -13,6 +14,8 @@ var warning_rings: Array[Dictionary] = []
 var miss_rings: Array[Dictionary] = []
 var status_rings: Array[Dictionary] = []
 var impact_lines: Array[Dictionary] = []
+var slashes: Array[Dictionary] = []
+var combat_banner: Dictionary = {}
 var screen_flash := 0.0
 var screen_flash_duration := 0.0
 var screen_flash_color := Color(1.0, 0.91, 0.25, 1.0)
@@ -44,6 +47,10 @@ func update(delta: float) -> void:
 		item["life"] = float(item["life"]) - delta
 	for item in impact_lines:
 		item["life"] = float(item["life"]) - delta
+	for item in slashes:
+		item["life"] = float(item["life"]) - delta
+	if not combat_banner.is_empty():
+		combat_banner["life"] = float(combat_banner["life"]) - delta
 	shots = shots.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	bursts = bursts.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	particles = particles.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
@@ -53,12 +60,18 @@ func update(delta: float) -> void:
 	miss_rings = miss_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	status_rings = status_rings.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
 	impact_lines = impact_lines.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	slashes = slashes.filter(func(item: Dictionary) -> bool: return float(item["life"]) > 0.0)
+	if not combat_banner.is_empty() and float(combat_banner["life"]) <= 0.0:
+		combat_banner.clear()
 
 func add_auto_shot(from_pos: Vector2, to_pos: Vector2) -> void:
-	shots.append({"from": from_pos, "to": to_pos, "life": 0.10, "duration": 0.10, "color": C.NEON_RED, "width": 2.6})
+	shots.append({"from": from_pos, "to": to_pos, "life": 0.08, "duration": 0.08, "color": C.NEON_RED, "width": 2.8})
+	add_slash(to_pos, (to_pos - from_pos).normalized(), C.NEON_RED, 18.0, 0.13)
+	add_impact_shake(0.06, 1.5)
 
 func add_alt_shot(from_pos: Vector2, to_pos: Vector2) -> void:
 	shots.append({"from": from_pos, "to": to_pos, "life": 0.16, "duration": 0.16, "color": C.TOXIC_GREEN, "width": 4.0})
+	add_slash(to_pos, (to_pos - from_pos).normalized(), C.TOXIC_GREEN, 22.0, 0.16)
 
 func add_burst(pos: Vector2, dir: Vector2, life: float, directed: bool) -> void:
 	bursts.append({"pos": pos, "dir": dir, "life": life, "directed": directed})
@@ -94,6 +107,18 @@ func add_status_ring(pos: Vector2, color: Color, radius: float = 15.0, life: flo
 func add_impact_line(from_pos: Vector2, to_pos: Vector2, color: Color) -> void:
 	impact_lines.append({"from": from_pos, "to": to_pos, "color": color, "life": 0.18, "duration": 0.18})
 
+func add_slash(pos: Vector2, dir: Vector2, color: Color, radius: float = 20.0, life: float = 0.16) -> void:
+	var safe_dir := dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
+	slashes.append({"pos": pos, "dir": safe_dir, "color": color, "radius": radius, "life": life, "duration": life})
+
+func add_impact_shake(duration: float, power: float) -> void:
+	shake_left = maxf(shake_left, duration)
+	shake_power = maxf(shake_power, power)
+
+func show_combat_banner(text: String, color: Color = C.NEON_RED) -> void:
+	combat_banner = {"text": text, "color": color, "life": 1.05, "duration": 1.05}
+	add_impact_shake(0.22, 5.0)
+
 func add_charge_warning_ring(pos: Vector2) -> void:
 	warning_rings.append({"pos": pos, "life": C.CHARGE_WARNING_TIME, "duration": C.CHARGE_WARNING_TIME})
 
@@ -122,8 +147,7 @@ func show_charge_missed(pos: Vector2) -> void:
 
 func fire_feedback(directed: bool) -> void:
 	_set_screen_flash(0.28 if directed else 0.20, Color(0.62, 1.0, 0.36, 1.0) if directed else Color(1.0, 0.91, 0.25, 1.0))
-	shake_left = 0.25 if directed else 0.15
-	shake_power = C.CHARGE_FOCUS_SHAKE if directed else C.CHARGE_NORMAL_SHAKE
+	add_impact_shake(0.25 if directed else 0.15, C.CHARGE_FOCUS_SHAKE if directed else C.CHARGE_NORMAL_SHAKE)
 
 func shake_offset(rng: RandomNumberGenerator) -> Vector2:
 	if shake_left <= 0.0:
@@ -213,6 +237,16 @@ func draw_front(canvas: CanvasItem) -> void:
 		var color: Color = line["color"]
 		color.a = clampf(float(line["life"]) / maxf(0.001, float(line["duration"])), 0.0, 1.0)
 		canvas.draw_line(line["from"], line["to"], color, 3.0)
+	for slash in slashes:
+		var ratio := float(slash["life"]) / maxf(0.001, float(slash["duration"]))
+		var color: Color = slash["color"]
+		color.a = clampf(ratio * 1.15, 0.0, 1.0)
+		var pos: Vector2 = slash["pos"]
+		var dir: Vector2 = slash["dir"]
+		var radius := float(slash["radius"]) * (1.0 + (1.0 - ratio) * 0.35)
+		var angle := dir.angle()
+		canvas.draw_arc(pos, radius, angle - 1.85, angle + 1.85, 18, color, 4.0)
+		canvas.draw_line(pos - dir.rotated(PI * 0.5) * radius * 0.45, pos + dir.rotated(PI * 0.5) * radius * 0.45, Color(1.0, 0.96, 0.72, color.a * 0.65), 2.0)
 	for burst in bursts:
 		var pos: Vector2 = burst["pos"]
 		var directed: bool = burst["directed"]
@@ -236,7 +270,7 @@ func draw_front(canvas: CanvasItem) -> void:
 		else:
 			canvas.draw_circle(pos, size, color)
 	for floater in floaters:
-		canvas.draw_string(ThemeDB.get_fallback_font(), floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
+		canvas.draw_string(UI_FONT, floater["pos"], floater["text"], HORIZONTAL_ALIGNMENT_CENTER, -1.0, int(floater.get("size", 12)), floater["color"])
 	for number in damage_numbers:
 		var ratio := float(number["life"]) / maxf(0.001, float(number["duration"]))
 		var color: Color = number["color"]
@@ -245,16 +279,29 @@ func draw_front(canvas: CanvasItem) -> void:
 		var pos: Vector2 = number["pos"]
 		var text: String = number["text"]
 		var size := int(number.get("size", 12))
-		canvas.draw_string(ThemeDB.get_fallback_font(), pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, shadow)
-		canvas.draw_string(ThemeDB.get_fallback_font(), pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, color)
+		canvas.draw_string(UI_FONT, pos + Vector2(1, 1), text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, shadow)
+		canvas.draw_string(UI_FONT, pos, text, HORIZONTAL_ALIGNMENT_CENTER, -1.0, size, color)
 
 func draw_screen_flash(canvas: CanvasItem, camera_pos: Vector2) -> void:
-	if screen_flash <= 0.0:
+	if screen_flash > 0.0:
+		var ratio := screen_flash / maxf(0.001, screen_flash_duration)
+		var color := screen_flash_color
+		color.a = clampf(ratio * 0.36, 0.0, 0.38)
+		canvas.draw_rect(Rect2(camera_pos - C.VIEWPORT_SIZE * 0.5, C.VIEWPORT_SIZE), color)
+	if combat_banner.is_empty():
 		return
-	var ratio := screen_flash / maxf(0.001, screen_flash_duration)
-	var color := screen_flash_color
-	color.a = clampf(ratio * 0.36, 0.0, 0.38)
-	canvas.draw_rect(Rect2(camera_pos - C.VIEWPORT_SIZE * 0.5, C.VIEWPORT_SIZE), color)
+	var banner_ratio := float(combat_banner["life"]) / maxf(0.001, float(combat_banner["duration"]))
+	var center := camera_pos + Vector2(0, -24)
+	var width := C.VIEWPORT_SIZE.x * (0.72 + (1.0 - banner_ratio) * 0.08)
+	var height := 34.0
+	var banner_color: Color = combat_banner["color"]
+	banner_color.a = clampf(banner_ratio * 0.72, 0.0, 0.72)
+	canvas.draw_rect(Rect2(center - Vector2(width * 0.5, height * 0.5), Vector2(width, height)), Color(0.32, 0.04, 0.04, banner_color.a * 0.84))
+	canvas.draw_line(center + Vector2(-width * 0.5, -height * 0.5), center + Vector2(width * 0.5, -height * 0.5), banner_color, 3.0)
+	canvas.draw_line(center + Vector2(-width * 0.5, height * 0.5), center + Vector2(width * 0.5, height * 0.5), banner_color, 3.0)
+	var text_color := Color(1.0, 0.93, 0.58, clampf(banner_ratio * 1.25, 0.0, 1.0))
+	canvas.draw_string(UI_FONT, center + Vector2(2, 9), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, Color(0.05, 0.02, 0.02, text_color.a))
+	canvas.draw_string(UI_FONT, center + Vector2(0, 7), String(combat_banner["text"]), HORIZONTAL_ALIGNMENT_CENTER, width, 24, text_color)
 
 func clear() -> void:
 	shots.clear()
@@ -266,6 +313,8 @@ func clear() -> void:
 	miss_rings.clear()
 	status_rings.clear()
 	impact_lines.clear()
+	slashes.clear()
+	combat_banner.clear()
 	screen_flash = 0.0
 	screen_flash_duration = 0.0
 	shake_left = 0.0

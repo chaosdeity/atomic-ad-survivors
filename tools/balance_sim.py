@@ -312,6 +312,45 @@ def defense_type_table(config: BalanceConfig) -> str:
     )
 
 
+def meta_progression_table(config: BalanceConfig) -> str:
+    rows: list[list[object]] = []
+    stages = [
+        ("no meta", 0.0, 0.0, 0.0, "first-sortie baseline"),
+        ("auto +1", 1.0, 0.0, 0.0, "광고 잔상 해독"),
+        ("charge +2", 0.0, 2.0, 0.0, "수동 송출 안정화"),
+        ("hp +5", 0.0, 0.0, 5.0, "보급소 응급처치; TTK unchanged"),
+    ]
+    for label, auto_bonus, charge_bonus, hp_bonus, note in stages:
+        auto_damage = config.auto_damage + auto_bonus
+        charge_damage = config.charge_damage + charge_bonus
+        focused_damage = charge_damage * (config.focused_charge_damage / config.charge_damage)
+
+        basic_auto = effective_damage(config, "basic", "auto", auto_damage)
+        tank_auto = effective_damage(config, "tank", "auto", auto_damage)
+        signal_auto = effective_damage(config, "signal", "auto", auto_damage)
+        signal_focus = effective_damage(config, "signal", "focused", focused_damage)
+        elite_focus = effective_damage(config, "elite", "focused", focused_damage)
+
+        rows.append(
+            [
+                label,
+                fmt_num(100.0 + hp_bonus),
+                fmt_num(auto_damage),
+                fmt_num(charge_damage),
+                fmt_num(focused_damage),
+                fmt_sec(ttk_for_auto(shots_to_kill(config.enemy_hp["basic"], basic_auto), config.auto_tick)),
+                fmt_sec(ttk_for_auto(shots_to_kill(config.enemy_hp["tank"], tank_auto), config.auto_tick)),
+                shots_to_kill(max(0.0, config.enemy_hp["signal"] - signal_focus), signal_auto),
+                casts_to_kill(config.enemy_hp["elite"], elite_focus),
+                note,
+            ]
+        )
+    return markdown_table(
+        ["meta stage", "max hp", "auto dmg", "charge dmg", "focused dmg", "basic auto ttk", "tank auto ttk", "signal focus cleanup", "elite focus casts", "note"],
+        rows,
+    )
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -351,6 +390,10 @@ def main() -> None:
     print("## Defense Type Preview")
     print()
     print(defense_type_table(config))
+    print()
+    print("## Meta Progression Preview")
+    print()
+    print(meta_progression_table(config))
     print()
     print("## Current Findings")
     print()

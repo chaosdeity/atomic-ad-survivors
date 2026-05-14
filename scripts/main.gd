@@ -1,6 +1,7 @@
 extends Node2D
 
 const C := preload("res://scripts/game_config.gd")
+const UI_FONT := preload("res://assets/fonts/NotoSansKR-VF.ttf")
 const AudioFactory := preload("res://scripts/audio_factory.gd")
 const HudController := preload("res://scripts/hud_controller.gd")
 const EffectsController := preload("res://scripts/effects_controller.gd")
@@ -9,6 +10,7 @@ const LevelUpCards := preload("res://scripts/level_up_cards.gd")
 const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
+const MetaProgression := preload("res://scripts/meta_progression.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -44,6 +46,9 @@ var charge_warning_played := false
 var charge_miss_notice := 0.0
 var last_move_dir := Vector2.DOWN
 var player_is_moving := false
+var attack_pose_timer := 0.0
+var attack_pose_dir := Vector2.RIGHT
+var hurt_feedback_cooldown := 0.0
 var auto_shot_counter := 0
 var charge_puddles: Array[Dictionary] = []
 
@@ -59,6 +64,7 @@ var effects := EffectsController.new()
 var enemies := EnemyController.new()
 var debug_tools := DebugTools.new()
 var sprite_assets := SpriteAssets.new()
+var meta_progression := MetaProgression.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -98,6 +104,8 @@ func _process(delta: float) -> void:
 		queue_redraw()
 		return
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
+	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
+	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	_update_player(delta)
 	var wave_params := WaveDirector.params_for_time(elapsed)
 	enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
@@ -122,6 +130,15 @@ func _input(event: InputEvent) -> void:
 		if choice != -1:
 			_apply_card_choice(choice)
 		return
+
+	if match_state == "supply":
+		var upgrade_choice := _supply_choice_from_event(event)
+		if upgrade_choice != -1:
+			_apply_supply_upgrade_choice(upgrade_choice)
+			return
+		if event is InputEventKey and event.is_action_pressed("charge"):
+			_handle_terminal_action()
+			return
 
 	var pressed_charge := event.is_action_pressed("charge")
 	if event is InputEventScreenTouch and event.pressed:
@@ -174,6 +191,10 @@ func _update_enemies(delta: float) -> void:
 	if contact_damage <= 0.0:
 		return
 	player_hp = maxf(0.0, player_hp - contact_damage)
+	if hurt_feedback_cooldown <= 0.0:
+		hurt_feedback_cooldown = 0.32
+		effects.add_impact_shake(0.10, 2.8)
+		effects.add_status_ring(player_pos, C.NEON_RED, 18.0, 0.20)
 	if player_hp <= 0.0:
 		_finish_match("recalled" if _first_recall_active() else "game_over")
 
@@ -190,6 +211,8 @@ func _update_auto_fire(delta: float) -> void:
 	var hit := enemies.apply_damage(target_idx, damage, "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_register_attack_pose(target_pos - player_pos, 0.14)
+		_apply_hit_knockback(target_idx, player_pos, 5.5)
 	_handle_dead_positions(enemies.cleanup_dead())
 	effects.add_auto_shot(player_pos, target_pos)
 	if paused_for_card:
@@ -263,6 +286,7 @@ func _fire_charge() -> void:
 
 	var hit_count := 0
 	var damage_type := "focused" if directed else "charge"
+	_register_attack_pose(aim_dir, 0.20 if directed else 0.16)
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
 		if idx < enemies.enemies.size():
@@ -270,6 +294,7 @@ func _fire_charge() -> void:
 			effects.spawn_hit_spark(hit_pos, directed, rng)
 			var hit := enemies.apply_damage(idx, damage, damage_type)
 			effects.add_damage_number(hit_pos, float(hit["damage"]), damage_type, String(hit["effectiveness"]))
+			_apply_hit_knockback(idx, player_pos, 18.0 if directed else 9.0)
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
 			hit_count += 1
 
@@ -317,6 +342,7 @@ func _try_split_shot(primary_idx: int) -> void:
 	var hit := enemies.apply_damage(secondary_idx, split_damage, "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
 	_handle_dead_positions(enemies.cleanup_dead())
 	effects.add_alt_shot(player_pos, target_pos)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 14.0, 0.24)
@@ -337,6 +363,7 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	if hit_enemies.size() > 0:
 		for hit in hit_enemies:
 			effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
+			_apply_hit_knockback(int(hit["index"]), pos, 13.0)
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
@@ -439,6 +466,8 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
 	wave_notice_timer = 2.8
+	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력")
+	effects.show_combat_banner(text, C.NEON_RED if danger else C.VITAMIN_YELLOW)
 
 func _update_first_recall_event(delta: float) -> void:
 	if not _first_recall_active():
@@ -498,6 +527,8 @@ func _check_victory() -> void:
 		_finish_match("victory")
 
 func _finish_match(result_state: String) -> void:
+	if result_state == "recalled" and _first_recall_active():
+		meta_progression.grant_first_recall_trace()
 	match_state = result_state
 	game_over = result_state == "game_over"
 	paused_for_card = false
@@ -543,7 +574,7 @@ func _show_supply_depot() -> void:
 	paused_for_card = false
 	if is_inside_tree():
 		get_tree().paused = false
-	hud.show_supply_depot(Callable(self, "_restart"))
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"))
 
 func _handle_terminal_action() -> void:
 	match match_state:
@@ -553,6 +584,17 @@ func _handle_terminal_action() -> void:
 			_restart()
 		_:
 			_restart()
+
+func _apply_supply_upgrade_choice(index: int) -> void:
+	var upgrades: Array = meta_progression.upgrade_defs()
+	if index < 0 or index >= upgrades.size():
+		return
+	var upgrade: Dictionary = upgrades[index]
+	if meta_progression.buy(String(upgrade["id"])):
+		effects.add_floater(player_pos, "영구 강화 적용", C.TOXIC_GREEN, 14)
+	else:
+		effects.add_floater(player_pos, "흔적 부족", C.NEON_RED, 13)
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"))
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -666,6 +708,8 @@ func _debug_info() -> Dictionary:
 		"first_recall_done": first_recall_done,
 		"recall_stage": recall_event_stage,
 		"fps": Engine.get_frames_per_second(),
+		"trace_torn_ad_flyer": meta_progression.trace_count(),
+		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
 func _debug_force_level_up() -> void:
@@ -768,6 +812,11 @@ func _draw_player() -> void:
 	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
 	if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
 		sprite_assets.draw_player_fallback(self, player_pos)
+	if attack_pose_timer > 0.0:
+		var pose_ratio := attack_pose_timer / 0.20
+		var pose_dir := attack_pose_dir.normalized() if attack_pose_dir.length_squared() > 0.0 else Vector2.RIGHT
+		draw_line(player_pos + pose_dir * 3.0, player_pos + pose_dir * (24.0 + 4.0 * pose_ratio), C.NEON_RED, 3.0)
+		draw_arc(player_pos + pose_dir * 13.0, 18.0, pose_dir.angle() - 0.9, pose_dir.angle() + 0.9, 14, Color(1.0, 0.91, 0.25, 0.75 * pose_ratio), 2.5)
 	if charge_state == "warning":
 		var warning_left := maxf(0.0, _charge_period() - charge_timer)
 		var warning_ratio := 1.0 - clampf(warning_left / C.CHARGE_WARNING_TIME, 0.0, 1.0)
@@ -810,6 +859,7 @@ func _draw_enemies() -> void:
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
+		_draw_enemy_nameplate(enemy)
 		_draw_enemy_hit_feedback(enemy)
 
 func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
@@ -838,6 +888,18 @@ func _draw_enemy_hit_hp_bar(enemy: Dictionary, alpha_ratio: float) -> void:
 	var top_left := pos + Vector2(-width * 0.5, -radius - 12.0)
 	draw_rect(Rect2(top_left, Vector2(width, height)), Color(0.08, 0.06, 0.05, 0.58 * alpha_ratio))
 	draw_rect(Rect2(top_left, Vector2(width * hp_ratio, height)), Color(0.62, 1.0, 0.36, 0.86 * alpha_ratio))
+
+func _draw_enemy_nameplate(enemy: Dictionary) -> void:
+	var role := String(enemy.get("role", "basic"))
+	if role == "basic":
+		return
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	var label := "ELITE" if bool(enemy.get("elite", false)) else ("FAST" if role == "fast" else ("TANK" if role == "tank" else "SIGNAL"))
+	var width := 42.0 if label != "SIGNAL" else 50.0
+	var y := -radius - 20.0
+	draw_rect(Rect2(pos + Vector2(-width * 0.5, y - 7.0), Vector2(width, 10.0)), Color(0.10, 0.06, 0.04, 0.62))
+	draw_string(UI_FONT, pos + Vector2(0, y), label, HORIZONTAL_ALIGNMENT_CENTER, width, 8, _defense_color(String(enemy.get("defense_type", "normal"))))
 
 func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
@@ -954,6 +1016,9 @@ func _restart() -> void:
 	wave_notice_text = ""
 	auto_timer = 0.0
 	auto_shot_counter = 0
+	attack_pose_timer = 0.0
+	attack_pose_dir = Vector2.RIGHT
+	hurt_feedback_cooldown = 0.0
 	charge_timer = 0.0
 	charge_window_left = 0.0
 	charge_open_age = 0.0
@@ -966,12 +1031,15 @@ func _restart() -> void:
 	hud.reset()
 
 func _reset_player_stats() -> void:
+	var meta_bonuses := meta_progression.bonuses()
 	player_stats = {
-		"max_hp": C.PLAYER_MAX_HP,
+		"max_hp": C.PLAYER_MAX_HP + float(meta_bonuses["max_hp_bonus"]),
 		"move_speed_mult": 0.0,
 		"auto_damage_mult": 0.0,
+		"auto_damage_bonus": float(meta_bonuses["auto_damage_bonus"]),
 		"auto_range_bonus": 0.0,
 		"charge_damage_mult": 0.0,
+		"charge_damage_bonus": float(meta_bonuses["charge_damage_bonus"]),
 		"charge_target_bonus": 0,
 		"charge_period_bonus": 0.0,
 		"xp_gain_mult": 0.0,
@@ -992,7 +1060,7 @@ func _auto_range() -> float:
 	return C.AUTO_RANGE + float(player_stats["auto_range_bonus"])
 
 func _auto_damage_per_tick() -> float:
-	return C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK
+	return C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK + float(player_stats["auto_damage_bonus"])
 
 func _charge_period() -> float:
 	var emergency_bonus := -0.45 * float(player_stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0
@@ -1013,7 +1081,34 @@ func _charge_target_limit(directed: bool) -> int:
 
 func _charge_damage(directed: bool) -> float:
 	var directed_mult := C.DIRECTED_BONUS if directed else 1.0
-	return C.CHARGE_DAMAGE * directed_mult * (1.0 + float(player_stats["charge_damage_mult"]))
+	return (C.CHARGE_DAMAGE + float(player_stats["charge_damage_bonus"])) * directed_mult * (1.0 + float(player_stats["charge_damage_mult"]))
+
+func _supply_choice_from_event(event: InputEvent) -> int:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return -1
+	match event.keycode:
+		KEY_1, KEY_KP_1:
+			return 0
+		KEY_2, KEY_KP_2:
+			return 1
+		KEY_3, KEY_KP_3:
+			return 2
+		_:
+			return -1
+
+func _register_attack_pose(dir: Vector2, duration: float) -> void:
+	if dir.length_squared() <= 0.0:
+		return
+	attack_pose_dir = dir.normalized()
+	attack_pose_timer = maxf(attack_pose_timer, duration)
+
+func _apply_hit_knockback(index: int, source_pos: Vector2, distance: float) -> void:
+	if index < 0 or index >= enemies.enemies.size():
+		return
+	var dir := Vector2(enemies.enemies[index]["pos"]) - source_pos
+	if dir.length_squared() <= 0.0:
+		dir = attack_pose_dir
+	enemies.knockback_enemy(index, dir.normalized(), distance)
 
 func _xp_gain() -> float:
 	return 1.0 * (1.0 + float(player_stats["xp_gain_mult"]))
