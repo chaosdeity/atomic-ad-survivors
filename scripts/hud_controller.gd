@@ -326,7 +326,7 @@ func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: 
 		"exposed_core":
 			boss_bar.color = C.TOXIC_GREEN
 		_:
-			boss_bar.color = C.NEON_RED
+			boss_bar.color = C.NEON_RED if hp_ratio > 0.25 else C.VITAMIN_YELLOW
 	boss_status_label.text = "%d%%\n%s" % [int(round(hp_ratio * 100.0)), status_text]
 
 func show_game_over() -> void:

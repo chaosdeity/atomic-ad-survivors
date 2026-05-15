@@ -1035,6 +1035,7 @@ func _debug_info() -> Dictionary:
 		"boss_signal_unlocked": boss_signal_unlocked,
 		"boss_active": boss.active,
 		"boss_state": boss.state,
+		"boss_phase": boss.phase,
 		"boss_hp": boss.hp,
 		"boss_max_hp": boss.max_hp,
 		"boss_defense": boss.defense_type,
@@ -1131,6 +1132,14 @@ func _debug_boss_phase_preview() -> void:
 		_debug_start_boss()
 	boss.force_phase_two_preview()
 	effects.show_combat_banner("보스 코어 강제 노출", C.TOXIC_GREEN)
+
+func _debug_boss_enrage_preview() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.force_enraged_preview()
+	effects.show_combat_banner("마지막 방송", C.NEON_RED)
 
 func _debug_boss_distortion() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:

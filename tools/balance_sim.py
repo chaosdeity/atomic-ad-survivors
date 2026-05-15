@@ -535,6 +535,42 @@ def boss_victory_reward_table() -> str:
     return markdown_table(["event", "trace reward", "analysis state", "loop note"], rows)
 
 
+def boss_enrage_preview_table() -> str:
+    rows = [
+        [
+            "phase threshold",
+            "25% HP",
+            "phase 3",
+            "last broadcast begins; no new pattern rules",
+        ],
+        [
+            "pattern cooldown",
+            "1.7s -> 0.95s",
+            "44% shorter rest",
+            "pressure rises through cadence instead of raw damage",
+        ],
+        [
+            "telegraphs",
+            "sweep/demo/distortion 1.25/1.25/1.15 -> 1.05/1.05/0.95",
+            "still readable",
+            "finale asks mastery of known tells",
+        ],
+        [
+            "core windows",
+            "-0.25s before meta bonus",
+            "minimum 1.15s",
+            "keeps core reward but removes long free damage",
+        ],
+        [
+            "shields",
+            "54 -> 46.4 HP",
+            "faster to break",
+            "higher pace without creating a wall at the finish",
+        ],
+    ]
+    return markdown_table(["knob", "value", "effect", "design note"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -598,6 +634,10 @@ def main() -> None:
     print("## Boss Victory Reward Preview")
     print()
     print(boss_victory_reward_table())
+    print()
+    print("## Boss Enrage Preview")
+    print()
+    print(boss_enrage_preview_table())
     print()
     print("## Current Findings")
     print()

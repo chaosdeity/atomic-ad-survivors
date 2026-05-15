@@ -12,6 +12,7 @@ const SWEEP_TELEGRAPH_TIME := 1.25
 const SWEEP_FIRE_TIME := 0.32
 const CORE_EXPOSE_TIME := 2.0
 const PATTERN_COOLDOWN := 1.7
+const ENRAGED_PATTERN_COOLDOWN := 0.95
 const DISTORTION_TELEGRAPH_TIME := 1.15
 const DISTORTION_ACTIVE_TIME := 4.6
 const DEMO_TELEGRAPH_TIME := 1.25
@@ -82,6 +83,7 @@ func reset() -> void:
 	demo_hit_done = false
 	shields.clear()
 	hit_flash = 0.0
+	core_expose_bonus = 0.0
 
 func update(delta: float, player_pos: Vector2) -> Dictionary:
 	if not active or defeated:
@@ -192,6 +194,13 @@ func force_phase_two_preview() -> void:
 	phase = 2
 	_expose_core(3.0)
 
+func force_enraged_preview() -> void:
+	if not active or defeated:
+		return
+	hp = minf(hp, max_hp * 0.24)
+	phase = 3
+	_expose_core(2.6)
+
 func force_distortion() -> void:
 	if not active or defeated:
 		return
@@ -220,7 +229,7 @@ func hp_ratio() -> float:
 
 func status_label() -> String:
 	if core_exposed:
-		return "코어 노출"
+		return "마지막 코어" if phase >= 3 else "코어 노출"
 	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_AUTO:
 		return "자동저항"
 	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
@@ -231,6 +240,8 @@ func status_label() -> String:
 		return "돌진"
 	if state == "demo_recover":
 		return "시연 회수"
+	if phase >= 3:
+		return "마지막 방송"
 	return "장갑"
 
 func target_distance_sq(from_pos: Vector2) -> float:
@@ -248,7 +259,7 @@ func draw(canvas: CanvasItem, elapsed: float) -> void:
 func _set_idle() -> void:
 	state = "idle"
 	pattern_name = ""
-	pattern_timer = PATTERN_COOLDOWN
+	pattern_timer = ENRAGED_PATTERN_COOLDOWN if phase >= 3 else PATTERN_COOLDOWN
 	pos = _clamp_demo_pos(pos)
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false
@@ -256,7 +267,21 @@ func _set_idle() -> void:
 
 func _start_next_pattern(player_pos: Vector2) -> void:
 	pattern_index += 1
-	if phase >= 2:
+	if phase >= 3:
+		match pattern_index % 6:
+			1:
+				_start_sweep(player_pos)
+			2:
+				_start_shield()
+			3:
+				_start_distortion_telegraph()
+			4:
+				_start_demo_telegraph(player_pos)
+			5:
+				_start_sweep(player_pos)
+			_:
+				_start_shield()
+	elif phase >= 2:
 		match pattern_index % 5:
 			3:
 				_start_distortion_telegraph()
@@ -274,7 +299,7 @@ func _start_next_pattern(player_pos: Vector2) -> void:
 func _start_sweep(player_pos: Vector2) -> void:
 	state = "sweep_telegraph"
 	pattern_name = "황금 시간대 스윕"
-	pattern_timer = SWEEP_TELEGRAPH_TIME
+	pattern_timer = SWEEP_TELEGRAPH_TIME if phase < 3 else 1.05
 	sweep_axis = "horizontal" if pattern_index % 4 == 1 else "vertical"
 	sweep_line_coord = player_pos.y if sweep_axis == "horizontal" else player_pos.x
 	sweep_damage_done = false
@@ -285,17 +310,17 @@ func _start_sweep(player_pos: Vector2) -> void:
 func _start_shield() -> void:
 	state = "shield"
 	pattern_name = "보증서 방패"
-	pattern_timer = 5.2
+	pattern_timer = 5.2 if phase < 3 else 4.2
 	defense_type = EnemyController.DEFENSE_TYPE_ANTI_AUTO
 	core_exposed = false
 	shields.clear()
 	for i in range(SHIELD_COUNT):
-		shields.append(SHIELD_HP)
+		shields.append(SHIELD_HP if phase < 3 else SHIELD_HP * 0.86)
 
 func _start_distortion_telegraph() -> void:
 	state = "distortion_telegraph"
 	pattern_name = "신호 왜곡 세일"
-	pattern_timer = DISTORTION_TELEGRAPH_TIME
+	pattern_timer = DISTORTION_TELEGRAPH_TIME if phase < 3 else 0.95
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
@@ -303,7 +328,7 @@ func _start_distortion_telegraph() -> void:
 func _start_distortion_active() -> void:
 	state = "distortion_active"
 	pattern_name = "신호 왜곡 세일"
-	pattern_timer = DISTORTION_ACTIVE_TIME
+	pattern_timer = DISTORTION_ACTIVE_TIME if phase < 3 else 3.6
 	defense_type = EnemyController.DEFENSE_TYPE_ANTI_CHARGE
 	core_exposed = false
 	shields.clear()
@@ -311,7 +336,7 @@ func _start_distortion_active() -> void:
 func _start_demo_telegraph(player_pos: Vector2) -> void:
 	state = "demo_telegraph"
 	pattern_name = "가정용 안전 시연"
-	pattern_timer = DEMO_TELEGRAPH_TIME
+	pattern_timer = DEMO_TELEGRAPH_TIME if phase < 3 else 1.05
 	demo_start_pos = _clamp_demo_pos(pos)
 	pos = demo_start_pos
 	var to_player := player_pos - demo_start_pos
@@ -342,13 +367,21 @@ func _start_demo_recover() -> void:
 func _expose_core(duration: float) -> void:
 	state = "core_exposed"
 	pattern_name = "코어 노출"
-	pattern_timer = duration + core_expose_bonus
+	var phase_duration := duration
+	if phase >= 3:
+		phase_duration = maxf(1.15, duration - 0.25)
+	pattern_timer = phase_duration + core_expose_bonus
 	defense_type = EnemyController.DEFENSE_TYPE_EXPOSED_CORE
 	core_exposed = true
 	shields.clear()
 
 func _update_phase() -> void:
-	phase = 2 if hp <= max_hp * 0.65 else 1
+	if hp <= max_hp * 0.25:
+		phase = 3
+	elif hp <= max_hp * 0.65:
+		phase = 2
+	else:
+		phase = 1
 
 func _sweep_hits_player(player_pos: Vector2) -> bool:
 	if sweep_axis == "horizontal":
@@ -444,6 +477,9 @@ func _draw_telegraphs(canvas: CanvasItem) -> void:
 func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	var ring_color := _defense_color()
 	var pulse := 1.0 + sin(elapsed * 4.6) * 0.04
+	if phase >= 3:
+		canvas.draw_arc(pos, BODY_RADIUS + 22.0 + sin(elapsed * 9.0) * 4.0, 0.0, TAU, 64, Color(1.0, 0.3, 0.36, 0.55), 6.0)
+		canvas.draw_arc(pos, BODY_RADIUS + 34.0 + cos(elapsed * 7.5) * 5.0, 0.0, TAU, 64, Color(1.0, 0.91, 0.25, 0.38), 3.0)
 	canvas.draw_circle(pos + Vector2(4, 8), BODY_RADIUS + 8.0, Color(0.0, 0.0, 0.0, 0.18))
 	canvas.draw_circle(pos, BODY_RADIUS * 0.92, Color("#f6dfaa"))
 	canvas.draw_arc(pos, (BODY_RADIUS + 10.0) * pulse, 0.0, TAU, 64, ring_color, 5.0)
