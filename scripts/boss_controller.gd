@@ -14,6 +14,13 @@ const CORE_EXPOSE_TIME := 2.0
 const PATTERN_COOLDOWN := 1.7
 const DISTORTION_TELEGRAPH_TIME := 1.15
 const DISTORTION_ACTIVE_TIME := 4.6
+const DEMO_TELEGRAPH_TIME := 1.25
+const DEMO_CHARGE_TIME := 0.85
+const DEMO_RECOVER_TIME := 0.55
+const DEMO_CORE_EXPOSE_TIME := 2.2
+const DEMO_DAMAGE := 34.0
+const DEMO_RAIL_WIDTH := 46.0
+const DEMO_TRAVEL_DISTANCE := 190.0
 const SHIELD_COUNT := 4
 const SHIELD_HP := 54.0
 
@@ -32,6 +39,10 @@ var pattern_index := 0
 var sweep_axis := "horizontal"
 var sweep_line_coord := 0.0
 var sweep_damage_done := false
+var demo_start_pos := DEFAULT_POS
+var demo_end_pos := DEFAULT_POS
+var demo_dir := Vector2.DOWN
+var demo_hit_done := false
 var shields: Array[float] = []
 var hit_flash := 0.0
 var defense_rules := EnemyController.new()
@@ -44,6 +55,10 @@ func start() -> void:
 	pos = DEFAULT_POS
 	pattern_index = 0
 	sweep_line_coord = 0.0
+	demo_start_pos = pos
+	demo_end_pos = pos
+	demo_dir = Vector2.DOWN
+	demo_hit_done = false
 	shields.clear()
 	_set_idle()
 
@@ -60,6 +75,10 @@ func reset() -> void:
 	pattern_index = 0
 	sweep_line_coord = 0.0
 	sweep_damage_done = false
+	demo_start_pos = DEFAULT_POS
+	demo_end_pos = DEFAULT_POS
+	demo_dir = Vector2.DOWN
+	demo_hit_done = false
 	shields.clear()
 	hit_flash = 0.0
 
@@ -96,6 +115,25 @@ func update(delta: float, player_pos: Vector2) -> Dictionary:
 		"distortion_active":
 			if pattern_timer <= 0.0:
 				_expose_core(1.35)
+		"demo_telegraph":
+			if pattern_timer <= 0.0:
+				_start_demo_charge()
+		"demo_charge":
+			var result := {}
+			var charge_ratio := 1.0 - clampf(pattern_timer / DEMO_CHARGE_TIME, 0.0, 1.0)
+			pos = demo_start_pos.lerp(demo_end_pos, charge_ratio)
+			if not demo_hit_done and _demo_hits_player(player_pos):
+				demo_hit_done = true
+				result["player_damage"] = DEMO_DAMAGE
+				result["hit_pos"] = player_pos
+				result["knockback"] = demo_dir * 20.0
+			if pattern_timer <= 0.0:
+				pos = demo_end_pos
+				_start_demo_recover()
+			return result
+		"demo_recover":
+			if pattern_timer <= 0.0:
+				_expose_core(DEMO_CORE_EXPOSE_TIME)
 		"core_exposed":
 			if pattern_timer <= 0.0:
 				_set_idle()
@@ -157,6 +195,13 @@ func force_distortion() -> void:
 	phase = 2
 	_start_distortion_telegraph()
 
+func force_safety_demo(player_pos: Vector2) -> void:
+	if not active or defeated:
+		return
+	hp = minf(hp, max_hp * 0.64)
+	phase = 2
+	_start_demo_telegraph(player_pos)
+
 func force_defeat() -> void:
 	if not active:
 		return
@@ -176,6 +221,12 @@ func status_label() -> String:
 		return "자동저항"
 	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
 		return "차징저항"
+	if state == "demo_telegraph":
+		return "시연 준비"
+	if state == "demo_charge":
+		return "돌진"
+	if state == "demo_recover":
+		return "시연 회수"
 	return "장갑"
 
 func target_distance_sq(from_pos: Vector2) -> float:
@@ -194,14 +245,23 @@ func _set_idle() -> void:
 	state = "idle"
 	pattern_name = ""
 	pattern_timer = PATTERN_COOLDOWN
+	pos = _clamp_demo_pos(pos)
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
 func _start_next_pattern(player_pos: Vector2) -> void:
 	pattern_index += 1
-	if phase >= 2 and pattern_index % 3 == 0:
-		_start_distortion_telegraph()
+	if phase >= 2:
+		match pattern_index % 5:
+			3:
+				_start_distortion_telegraph()
+			4:
+				_start_demo_telegraph(player_pos)
+			1:
+				_start_sweep(player_pos)
+			_:
+				_start_shield()
 	elif pattern_index % 2 == 1:
 		_start_sweep(player_pos)
 	else:
@@ -244,6 +304,37 @@ func _start_distortion_active() -> void:
 	core_exposed = false
 	shields.clear()
 
+func _start_demo_telegraph(player_pos: Vector2) -> void:
+	state = "demo_telegraph"
+	pattern_name = "가정용 안전 시연"
+	pattern_timer = DEMO_TELEGRAPH_TIME
+	demo_start_pos = _clamp_demo_pos(pos)
+	pos = demo_start_pos
+	var to_player := player_pos - demo_start_pos
+	demo_dir = to_player.normalized() if to_player.length_squared() > 0.001 else Vector2.DOWN
+	demo_end_pos = _clamp_demo_pos(demo_start_pos + demo_dir * DEMO_TRAVEL_DISTANCE)
+	demo_hit_done = false
+	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	core_exposed = false
+	shields.clear()
+
+func _start_demo_charge() -> void:
+	state = "demo_charge"
+	pattern_name = "가정용 안전 시연"
+	pattern_timer = DEMO_CHARGE_TIME
+	demo_hit_done = false
+	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	core_exposed = false
+	shields.clear()
+
+func _start_demo_recover() -> void:
+	state = "demo_recover"
+	pattern_name = "가정용 안전 시연"
+	pattern_timer = DEMO_RECOVER_TIME
+	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	core_exposed = false
+	shields.clear()
+
 func _expose_core(duration: float) -> void:
 	state = "core_exposed"
 	pattern_name = "코어 노출"
@@ -259,6 +350,25 @@ func _sweep_hits_player(player_pos: Vector2) -> bool:
 	if sweep_axis == "horizontal":
 		return absf(player_pos.y - sweep_line_coord) <= 26.0
 	return absf(player_pos.x - sweep_line_coord) <= 26.0
+
+func _demo_hits_player(player_pos: Vector2) -> bool:
+	if contains_point(player_pos, 8.0):
+		return true
+	return _distance_to_segment(player_pos, demo_start_pos, demo_end_pos) <= DEMO_RAIL_WIDTH * 0.5
+
+func _distance_to_segment(point: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var length_sq := ab.length_squared()
+	if length_sq <= 0.001:
+		return point.distance_to(a)
+	var t := clampf((point - a).dot(ab) / length_sq, 0.0, 1.0)
+	return point.distance_to(a + ab * t)
+
+func _clamp_demo_pos(value: Vector2) -> Vector2:
+	return Vector2(
+		clampf(value.x, -C.ARENA_HALF.x + BODY_RADIUS + 24.0, C.ARENA_HALF.x - BODY_RADIUS - 24.0),
+		clampf(value.y, -C.ARENA_HALF.y + BODY_RADIUS + 72.0, C.ARENA_HALF.y - BODY_RADIUS - 72.0)
+	)
 
 func _shield_damage_multiplier(damage_type: String) -> float:
 	if damage_type == EnemyController.DAMAGE_TYPE_AUTO:
@@ -309,6 +419,23 @@ func _draw_telegraphs(canvas: CanvasItem) -> void:
 			for n in range(points.size() - 1):
 				canvas.draw_line(points[n], points[n + 1], wave_color, 2.0)
 		canvas.draw_arc(pos, BODY_RADIUS + 28.0, 0.0, TAU, 48, hot_color, 4.0)
+	if state == "demo_telegraph" or state == "demo_charge" or state == "demo_recover":
+		var alpha := 0.34 if state == "demo_telegraph" else 0.54
+		var rail_color := Color(1.0, 0.3, 0.36, alpha)
+		var edge_color := Color(1.0, 0.91, 0.25, alpha + 0.18)
+		var normal := demo_dir.orthogonal().normalized()
+		var half_width := DEMO_RAIL_WIDTH * 0.5
+		var rail := PackedVector2Array([
+			demo_start_pos + normal * half_width,
+			demo_end_pos + normal * half_width,
+			demo_end_pos - normal * half_width,
+			demo_start_pos - normal * half_width,
+		])
+		canvas.draw_colored_polygon(rail, rail_color)
+		canvas.draw_line(demo_start_pos + normal * half_width, demo_end_pos + normal * half_width, edge_color, 3.0)
+		canvas.draw_line(demo_start_pos - normal * half_width, demo_end_pos - normal * half_width, edge_color, 3.0)
+		canvas.draw_line(demo_start_pos, demo_end_pos, Color(0.08, 0.06, 0.05, alpha + 0.16), 2.0)
+		canvas.draw_circle(demo_end_pos, 12.0 + sin(Time.get_ticks_msec() * 0.012) * 2.0, edge_color)
 
 func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	var ring_color := _defense_color()
@@ -328,6 +455,11 @@ func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 		var antenna_color := Color(0.35, 0.70, 0.95, 0.82)
 		canvas.draw_arc(pos + Vector2(-42, -86), 13.0 + sin(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
 		canvas.draw_arc(pos + Vector2(42, -86), 13.0 + cos(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
+	if state == "demo_telegraph":
+		canvas.draw_line(pos + demo_dir * 12.0, pos + demo_dir * 46.0, C.NEON_RED, 5.0)
+		canvas.draw_arc(pos, BODY_RADIUS + 18.0, demo_dir.angle() - 0.45, demo_dir.angle() + 0.45, 18, C.VITAMIN_YELLOW, 4.0)
+	elif state == "demo_charge":
+		canvas.draw_line(pos - demo_dir * 38.0, pos - demo_dir * 78.0, Color(1.0, 0.91, 0.25, 0.76), 5.0)
 	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.LEMON_YELLOW)
 	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.COCOA, false, 2.0)
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), "PRIME", HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, C.INK)

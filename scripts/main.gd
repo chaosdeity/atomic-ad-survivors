@@ -228,9 +228,14 @@ func _update_boss(delta: float) -> void:
 	var result := boss.update(delta, player_pos)
 	if result.has("player_damage"):
 		player_hp = maxf(0.0, player_hp - float(result["player_damage"]))
+		if result.has("knockback"):
+			player_pos += Vector2(result["knockback"])
+			player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
+			player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 		effects.add_damage_number(player_pos + Vector2(0, -16), float(result["player_damage"]), "hit")
-		effects.add_impact_shake(0.18, 5.2)
-		effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.30)
+		var heavy_hit := result.has("knockback")
+		effects.add_impact_shake(0.28 if heavy_hit else 0.18, 7.2 if heavy_hit else 5.2)
+		effects.add_status_ring(player_pos, C.NEON_RED, 32.0 if heavy_hit else 24.0, 0.38 if heavy_hit else 0.30)
 	if player_hp <= 0.0:
 		boss_result_reason = "boss_recall"
 		boss.active = false
@@ -1092,6 +1097,14 @@ func _debug_boss_distortion() -> void:
 		_debug_start_boss()
 	boss.force_distortion()
 	effects.show_combat_banner("신호 왜곡 세일", Color(0.35, 0.70, 0.95))
+
+func _debug_boss_safety_demo() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.force_safety_demo(player_pos)
+	effects.show_combat_banner("가정용 안전 시연", C.VITAMIN_YELLOW)
 
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:

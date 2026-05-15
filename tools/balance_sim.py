@@ -42,6 +42,7 @@ class BalanceConfig:
     auto_damage_card: float
     charge_damage_card: float
     boss_hp: float
+    player_max_hp: float
 
 
 def read_text(path: Path) -> str:
@@ -114,6 +115,7 @@ def load_config() -> BalanceConfig:
     auto_tick = parse_const(game_config, "AUTO_TICK")
     enemy_base_hp = parse_const(game_config, "ENEMY_HP")
     elite_hp = parse_const(game_config, "ELITE_HP")
+    player_max_hp = parse_const(game_config, "PLAYER_MAX_HP")
     charge_damage = parse_const(game_config, "CHARGE_DAMAGE")
     directed_bonus = parse_const(game_config, "DIRECTED_BONUS")
     charge_period = parse_const(game_config, "CHARGE_PERIOD")
@@ -134,6 +136,7 @@ def load_config() -> BalanceConfig:
         auto_damage_card=parse_card_value(level_up_cards, "auto_damage"),
         charge_damage_card=parse_card_value(level_up_cards, "charge_damage"),
         boss_hp=parse_const(boss_controller, "MAX_HP") if boss_controller else 1750.0,
+        player_max_hp=player_max_hp,
     )
 
 
@@ -420,6 +423,11 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
     distortion_auto_shots = math.floor(distortion_window / config.auto_tick)
     distortion_auto_damage = distortion_auto_shots * anti_charge_auto
     focused_loss = config.focused_charge_damage - anti_charge_focus
+    demo_hit_damage = 34.0
+    demo_hits_to_danger = math.floor(config.player_max_hp / demo_hit_damage) + 1
+    demo_core_window = 2.2
+    demo_auto_shots = math.floor(demo_core_window / config.auto_tick)
+    demo_window_damage = exposed_focus + demo_auto_shots * exposed_auto
     exposed_window = 2.0
     exposed_auto_shots = math.floor(exposed_window / config.auto_tick)
     exposed_window_damage = exposed_focus + exposed_auto_shots * exposed_auto
@@ -465,6 +473,20 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
             f"-{fmt_num(focused_loss)} vs normal focus",
             f"{fmt_num(anti_charge_focus / config.focused_charge_damage * 100.0)}% efficiency",
             "distortion makes blind charge timing a bad trade",
+        ],
+        [
+            "safety demo charge hit",
+            fmt_num(demo_hit_damage),
+            f"{demo_hits_to_danger} hits down base HP",
+            f"{fmt_num(demo_hit_damage / config.player_max_hp * 100.0)}% player HP",
+            "threatening but not an instant failure from full HP",
+        ],
+        [
+            "safety demo recover core",
+            f"{fmt_num(exposed_focus)} focus + {demo_auto_shots} autos",
+            fmt_num(demo_window_damage),
+            f"{fmt_num(demo_window_damage / hp * 100.0)}% boss HP",
+            "2.2s counter window rewards dodging across the rail",
         ],
     ]
     return markdown_table(["scenario", "hit value", "count", "time/value", "note"], rows)

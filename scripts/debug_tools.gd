@@ -24,6 +24,9 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_open_charge()
 			return true
 		KEY_F4:
+			if event.shift_pressed:
+				main._debug_boss_safety_demo()
+				return true
 			main._debug_drop_hp()
 			return true
 		KEY_F5:
@@ -89,6 +92,7 @@ func help_text() -> String:
 		"Shift+F8 Boss  Shift+F9 Core",
 		"Shift+F10 Defeat Boss",
 		"Shift+F11 Distortion",
+		"Shift+F4 Safety Demo",
 	])
 
 func detail_text(info: Dictionary) -> String:
