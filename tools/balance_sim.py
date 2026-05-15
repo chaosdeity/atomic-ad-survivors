@@ -517,6 +517,24 @@ def boss_analysis_upgrade_table(config: BalanceConfig) -> str:
     return markdown_table(["window", "duration", "expected damage", "gain", "boosted share"], rows)
 
 
+def boss_victory_reward_table() -> str:
+    rows = [
+        [
+            "first boss clear",
+            "campaign_core_fragment +2",
+            "boss analysis set to 3/3",
+            "returns to Silence Outpost instead of plain victory",
+        ],
+        [
+            "repeat boss clear",
+            "campaign_core_fragment +1",
+            "clear count increments",
+            "keeps boss rematches useful without save/load",
+        ],
+    ]
+    return markdown_table(["event", "trace reward", "analysis state", "loop note"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -576,6 +594,10 @@ def main() -> None:
     print("## Boss Analysis Upgrade Preview")
     print()
     print(boss_analysis_upgrade_table(config))
+    print()
+    print("## Boss Victory Reward Preview")
+    print()
+    print(boss_victory_reward_table())
     print()
     print("## Current Findings")
     print()

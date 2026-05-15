@@ -376,7 +376,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	if description != "":
 		extra_lines += "\n%s" % description
 	if trace != "":
-		extra_lines += "\n회수한 흔적  %s" % trace
+		extra_lines += "\n획득한 흔적  %s" % trace
 	for line in Array(result_data.get("progress_lines", [])):
 		extra_lines += "\n%s" % str(line)
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))

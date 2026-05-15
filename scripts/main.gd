@@ -50,6 +50,7 @@ var boss_signal_state := "none"
 var boss_signal_unlocked := false
 var boss_result_reason := ""
 var last_boss_recall_report := {}
+var last_boss_victory_report := {}
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -94,7 +95,7 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
-	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply":
+	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -114,7 +115,7 @@ func _process(delta: float) -> void:
 	_update_preboss_signal_events()
 	_try_start_boss_encounter()
 	_check_victory()
-	if match_state == "victory" or match_state == "recalled":
+	if match_state == "victory" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -163,7 +164,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch and event.pressed:
 		pressed_charge = true
 	if pressed_charge:
-		if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply":
+		if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
@@ -643,11 +644,13 @@ func _start_boss_encounter() -> void:
 func _on_boss_defeated() -> void:
 	boss_signal_state = "silent"
 	boss_signal_unlocked = false
+	boss_result_reason = "boss_defeated"
 	wave_notice_timer = 5.0
 	wave_notice_text = "보스 신호 침묵"
 	effects.show_combat_banner("보스 신호 침묵", C.TOXIC_GREEN)
 	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
 	effects.add_impact_shake(0.34, 7.0)
+	_finish_match("boss_victory")
 
 func _set_boss_signal_state(state: String) -> void:
 	if _boss_signal_rank(state) < _boss_signal_rank(boss_signal_state):
@@ -713,6 +716,8 @@ func _preboss_stage_label() -> String:
 	return "보스 신호 근접"
 
 func _next_objective_label() -> String:
+	if meta_progression.boss_clear_count > 0:
+		return "외곽 신호 추적"
 	if sortie_index <= 1:
 		return "보급소 재출격"
 	if sortie_index == 2:
@@ -777,6 +782,8 @@ func _finish_match(result_state: String) -> void:
 		meta_progression.grant_first_recall_trace()
 	if result_state == "recalled" and boss_result_reason == "boss_recall":
 		last_boss_recall_report = meta_progression.record_boss_recall(boss.hp_ratio())
+	if result_state == "boss_victory":
+		last_boss_victory_report = meta_progression.record_boss_victory()
 	match_state = result_state
 	game_over = result_state == "game_over"
 	paused_for_card = false
@@ -785,11 +792,32 @@ func _finish_match(result_state: String) -> void:
 	offered_cards.clear()
 	hud.hide_level_card()
 	var callback := Callable(self, "_restart")
-	if result_state == "recalled":
+	if result_state == "recalled" or result_state == "boss_victory":
 		callback = Callable(self, "_show_supply_depot")
 	hud.show_result_screen(_result_data(result_state), callback)
 
 func _result_data(result_state: String) -> Dictionary:
+	if result_state == "boss_victory":
+		var fragments := int(last_boss_victory_report.get("fragments_awarded", 0))
+		var clear_count := int(last_boss_victory_report.get("clear_count", meta_progression.boss_clear_count))
+		return {
+			"result": "송출 침묵",
+			"description": "캠페인 송출관의 광고 신호가 꺼지고, 보급소가 남은 코어 파편을 회수했습니다.",
+			"trace": "캠페인 코어 파편 +%d" % fragments,
+			"progress_lines": [
+				"보스 침묵: %d회" % clear_count,
+				"보스 분석: %d/3" % meta_progression.boss_analysis_level,
+				"다음 목표: 외곽 신호 추적",
+			],
+			"button_text": "보급소로 돌아가기",
+			"prompt": "스페이스 / 클릭으로 보급소 이동",
+			"survival_time": elapsed,
+			"level": level,
+			"kills": kills,
+			"card_count": selected_card_count,
+			"peak_enemy_count": peak_enemy_count,
+			"final_enemy_count": enemies.enemies.size(),
+		}
 	if result_state == "recalled":
 		if boss_result_reason == "boss_recall":
 			var analysis_level := int(last_boss_recall_report.get("analysis_after", meta_progression.boss_analysis_level))
@@ -849,7 +877,7 @@ func _show_supply_depot() -> void:
 
 func _handle_terminal_action() -> void:
 	match match_state:
-		"recalled":
+		"recalled", "boss_victory":
 			_show_supply_depot()
 		"supply":
 			_restart()
@@ -964,7 +992,7 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _update_hud() -> void:
-	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply"
+	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
 	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "")
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
@@ -1017,6 +1045,7 @@ func _debug_info() -> Dictionary:
 		"trace_torn_ad_flyer": meta_progression.trace_count(),
 		"trace_campaign_core_fragment": meta_progression.trace_count("campaign_core_fragment"),
 		"boss_analysis_level": meta_progression.boss_analysis_level,
+		"boss_clear_count": meta_progression.boss_clear_count,
 		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
@@ -1377,7 +1406,7 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 
 func _restart() -> void:
 	var was_supply := match_state == "supply"
-	var was_terminal_redeploy := (match_state == "game_over" or match_state == "victory") and first_recall_done
+	var was_terminal_redeploy := (match_state == "game_over" or match_state == "victory" or match_state == "boss_victory") and first_recall_done
 	if is_inside_tree():
 		get_tree().paused = false
 	if was_supply or was_terminal_redeploy:
@@ -1386,6 +1415,7 @@ func _restart() -> void:
 	boss.reset()
 	boss_result_reason = ""
 	last_boss_recall_report = {}
+	last_boss_victory_report = {}
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])

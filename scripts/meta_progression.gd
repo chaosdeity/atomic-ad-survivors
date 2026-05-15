@@ -57,6 +57,7 @@ var traces := {
 var upgrades := {}
 var awarded_flags := {}
 var boss_analysis_level := 0
+var boss_clear_count := 0
 
 func grant_first_recall_trace() -> bool:
 	if bool(awarded_flags.get("first_recall", false)):
@@ -83,6 +84,22 @@ func record_boss_recall(boss_hp_ratio: float) -> Dictionary:
 		"analysis_before": before,
 		"analysis_after": boss_analysis_level,
 		"analysis_gained": maxi(0, boss_analysis_level - before),
+	}
+
+func record_boss_victory() -> Dictionary:
+	var first_clear := boss_clear_count <= 0
+	var fragments := 2 if first_clear else 1
+	boss_clear_count += 1
+	traces[TRACE_CAMPAIGN_CORE_FRAGMENT] = int(traces.get(TRACE_CAMPAIGN_CORE_FRAGMENT, 0)) + fragments
+	var before := boss_analysis_level
+	boss_analysis_level = maxi(boss_analysis_level, 3)
+	awarded_flags["first_boss_victory"] = true
+	return {
+		"first_clear": first_clear,
+		"fragments_awarded": fragments,
+		"analysis_before": before,
+		"analysis_after": boss_analysis_level,
+		"clear_count": boss_clear_count,
 	}
 
 func upgrade_defs() -> Array:
@@ -157,12 +174,15 @@ func has_any_upgrade() -> bool:
 	return false
 
 func boss_analysis_summary() -> String:
-	return "보스 분석: %d/3   캠페인 코어 파편: %d" % [
+	return "보스 분석: %d/3   침묵 횟수: %d   캠페인 코어 파편: %d" % [
 		boss_analysis_level,
+		boss_clear_count,
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
 	]
 
 func boss_hint() -> String:
+	if boss_clear_count > 0:
+		return "다음 조우 힌트: 침묵시킨 송출 신호를 외곽 추적에 씁니다"
 	if boss_analysis_level <= 0:
 		return "다음 조우 힌트: 보스 신호를 다시 추적하세요"
 	if boss_analysis_level == 1:

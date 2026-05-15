@@ -124,6 +124,7 @@ func detail_text(info: Dictionary) -> String:
 		"recall stage: %d" % int(info.get("recall_stage", 0)),
 		"traces: flyer=%d core=%d" % [int(info.get("trace_torn_ad_flyer", 0)), int(info.get("trace_campaign_core_fragment", 0))],
 		"boss analysis: %d/3" % int(info.get("boss_analysis_level", 0)),
+		"boss clears: %d" % int(info.get("boss_clear_count", 0)),
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])
