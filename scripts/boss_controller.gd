@@ -8,7 +8,7 @@ const BOSS_NAME := "캠페인 송출관"
 const MAX_HP := 1750.0
 const BODY_RADIUS := 58.0
 const DEFAULT_POS := Vector2(0, -92)
-const SWEEP_TELEGRAPH_TIME := 1.15
+const SWEEP_TELEGRAPH_TIME := 1.25
 const SWEEP_FIRE_TIME := 0.32
 const CORE_EXPOSE_TIME := 2.0
 const PATTERN_COOLDOWN := 1.7
@@ -28,6 +28,7 @@ var pattern_name := ""
 var pattern_timer := 0.0
 var pattern_index := 0
 var sweep_axis := "horizontal"
+var sweep_line_coord := 0.0
 var sweep_damage_done := false
 var shields: Array[float] = []
 var hit_flash := 0.0
@@ -40,6 +41,7 @@ func start() -> void:
 	phase = 1
 	pos = DEFAULT_POS
 	pattern_index = 0
+	sweep_line_coord = 0.0
 	shields.clear()
 	_set_idle()
 
@@ -54,6 +56,7 @@ func reset() -> void:
 	pattern_name = ""
 	pattern_timer = 0.0
 	pattern_index = 0
+	sweep_line_coord = 0.0
 	sweep_damage_done = false
 	shields.clear()
 	hit_flash = 0.0
@@ -67,7 +70,7 @@ func update(delta: float, player_pos: Vector2) -> Dictionary:
 	match state:
 		"idle":
 			if pattern_timer <= 0.0:
-				_start_next_pattern()
+				_start_next_pattern(player_pos)
 		"sweep_telegraph":
 			if pattern_timer <= 0.0:
 				state = "sweep_fire"
@@ -153,7 +156,7 @@ func status_label() -> String:
 	if core_exposed:
 		return "코어 노출"
 	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_AUTO:
-		return "방패"
+		return "자동저항"
 	return "장갑"
 
 func target_distance_sq(from_pos: Vector2) -> float:
@@ -176,18 +179,19 @@ func _set_idle() -> void:
 	core_exposed = false
 	shields.clear()
 
-func _start_next_pattern() -> void:
+func _start_next_pattern(player_pos: Vector2) -> void:
 	pattern_index += 1
 	if pattern_index % 2 == 1:
-		_start_sweep()
+		_start_sweep(player_pos)
 	else:
 		_start_shield()
 
-func _start_sweep() -> void:
+func _start_sweep(player_pos: Vector2) -> void:
 	state = "sweep_telegraph"
 	pattern_name = "황금 시간대 스윕"
 	pattern_timer = SWEEP_TELEGRAPH_TIME
 	sweep_axis = "horizontal" if pattern_index % 4 == 1 else "vertical"
+	sweep_line_coord = player_pos.y if sweep_axis == "horizontal" else player_pos.x
 	sweep_damage_done = false
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false
@@ -216,8 +220,8 @@ func _update_phase() -> void:
 
 func _sweep_hits_player(player_pos: Vector2) -> bool:
 	if sweep_axis == "horizontal":
-		return absf(player_pos.y - pos.y) <= 34.0
-	return absf(player_pos.x - pos.x) <= 34.0
+		return absf(player_pos.y - sweep_line_coord) <= 26.0
+	return absf(player_pos.x - sweep_line_coord) <= 26.0
 
 func _shield_damage_multiplier(damage_type: String) -> float:
 	if damage_type == EnemyController.DAMAGE_TYPE_AUTO:
@@ -239,17 +243,21 @@ func _damage_front_shield(amount: float) -> void:
 
 func _draw_telegraphs(canvas: CanvasItem) -> void:
 	if state == "sweep_telegraph" or state == "sweep_fire":
-		var alpha := 0.28 if state == "sweep_telegraph" else 0.62
+		var alpha := 0.36 if state == "sweep_telegraph" else 0.70
 		var color := Color(1.0, 0.91, 0.25, alpha)
 		var hot := Color(1.0, 0.3, 0.36, alpha + 0.18)
 		if sweep_axis == "horizontal":
-			var rect := Rect2(Vector2(-C.ARENA_HALF.x, pos.y - 17.0), Vector2(C.ARENA_HALF.x * 2.0, 34.0))
+			var rect := Rect2(Vector2(-C.ARENA_HALF.x, sweep_line_coord - 26.0), Vector2(C.ARENA_HALF.x * 2.0, 52.0))
 			canvas.draw_rect(rect, color)
-			canvas.draw_line(Vector2(-C.ARENA_HALF.x, pos.y), Vector2(C.ARENA_HALF.x, pos.y), hot, 4.0)
+			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord - 26.0), Vector2(C.ARENA_HALF.x, sweep_line_coord - 26.0), hot, 3.0)
+			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord + 26.0), Vector2(C.ARENA_HALF.x, sweep_line_coord + 26.0), hot, 3.0)
+			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord), Vector2(C.ARENA_HALF.x, sweep_line_coord), hot, 5.0)
 		else:
-			var rect := Rect2(Vector2(pos.x - 17.0, -C.ARENA_HALF.y), Vector2(34.0, C.ARENA_HALF.y * 2.0))
+			var rect := Rect2(Vector2(sweep_line_coord - 26.0, -C.ARENA_HALF.y), Vector2(52.0, C.ARENA_HALF.y * 2.0))
 			canvas.draw_rect(rect, color)
-			canvas.draw_line(Vector2(pos.x, -C.ARENA_HALF.y), Vector2(pos.x, C.ARENA_HALF.y), hot, 4.0)
+			canvas.draw_line(Vector2(sweep_line_coord - 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord - 26.0, C.ARENA_HALF.y), hot, 3.0)
+			canvas.draw_line(Vector2(sweep_line_coord + 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord + 26.0, C.ARENA_HALF.y), hot, 3.0)
+			canvas.draw_line(Vector2(sweep_line_coord, -C.ARENA_HALF.y), Vector2(sweep_line_coord, C.ARENA_HALF.y), hot, 5.0)
 
 func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	var ring_color := _defense_color()
@@ -269,7 +277,9 @@ func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.COCOA, false, 2.0)
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), "PRIME", HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, C.INK)
 	if core_exposed:
-		canvas.draw_circle(pos + Vector2(0, -9), 14.0 + sin(elapsed * 14.0) * 2.0, Color(0.62, 1.0, 0.36, 0.86))
+		canvas.draw_circle(pos + Vector2(0, -9), 28.0 + sin(elapsed * 10.0) * 4.0, Color(0.62, 1.0, 0.36, 0.22))
+		canvas.draw_arc(pos + Vector2(0, -9), 24.0 + sin(elapsed * 14.0) * 3.0, 0.0, TAU, 36, C.TOXIC_GREEN, 4.0)
+		canvas.draw_circle(pos + Vector2(0, -9), 15.0 + sin(elapsed * 14.0) * 2.0, Color(0.62, 1.0, 0.36, 0.90))
 		canvas.draw_circle(pos + Vector2(0, -9), 6.0, C.VITAMIN_YELLOW)
 	if hit_flash > 0.0:
 		canvas.draw_circle(pos, BODY_RADIUS + 12.0, Color(1.0, 1.0, 0.86, hit_flash * 2.8))
