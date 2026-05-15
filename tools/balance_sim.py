@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 GAME_CONFIG = ROOT / "scripts" / "game_config.gd"
 ENEMY_CONTROLLER = ROOT / "scripts" / "enemy_controller.gd"
 LEVEL_UP_CARDS = ROOT / "scripts" / "level_up_cards.gd"
+BOSS_CONTROLLER = ROOT / "scripts" / "boss_controller.gd"
 
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 
@@ -40,6 +41,7 @@ class BalanceConfig:
     enemy_defense: dict[str, str]
     auto_damage_card: float
     charge_damage_card: float
+    boss_hp: float
 
 
 def read_text(path: Path) -> str:
@@ -106,6 +108,7 @@ def load_config() -> BalanceConfig:
     game_config = read_text(GAME_CONFIG)
     enemy_controller = read_text(ENEMY_CONTROLLER)
     level_up_cards = read_text(LEVEL_UP_CARDS)
+    boss_controller = read_text(BOSS_CONTROLLER) if BOSS_CONTROLLER.exists() else ""
 
     base_dps = parse_const(game_config, "BASE_DPS")
     auto_tick = parse_const(game_config, "AUTO_TICK")
@@ -130,6 +133,7 @@ def load_config() -> BalanceConfig:
         enemy_defense=role_defenses,
         auto_damage_card=parse_card_value(level_up_cards, "auto_damage"),
         charge_damage_card=parse_card_value(level_up_cards, "charge_damage"),
+        boss_hp=parse_const(boss_controller, "MAX_HP") if boss_controller else 1750.0,
     )
 
 
@@ -404,6 +408,48 @@ def preboss_progression_table() -> str:
     return markdown_table(["session step", "preboss role", "wave pressure note", "expected event"], rows)
 
 
+def first_boss_preview_table(config: BalanceConfig) -> str:
+    hp = config.boss_hp
+    plated_auto = config.auto_damage * DEFENSE_TYPES["plated"]["auto"]
+    plated_charge = config.charge_damage * DEFENSE_TYPES["plated"]["charge"]
+    exposed_auto = config.auto_damage * DEFENSE_TYPES["exposed_core"]["auto"]
+    exposed_focus = config.focused_charge_damage * DEFENSE_TYPES["exposed_core"]["focused"]
+    exposed_window = 2.0
+    exposed_auto_shots = math.floor(exposed_window / config.auto_tick)
+    exposed_window_damage = exposed_focus + exposed_auto_shots * exposed_auto
+    rows = [
+        [
+            "auto-only vs plated",
+            fmt_num(plated_auto),
+            f"{shots_to_kill(hp, plated_auto)} shots",
+            fmt_sec(ttk_for_auto(shots_to_kill(hp, plated_auto), config.auto_tick)),
+            "too slow alone; confirms boss is not a raw auto DPS check",
+        ],
+        [
+            "normal charge vs plated",
+            fmt_num(plated_charge),
+            f"{casts_to_kill(hp, plated_charge)} casts",
+            fmt_sec(repeated_charge_time(casts_to_kill(hp, plated_charge), config.charge_period)),
+            "charge-only remains inefficient outside response windows",
+        ],
+        [
+            "focused charge during exposed_core",
+            fmt_num(exposed_focus),
+            f"{casts_to_kill(hp, exposed_focus)} casts",
+            fmt_sec(repeated_charge_time(casts_to_kill(hp, exposed_focus), config.charge_period)),
+            "core exposure gives a visible directional-charge reward",
+        ],
+        [
+            "one exposed window",
+            f"{fmt_num(exposed_focus)} focus + {exposed_auto_shots} autos",
+            fmt_num(exposed_window_damage),
+            f"{fmt_num(exposed_window_damage / hp * 100.0)}% boss HP",
+            "rough 2s window expectation before cards/meta bonuses",
+        ],
+    ]
+    return markdown_table(["scenario", "hit value", "count", "time/value", "note"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -455,6 +501,10 @@ def main() -> None:
     print("## Preboss Progression Preview")
     print()
     print(preboss_progression_table())
+    print()
+    print("## First Boss Skeleton Preview")
+    print()
+    print(first_boss_preview_table(config))
     print()
     print("## Current Findings")
     print()

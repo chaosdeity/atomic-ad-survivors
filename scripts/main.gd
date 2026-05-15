@@ -11,6 +11,7 @@ const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 const MetaProgression := preload("res://scripts/meta_progression.gd")
+const BossController := preload("res://scripts/boss_controller.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -20,6 +21,7 @@ const BOSS_SIGNAL_LABELS := {
 	"faint": "미약함",
 	"detected": "감지됨",
 	"near": "근접",
+	"silent": "침묵",
 }
 
 var player_pos := Vector2.ZERO
@@ -46,6 +48,7 @@ var sortie_index := 1
 var preboss_signal_event_stage := 0
 var boss_signal_state := "none"
 var boss_signal_unlocked := false
+var boss_result_reason := ""
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -75,6 +78,7 @@ var enemies := EnemyController.new()
 var debug_tools := DebugTools.new()
 var sprite_assets := SpriteAssets.new()
 var meta_progression := MetaProgression.new()
+var boss := BossController.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -107,6 +111,7 @@ func _process(delta: float) -> void:
 	elapsed += delta
 	_update_first_recall_event(delta)
 	_update_preboss_signal_events()
+	_try_start_boss_encounter()
 	_check_victory()
 	if match_state == "victory" or match_state == "recalled":
 		effects.update(delta)
@@ -119,9 +124,11 @@ func _process(delta: float) -> void:
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	_update_player(delta)
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
-	enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
-	_update_wave_events(wave_params)
+	if not boss.active:
+		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
+		_update_wave_events(wave_params)
 	_update_enemies(delta)
+	_update_boss(delta)
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 	_update_auto_fire(delta)
 	_update_charge(delta)
@@ -207,7 +214,28 @@ func _update_enemies(delta: float) -> void:
 		effects.add_impact_shake(0.10, 2.8)
 		effects.add_status_ring(player_pos, C.NEON_RED, 18.0, 0.20)
 	if player_hp <= 0.0:
-		_finish_match("recalled" if _first_recall_active() else "game_over")
+		if boss.active:
+			boss_result_reason = "boss_recall"
+			boss.active = false
+			boss.state = "recall_escape"
+			_finish_match("recalled")
+		else:
+			_finish_match("recalled" if _first_recall_active() else "game_over")
+
+func _update_boss(delta: float) -> void:
+	if not boss.active:
+		return
+	var result := boss.update(delta, player_pos)
+	if result.has("player_damage"):
+		player_hp = maxf(0.0, player_hp - float(result["player_damage"]))
+		effects.add_damage_number(player_pos + Vector2(0, -16), float(result["player_damage"]), "hit")
+		effects.add_impact_shake(0.18, 5.2)
+		effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.30)
+	if player_hp <= 0.0:
+		boss_result_reason = "boss_recall"
+		boss.active = false
+		boss.state = "recall_escape"
+		_finish_match("recalled")
 
 func _update_auto_fire(delta: float) -> void:
 	auto_timer -= delta
@@ -215,10 +243,17 @@ func _update_auto_fire(delta: float) -> void:
 		return
 	auto_timer = C.AUTO_TICK
 	var target_idx := enemies.nearest_enemy(player_pos, _auto_range())
-	if target_idx == -1:
+	var boss_in_range := boss.active and player_pos.distance_to(boss.pos) <= _auto_range() + BossController.BODY_RADIUS
+	if target_idx == -1 and not boss_in_range:
+		return
+	var damage := _auto_damage_per_tick()
+	if boss_in_range and (target_idx == -1 or boss.target_distance_sq(player_pos) <= player_pos.distance_squared_to(enemies.enemies[target_idx]["pos"])):
+		var boss_hit := _apply_boss_damage(damage, "auto")
+		if not boss_hit.is_empty():
+			_register_attack_pose(boss.pos - player_pos, 0.14)
+			effects.add_auto_shot(player_pos, boss.pos)
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
-	var damage := _auto_damage_per_tick()
 	var hit := enemies.apply_damage(target_idx, damage, "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
@@ -268,10 +303,15 @@ func _update_charge_puddles(delta: float) -> void:
 		var center: Vector2 = puddle["pos"]
 		var damage := float(puddle["dps"]) * tick_delta
 		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage, -1, "puddle")
+		var boss_hit := {}
+		if boss.active and boss.contains_point(center, float(puddle["radius"])):
+			boss_hit = _apply_boss_damage(damage, "puddle", false)
 		if float(puddle["display_tick"]) >= 0.32:
 			puddle["display_tick"] = 0.0
 			for n in range(mini(6, hit_enemies.size())):
 				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), float(hit_enemies[n]["damage"]), "puddle", String(hit_enemies[n]["effectiveness"]))
+			if not boss_hit.is_empty():
+				effects.add_damage_number(Vector2(boss_hit["pos"]), float(boss_hit["damage"]), "puddle", String(boss_hit["effectiveness"]))
 		_handle_dead_positions(enemies.cleanup_dead())
 	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
@@ -309,6 +349,13 @@ func _fire_charge() -> void:
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
 			hit_count += 1
 
+	if hit_count < limit and _charge_hits_boss(directed, aim_dir):
+		var boss_hit := _apply_boss_damage(damage, damage_type)
+		if not boss_hit.is_empty():
+			effects.spawn_hit_spark(boss.pos, directed, rng)
+			effects.add_status_ring(boss.pos, C.TOXIC_GREEN if directed else C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 14.0, 0.32)
+			hit_count += 1
+
 	if directed:
 		_try_charge_followthrough(hit_indices, limit, damage, aim_dir)
 	_handle_dead_positions(enemies.cleanup_dead())
@@ -338,6 +385,31 @@ func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 		return player_pos.distance_squared_to(enemies.enemies[a]["pos"]) < player_pos.distance_squared_to(enemies.enemies[b]["pos"])
 	)
 	return hit_indices
+
+func _charge_hits_boss(directed: bool, aim_dir: Vector2) -> bool:
+	if not boss.active:
+		return false
+	var to_boss := boss.pos - player_pos
+	var dist := to_boss.length()
+	if dist > C.CHARGE_RANGE + BossController.BODY_RADIUS:
+		return false
+	if directed and to_boss.normalized().dot(aim_dir) < C.DIRECTED_ARC_COS:
+		return false
+	return true
+
+func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bool = true) -> Dictionary:
+	if not boss.active:
+		return {}
+	var hit := boss.apply_damage(base_damage, damage_type)
+	if hit.is_empty():
+		return {}
+	if show_number:
+		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
+	if float(hit.get("shield_damage", 0.0)) > 0.0:
+		effects.add_status_ring(boss.pos, C.LEMON_YELLOW, BossController.BODY_RADIUS + 18.0, 0.24)
+	if bool(hit.get("defeated", false)):
+		_on_boss_defeated()
+	return hit
 
 func _try_split_shot(primary_idx: int) -> void:
 	var split_level := int(player_stats["split_shot_level"])
@@ -378,10 +450,14 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	var max_targets := 1 + mini(2, burst_level)
 	var damage := 22.0 + 8.0 * burst_level
 	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, max_targets, "burst")
+	var boss_hit := {}
+	if boss.active and boss.contains_point(pos, radius):
+		boss_hit = _apply_boss_damage(damage, "burst")
 	if hit_enemies.size() > 0:
 		for hit in hit_enemies:
 			effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
 			_apply_hit_knockback(int(hit["index"]), pos, 13.0)
+	if hit_enemies.size() > 0 or not boss_hit.is_empty():
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, C.CORAL_PINK, radius, 0.34)
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
@@ -538,6 +614,30 @@ func _update_preboss_signal_events() -> void:
 		boss_signal_unlocked = true
 		_show_wave_notice("대형 송출체가 다음 출격에서 포착될 수 있습니다")
 
+func _try_start_boss_encounter() -> void:
+	if boss.active or boss.defeated or match_state != "playing":
+		return
+	if boss_signal_unlocked and sortie_index >= 5 and elapsed >= 240.0:
+		_start_boss_encounter()
+
+func _start_boss_encounter() -> void:
+	boss.start()
+	enemies.clear()
+	wave_notice_timer = 4.0
+	wave_notice_text = "보스 조우: 캠페인 송출관"
+	effects.show_combat_banner("캠페인 송출관", C.VITAMIN_YELLOW)
+	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
+	effects.add_impact_shake(0.28, 5.8)
+
+func _on_boss_defeated() -> void:
+	boss_signal_state = "silent"
+	boss_signal_unlocked = false
+	wave_notice_timer = 5.0
+	wave_notice_text = "보스 신호 침묵"
+	effects.show_combat_banner("보스 신호 침묵", C.TOXIC_GREEN)
+	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
+	effects.add_impact_shake(0.34, 7.0)
+
 func _set_boss_signal_state(state: String) -> void:
 	if _boss_signal_rank(state) < _boss_signal_rank(boss_signal_state):
 		return
@@ -655,6 +755,8 @@ func _spawn_recall_pressure(count: int) -> void:
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
 func _check_victory() -> void:
+	if boss.active:
+		return
 	if match_state == "playing" and elapsed >= C.MATCH_DURATION:
 		elapsed = C.MATCH_DURATION
 		_finish_match("victory")
@@ -676,6 +778,21 @@ func _finish_match(result_state: String) -> void:
 
 func _result_data(result_state: String) -> Dictionary:
 	if result_state == "recalled":
+		if boss_result_reason == "boss_recall":
+			return {
+				"result": "신호 과부하 회수",
+				"description": "캠페인 송출관의 방송이 폭주하기 직전, 침묵 보급소가 신호 좌표를 끊어냈습니다.",
+				"trace": "캠페인 코어 파편",
+				"progress_lines": _session_progress_lines(),
+				"button_text": "보급소로 돌아가기",
+				"prompt": "스페이스 / 클릭으로 보급소 이동",
+				"survival_time": elapsed,
+				"level": level,
+				"kills": kills,
+				"card_count": selected_card_count,
+				"peak_enemy_count": peak_enemy_count,
+				"final_enemy_count": enemies.enemies.size(),
+			}
 		return {
 			"result": "긴급 회수",
 			"description": "캠페인 신호에 삼켜지기 직전, 침묵 보급소가 당신을 끌어냈습니다.",
@@ -829,6 +946,7 @@ func _fire_feedback(directed: bool) -> void:
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "supply"
 	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "")
+	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
 func _debug_overlay_text() -> String:
@@ -867,6 +985,11 @@ func _debug_info() -> Dictionary:
 		"preboss_stage": _preboss_stage_label(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_unlocked": boss_signal_unlocked,
+		"boss_active": boss.active,
+		"boss_state": boss.state,
+		"boss_hp": boss.hp,
+		"boss_max_hp": boss.max_hp,
+		"boss_defense": boss.defense_type,
 		"first_sortie": first_sortie,
 		"first_recall_done": first_recall_done,
 		"recall_stage": recall_event_stage,
@@ -939,6 +1062,33 @@ func _debug_force_game_over() -> void:
 	player_hp = 0.0
 	_finish_match("game_over")
 
+func _debug_start_boss() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	sortie_index = maxi(sortie_index, 5)
+	first_sortie = false
+	first_recall_done = true
+	boss_signal_unlocked = true
+	boss_signal_state = "near"
+	elapsed = maxf(elapsed, 240.0)
+	_start_boss_encounter()
+
+func _debug_boss_phase_preview() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.force_phase_two_preview()
+	effects.show_combat_banner("보스 코어 강제 노출", C.TOXIC_GREEN)
+
+func _debug_defeat_boss() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.force_defeat()
+	_on_boss_defeated()
+
 func _debug_clear_enemies() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
@@ -957,6 +1107,7 @@ func _draw() -> void:
 	_draw_arena()
 	_draw_charge_puddles()
 	effects.draw_behind(self)
+	boss.draw(self, elapsed)
 	_draw_player()
 	_draw_enemies()
 	effects.draw_front(self)
@@ -1183,6 +1334,8 @@ func _restart() -> void:
 	if was_supply or was_terminal_redeploy:
 		sortie_index += 1
 		first_sortie = false
+	boss.reset()
+	boss_result_reason = ""
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])

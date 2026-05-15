@@ -9,6 +9,10 @@ var charge_bar: ColorRect
 var charge_button: Label
 var prompt_label: Label
 var stat_label: Label
+var boss_panel: Panel
+var boss_name_label: Label
+var boss_bar: ColorRect
+var boss_status_label: Label
 var card_panel: Panel
 var card_buttons: Array[Button] = []
 var card_chosen_callback := Callable()
@@ -101,6 +105,43 @@ func build(parent: Node) -> void:
 	stat_label.add_theme_constant_override("shadow_offset_y", 1)
 	_apply_font(stat_label)
 	root.add_child(stat_label)
+
+	boss_panel = Panel.new()
+	boss_panel.position = Vector2(128, 22)
+	boss_panel.size = Vector2(224, 29)
+	boss_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 2, 4))
+	boss_panel.visible = false
+	root.add_child(boss_panel)
+
+	boss_name_label = Label.new()
+	boss_name_label.position = Vector2(8, 2)
+	boss_name_label.size = Vector2(100, 11)
+	boss_name_label.text = "캠페인 송출관"
+	boss_name_label.add_theme_font_size_override("font_size", 8)
+	boss_name_label.add_theme_color_override("font_color", C.INK)
+	_apply_font(boss_name_label)
+	boss_panel.add_child(boss_name_label)
+
+	var boss_back := ColorRect.new()
+	boss_back.color = Color("#433227")
+	boss_back.position = Vector2(8, 17)
+	boss_back.size = Vector2(146, 6)
+	boss_panel.add_child(boss_back)
+
+	boss_bar = ColorRect.new()
+	boss_bar.color = C.NEON_RED
+	boss_bar.position = Vector2(9, 18)
+	boss_bar.size = Vector2(144, 4)
+	boss_panel.add_child(boss_bar)
+
+	boss_status_label = Label.new()
+	boss_status_label.position = Vector2(112, 2)
+	boss_status_label.size = Vector2(104, 20)
+	boss_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	boss_status_label.add_theme_font_size_override("font_size", 8)
+	boss_status_label.add_theme_color_override("font_color", C.INK)
+	_apply_font(boss_status_label)
+	boss_panel.add_child(boss_status_label)
 
 	prompt_label = Label.new()
 	prompt_label.position = Vector2(96, 230)
@@ -271,6 +312,21 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 	elif not game_over and not paused_for_card and not result_panel.visible:
 		prompt_label.visible = false
 
+func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: String, defense_type: String) -> void:
+	boss_panel.visible = active
+	if not active:
+		return
+	boss_name_label.text = boss_name
+	boss_bar.size.x = 144.0 * clampf(hp_ratio, 0.0, 1.0)
+	match defense_type:
+		"anti_auto":
+			boss_bar.color = Color("#8a5a3f")
+		"exposed_core":
+			boss_bar.color = C.TOXIC_GREEN
+		_:
+			boss_bar.color = C.NEON_RED
+	boss_status_label.text = "%d%%\n%s" % [int(round(hp_ratio * 100.0)), status_text]
+
 func show_game_over() -> void:
 	prompt_label.text = "게임 오버  -  스페이스 / 클릭으로 다시 시작"
 	prompt_label.visible = true
@@ -436,6 +492,7 @@ func _set_supply_buttons_visible(visible: bool) -> void:
 
 func reset() -> void:
 	prompt_label.visible = false
+	boss_panel.visible = false
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	hide_result_screen()

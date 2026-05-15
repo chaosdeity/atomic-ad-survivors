@@ -45,12 +45,21 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_jump_time(299.0)
 			return true
 		KEY_F8:
+			if event.shift_pressed:
+				main._debug_start_boss()
+				return true
 			main._debug_force_victory()
 			return true
 		KEY_F9:
+			if event.shift_pressed:
+				main._debug_boss_phase_preview()
+				return true
 			main._debug_force_game_over()
 			return true
 		KEY_F10:
+			if event.shift_pressed:
+				main._debug_defeat_boss()
+				return true
 			main._debug_clear_enemies()
 			return true
 		KEY_F11:
@@ -74,6 +83,8 @@ func help_text() -> String:
 		"Shift+F5/6/7 Preboss signal checks",
 		"F8 Win  F9 Game Over",
 		"F10 Clear  F11 Swarm",
+		"Shift+F8 Boss  Shift+F9 Core",
+		"Shift+F10 Defeat Boss",
 	])
 
 func detail_text(info: Dictionary) -> String:
@@ -95,6 +106,7 @@ func detail_text(info: Dictionary) -> String:
 		"sortie/session: %d / %d" % [int(info.get("sortie_index", 1)), int(info.get("session_depth", 1))],
 		"preboss: %s" % str(info.get("preboss_stage", "")),
 		"boss signal: %s unlocked=%s" % [str(info.get("boss_signal_state", "none")), str(info.get("boss_signal_unlocked", false))],
+		"boss: %s %s %.0f/%.0f %s" % [str(info.get("boss_active", false)), str(info.get("boss_state", "")), float(info.get("boss_hp", 0.0)), float(info.get("boss_max_hp", 0.0)), str(info.get("boss_defense", ""))],
 		"first sortie: %s" % str(info.get("first_sortie", false)),
 		"recall done: %s" % str(info.get("first_recall_done", false)),
 		"recall stage: %d" % int(info.get("recall_stage", 0)),
