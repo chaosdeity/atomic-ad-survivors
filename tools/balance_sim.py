@@ -414,6 +414,12 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
     plated_charge = config.charge_damage * DEFENSE_TYPES["plated"]["charge"]
     exposed_auto = config.auto_damage * DEFENSE_TYPES["exposed_core"]["auto"]
     exposed_focus = config.focused_charge_damage * DEFENSE_TYPES["exposed_core"]["focused"]
+    anti_charge_auto = config.auto_damage * DEFENSE_TYPES["anti_charge"]["auto"]
+    anti_charge_focus = config.focused_charge_damage * DEFENSE_TYPES["anti_charge"]["focused"]
+    distortion_window = 5.0
+    distortion_auto_shots = math.floor(distortion_window / config.auto_tick)
+    distortion_auto_damage = distortion_auto_shots * anti_charge_auto
+    focused_loss = config.focused_charge_damage - anti_charge_focus
     exposed_window = 2.0
     exposed_auto_shots = math.floor(exposed_window / config.auto_tick)
     exposed_window_damage = exposed_focus + exposed_auto_shots * exposed_auto
@@ -445,6 +451,20 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
             fmt_num(exposed_window_damage),
             f"{fmt_num(exposed_window_damage / hp * 100.0)}% boss HP",
             "rough 2s window expectation before cards/meta bonuses",
+        ],
+        [
+            "auto during distortion",
+            fmt_num(anti_charge_auto),
+            f"{distortion_auto_shots} shots",
+            fmt_num(distortion_auto_damage),
+            "stable 5s damage while charge is resisted",
+        ],
+        [
+            "focused charge during distortion",
+            fmt_num(anti_charge_focus),
+            f"-{fmt_num(focused_loss)} vs normal focus",
+            f"{fmt_num(anti_charge_focus / config.focused_charge_damage * 100.0)}% efficiency",
+            "distortion makes blind charge timing a bad trade",
         ],
     ]
     return markdown_table(["scenario", "hit value", "count", "time/value", "note"], rows)

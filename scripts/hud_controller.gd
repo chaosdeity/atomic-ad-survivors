@@ -321,6 +321,8 @@ func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: 
 	match defense_type:
 		"anti_auto":
 			boss_bar.color = Color("#8a5a3f")
+		"anti_charge":
+			boss_bar.color = Color(0.35, 0.70, 0.95)
 		"exposed_core":
 			boss_bar.color = C.TOXIC_GREEN
 		_:

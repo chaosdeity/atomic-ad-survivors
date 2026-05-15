@@ -12,6 +12,8 @@ const SWEEP_TELEGRAPH_TIME := 1.25
 const SWEEP_FIRE_TIME := 0.32
 const CORE_EXPOSE_TIME := 2.0
 const PATTERN_COOLDOWN := 1.7
+const DISTORTION_TELEGRAPH_TIME := 1.15
+const DISTORTION_ACTIVE_TIME := 4.6
 const SHIELD_COUNT := 4
 const SHIELD_HP := 54.0
 
@@ -88,6 +90,12 @@ func update(delta: float, player_pos: Vector2) -> Dictionary:
 		"shield":
 			if shields.size() == 0 or pattern_timer <= 0.0:
 				_expose_core(1.65 if shields.size() == 0 else 0.9)
+		"distortion_telegraph":
+			if pattern_timer <= 0.0:
+				_start_distortion_active()
+		"distortion_active":
+			if pattern_timer <= 0.0:
+				_expose_core(1.35)
 		"core_exposed":
 			if pattern_timer <= 0.0:
 				_set_idle()
@@ -100,6 +108,7 @@ func apply_damage(base_damage: float, damage_type: String) -> Dictionary:
 	var damage_mult := defense_rules.damage_multiplier(defense_type, damage_type)
 	var boss_damage := base_damage * damage_mult
 	var shield_broken := false
+	var distorted_charge := state == "distortion_active" and (damage_type == EnemyController.DAMAGE_TYPE_CHARGE or damage_type == EnemyController.DAMAGE_TYPE_FOCUSED)
 	if state == "shield" and shields.size() > 0:
 		var shield_mult := _shield_damage_multiplier(damage_type)
 		shield_damage = base_damage * shield_mult
@@ -125,6 +134,7 @@ func apply_damage(base_damage: float, damage_type: String) -> Dictionary:
 		"effectiveness": defense_rules.damage_effectiveness(damage_mult),
 		"shield_damage": shield_damage,
 		"shield_broken": shield_broken,
+		"distorted_charge": distorted_charge,
 		"defeated": defeated,
 	}
 
@@ -139,6 +149,13 @@ func force_phase_two_preview() -> void:
 	hp = minf(hp, max_hp * 0.66)
 	phase = 2
 	_expose_core(3.0)
+
+func force_distortion() -> void:
+	if not active or defeated:
+		return
+	hp = minf(hp, max_hp * 0.64)
+	phase = 2
+	_start_distortion_telegraph()
 
 func force_defeat() -> void:
 	if not active:
@@ -157,6 +174,8 @@ func status_label() -> String:
 		return "코어 노출"
 	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_AUTO:
 		return "자동저항"
+	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
+		return "차징저항"
 	return "장갑"
 
 func target_distance_sq(from_pos: Vector2) -> float:
@@ -181,7 +200,9 @@ func _set_idle() -> void:
 
 func _start_next_pattern(player_pos: Vector2) -> void:
 	pattern_index += 1
-	if pattern_index % 2 == 1:
+	if phase >= 2 and pattern_index % 3 == 0:
+		_start_distortion_telegraph()
+	elif pattern_index % 2 == 1:
 		_start_sweep(player_pos)
 	else:
 		_start_shield()
@@ -206,6 +227,22 @@ func _start_shield() -> void:
 	shields.clear()
 	for i in range(SHIELD_COUNT):
 		shields.append(SHIELD_HP)
+
+func _start_distortion_telegraph() -> void:
+	state = "distortion_telegraph"
+	pattern_name = "신호 왜곡 세일"
+	pattern_timer = DISTORTION_TELEGRAPH_TIME
+	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	core_exposed = false
+	shields.clear()
+
+func _start_distortion_active() -> void:
+	state = "distortion_active"
+	pattern_name = "신호 왜곡 세일"
+	pattern_timer = DISTORTION_ACTIVE_TIME
+	defense_type = EnemyController.DEFENSE_TYPE_ANTI_CHARGE
+	core_exposed = false
+	shields.clear()
 
 func _expose_core(duration: float) -> void:
 	state = "core_exposed"
@@ -258,6 +295,20 @@ func _draw_telegraphs(canvas: CanvasItem) -> void:
 			canvas.draw_line(Vector2(sweep_line_coord - 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord - 26.0, C.ARENA_HALF.y), hot, 3.0)
 			canvas.draw_line(Vector2(sweep_line_coord + 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord + 26.0, C.ARENA_HALF.y), hot, 3.0)
 			canvas.draw_line(Vector2(sweep_line_coord, -C.ARENA_HALF.y), Vector2(sweep_line_coord, C.ARENA_HALF.y), hot, 5.0)
+	if state == "distortion_telegraph" or state == "distortion_active":
+		var active_alpha := 0.42 if state == "distortion_active" else 0.24
+		var wave_color := Color(0.35, 0.70, 0.95, active_alpha)
+		var hot_color := Color(0.62, 1.0, 0.36, active_alpha + 0.18)
+		for i in range(7):
+			var y := -C.ARENA_HALF.y + 28.0 + float(i) * 34.0
+			var points := PackedVector2Array()
+			for n in range(18):
+				var x := -C.ARENA_HALF.x + float(n) * (C.ARENA_HALF.x * 2.0 / 17.0)
+				var wobble := sin(float(n) * 1.7 + float(i) * 0.8) * (8.0 if state == "distortion_active" else 5.0)
+				points.append(Vector2(x, y + wobble))
+			for n in range(points.size() - 1):
+				canvas.draw_line(points[n], points[n + 1], wave_color, 2.0)
+		canvas.draw_arc(pos, BODY_RADIUS + 28.0, 0.0, TAU, 48, hot_color, 4.0)
 
 func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	var ring_color := _defense_color()
@@ -273,6 +324,10 @@ func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	canvas.draw_line(pos + Vector2(24, -58), pos + Vector2(42, -86), C.COCOA, 3.0)
 	canvas.draw_circle(pos + Vector2(-42, -86), 5.0, C.VITAMIN_YELLOW)
 	canvas.draw_circle(pos + Vector2(42, -86), 5.0, C.NEON_RED)
+	if state == "distortion_telegraph" or state == "distortion_active":
+		var antenna_color := Color(0.35, 0.70, 0.95, 0.82)
+		canvas.draw_arc(pos + Vector2(-42, -86), 13.0 + sin(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
+		canvas.draw_arc(pos + Vector2(42, -86), 13.0 + cos(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
 	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.LEMON_YELLOW)
 	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.COCOA, false, 2.0)
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), "PRIME", HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, C.INK)
@@ -301,6 +356,8 @@ func _defense_color() -> Color:
 	match defense_type:
 		EnemyController.DEFENSE_TYPE_ANTI_AUTO:
 			return Color("#8a5a3f")
+		EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
+			return Color(0.35, 0.70, 0.95)
 		EnemyController.DEFENSE_TYPE_EXPOSED_CORE:
 			return C.TOXIC_GREEN
 		_:

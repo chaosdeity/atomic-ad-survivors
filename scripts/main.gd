@@ -407,6 +407,10 @@ func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bo
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 	if float(hit.get("shield_damage", 0.0)) > 0.0:
 		effects.add_status_ring(boss.pos, C.LEMON_YELLOW, BossController.BODY_RADIUS + 18.0, 0.24)
+	if bool(hit.get("distorted_charge", false)):
+		effects.add_floater(Vector2(hit["pos"]) + Vector2(0, -12), "신호 왜곡", Color(0.35, 0.70, 0.95), 14)
+		effects.add_status_ring(boss.pos, Color(0.35, 0.70, 0.95), BossController.BODY_RADIUS + 24.0, 0.26)
+		effects.add_impact_shake(0.08, 2.0)
 	if bool(hit.get("defeated", false)):
 		_on_boss_defeated()
 	return hit
@@ -1080,6 +1084,14 @@ func _debug_boss_phase_preview() -> void:
 		_debug_start_boss()
 	boss.force_phase_two_preview()
 	effects.show_combat_banner("보스 코어 강제 노출", C.TOXIC_GREEN)
+
+func _debug_boss_distortion() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.force_distortion()
+	effects.show_combat_banner("신호 왜곡 세일", Color(0.35, 0.70, 0.95))
 
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:

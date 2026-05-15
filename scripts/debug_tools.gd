@@ -63,6 +63,9 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_clear_enemies()
 			return true
 		KEY_F11:
+			if event.shift_pressed:
+				main._debug_boss_distortion()
+				return true
 			main._debug_spawn_swarm()
 			return true
 		KEY_F12:
@@ -85,6 +88,7 @@ func help_text() -> String:
 		"F10 Clear  F11 Swarm",
 		"Shift+F8 Boss  Shift+F9 Core",
 		"Shift+F10 Defeat Boss",
+		"Shift+F11 Distortion",
 	])
 
 func detail_text(info: Dictionary) -> String:
