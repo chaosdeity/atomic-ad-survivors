@@ -184,7 +184,7 @@ func force_expose_core(duration: float = 3.0) -> void:
 func force_phase_two_preview() -> void:
 	if not active or defeated:
 		return
-	hp = minf(hp, max_hp * 0.66)
+	hp = minf(hp, max_hp * 0.64)
 	phase = 2
 	_expose_core(3.0)
 
