@@ -716,30 +716,78 @@ func _preboss_stage_label() -> String:
 	return "보스 신호 근접"
 
 func _next_objective_label() -> String:
-	if meta_progression.boss_clear_count > 0:
-		return "외곽 신호 추적"
+	return _next_goal_label().replace("목표: ", "")
+
+func _route_display_sortie_index() -> int:
+	if match_state == "supply" or match_state == "recalled" or match_state == "boss_victory":
+		return sortie_index + 1
+	return sortie_index
+
+func _route_stage_label() -> String:
+	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
+		return "송출 침묵"
+	var route_sortie := _route_display_sortie_index()
+	if _boss_route_ready():
+		return "보스 조우 가능"
+	if route_sortie <= 1:
+		return "회수 1/1"
+	if route_sortie <= 4:
+		return "신호 추적 %d/3" % clampi(route_sortie - 1, 1, 3)
+	return "보스 조우 가능"
+
+func _next_goal_label() -> String:
+	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
+		return "목표: 외곽 신호 추적 준비"
+	if boss.active:
+		return "목표: 캠페인 송출관 침묵"
+	var route_sortie := _route_display_sortie_index()
+	if _boss_route_ready() or route_sortie >= 5:
+		return "목표: 240초 이후 캠페인 송출관 조우"
+	if route_sortie <= 1:
+		return "목표: 108초 회수까지 생존"
+	if route_sortie == 2:
+		return "목표: 120초까지 생존해 미약한 보스 신호 확인"
+	if route_sortie == 3:
+		return "목표: 180초까지 생존해 신호 방향 확인"
+	return "목표: 240초까지 생존해 보스 신호 근접"
+
+func _combat_goal_label() -> String:
+	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
+		return "외곽 신호 추적 준비"
+	if boss.active:
+		return "송출관 침묵"
+	if _boss_route_ready() or sortie_index >= 5:
+		return "송출관 접근 중: 240초"
 	if sortie_index <= 1:
-		return "보급소 재출격"
+		return "회수 신호 대기"
 	if sortie_index == 2:
-		return "180초까지 생존"
+		return "목표 120초: 미약한 신호"
 	if sortie_index == 3:
-		return "보스 신호 추적"
-	return "근접 신호 확인"
+		return "목표 180초: 신호 방향"
+	return "목표 240초: 신호 근접"
+
+func _boss_route_ready() -> bool:
+	if meta_progression.boss_clear_count > 0:
+		return false
+	return boss_signal_unlocked and _route_display_sortie_index() >= 5
 
 func _session_progress_data() -> Dictionary:
 	return {
 		"sortie_index": sortie_index,
 		"preboss_stage": _preboss_stage_label(),
+		"route_stage_label": _route_stage_label(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
+		"boss_route_ready": _boss_route_ready(),
+		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
 	}
 
 func _session_progress_lines() -> Array[String]:
 	return [
-		"출격 기록: %d회   보스 신호: %s" % [sortie_index, _boss_signal_label()],
-		"다음 목표: %s" % _next_objective_label(),
+		"%s   보스 신호: %s" % [_route_stage_label(), _boss_signal_label()],
+		_next_goal_label(),
 	]
 
 func _apply_first_recall_collapse(delta: float) -> void:
@@ -993,7 +1041,7 @@ func _fire_feedback(directed: bool) -> void:
 
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "")
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "", _route_stage_label(), _combat_goal_label())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -1031,6 +1079,9 @@ func _debug_info() -> Dictionary:
 		"sortie_index": sortie_index,
 		"session_depth": sortie_index,
 		"preboss_stage": _preboss_stage_label(),
+		"route_stage_label": _route_stage_label(),
+		"next_goal_label": _next_goal_label(),
+		"boss_route_ready": _boss_route_ready(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_unlocked": boss_signal_unlocked,
 		"boss_active": boss.active,

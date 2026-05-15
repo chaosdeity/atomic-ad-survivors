@@ -9,6 +9,7 @@ var charge_bar: ColorRect
 var charge_button: Label
 var prompt_label: Label
 var stat_label: Label
+var route_goal_label: Label
 var boss_panel: Panel
 var boss_name_label: Label
 var boss_bar: ColorRect
@@ -105,6 +106,19 @@ func build(parent: Node) -> void:
 	stat_label.add_theme_constant_override("shadow_offset_y", 1)
 	_apply_font(stat_label)
 	root.add_child(stat_label)
+
+	route_goal_label = Label.new()
+	route_goal_label.position = Vector2(130, 21)
+	route_goal_label.size = Vector2(222, 12)
+	route_goal_label.add_theme_font_size_override("font_size", 8)
+	route_goal_label.add_theme_color_override("font_color", Color("#433227"))
+	route_goal_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
+	route_goal_label.add_theme_constant_override("shadow_offset_x", 1)
+	route_goal_label.add_theme_constant_override("shadow_offset_y", 1)
+	route_goal_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	route_goal_label.visible = false
+	_apply_font(route_goal_label)
+	root.add_child(route_goal_label)
 
 	boss_panel = Panel.new()
 	boss_panel.position = Vector2(128, 22)
@@ -254,20 +268,20 @@ func build(parent: Node) -> void:
 
 	debug_panel = Panel.new()
 	debug_panel.position = Vector2(8, 38)
-	debug_panel.size = Vector2(182, 184)
+	debug_panel.size = Vector2(182, 220)
 	debug_panel.visible = false
 	root.add_child(debug_panel)
 
 	debug_label = Label.new()
 	debug_label.position = Vector2(8, 6)
-	debug_label.size = Vector2(166, 172)
+	debug_label.size = Vector2(166, 208)
 	debug_label.add_theme_font_size_override("font_size", 8)
 	debug_label.add_theme_color_override("font_color", C.INK)
 	debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_font(debug_label)
 	debug_panel.add_child(debug_label)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String) -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "") -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / C.CHARGE_WINDOW if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
@@ -297,6 +311,11 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 			charge_button.text = "차징\n%.1f초" % maxf(0.0, charge_period - charge_timer)
 			charge_button.add_theme_color_override("font_color", C.INK)
 	stat_label.text = "시간 %03d / %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
+	var route_text := route_stage_text
+	if route_goal_text != "":
+		route_text = "%s  |  %s" % [route_stage_text, route_goal_text] if route_stage_text != "" else route_goal_text
+	route_goal_label.visible = route_text != "" and not paused_for_card and not game_over and not result_panel.visible
+	route_goal_label.text = route_text
 	if notice_text != "" and not paused_for_card and not game_over and not result_panel.visible:
 		prompt_label.visible = true
 		prompt_label.text = notice_text
@@ -314,6 +333,8 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 
 func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: String, defense_type: String) -> void:
 	boss_panel.visible = active
+	if active:
+		route_goal_label.visible = false
 	if not active:
 		return
 	boss_name_label.text = boss_name
@@ -404,7 +425,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	result_panel.size = Vector2(416, 244)
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
 	result_label.position = Vector2(14, 8)
-	result_label.size = Vector2(388, 86)
+	result_label.size = Vector2(388, 88)
 	restart_button.position = Vector2(74, 218)
 	restart_button.size = Vector2(268, 22)
 	result_panel.visible = true
@@ -412,16 +433,20 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
 	restart_button.text = "강화 적용 후 다시 출격" if meta_progression.has_any_upgrade() else "선택하지 않고 다시 출격"
 	result_label.add_theme_font_size_override("font_size", 9)
-	var progress_text := "출격 기록: %d회   보스 신호: %s\n다음 목표: %s" % [
-		int(session_progress.get("sortie_index", 1)),
+	var progress_text := "%s   보스 신호: %s\n%s" % [
+		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
-		str(session_progress.get("next_objective", "재출격")),
+		str(session_progress.get("next_goal_label", session_progress.get("next_objective", "목표: 재출격"))),
 	]
-	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n%s\n%s\n%s" % [
+	var route_ready_text := "캠페인 송출관 조우 가능\n다음 출격 240초 이후 보스전 전환" if bool(session_progress.get("boss_route_ready", false)) else ""
+	var boss_hint: String = meta_progression.boss_hint()
+	if route_ready_text != "":
+		boss_hint = route_ready_text
+	result_label.text = "침묵 보급소\n%s\n%s\n%s\n%s\n%s" % [
 		progress_text,
 		meta_progression.held_trace_label(),
 		meta_progression.boss_analysis_summary(),
-		meta_progression.boss_hint(),
+		boss_hint,
 		"   ".join(meta_progression.upgrade_summary_lines()),
 	]
 	supply_feedback_label.visible = true
