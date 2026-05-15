@@ -492,6 +492,31 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
     return markdown_table(["scenario", "hit value", "count", "time/value", "note"], rows)
 
 
+def boss_analysis_upgrade_table(config: BalanceConfig) -> str:
+    hp = config.boss_hp
+    exposed_auto = config.auto_damage * DEFENSE_TYPES["exposed_core"]["auto"]
+    exposed_focus = config.focused_charge_damage * DEFENSE_TYPES["exposed_core"]["focused"]
+    core_bonus = 0.2
+    rows = []
+    for label, base_window in [
+        ("standard core expose", 2.0),
+        ("safety demo recover core", 2.2),
+    ]:
+        base_autos = base_window / config.auto_tick
+        boosted_window = base_window + core_bonus
+        boosted_autos = boosted_window / config.auto_tick
+        base_damage = exposed_focus + base_autos * exposed_auto
+        boosted_damage = exposed_focus + boosted_autos * exposed_auto
+        rows.append([
+            label,
+            f"{fmt_num(base_window)}s -> {fmt_num(boosted_window)}s",
+            f"{fmt_num(base_damage)} -> {fmt_num(boosted_damage)}",
+            f"+{fmt_num(boosted_damage - base_damage)}",
+            f"{fmt_num(boosted_damage / hp * 100.0)}% boss HP",
+        ])
+    return markdown_table(["window", "duration", "expected damage", "gain", "boosted share"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -547,6 +572,10 @@ def main() -> None:
     print("## First Boss Skeleton Preview")
     print()
     print(first_boss_preview_table(config))
+    print()
+    print("## Boss Analysis Upgrade Preview")
+    print()
+    print(boss_analysis_upgrade_table(config))
     print()
     print("## Current Findings")
     print()

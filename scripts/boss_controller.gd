@@ -45,6 +45,7 @@ var demo_dir := Vector2.DOWN
 var demo_hit_done := false
 var shields: Array[float] = []
 var hit_flash := 0.0
+var core_expose_bonus := 0.0
 var defense_rules := EnemyController.new()
 
 func start() -> void:
@@ -180,6 +181,9 @@ func force_expose_core(duration: float = 3.0) -> void:
 	if not active or defeated:
 		return
 	_expose_core(duration)
+
+func set_core_expose_bonus(value: float) -> void:
+	core_expose_bonus = maxf(0.0, value)
 
 func force_phase_two_preview() -> void:
 	if not active or defeated:
@@ -338,7 +342,7 @@ func _start_demo_recover() -> void:
 func _expose_core(duration: float) -> void:
 	state = "core_exposed"
 	pattern_name = "코어 노출"
-	pattern_timer = duration
+	pattern_timer = duration + core_expose_bonus
 	defense_type = EnemyController.DEFENSE_TYPE_EXPOSED_CORE
 	core_exposed = true
 	shields.clear()

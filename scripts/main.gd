@@ -49,6 +49,7 @@ var preboss_signal_event_stage := 0
 var boss_signal_state := "none"
 var boss_signal_unlocked := false
 var boss_result_reason := ""
+var last_boss_recall_report := {}
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -630,6 +631,7 @@ func _try_start_boss_encounter() -> void:
 		_start_boss_encounter()
 
 func _start_boss_encounter() -> void:
+	boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 	boss.start()
 	enemies.clear()
 	wave_notice_timer = 4.0
@@ -773,6 +775,8 @@ func _check_victory() -> void:
 func _finish_match(result_state: String) -> void:
 	if result_state == "recalled" and _first_recall_active():
 		meta_progression.grant_first_recall_trace()
+	if result_state == "recalled" and boss_result_reason == "boss_recall":
+		last_boss_recall_report = meta_progression.record_boss_recall(boss.hp_ratio())
 	match_state = result_state
 	game_over = result_state == "game_over"
 	paused_for_card = false
@@ -788,11 +792,17 @@ func _finish_match(result_state: String) -> void:
 func _result_data(result_state: String) -> Dictionary:
 	if result_state == "recalled":
 		if boss_result_reason == "boss_recall":
+			var analysis_level := int(last_boss_recall_report.get("analysis_after", meta_progression.boss_analysis_level))
+			var trace_text := "캠페인 코어 파편" if bool(last_boss_recall_report.get("fragment_awarded", false)) else "캠페인 코어 파편 분석 갱신"
 			return {
 				"result": "신호 과부하 회수",
 				"description": "캠페인 송출관의 방송이 폭주하기 직전, 침묵 보급소가 신호 좌표를 끊어냈습니다.",
-				"trace": "캠페인 코어 파편",
-				"progress_lines": _session_progress_lines(),
+				"trace": trace_text,
+				"progress_lines": [
+					"보스 분석: %d/3" % analysis_level,
+					meta_progression.boss_weakness_label(),
+					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
+				],
 				"button_text": "보급소로 돌아가기",
 				"prompt": "스페이스 / 클릭으로 보급소 이동",
 				"survival_time": elapsed,
@@ -853,6 +863,7 @@ func _apply_supply_upgrade_choice(index: int) -> void:
 	var upgrade: Dictionary = upgrades[index]
 	var upgrade_name := String(upgrade["name"])
 	if meta_progression.buy(String(upgrade["id"])):
+		boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 		effects.show_combat_banner("영구 강화 적용: %s" % upgrade_name, C.TOXIC_GREEN)
 		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
 		effects.add_impact_shake(0.14, 2.2)
@@ -1004,6 +1015,8 @@ func _debug_info() -> Dictionary:
 		"recall_stage": recall_event_stage,
 		"fps": Engine.get_frames_per_second(),
 		"trace_torn_ad_flyer": meta_progression.trace_count(),
+		"trace_campaign_core_fragment": meta_progression.trace_count("campaign_core_fragment"),
+		"boss_analysis_level": meta_progression.boss_analysis_level,
 		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
@@ -1105,6 +1118,17 @@ func _debug_boss_safety_demo() -> void:
 		_debug_start_boss()
 	boss.force_safety_demo(player_pos)
 	effects.show_combat_banner("가정용 안전 시연", C.VITAMIN_YELLOW)
+
+func _debug_boss_recall_reward() -> void:
+	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+		return
+	if not boss.active:
+		_debug_start_boss()
+	boss.hp = minf(boss.hp, boss.max_hp * 0.62)
+	boss_result_reason = "boss_recall"
+	boss.active = false
+	boss.state = "recall_escape"
+	_finish_match("recalled")
 
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -1361,6 +1385,7 @@ func _restart() -> void:
 		first_sortie = false
 	boss.reset()
 	boss_result_reason = ""
+	last_boss_recall_report = {}
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
@@ -1461,6 +1486,8 @@ func _supply_choice_from_event(event: InputEvent) -> int:
 			return 1
 		KEY_3, KEY_KP_3:
 			return 2
+		KEY_4, KEY_KP_4:
+			return 3
 		_:
 			return -1
 

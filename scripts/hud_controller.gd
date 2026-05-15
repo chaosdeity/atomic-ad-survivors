@@ -221,7 +221,7 @@ func build(parent: Node) -> void:
 	restart_button.pressed.connect(_on_restart_button_pressed)
 	result_panel.add_child(restart_button)
 
-	for i in range(3):
+	for i in range(4):
 		var supply_button := Button.new()
 		supply_button.position = Vector2(16, 70 + i * 29)
 		supply_button.size = Vector2(268, 25)
@@ -381,7 +381,8 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines += "\n%s" % str(line)
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
-	result_label.add_theme_font_size_override("font_size", 9 if result_data.get("result", "") == "긴급 회수" else 10)
+	var result_title := str(result_data.get("result", ""))
+	result_label.add_theme_font_size_override("font_size", 9 if result_title == "긴급 회수" or result_title == "신호 과부하 회수" else 10)
 	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
@@ -403,9 +404,9 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	result_panel.size = Vector2(416, 244)
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
 	result_label.position = Vector2(14, 8)
-	result_label.size = Vector2(388, 80)
-	restart_button.position = Vector2(74, 213)
-	restart_button.size = Vector2(268, 24)
+	result_label.size = Vector2(388, 86)
+	restart_button.position = Vector2(74, 218)
+	restart_button.size = Vector2(268, 22)
 	result_panel.visible = true
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
@@ -416,21 +417,25 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		str(session_progress.get("boss_signal_label", "없음")),
 		str(session_progress.get("next_objective", "재출격")),
 	]
-	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n%s\n전단은 보급소 금고에 잠시 남겨둘 수 있습니다." % [
+	result_label.text = "침묵 보급소\n캠페인 신호가 닿지 않는 공백\n%s\n%s\n%s\n%s\n%s" % [
 		progress_text,
 		meta_progression.held_trace_label(),
+		meta_progression.boss_analysis_summary(),
+		meta_progression.boss_hint(),
 		"   ".join(meta_progression.upgrade_summary_lines()),
 	]
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
-		supply_feedback_label.text = "영구 강화 적용: %s" % applied_upgrade_name
-	elif meta_progression.trace_count() > 0:
+		supply_feedback_label.text = "강화 적용: %s" % applied_upgrade_name
+	elif meta_progression.trace_count() > 0 or meta_progression.trace_count("campaign_core_fragment") > 0:
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
 		supply_feedback_label.text = "흔적 하나로 다음 출격의 빈틈을 조금 줄일 수 있습니다."
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
 		supply_feedback_label.text = "남은 흔적이 없습니다. 보급소 문이 다시 열립니다."
+	supply_feedback_label.position = Vector2(16, 199)
+	supply_feedback_label.size = Vector2(384, 16)
 	var upgrades: Array = meta_progression.upgrade_defs()
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
@@ -442,19 +447,21 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
 		button.visible = true
 		button.disabled = not can_buy
-		button.position = Vector2(18, 92 + i * 33)
-		button.size = Vector2(380, 28)
-		button.add_theme_font_size_override("font_size", 9)
+		button.position = Vector2(18, 96 + i * 27)
+		button.size = Vector2(380, 23)
+		button.add_theme_font_size_override("font_size", 8)
 		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
 		button.add_theme_stylebox_override("normal", _supply_applied_style() if level > 0 else _button_style(Color("#fff7df")))
 		button.add_theme_stylebox_override("hover", _supply_applied_style() if level > 0 else _button_style(Color("#ffe7a8")))
 		button.add_theme_stylebox_override("disabled", _supply_applied_style() if level > 0 else _supply_disabled_style())
 		var state_text := "적용됨" if level > 0 else ("선택 가능" if can_buy else "흔적 부족")
-		button.text = "%d. %s  [%s]\n비용 %d 전단  |  %s" % [
+		var trace_label := str(upgrade.get("trace_label", "전단"))
+		button.text = "%d. %s  [%s]  비용 %d %s  |  %s" % [
 			i + 1,
 			upgrade["name"],
 			state_text,
 			int(upgrade["cost"]),
+			trace_label,
 			upgrade["effect_text"],
 		]
 

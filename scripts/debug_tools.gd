@@ -48,6 +48,9 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_jump_time(299.0)
 			return true
 		KEY_F8:
+			if event.ctrl_pressed:
+				main._debug_boss_recall_reward()
+				return true
 			if event.shift_pressed:
 				main._debug_start_boss()
 				return true
@@ -93,6 +96,7 @@ func help_text() -> String:
 		"Shift+F10 Defeat Boss",
 		"Shift+F11 Distortion",
 		"Shift+F4 Safety Demo",
+		"Ctrl+F8 Boss Recall Reward",
 	])
 
 func detail_text(info: Dictionary) -> String:
@@ -118,7 +122,8 @@ func detail_text(info: Dictionary) -> String:
 		"first sortie: %s" % str(info.get("first_sortie", false)),
 		"recall done: %s" % str(info.get("first_recall_done", false)),
 		"recall stage: %d" % int(info.get("recall_stage", 0)),
-		"traces: torn_ad_flyer=%d" % int(info.get("trace_torn_ad_flyer", 0)),
+		"traces: flyer=%d core=%d" % [int(info.get("trace_torn_ad_flyer", 0)), int(info.get("trace_campaign_core_fragment", 0))],
+		"boss analysis: %d/3" % int(info.get("boss_analysis_level", 0)),
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])
