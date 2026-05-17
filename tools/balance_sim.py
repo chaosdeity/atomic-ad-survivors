@@ -297,6 +297,15 @@ def special_enemy_role_table(config: BalanceConfig) -> str:
     )
 
 
+def battlefield_threat_table() -> str:
+    rows = [
+        ["pressure ring", "150s+", "1.08s warning", "15 damage + knockback", "single active ring; sidestep before collapse"],
+        ["danger flyer drop", "150s+ with speaker/signal or model house", "0.82s warning", "10 damage", "max two active drops; clearer in finale"],
+        ["finale pressure", "270s+", "shorter intervals", "same damage", "frequency rises without changing boss route or rewards"],
+    ]
+    return markdown_table(["threat", "starts", "telegraph", "hit effect", "fairness note"], rows)
+
+
 def growth_stage_table(config: BalanceConfig) -> str:
     # Current card logic: main.gd adds level_up_cards.gd value to a cumulative
     # multiplier, then applies base_damage * (1.0 + multiplier).
@@ -751,6 +760,10 @@ def main() -> None:
     print("## Special Enemy Role Preview")
     print()
     print(special_enemy_role_table(config))
+    print()
+    print("## Battlefield Threat Preview")
+    print()
+    print(battlefield_threat_table())
     print()
     print("## Growth Stages")
     print()

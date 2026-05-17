@@ -19,6 +19,17 @@ const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
 const FIRST_RECALL_COLLAPSE_TIME := 108.0
+const THREAT_PRESSURE_RING := "pressure_ring"
+const THREAT_FLYER_DROP := "flyer_drop"
+const PRESSURE_RING_WARNING := 1.08
+const PRESSURE_RING_LINGER := 0.34
+const PRESSURE_RING_RADIUS := 72.0
+const PRESSURE_RING_DAMAGE := 15.0
+const PRESSURE_RING_KNOCKBACK := 28.0
+const FLYER_DROP_WARNING := 0.82
+const FLYER_DROP_LINGER := 0.30
+const FLYER_DROP_RADIUS := 42.0
+const FLYER_DROP_DAMAGE := 10.0
 const BOSS_SIGNAL_LABELS := {
 	"none": "없음",
 	"faint": "미약함",
@@ -71,6 +82,10 @@ var attack_pose_dir := Vector2.RIGHT
 var hurt_feedback_cooldown := 0.0
 var auto_shot_counter := 0
 var charge_puddles: Array[Dictionary] = []
+var active_threats: Array[Dictionary] = []
+var pressure_ring_timer := 0.0
+var flyer_drop_timer := 0.0
+var last_threat_label := ""
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -141,6 +156,13 @@ func _process(delta: float) -> void:
 		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 		_update_wave_events(wave_params)
 	_update_enemies(delta)
+	_update_threats(delta)
+	if match_state == "game_over" or match_state == "recalled" or match_state == "boss_victory":
+		effects.update(delta)
+		_update_hud()
+		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		queue_redraw()
+		return
 	_update_boss(delta)
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 	_update_auto_fire(delta)
@@ -237,6 +259,123 @@ func _update_enemies(delta: float) -> void:
 			_finish_match("recalled")
 		else:
 			_finish_match("recalled" if _first_recall_active() else "game_over")
+
+func _update_threats(delta: float) -> void:
+	_update_active_threats(delta)
+	if match_state != "playing" or paused_for_card or boss.active or _first_recall_active():
+		return
+	_schedule_pressure_ring(delta)
+	_schedule_flyer_drop(delta)
+
+func _update_active_threats(delta: float) -> void:
+	for threat in active_threats:
+		threat["timer"] = float(threat.get("timer", 0.0)) - delta
+		if float(threat["timer"]) <= 0.0 and not bool(threat.get("hit_checked", false)):
+			threat["hit_checked"] = true
+			_resolve_threat_hit(threat)
+	active_threats = active_threats.filter(func(threat: Dictionary) -> bool: return float(threat.get("timer", 0.0)) > -float(threat.get("linger", 0.25)))
+
+func _schedule_pressure_ring(delta: float) -> void:
+	if elapsed < 150.0:
+		return
+	pressure_ring_timer = maxf(0.0, pressure_ring_timer - delta)
+	if pressure_ring_timer > 0.0 or _active_threat_count(THREAT_PRESSURE_RING) >= 1:
+		return
+	var interval := 8.8
+	if r01_map.current_zone_id() == "model_house_nexus":
+		interval = 7.0
+	if WaveDirector.is_finale(elapsed):
+		interval = 5.8
+	pressure_ring_timer = interval + rng.randf_range(0.0, 2.2)
+	_spawn_pressure_ring()
+
+func _schedule_flyer_drop(delta: float) -> void:
+	if elapsed < 150.0 or not _has_threat_caller():
+		return
+	flyer_drop_timer = maxf(0.0, flyer_drop_timer - delta)
+	if flyer_drop_timer > 0.0 or _active_threat_count(THREAT_FLYER_DROP) >= 2:
+		return
+	var interval := 6.2
+	if r01_map.current_zone_id() == "model_house_nexus":
+		interval = 4.9
+	if WaveDirector.is_finale(elapsed):
+		interval = 3.8
+	flyer_drop_timer = interval + rng.randf_range(0.0, 1.6)
+	_spawn_flyer_drop()
+
+func _spawn_pressure_ring() -> void:
+	var offset := _threat_offset(88.0, 46.0)
+	active_threats.append({
+		"type": THREAT_PRESSURE_RING,
+		"pos": player_pos + offset,
+		"radius": PRESSURE_RING_RADIUS,
+		"timer": PRESSURE_RING_WARNING,
+		"duration": PRESSURE_RING_WARNING,
+		"linger": PRESSURE_RING_LINGER,
+		"damage": PRESSURE_RING_DAMAGE,
+		"label": "압박 링",
+		"hit_checked": false,
+	})
+	last_threat_label = "압박 링 예고"
+
+func _spawn_flyer_drop() -> void:
+	var offset := _threat_offset(118.0, 32.0)
+	active_threats.append({
+		"type": THREAT_FLYER_DROP,
+		"pos": player_pos + offset,
+		"radius": FLYER_DROP_RADIUS,
+		"timer": FLYER_DROP_WARNING,
+		"duration": FLYER_DROP_WARNING,
+		"linger": FLYER_DROP_LINGER,
+		"damage": FLYER_DROP_DAMAGE,
+		"label": "위험 전단 낙하",
+		"hit_checked": false,
+	})
+	last_threat_label = "위험 전단 낙하 예고"
+
+func _resolve_threat_hit(threat: Dictionary) -> void:
+	var center: Vector2 = threat["pos"]
+	var radius := float(threat.get("radius", 0.0))
+	if player_pos.distance_squared_to(center) > radius * radius:
+		return
+	var label := String(threat.get("label", "위험"))
+	var damage := _incoming_damage(float(threat.get("damage", 0.0)))
+	player_hp = maxf(0.0, player_hp - damage)
+	last_threat_label = label
+	effects.add_floater(player_pos + Vector2(0, -16), label, C.NEON_RED, 13)
+	effects.add_damage_number(player_pos + Vector2(0, -12), damage, "hit")
+	effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.28)
+	effects.add_impact_shake(0.18, 4.6)
+	if String(threat.get("type", "")) == THREAT_PRESSURE_RING:
+		var push_dir := (player_pos - center).normalized() if player_pos.distance_squared_to(center) > 0.01 else last_move_dir.normalized()
+		if push_dir.length_squared() <= 0.01:
+			push_dir = Vector2.RIGHT
+		player_pos += push_dir * PRESSURE_RING_KNOCKBACK
+		player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
+		player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+	if player_hp <= 0.0:
+		_finish_match("game_over")
+
+func _active_threat_count(threat_type: String) -> int:
+	var count := 0
+	for threat in active_threats:
+		if String(threat.get("type", "")) == threat_type:
+			count += 1
+	return count
+
+func _has_threat_caller() -> bool:
+	if r01_map.current_zone_id() == "model_house_nexus" or WaveDirector.is_finale(elapsed):
+		return true
+	for enemy in enemies.enemies:
+		var role := String(enemy.get("role", "basic"))
+		if role == "speaker" or role == "signal":
+			return true
+	return false
+
+func _threat_offset(max_radius: float, min_radius: float) -> Vector2:
+	var angle := rng.randf_range(-PI, PI)
+	var distance := rng.randf_range(min_radius, max_radius)
+	return Vector2(cos(angle), sin(angle)) * distance
 
 func _update_boss(delta: float) -> void:
 	if not boss.active:
@@ -655,6 +794,7 @@ func _start_boss_encounter() -> void:
 	boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 	boss.start()
 	enemies.clear()
+	active_threats.clear()
 	wave_notice_timer = 4.0
 	wave_notice_text = "보스 조우: 스마일 홈 시어머니"
 	effects.show_combat_banner("스마일 홈 시어머니", C.VITAMIN_YELLOW)
@@ -1183,6 +1323,8 @@ func _debug_info() -> Dictionary:
 		"r01_zone_name": r01_map.current_zone_name(),
 		"r01_zone_debug_label": r01_map.current_debug_label(),
 		"enemy_role_summary": enemies.role_summary(),
+		"threat_count": active_threats.size(),
+		"last_threat_label": last_threat_label,
 		"enemy_count": enemies.enemies.size(),
 		"enemy_cap": C.ENEMY_CAP,
 		"player_hp": player_hp,
@@ -1387,6 +1529,7 @@ func _debug_spawn_swarm() -> void:
 func _draw() -> void:
 	_draw_arena()
 	_draw_charge_puddles()
+	_draw_threats()
 	effects.draw_behind(self)
 	boss.draw(self, elapsed)
 	_draw_player()
@@ -1406,6 +1549,32 @@ func _draw_charge_puddles() -> void:
 		draw_circle(pos, radius, Color(0.62, 1.0, 0.36, 0.18 + 0.12 * ratio))
 		draw_arc(pos, radius, 0.0, TAU, 40, Color(0.62, 1.0, 0.36, 0.56 * ratio), 3.0)
 		draw_arc(pos, radius * pulse, 0.0, TAU, 32, Color(1.0, 0.3, 0.36, 0.42 * ratio), 2.5)
+
+func _draw_threats() -> void:
+	for threat in active_threats:
+		var pos: Vector2 = threat["pos"]
+		var radius := float(threat.get("radius", 0.0))
+		var timer := float(threat.get("timer", 0.0))
+		var duration := maxf(0.001, float(threat.get("duration", 1.0)))
+		var type := String(threat.get("type", ""))
+		if timer > 0.0:
+			var progress := 1.0 - clampf(timer / duration, 0.0, 1.0)
+			if type == THREAT_PRESSURE_RING:
+				var warn_radius := lerpf(radius * 1.34, radius, progress)
+				draw_circle(pos, warn_radius, Color(1.0, 0.3, 0.36, 0.08 + progress * 0.06))
+				draw_arc(pos, warn_radius, 0.0, TAU, 64, Color(1.0, 0.3, 0.36, 0.38 + progress * 0.34), 3.0)
+				draw_arc(pos, radius * 0.62, 0.0, TAU, 48, Color(1.0, 0.91, 0.25, 0.26 + progress * 0.22), 2.0)
+			else:
+				var marker_radius := lerpf(radius * 0.52, radius, progress)
+				draw_rect(Rect2(pos - Vector2(radius, radius) * 0.72, Vector2(radius, radius) * 1.44), Color(1.0, 0.91, 0.25, 0.08 + progress * 0.08))
+				draw_arc(pos, marker_radius, 0.0, TAU, 36, Color(1.0, 0.91, 0.25, 0.40 + progress * 0.28), 2.4)
+				draw_line(pos + Vector2(-radius * 0.62, -radius * 0.62), pos + Vector2(radius * 0.62, radius * 0.62), Color(1.0, 0.3, 0.36, 0.48), 2.0)
+				draw_line(pos + Vector2(radius * 0.62, -radius * 0.62), pos + Vector2(-radius * 0.62, radius * 0.62), Color(1.0, 0.3, 0.36, 0.48), 2.0)
+		else:
+			var linger_ratio := 1.0 - clampf(absf(timer) / maxf(0.001, float(threat.get("linger", 0.25))), 0.0, 1.0)
+			var color := Color(1.0, 0.3, 0.36, 0.30 * linger_ratio) if type == THREAT_PRESSURE_RING else Color(1.0, 0.91, 0.25, 0.28 * linger_ratio)
+			draw_circle(pos, radius, color)
+			draw_arc(pos, radius * (1.0 + (1.0 - linger_ratio) * 0.22), 0.0, TAU, 44, Color(1.0, 0.3, 0.36, 0.52 * linger_ratio), 3.0)
 
 func _draw_player() -> void:
 	var charge_state := _charge_state()
@@ -1685,6 +1854,10 @@ func _restart() -> void:
 	enemies.clear()
 	effects.clear()
 	charge_puddles.clear()
+	active_threats.clear()
+	pressure_ring_timer = 0.0
+	flyer_drop_timer = 0.0
+	last_threat_label = ""
 	hud.reset()
 	r01_map.reset(elapsed, true)
 
