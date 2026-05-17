@@ -851,9 +851,14 @@ func _finish_match(result_state: String) -> void:
 	offered_cards.clear()
 	hud.hide_level_card()
 	var callback := Callable(self, "_restart")
-	if result_state == "recalled" or result_state == "boss_victory":
+	if _should_show_supply_after_result(result_state):
 		callback = Callable(self, "_show_supply_depot")
 	hud.show_result_screen(_result_data(result_state), callback)
+
+func _should_show_supply_after_result(result_state: String) -> bool:
+	if result_state == "recalled" or result_state == "boss_victory":
+		return true
+	return result_state == "victory" and first_recall_done
 
 func _result_data(result_state: String) -> Dictionary:
 	if result_state == "boss_victory":
@@ -916,6 +921,8 @@ func _result_data(result_state: String) -> Dictionary:
 	return {
 		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
 		"progress_lines": _session_progress_lines() + _run_reward_lines(),
+		"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
+		"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
 		"survival_time": elapsed,
 		"level": level,
 		"kills": kills,
@@ -999,6 +1006,11 @@ func _handle_terminal_action() -> void:
 	match match_state:
 		"recalled", "boss_victory":
 			_show_supply_depot()
+		"victory":
+			if _should_show_supply_after_result(match_state):
+				_show_supply_depot()
+			else:
+				_restart()
 		"supply":
 			_restart()
 		_:
