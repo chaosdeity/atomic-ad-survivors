@@ -66,12 +66,18 @@ func handle_input(event: InputEvent, main) -> bool:
 			main._debug_force_game_over()
 			return true
 		KEY_F10:
+			if event.ctrl_pressed:
+				main._debug_set_smile_home_boss_outcome("destroy_node")
+				return true
 			if event.shift_pressed:
 				main._debug_defeat_boss()
 				return true
 			main._debug_clear_enemies()
 			return true
 		KEY_F11:
+			if event.ctrl_pressed:
+				main._debug_set_smile_home_boss_outcome("extract_memory")
+				return true
 			if event.shift_pressed:
 				main._debug_boss_distortion()
 				return true
@@ -101,6 +107,8 @@ func help_text() -> String:
 		"Shift+F11 Happiness Reset",
 		"Shift+F4 Home Inspection",
 		"Ctrl+F8 Boss Recall Reward",
+		"Ctrl+F10 Destroy Node",
+		"Ctrl+F11 Extract Memory",
 	])
 
 func detail_text(info: Dictionary) -> String:
@@ -133,6 +141,7 @@ func detail_text(info: Dictionary) -> String:
 		"signal clues: %d/%d" % [int(info.get("signal_clue_count", 0)), int(info.get("signal_clue_required", 3))],
 		"boss analysis: %d/3" % int(info.get("boss_analysis_level", 0)),
 		"boss clears: %d" % int(info.get("boss_clear_count", 0)),
+		"boss outcome: %s" % str(info.get("smile_home_boss_outcome", "")),
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])

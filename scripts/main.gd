@@ -871,7 +871,8 @@ func _result_data(result_state: String) -> Dictionary:
 			"progress_lines": [
 				"처리 성공: %d회" % clear_count,
 				"보스 분석: %d/3" % meta_progression.boss_analysis_level,
-				"TODO: boss outcome choice - destroy_node / extract_memory",
+				meta_progression.smile_home_boss_outcome_label(),
+				"후속 선택 준비: 결절 파괴 또는 기억 추출",
 			] + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
@@ -1194,6 +1195,8 @@ func _debug_info() -> Dictionary:
 		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
 		"boss_analysis_level": meta_progression.boss_analysis_level,
 		"boss_clear_count": meta_progression.boss_clear_count,
+		"smile_home_boss_outcome": meta_progression.smile_home_boss_outcome,
+		"smile_home_boss_outcome_label": meta_progression.smile_home_boss_outcome_label(),
 		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
@@ -1313,6 +1316,17 @@ func _debug_boss_recall_reward() -> void:
 	boss.active = false
 	boss.state = "recall_escape"
 	_finish_match("recalled")
+
+func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
+	if not C.DEBUG_TOOLS_ENABLED:
+		return
+	var applied := meta_progression.set_smile_home_boss_outcome(outcome)
+	var label := meta_progression.smile_home_boss_outcome_label() if applied else "잘못된 보스 처리 값"
+	effects.show_combat_banner(label, C.TOXIC_GREEN if applied else C.NEON_RED)
+	if match_state == "boss_victory":
+		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_show_supply_depot"))
+	elif match_state == "supply":
+		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
 
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:

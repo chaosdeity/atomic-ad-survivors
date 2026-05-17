@@ -493,8 +493,9 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
-	supply_label.text = "침묵 보급소\n%s\n구매: 1/2/3/4키 또는 버튼 클릭. [선택 가능]부터 고르세요.\n%s" % [
+	supply_label.text = "침묵 보급소\n%s\n%s\n구매: 1/2/3/4키 또는 버튼 클릭. [선택 가능]부터 고르세요.\n%s" % [
 		_supply_currency_text(meta_progression),
+		meta_progression.smile_home_boss_outcome_label(),
 		progress_text,
 	]
 	var upgrades: Array = meta_progression.upgrade_defs()

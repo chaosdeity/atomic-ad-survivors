@@ -612,6 +612,15 @@ def boss_victory_reward_table() -> str:
     return markdown_table(["event", "trace reward", "analysis state", "loop note"], rows)
 
 
+def smile_home_outcome_table() -> str:
+    rows = [
+        ["none", "스마일 홈 결절 처리 방식 선택 대기", "post-victory hook is open; no hidden state shown"],
+        ["destroy_node", "결절 파괴", "스마일 홈의 결절을 끊어냈습니다."],
+        ["extract_memory", "기억 추출", "가족사진 뒤편의 기억을 보급소로 가져왔습니다."],
+    ]
+    return markdown_table(["state", "label", "display note"], rows)
+
+
 def boss_enrage_preview_table() -> str:
     rows = [
         [
@@ -719,6 +728,10 @@ def main() -> None:
     print("## Boss Victory Reward Preview")
     print()
     print(boss_victory_reward_table())
+    print()
+    print("## Smile Home Outcome Preview")
+    print()
+    print(smile_home_outcome_table())
     print()
     print("## Boss Enrage Preview")
     print()

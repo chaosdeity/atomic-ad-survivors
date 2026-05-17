@@ -3,6 +3,9 @@ extends RefCounted
 const TRACE_TORN_AD_FLYER := "torn_ad_flyer"
 const TRACE_CAMPAIGN_CORE_FRAGMENT := "campaign_core_fragment"
 const UPGRADE_CORE_SIGNAL_READING := "core_signal_reading"
+const SMILE_HOME_OUTCOME_NONE := ""
+const SMILE_HOME_OUTCOME_DESTROY_NODE := "destroy_node"
+const SMILE_HOME_OUTCOME_EXTRACT_MEMORY := "extract_memory"
 const SIGNAL_CLUE_FAINT_BROADCAST_RECORD := "faint_broadcast_record"
 const SIGNAL_CLUE_WARPED_BROADCAST_MAP := "warped_broadcast_map"
 const SIGNAL_CLUE_BROADCAST_COORDINATE_TRACE := "broadcast_coordinate_trace"
@@ -219,6 +222,7 @@ var upgrades := {}
 var awarded_flags := {}
 var boss_analysis_level := 0
 var boss_clear_count := 0
+var smile_home_boss_outcome := SMILE_HOME_OUTCOME_NONE
 
 func grant_first_recall_trace() -> bool:
 	if bool(awarded_flags.get("first_recall", false)):
@@ -266,6 +270,27 @@ func record_boss_victory() -> Dictionary:
 		"analysis_after": boss_analysis_level,
 		"clear_count": boss_clear_count,
 	}
+
+func set_smile_home_boss_outcome(outcome: String) -> bool:
+	if not _is_valid_smile_home_boss_outcome(outcome):
+		return false
+	smile_home_boss_outcome = outcome
+	return true
+
+func has_smile_home_boss_outcome() -> bool:
+	return smile_home_boss_outcome != SMILE_HOME_OUTCOME_NONE
+
+func smile_home_boss_outcome_label() -> String:
+	match smile_home_boss_outcome:
+		SMILE_HOME_OUTCOME_DESTROY_NODE:
+			return "결절 파괴: 스마일 홈의 결절을 끊어냈습니다."
+		SMILE_HOME_OUTCOME_EXTRACT_MEMORY:
+			return "기억 추출: 가족사진 뒤편의 기억을 보급소로 가져왔습니다."
+		_:
+			return "스마일 홈 결절 처리 방식 선택 대기"
+
+func _is_valid_smile_home_boss_outcome(outcome: String) -> bool:
+	return outcome == SMILE_HOME_OUTCOME_NONE or outcome == SMILE_HOME_OUTCOME_DESTROY_NODE or outcome == SMILE_HOME_OUTCOME_EXTRACT_MEMORY
 
 func grant_signal_clue_candidates(candidates: Array) -> Dictionary:
 	var gained: Array[String] = []
