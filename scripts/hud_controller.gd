@@ -23,12 +23,14 @@ var restart_button: Button
 var restart_callback := Callable()
 var supply_panel: Panel
 var supply_label: Label
+var supply_scroll_hint_label: Label
 var supply_restart_button: Button
 var supply_list_scroll: ScrollContainer
 var supply_button_list: VBoxContainer
 var supply_upgrade_buttons: Array[Button] = []
 var supply_upgrade_callback := Callable()
 var supply_feedback_label: Label
+var supply_footer_divider: ColorRect
 var debug_panel: Panel
 var debug_label: Label
 
@@ -50,8 +52,14 @@ func _button_style(fill_color: Color, border_width: int = 2) -> StyleBoxFlat:
 func _supply_applied_style() -> StyleBoxFlat:
 	return _panel_style(Color("#e9ffd8"), C.TOXIC_GREEN, 2, 3)
 
+func _supply_buyable_style() -> StyleBoxFlat:
+	return _panel_style(Color("#fff0b8"), C.NEON_RED, 2, 3)
+
 func _supply_disabled_style() -> StyleBoxFlat:
 	return _panel_style(Color("#e1d4bc"), Color("#8a7962"), 1, 3)
+
+func _supply_locked_style() -> StyleBoxFlat:
+	return _panel_style(Color("#d1c6b1"), Color("#6b5b4a"), 1, 3)
 
 func _apply_font(control: Control) -> void:
 	control.add_theme_font_override("font", UIFont.get_font())
@@ -249,7 +257,7 @@ func build(parent: Node) -> void:
 
 	supply_label = Label.new()
 	supply_label.position = Vector2(14, 8)
-	supply_label.size = Vector2(436, 76)
+	supply_label.size = Vector2(436, 62)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
 	supply_label.add_theme_font_size_override("font_size", 8)
@@ -257,10 +265,26 @@ func build(parent: Node) -> void:
 	_apply_font(supply_label)
 	supply_panel.add_child(supply_label)
 
+	supply_scroll_hint_label = Label.new()
+	supply_scroll_hint_label.position = Vector2(14, 72)
+	supply_scroll_hint_label.size = Vector2(436, 12)
+	supply_scroll_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	supply_scroll_hint_label.clip_text = true
+	supply_scroll_hint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	supply_scroll_hint_label.add_theme_font_size_override("font_size", 8)
+	supply_scroll_hint_label.add_theme_color_override("font_color", Color("#433227"))
+	supply_scroll_hint_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
+	supply_scroll_hint_label.add_theme_constant_override("shadow_offset_x", 1)
+	supply_scroll_hint_label.add_theme_constant_override("shadow_offset_y", 1)
+	_apply_font(supply_scroll_hint_label)
+	supply_panel.add_child(supply_scroll_hint_label)
+
 	supply_list_scroll = ScrollContainer.new()
 	supply_list_scroll.position = Vector2(14, 88)
 	supply_list_scroll.size = Vector2(436, 100)
 	supply_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	supply_list_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	supply_list_scroll.follow_focus = true
 	supply_panel.add_child(supply_list_scroll)
 
 	supply_button_list = VBoxContainer.new()
@@ -269,7 +293,7 @@ func build(parent: Node) -> void:
 	supply_list_scroll.add_child(supply_button_list)
 
 	supply_feedback_label = Label.new()
-	supply_feedback_label.position = Vector2(16, 193)
+	supply_feedback_label.position = Vector2(16, 190)
 	supply_feedback_label.size = Vector2(432, 18)
 	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -281,9 +305,15 @@ func build(parent: Node) -> void:
 	_apply_font(supply_feedback_label)
 	supply_panel.add_child(supply_feedback_label)
 
+	supply_footer_divider = ColorRect.new()
+	supply_footer_divider.position = Vector2(14, 215)
+	supply_footer_divider.size = Vector2(436, 1)
+	supply_footer_divider.color = Color("#8a7962")
+	supply_panel.add_child(supply_footer_divider)
+
 	supply_restart_button = Button.new()
-	supply_restart_button.position = Vector2(98, 220)
-	supply_restart_button.size = Vector2(268, 22)
+	supply_restart_button.position = Vector2(98, 218)
+	supply_restart_button.size = Vector2(268, 20)
 	supply_restart_button.add_theme_font_size_override("font_size", 9)
 	supply_restart_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_restart_button)
@@ -453,7 +483,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	supply_panel.visible = true
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
-	supply_restart_button.text = "강화 적용 후 다시 출격" if meta_progression.has_any_upgrade() else "선택하지 않고 다시 출격"
+	supply_restart_button.text = "재출격 - 강화 적용 후 출격" if meta_progression.has_any_upgrade() else "재출격 - 선택 없이 출격"
 	var progress_text := "%s   보스 신호: %s\n%s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
@@ -463,24 +493,22 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
-	supply_label.text = "침묵 보급소\n%s\n%s\n%s\n%s\n%s" % [
+	supply_label.text = "침묵 보급소\n%s\n구매: 1/2/3/4키 또는 버튼 클릭. [선택 가능]부터 고르세요.\n%s" % [
+		_supply_currency_text(meta_progression),
 		progress_text,
-		meta_progression.held_trace_label(),
-		meta_progression.boss_analysis_summary(),
-		boss_hint,
-		"   ".join(meta_progression.upgrade_summary_lines()),
 	]
+	var upgrades: Array = meta_progression.upgrade_defs()
+	supply_scroll_hint_label.text = "강화 목록 %d개 - 휠/드래그로 아래 항목 보기 - %s" % [upgrades.size(), boss_hint]
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
 		supply_feedback_label.text = "강화 적용: %s" % applied_upgrade_name
 	elif meta_progression.trace_count() > 0 or meta_progression.trace_count("campaign_core_fragment") > 0:
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
-		supply_feedback_label.text = "흔적 하나로 다음 출격의 빈틈을 조금 줄일 수 있습니다."
+		supply_feedback_label.text = "[선택 가능] 항목을 구매하거나 아래 재출격 버튼을 누르세요."
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
-		supply_feedback_label.text = "남은 흔적이 없습니다. 보급소 문이 다시 열립니다."
-	var upgrades: Array = meta_progression.upgrade_defs()
+		supply_feedback_label.text = "남은 흔적이 없습니다. 아래 재출격 버튼으로 다시 나갑니다."
 	_ensure_supply_button_count(upgrades.size())
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
@@ -491,23 +519,43 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var can_buy: bool = meta_progression.can_buy(String(upgrade["id"]))
 		var unlocked: bool = meta_progression.is_unlocked(String(upgrade["id"]))
 		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
+		var max_level := int(upgrade.get("max_level", 1))
 		button.visible = true
 		button.disabled = not can_buy
-		button.custom_minimum_size = Vector2(416, 24)
+		button.custom_minimum_size = Vector2(416, 34)
 		button.add_theme_font_size_override("font_size", 8)
 		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
-		button.add_theme_stylebox_override("normal", _supply_applied_style() if level > 0 else _button_style(Color("#fff7df")))
-		button.add_theme_stylebox_override("hover", _supply_applied_style() if level > 0 else _button_style(Color("#ffe7a8")))
-		button.add_theme_stylebox_override("disabled", _supply_applied_style() if level > 0 else _supply_disabled_style())
-		var state_text := "적용됨" if level > 0 else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족"))
+		var normal_style := _button_style(Color("#fff7df"))
+		var hover_style := _button_style(Color("#ffe7a8"))
+		var disabled_style := _supply_disabled_style()
+		if can_buy:
+			normal_style = _supply_buyable_style()
+			hover_style = _button_style(C.LEMON_YELLOW, 3)
+		elif level >= max_level:
+			normal_style = _supply_applied_style()
+			disabled_style = _supply_applied_style()
+		elif not unlocked:
+			disabled_style = _supply_locked_style()
+		button.add_theme_stylebox_override("normal", normal_style)
+		button.add_theme_stylebox_override("hover", hover_style)
+		button.add_theme_stylebox_override("disabled", disabled_style)
+		var state_text := "최대" if level >= max_level else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족"))
+		var applied_text := " 적용됨" if level > 0 else ""
 		var unlock_text := ""
 		if not unlocked:
-			unlock_text = "  |  해금 %s" % meta_progression.unlock_condition_label(str(upgrade.get("unlock_condition", "")))
+			unlock_text = " | 해금: %s" % meta_progression.unlock_condition_label(str(upgrade.get("unlock_condition", "")))
 		var trace_label := str(upgrade.get("trace_label", "전단"))
-		button.text = "%d. %s  [%s]  비용 %d %s  |  %s%s" % [
+		var input_hint := "키%d/클릭" % [i + 1] if i < 4 else "클릭"
+		var buy_marker := ">> " if can_buy else ""
+		button.text = "%s%s. %s  [%s]  Lv %d/%d%s\n   %s | 비용 %d %s | %s%s" % [
+			buy_marker,
 			i + 1,
 			upgrade["name"],
 			state_text,
+			level,
+			max_level,
+			applied_text,
+			input_hint,
 			int(upgrade["cost"]),
 			trace_label,
 			upgrade["effect_text"],
@@ -563,6 +611,13 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_button.visible = false
 		supply_button_list.add_child(supply_button)
 		supply_upgrade_buttons.append(supply_button)
+
+func _supply_currency_text(meta_progression) -> String:
+	return "보유 흔적: 전단 %d개 | 코어 파편 %d개 | %s" % [
+		meta_progression.trace_count(),
+		meta_progression.trace_count("campaign_core_fragment"),
+		meta_progression.signal_clue_summary(),
+	]
 
 func _set_supply_buttons_visible(visible: bool) -> void:
 	for button in supply_upgrade_buttons:
