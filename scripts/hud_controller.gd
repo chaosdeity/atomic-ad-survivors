@@ -121,9 +121,11 @@ func build(parent: Node) -> void:
 	root.add_child(stat_label)
 
 	route_goal_label = Label.new()
-	route_goal_label.position = Vector2(130, 21)
-	route_goal_label.size = Vector2(222, 12)
-	route_goal_label.add_theme_font_size_override("font_size", 8)
+	route_goal_label.position = Vector2(128, 20)
+	route_goal_label.size = Vector2(338, 22)
+	route_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route_goal_label.clip_text = true
+	route_goal_label.add_theme_font_size_override("font_size", 7)
 	route_goal_label.add_theme_color_override("font_color", Color("#433227"))
 	route_goal_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	route_goal_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -257,7 +259,7 @@ func build(parent: Node) -> void:
 
 	supply_label = Label.new()
 	supply_label.position = Vector2(14, 8)
-	supply_label.size = Vector2(436, 62)
+	supply_label.size = Vector2(436, 80)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
 	supply_label.add_theme_font_size_override("font_size", 8)
@@ -266,7 +268,7 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_label)
 
 	supply_scroll_hint_label = Label.new()
-	supply_scroll_hint_label.position = Vector2(14, 72)
+	supply_scroll_hint_label.position = Vector2(14, 92)
 	supply_scroll_hint_label.size = Vector2(436, 12)
 	supply_scroll_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_scroll_hint_label.clip_text = true
@@ -280,8 +282,8 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_scroll_hint_label)
 
 	supply_list_scroll = ScrollContainer.new()
-	supply_list_scroll.position = Vector2(14, 88)
-	supply_list_scroll.size = Vector2(436, 100)
+	supply_list_scroll.position = Vector2(14, 106)
+	supply_list_scroll.size = Vector2(436, 82)
 	supply_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	supply_list_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	supply_list_scroll.follow_focus = true
@@ -484,19 +486,19 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
 	supply_restart_button.text = "재출격 - 강화 적용 후 출격" if meta_progression.has_any_upgrade() else "재출격 - 선택 없이 출격"
-	var progress_text := "%s   보스 신호: %s\n%s" % [
+	var board_text := "%s / 보스 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
-		str(session_progress.get("next_goal_label", session_progress.get("next_objective", "목표: 재출격"))),
 	]
 	var route_ready_text := "스마일 홈 중심 결절 노출\n송출관 접근 절차가 열리고 있습니다" if bool(session_progress.get("boss_route_ready", false)) else ""
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
-	supply_label.text = "침묵 보급소\n%s\n%s\n구매: 1/2/3/4키 또는 버튼 클릭. [선택 가능]부터 고르세요.\n%s" % [
+	supply_label.text = "침묵 보급소\n%s\n지역 반응: %s\n게시판: %s\n다음 목표: %s\n구매: 1/2/3/4키 또는 버튼 클릭" % [
 		_supply_currency_text(meta_progression),
 		str(session_progress.get("r01_outpost_phrase", meta_progression.smile_home_boss_outcome_label())),
-		progress_text,
+		board_text,
+		str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))),
 	]
 	var upgrades: Array = meta_progression.upgrade_defs()
 	supply_scroll_hint_label.text = "강화 목록 %d개 - 휠/드래그로 아래 항목 보기 - %s" % [upgrades.size(), boss_hint]

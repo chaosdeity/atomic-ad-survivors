@@ -727,6 +727,11 @@ func _preboss_stage_label() -> String:
 func _next_objective_label() -> String:
 	return _next_goal_label().replace("목표: ", "")
 
+func _next_objective_short_label() -> String:
+	if _route_display_sortie_index() <= 1:
+		return "108초 회수까지 생존"
+	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
+
 func _route_display_sortie_index() -> int:
 	if match_state == "supply" or match_state == "recalled" or match_state == "boss_victory":
 		return sortie_index + 1
@@ -753,7 +758,7 @@ func _combat_goal_label() -> String:
 		return "시어머니 처리"
 	if sortie_index <= 1:
 		return "회수 신호 대기"
-	return RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
+	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
@@ -775,7 +780,9 @@ func _session_progress_data() -> Dictionary:
 		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
 		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
+		"next_objective_short": _next_objective_short_label(),
 		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_state),
+		"r01_sortie_goal_short_phrase": RoutePhraseResolver.r01_sortie_goal_short_phrase(r01_state),
 		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
 	}
 

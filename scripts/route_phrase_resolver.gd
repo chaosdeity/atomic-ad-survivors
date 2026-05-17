@@ -44,6 +44,47 @@ static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 				"외곽 주택가 중앙의 모델하우스 결절에 접근할 수 있다.",
 			], visit_index)
 
+static func r01_sortie_goal_short_phrase(state: Dictionary) -> String:
+	var outcome := String(state.get("r01_boss_outcome", ""))
+	var records := clampi(int(state.get("r01_signal_records_found", 0)), 0, 3)
+	var visit_index := maxi(0, int(state.get("r01_revisit_count", 0)) - 1)
+	if bool(state.get("r01_followup_ready", false)) and outcome != "":
+		return _pick([
+			"후속 송출관 신호 추적",
+			"남은 송출관 신호 확인",
+		], visit_index)
+	if outcome == OUTCOME_DESTROY_NODE:
+		return _pick([
+			"낮아진 광고음의 잔향 확인",
+			"모델하우스 잔해 재조사",
+		], visit_index)
+	if outcome == OUTCOME_EXTRACT_MEMORY:
+		return _pick([
+			"송출관 접근 절차 대조",
+			"윤서를 부르는 광고 출처 확인",
+		], visit_index)
+	match records:
+		0:
+			return _pick([
+				"외곽 주택가 신호 추적",
+				"반복 광고 지점 확인",
+			], visit_index)
+		1:
+			return _pick([
+				"두 번째 신호 기록 찾기",
+				"모델하우스 방향 확인",
+			], visit_index)
+		2:
+			return _pick([
+				"주택가 루프 방향 맞추기",
+				"모델하우스 접근 신호 확인",
+			], visit_index)
+		_:
+			return _pick([
+				"중심 결절 노출 준비",
+				"모델하우스 결절 접근",
+			], visit_index)
+
 static func r01_outpost_phrase(state: Dictionary) -> String:
 	var outcome := String(state.get("r01_boss_outcome", ""))
 	match outcome:
