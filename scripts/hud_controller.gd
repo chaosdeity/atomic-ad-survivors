@@ -438,7 +438,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		str(session_progress.get("boss_signal_label", "없음")),
 		str(session_progress.get("next_goal_label", session_progress.get("next_objective", "목표: 재출격"))),
 	]
-	var route_ready_text := "캠페인 송출관 조우 가능\n다음 출격 240초 이후 보스전 전환" if bool(session_progress.get("boss_route_ready", false)) else ""
+	var route_ready_text := "캠페인 송출관 조우 가능\n240초 이후 보스전 전환" if bool(session_progress.get("boss_route_ready", false)) else ""
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text

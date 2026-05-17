@@ -128,15 +128,15 @@ static func _reward_lines(
 	boss_hp_ratio: float
 ) -> Array[String]:
 	var lines: Array[String] = []
-	lines.append("런 정산: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
+	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	if anti_farm_reason != "":
 		lines.append("일반 보상 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
-		lines.append("일반 보상 후보: 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
+		lines.append("일반 보상 후보(미지급): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
 	if campaign_core_fragment_reward > 0:
-		lines.append("보스 성과 후보: 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
+		lines.append("보스 성과 후보(미지급): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
 	if boss_result_reason == "boss_recall":
 		lines.append("보스 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
 	if not signal_clue_candidates.is_empty():
-		lines.append("신호 단서 후보: %s" % ", ".join(signal_clue_candidates))
+		lines.append("신호 단서 판정: %s" % ", ".join(signal_clue_candidates))
 	return lines

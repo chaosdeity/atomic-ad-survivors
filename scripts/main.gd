@@ -613,24 +613,24 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 func _update_preboss_signal_events() -> void:
 	if _first_recall_active():
 		return
-	if preboss_signal_event_stage < 1 and sortie_index >= 2 and elapsed >= 120.0:
+	if preboss_signal_event_stage < 1 and elapsed >= 120.0:
 		preboss_signal_event_stage = 1
 		_set_boss_signal_state("faint")
 		_show_wave_notice("대형 광고 송출의 잔향이 감지됩니다")
-	elif preboss_signal_event_stage < 2 and sortie_index >= 3 and elapsed >= 180.0:
+	elif preboss_signal_event_stage < 2 and elapsed >= 180.0:
 		preboss_signal_event_stage = 2
 		_set_boss_signal_state("detected")
 		_show_wave_notice("보스 신호가 근처에서 회전합니다")
-	elif preboss_signal_event_stage < 3 and sortie_index >= 4 and elapsed >= 240.0:
+	elif preboss_signal_event_stage < 3 and elapsed >= 240.0:
 		preboss_signal_event_stage = 3
 		_set_boss_signal_state("near")
-		boss_signal_unlocked = true
-		_show_wave_notice("대형 송출체가 다음 출격에서 포착될 수 있습니다")
+		boss_signal_unlocked = meta_progression.has_all_signal_clues()
+		_show_wave_notice("대형 송출체의 좌표가 겹쳐집니다")
 
 func _try_start_boss_encounter() -> void:
 	if boss.active or boss.defeated or match_state != "playing":
 		return
-	if boss_signal_unlocked and sortie_index >= 5 and elapsed >= 240.0:
+	if _boss_route_ready() and elapsed >= 240.0:
 		_start_boss_encounter()
 
 func _start_boss_encounter() -> void:
@@ -711,11 +711,14 @@ func _boss_signal_label() -> String:
 func _preboss_stage_label() -> String:
 	if sortie_index <= 1:
 		return "강제 회수"
-	if sortie_index == 2:
+	var clue_count := meta_progression.signal_clue_count()
+	if clue_count <= 0:
 		return "재출격 안정화"
-	if sortie_index == 3:
+	if clue_count == 1:
 		return "신호 압력"
-	return "보스 신호 근접"
+	if clue_count == 2:
+		return "보스 신호 근접"
+	return "보스 좌표 확정"
 
 func _next_objective_label() -> String:
 	return _next_goal_label().replace("목표: ", "")
@@ -728,28 +731,26 @@ func _route_display_sortie_index() -> int:
 func _route_stage_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
 		return "송출 침묵"
-	var route_sortie := _route_display_sortie_index()
 	if _boss_route_ready():
 		return "보스 조우 가능"
-	if route_sortie <= 1:
+	var clue_count := meta_progression.signal_clue_count()
+	if _route_display_sortie_index() <= 1:
 		return "회수 1/1"
-	if route_sortie <= 4:
-		return "신호 추적 %d/3" % clampi(route_sortie - 1, 1, 3)
-	return "보스 조우 가능"
+	return "신호 추적 %d/3" % clue_count
 
 func _next_goal_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
 		return "목표: 외곽 신호 추적 준비"
 	if boss.active:
 		return "목표: 캠페인 송출관 침묵"
-	var route_sortie := _route_display_sortie_index()
-	if _boss_route_ready() or route_sortie >= 5:
+	if _boss_route_ready():
 		return "목표: 240초 이후 캠페인 송출관 조우"
-	if route_sortie <= 1:
+	if _route_display_sortie_index() <= 1:
 		return "목표: 108초 회수까지 생존"
-	if route_sortie == 2:
+	var clue_count := meta_progression.signal_clue_count()
+	if clue_count <= 0:
 		return "목표: 120초까지 생존해 미약한 보스 신호 확인"
-	if route_sortie == 3:
+	if clue_count == 1:
 		return "목표: 180초까지 생존해 신호 방향 확인"
 	return "목표: 240초까지 생존해 보스 신호 근접"
 
@@ -758,22 +759,24 @@ func _combat_goal_label() -> String:
 		return "외곽 신호 추적 준비"
 	if boss.active:
 		return "송출관 침묵"
-	if _boss_route_ready() or sortie_index >= 5:
+	if _boss_route_ready():
 		return "송출관 접근 중: 240초"
 	if sortie_index <= 1:
 		return "회수 신호 대기"
-	if sortie_index == 2:
+	var clue_count := meta_progression.signal_clue_count()
+	if clue_count <= 0:
 		return "목표 120초: 미약한 신호"
-	if sortie_index == 3:
+	if clue_count == 1:
 		return "목표 180초: 신호 방향"
 	return "목표 240초: 신호 근접"
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
 		return false
-	return boss_signal_unlocked and _route_display_sortie_index() >= 5
+	return meta_progression.has_all_signal_clues()
 
 func _session_progress_data() -> Dictionary:
+	_sync_boss_signal_from_clues()
 	return {
 		"sortie_index": sortie_index,
 		"preboss_stage": _preboss_stage_label(),
@@ -782,6 +785,8 @@ func _session_progress_data() -> Dictionary:
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
 		"boss_route_ready": _boss_route_ready(),
+		"signal_clue_count": meta_progression.signal_clue_count(),
+		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
 		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
 	}
@@ -835,6 +840,7 @@ func _finish_match(result_state: String) -> void:
 	if result_state == "boss_victory":
 		last_boss_victory_report = meta_progression.record_boss_victory()
 	last_run_result = RunResultEvaluator.evaluate_run_result(_run_result_input(result_state))
+	_apply_run_result_progression()
 	print("RunResult: %s" % JSON.stringify(last_run_result))
 	match_state = result_state
 	game_over = result_state == "game_over"
@@ -935,6 +941,45 @@ func _run_reward_lines() -> Array[String]:
 	for line in Array(last_run_result.get("reward_lines", [])):
 		lines.append(str(line))
 	return lines
+
+func _apply_run_result_progression() -> void:
+	var signal_report := meta_progression.grant_signal_clue_candidates(Array(last_run_result.get("signal_clue_candidates", [])))
+	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
+	for line in _signal_clue_reward_lines(signal_report):
+		reward_lines.append(line)
+	last_run_result["reward_lines"] = reward_lines
+	_sync_boss_signal_from_clues()
+
+func _signal_clue_reward_lines(signal_report: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	var gained := Array(signal_report.get("gained", []))
+	if not gained.is_empty():
+		lines.append("신호 단서 획득: %s" % ", ".join(meta_progression.signal_clue_labels(gained)))
+	var duplicates := int(signal_report.get("duplicate_flyers_awarded", 0))
+	if duplicates > 0:
+		lines.append("중복 신호 단서 전환: 찢어진 광고 전단 +%d" % duplicates)
+	if not gained.is_empty() or duplicates > 0:
+		lines.append("신호 추적 진행도: %d/%d" % [int(signal_report.get("count", 0)), int(signal_report.get("required", 3))])
+	return lines
+
+func _sync_boss_signal_from_clues() -> void:
+	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
+		return
+	var clue_count := meta_progression.signal_clue_count()
+	if clue_count >= 3:
+		if _boss_signal_rank(boss_signal_state) < 3:
+			boss_signal_state = "near"
+		boss_signal_unlocked = true
+	elif clue_count == 2:
+		if _boss_signal_rank(boss_signal_state) < 2:
+			boss_signal_state = "detected"
+		boss_signal_unlocked = false
+	elif clue_count == 1:
+		if _boss_signal_rank(boss_signal_state) < 1:
+			boss_signal_state = "faint"
+		boss_signal_unlocked = false
+	else:
+		boss_signal_unlocked = false
 
 func _show_supply_depot() -> void:
 	match_state = "supply"
@@ -1081,6 +1126,7 @@ func _debug_overlay_text() -> String:
 	return "\n\n".join(sections)
 
 func _debug_info() -> Dictionary:
+	_sync_boss_signal_from_clues()
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
 	return {
 		"match_state": match_state,
@@ -1119,6 +1165,8 @@ func _debug_info() -> Dictionary:
 		"fps": Engine.get_frames_per_second(),
 		"trace_torn_ad_flyer": meta_progression.trace_count(),
 		"trace_campaign_core_fragment": meta_progression.trace_count("campaign_core_fragment"),
+		"signal_clue_count": meta_progression.signal_clue_count(),
+		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
 		"boss_analysis_level": meta_progression.boss_analysis_level,
 		"boss_clear_count": meta_progression.boss_clear_count,
 		"meta_summary": meta_progression.upgrade_summary(),
@@ -1191,11 +1239,10 @@ func _debug_force_game_over() -> void:
 func _debug_start_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
-	sortie_index = maxi(sortie_index, 5)
 	first_sortie = false
 	first_recall_done = true
-	boss_signal_unlocked = true
-	boss_signal_state = "near"
+	meta_progression.grant_signal_clue_candidates(["faint_signal", "detected_signal", "near_signal"])
+	_sync_boss_signal_from_clues()
 	elapsed = maxf(elapsed, 240.0)
 	_start_boss_encounter()
 

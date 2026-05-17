@@ -3,6 +3,27 @@ extends RefCounted
 const TRACE_TORN_AD_FLYER := "torn_ad_flyer"
 const TRACE_CAMPAIGN_CORE_FRAGMENT := "campaign_core_fragment"
 const UPGRADE_CORE_SIGNAL_READING := "core_signal_reading"
+const SIGNAL_CLUE_FAINT_BROADCAST_RECORD := "faint_broadcast_record"
+const SIGNAL_CLUE_WARPED_BROADCAST_MAP := "warped_broadcast_map"
+const SIGNAL_CLUE_BROADCAST_COORDINATE_TRACE := "broadcast_coordinate_trace"
+
+const SIGNAL_CLUES := [
+	SIGNAL_CLUE_FAINT_BROADCAST_RECORD,
+	SIGNAL_CLUE_WARPED_BROADCAST_MAP,
+	SIGNAL_CLUE_BROADCAST_COORDINATE_TRACE,
+]
+
+const SIGNAL_CLUE_LABELS := {
+	SIGNAL_CLUE_FAINT_BROADCAST_RECORD: "미약한 방송 기록",
+	SIGNAL_CLUE_WARPED_BROADCAST_MAP: "뒤틀린 방송 지도",
+	SIGNAL_CLUE_BROADCAST_COORDINATE_TRACE: "방송 좌표 흔적",
+}
+
+const SIGNAL_CLUE_CANDIDATE_MAP := {
+	"faint_signal": SIGNAL_CLUE_FAINT_BROADCAST_RECORD,
+	"detected_signal": SIGNAL_CLUE_WARPED_BROADCAST_MAP,
+	"near_signal": SIGNAL_CLUE_BROADCAST_COORDINATE_TRACE,
+}
 
 const UPGRADES := [
 	{
@@ -54,6 +75,7 @@ var traces := {
 	TRACE_TORN_AD_FLYER: 0,
 	TRACE_CAMPAIGN_CORE_FRAGMENT: 0,
 }
+var signal_clues := {}
 var upgrades := {}
 var awarded_flags := {}
 var boss_analysis_level := 0
@@ -101,6 +123,53 @@ func record_boss_victory() -> Dictionary:
 		"analysis_after": boss_analysis_level,
 		"clear_count": boss_clear_count,
 	}
+
+func grant_signal_clue_candidates(candidates: Array) -> Dictionary:
+	var gained: Array[String] = []
+	var duplicates: Array[String] = []
+	for candidate in candidates:
+		var clue_id := String(SIGNAL_CLUE_CANDIDATE_MAP.get(str(candidate), ""))
+		if clue_id == "":
+			continue
+		if bool(signal_clues.get(clue_id, false)):
+			duplicates.append(clue_id)
+			continue
+		signal_clues[clue_id] = true
+		gained.append(clue_id)
+	if duplicates.size() > 0:
+		traces[TRACE_TORN_AD_FLYER] = int(traces.get(TRACE_TORN_AD_FLYER, 0)) + duplicates.size()
+	return {
+		"gained": gained,
+		"duplicates": duplicates,
+		"duplicate_flyers_awarded": duplicates.size(),
+		"count": signal_clue_count(),
+		"required": SIGNAL_CLUES.size(),
+	}
+
+func signal_clue_count() -> int:
+	var count := 0
+	for clue_id in SIGNAL_CLUES:
+		if bool(signal_clues.get(String(clue_id), false)):
+			count += 1
+	return count
+
+func has_signal_clue(clue_id: String) -> bool:
+	return bool(signal_clues.get(clue_id, false))
+
+func has_all_signal_clues() -> bool:
+	return signal_clue_count() >= SIGNAL_CLUES.size()
+
+func signal_clue_labels(clue_ids: Array = []) -> Array[String]:
+	var ids := clue_ids
+	if ids.is_empty():
+		ids = SIGNAL_CLUES
+	var labels: Array[String] = []
+	for clue_id in ids:
+		labels.append(String(SIGNAL_CLUE_LABELS.get(str(clue_id), str(clue_id))))
+	return labels
+
+func signal_clue_summary() -> String:
+	return "신호 단서: %d/%d" % [signal_clue_count(), SIGNAL_CLUES.size()]
 
 func upgrade_defs() -> Array:
 	return UPGRADES
@@ -159,9 +228,10 @@ func trace_label() -> String:
 	return "찢어진 광고 전단 %d개" % trace_count()
 
 func held_trace_label() -> String:
-	return "보유 흔적: 찢어진 광고 전단 %d개   캠페인 코어 파편 %d개" % [
+	return "보유 흔적: 찢어진 광고 전단 %d개   캠페인 코어 파편 %d개   %s" % [
 		trace_count(),
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
+		signal_clue_summary(),
 	]
 
 func upgrade_level(upgrade_id: String) -> int:
@@ -174,15 +244,18 @@ func has_any_upgrade() -> bool:
 	return false
 
 func boss_analysis_summary() -> String:
-	return "보스 분석: %d/3   침묵 횟수: %d   캠페인 코어 파편: %d" % [
+	return "보스 분석: %d/3   침묵 횟수: %d   캠페인 코어 파편: %d   %s" % [
 		boss_analysis_level,
 		boss_clear_count,
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
+		signal_clue_summary(),
 	]
 
 func boss_hint() -> String:
 	if boss_clear_count > 0:
 		return "다음 조우 힌트: 침묵시킨 송출 신호를 외곽 추적에 씁니다"
+	if has_all_signal_clues():
+		return "다음 조우 힌트: 세 단서가 겹쳤습니다. 240초 이후 송출관을 포착할 수 있습니다"
 	if boss_analysis_level <= 0:
 		return "다음 조우 힌트: 보스 신호를 다시 추적하세요"
 	if boss_analysis_level == 1:
