@@ -638,6 +638,19 @@ def local_response_state_preview_table() -> str:
     return markdown_table(["state area", "preview", "boundary note"], rows)
 
 
+def route_phrase_preview_table() -> str:
+    rows = [
+        ["records=0 / outcome=none", "외곽 주택가의 신호 이벤트를 추적한다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
+        ["records=1 / outcome=none", "첫 잡음 영수증을 보급소 기록판에 고정했다. 다음 신호는 더 긴 광고 뒤에 숨어 있다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
+        ["records=2 / outcome=none", "길 잃은 카탈로그가 주택가 루프의 방향을 맞추기 시작했다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
+        ["records=3 / outcome=none", "개장 전 점검표가 송출관 접근 절차를 확정했다. 중심 결절을 노출시킨다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
+        ["records=3 / outcome=destroy_node", "스마일 홈의 낮아진 광고음 사이로 남은 결절 잔향을 확인한다.", "스마일 홈의 광고음이 한 겹 낮아졌다."],
+        ["records=3 / outcome=extract_memory", "가족사진 뒤편의 송출관 접근 절차를 대조한다.", "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다."],
+        ["post-boss followup", "스마일 홈 결절 처리 기록을 바탕으로 캠페인 송출관의 후속 신호를 추적한다.", "캠페인 송출관은 후속 신호 문맥으로만 표시"],
+    ]
+    return markdown_table(["state", "sortie board / next goal", "outpost phrase note"], rows)
+
+
 def boss_enrage_preview_table() -> str:
     rows = [
         [
@@ -753,6 +766,10 @@ def main() -> None:
     print("## R01 Local Response State Preview")
     print()
     print(local_response_state_preview_table())
+    print()
+    print("## R01 Route Phrase Preview")
+    print()
+    print(route_phrase_preview_table())
     print()
     print("## Boss Enrage Preview")
     print()

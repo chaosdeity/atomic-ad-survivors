@@ -151,6 +151,8 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("r01_trace_consumed_count", 0)),
 			int(info.get("r01_campaign_used_count", 0)),
 		],
+		"r01 goal: %s" % str(info.get("r01_sortie_goal_phrase", "")),
+		"r01 outpost: %s" % str(info.get("r01_outpost_phrase", "")),
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])

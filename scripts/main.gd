@@ -11,6 +11,7 @@ const WaveDirector := preload("res://scripts/wave_director.gd")
 const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 const MetaProgression := preload("res://scripts/meta_progression.gd")
+const RoutePhraseResolver := preload("res://scripts/route_phrase_resolver.gd")
 const BossController := preload("res://scripts/boss_controller.gd")
 const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 
@@ -735,43 +736,24 @@ func _route_stage_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
 		return "스마일 홈 결절 침묵"
 	if _boss_route_ready():
-		return "스마일 홈 결절 노출"
-	var clue_count := meta_progression.signal_clue_count()
+		return "모델하우스 결절 접근 가능"
 	if _route_display_sortie_index() <= 1:
-		return "회수 1/1"
-	return "신호 추적 %d/3" % clue_count
+		return "침묵 보급소 회수선"
+	return "외곽 주택가 출격 게시판"
 
 func _next_goal_label() -> String:
-	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "목표: 시어머니 뒤편의 송출관 신호 추적"
 	if boss.active:
 		return "목표: 스마일 홈 시어머니 처리"
-	if _boss_route_ready():
-		return "목표: 240초 이후 스마일 홈 결절 조우"
 	if _route_display_sortie_index() <= 1:
 		return "목표: 108초 회수까지 생존"
-	var clue_count := meta_progression.signal_clue_count()
-	if clue_count <= 0:
-		return "목표: 120초까지 생존해 미약한 보스 신호 확인"
-	if clue_count == 1:
-		return "목표: 180초까지 생존해 신호 방향 확인"
-	return "목표: 240초까지 생존해 송출관 접근 절차 확인"
+	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _combat_goal_label() -> String:
-	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "송출관 후속 신호 추적"
 	if boss.active:
 		return "시어머니 처리"
-	if _boss_route_ready():
-		return "스마일 홈 결절 접근: 240초"
 	if sortie_index <= 1:
 		return "회수 신호 대기"
-	var clue_count := meta_progression.signal_clue_count()
-	if clue_count <= 0:
-		return "목표 120초: 미약한 신호"
-	if clue_count == 1:
-		return "목표 180초: 신호 방향"
-	return "목표 240초: 접근 절차"
+	return RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
@@ -780,6 +762,7 @@ func _boss_route_ready() -> bool:
 
 func _session_progress_data() -> Dictionary:
 	_sync_boss_signal_from_clues()
+	var r01_state := _r01_phrase_state()
 	return {
 		"sortie_index": sortie_index,
 		"preboss_stage": _preboss_stage_label(),
@@ -792,11 +775,18 @@ func _session_progress_data() -> Dictionary:
 		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
 		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
+		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_state),
+		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
 	}
+
+func _r01_phrase_state() -> Dictionary:
+	var r01_state := meta_progression.r01_state_summary()
+	r01_state["r01_followup_ready"] = meta_progression.has_smile_home_boss_outcome() and (meta_progression.boss_clear_count > 0 or boss_signal_state == "silent")
+	return r01_state
 
 func _session_progress_lines() -> Array[String]:
 	return [
-		"%s   보스 신호: %s" % [_route_stage_label(), _boss_signal_label()],
+		"%s" % _route_stage_label(),
 		_next_goal_label(),
 	]
 
@@ -1156,7 +1146,7 @@ func _debug_overlay_text() -> String:
 func _debug_info() -> Dictionary:
 	_sync_boss_signal_from_clues()
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
-	var r01_summary := meta_progression.r01_state_summary()
+	var r01_summary := _r01_phrase_state()
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
@@ -1207,6 +1197,8 @@ func _debug_info() -> Dictionary:
 		"r01_trace_preserved_count": int(r01_summary.get("r01_trace_preserved_count", 0)),
 		"r01_trace_consumed_count": int(r01_summary.get("r01_trace_consumed_count", 0)),
 		"r01_campaign_used_count": int(r01_summary.get("r01_campaign_used_count", 0)),
+		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_summary),
+		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_summary),
 		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
