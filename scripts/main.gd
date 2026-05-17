@@ -12,6 +12,7 @@ const DebugTools := preload("res://scripts/debug_tools.gd")
 const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 const MetaProgression := preload("res://scripts/meta_progression.gd")
 const BossController := preload("res://scripts/boss_controller.gd")
+const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -51,6 +52,7 @@ var boss_signal_unlocked := false
 var boss_result_reason := ""
 var last_boss_recall_report := {}
 var last_boss_victory_report := {}
+var last_run_result := {}
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -832,6 +834,8 @@ func _finish_match(result_state: String) -> void:
 		last_boss_recall_report = meta_progression.record_boss_recall(boss.hp_ratio())
 	if result_state == "boss_victory":
 		last_boss_victory_report = meta_progression.record_boss_victory()
+	last_run_result = RunResultEvaluator.evaluate_run_result(_run_result_input(result_state))
+	print("RunResult: %s" % JSON.stringify(last_run_result))
 	match_state = result_state
 	game_over = result_state == "game_over"
 	paused_for_card = false
@@ -856,7 +860,7 @@ func _result_data(result_state: String) -> Dictionary:
 				"보스 침묵: %d회" % clear_count,
 				"보스 분석: %d/3" % meta_progression.boss_analysis_level,
 				"다음 목표: 외곽 신호 추적",
-			],
+			] + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
 			"survival_time": elapsed,
@@ -878,7 +882,7 @@ func _result_data(result_state: String) -> Dictionary:
 					"보스 분석: %d/3" % analysis_level,
 					meta_progression.boss_weakness_label(),
 					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
-				],
+				] + _run_reward_lines(),
 				"button_text": "보급소로 돌아가기",
 				"prompt": "스페이스 / 클릭으로 보급소 이동",
 				"survival_time": elapsed,
@@ -892,7 +896,7 @@ func _result_data(result_state: String) -> Dictionary:
 			"result": "긴급 회수",
 			"description": "캠페인 신호에 삼켜지기 직전, 침묵 보급소가 당신을 끌어냈습니다.",
 			"trace": "찢어진 광고 전단",
-			"progress_lines": _session_progress_lines(),
+			"progress_lines": _session_progress_lines() + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
 			"survival_time": elapsed,
@@ -904,7 +908,7 @@ func _result_data(result_state: String) -> Dictionary:
 		}
 	return {
 		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
-		"progress_lines": _session_progress_lines(),
+		"progress_lines": _session_progress_lines() + _run_reward_lines(),
 		"survival_time": elapsed,
 		"level": level,
 		"kills": kills,
@@ -912,6 +916,25 @@ func _result_data(result_state: String) -> Dictionary:
 		"peak_enemy_count": peak_enemy_count,
 		"final_enemy_count": enemies.enemies.size(),
 	}
+
+func _run_result_input(result_state: String) -> Dictionary:
+	return {
+		"match_state": result_state,
+		"elapsed": elapsed,
+		"kills": kills,
+		"level": level,
+		"peak_enemy_count": peak_enemy_count,
+		"boss_active": boss.active,
+		"boss_hp_ratio": boss.hp_ratio(),
+		"boss_result_reason": boss_result_reason,
+		"first_sortie": first_sortie,
+	}
+
+func _run_reward_lines() -> Array[String]:
+	var lines: Array[String] = []
+	for line in Array(last_run_result.get("reward_lines", [])):
+		lines.append(str(line))
+	return lines
 
 func _show_supply_depot() -> void:
 	match_state = "supply"
@@ -1476,6 +1499,7 @@ func _restart() -> void:
 	boss_result_reason = ""
 	last_boss_recall_report = {}
 	last_boss_victory_report = {}
+	last_run_result = {}
 	_reset_player_stats()
 	player_pos = Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
