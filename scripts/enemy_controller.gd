@@ -17,6 +17,8 @@ const ROLE_STATS := {
 	"basic": {"hp": 1.0, "speed": 1.0, "radius": 8.0, "contact": 1.0, "sprite": "billboard", "defense": DEFENSE_TYPE_NORMAL},
 	"fast": {"hp": 0.80, "speed": 1.55, "radius": 7.0, "contact": 0.82, "sprite": "coupon", "defense": DEFENSE_TYPE_ANTI_CHARGE},
 	"tank": {"hp": 2.85, "speed": 0.62, "radius": 13.0, "contact": 1.35, "sprite": "appliance", "defense": DEFENSE_TYPE_ANTI_AUTO},
+	"speaker": {"hp": 1.35, "speed": 0.72, "radius": 10.0, "contact": 0.92, "sprite": "billboard", "defense": DEFENSE_TYPE_NORMAL},
+	"charger": {"hp": 1.12, "speed": 1.05, "radius": 9.0, "contact": 0.95, "sprite": "coupon", "defense": DEFENSE_TYPE_ANTI_CHARGE},
 	"signal": {"hp": 1.65, "speed": 0.82, "radius": 11.0, "contact": 1.15, "sprite": "billboard", "defense": DEFENSE_TYPE_EXPOSED_CORE},
 }
 const ELITE_DEFENSE_TYPE := DEFENSE_TYPE_PLATED
@@ -29,10 +31,23 @@ const DEFENSE_MULTIPLIERS := {
 }
 const SIGNAL_AURA_RADIUS := 92.0
 const SIGNAL_AURA_SPEED_MULT := 1.13
+const SPEAKER_PULSE_RADIUS := 118.0
+const SPEAKER_PULSE_SPEED_MULT := 1.16
+const SPEAKER_PULSE_DURATION := 1.05
+const SPEAKER_PULSE_COOLDOWN := 4.4
+const CHARGER_TRIGGER_MIN := 62.0
+const CHARGER_TRIGGER_MAX := 235.0
+const CHARGER_WINDUP_DURATION := 0.58
+const CHARGER_DASH_DURATION := 0.38
+const CHARGER_RECOVER_DURATION := 0.68
+const CHARGER_DASH_SPEED_MULT := 4.25
+const CHARGER_DASH_CONTACT_MULT := 1.24
+const CHARGER_COOLDOWN := 4.2
 const PRESSURE_REPLACE_START := 150.0
 
 var enemies: Array[Dictionary] = []
 var spawn_timer := 0.0
+var last_contact_hint := ""
 
 func update_spawning(delta: float, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
 	spawn_timer -= delta
@@ -97,6 +112,12 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"hit_flash_duration": 0.12,
 		"slow_timer": 0.0,
 		"slow_mult": 1.0,
+		"action_state": "idle",
+		"action_timer": 0.0,
+		"action_cooldown": rng.randf_range(0.9, 3.6),
+		"dash_dir": Vector2.ZERO,
+		"speaker_pulse": 0.0,
+		"speaker_cooldown": rng.randf_range(1.0, 3.8),
 	})
 
 func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
@@ -135,7 +156,7 @@ func _pressure_replacement_index(player_pos: Vector2) -> int:
 	var best_score := -INF
 	for i in range(enemies.size()):
 		var enemy := enemies[i]
-		if bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) in ["tank", "signal"]:
+		if bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) in ["tank", "signal", "speaker", "charger"]:
 			continue
 		var dist_sq := player_pos.distance_squared_to(enemy["pos"])
 		if dist_sq < 150.0 * 150.0:
@@ -148,7 +169,11 @@ func _pressure_replacement_index(player_pos: Vector2) -> int:
 
 func update_enemies(delta: float, player_pos: Vector2) -> float:
 	var contact_damage := 0.0
+	last_contact_hint = ""
+	for enemy in enemies:
+		_update_special_action(enemy, delta, player_pos)
 	var signal_positions := _signal_positions()
+	var speaker_positions := _active_speaker_positions()
 	for enemy in enemies:
 		enemy["age"] = float(enemy.get("age", 0.0)) + delta
 		enemy["hit_flash"] = maxf(0.0, float(enemy.get("hit_flash", 0.0)) - delta)
@@ -158,11 +183,20 @@ func update_enemies(delta: float, player_pos: Vector2) -> float:
 		var dist := maxf(1.0, to_player.length())
 		var slow_mult := float(enemy.get("slow_mult", 1.0)) if float(enemy.get("slow_timer", 0.0)) > 0.0 else 1.0
 		var aura_mult := _signal_aura_mult(enemy, signal_positions)
-		enemy["aura_boosted"] = aura_mult > 1.0
-		enemy["pos"] = pos + to_player / dist * float(enemy["speed"]) * slow_mult * aura_mult * delta
+		var speaker_mult := _speaker_pulse_mult(enemy, speaker_positions)
+		enemy["aura_boosted"] = aura_mult > 1.0 or speaker_mult > 1.0
+		enemy["speaker_boosted"] = speaker_mult > 1.0
+		enemy["pos"] = _next_enemy_pos(enemy, pos, to_player, dist, slow_mult, aura_mult * speaker_mult, delta)
 		if dist < C.PLAYER_RADIUS + float(enemy["radius"]):
-			contact_damage += C.ENEMY_CONTACT_DPS * delta * float(enemy.get("contact_damage_mult", 1.0))
+			var contact_mult := float(enemy.get("contact_damage_mult", 1.0))
+			if String(enemy.get("role", "basic")) == "charger" and String(enemy.get("action_state", "idle")) == "dash":
+				contact_mult *= CHARGER_DASH_CONTACT_MULT
+			contact_damage += C.ENEMY_CONTACT_DPS * delta * contact_mult
+			_set_contact_hint(enemy)
 	return contact_damage
+
+func contact_hint() -> String:
+	return last_contact_hint
 
 func _pick_role(rng: RandomNumberGenerator, role_weights: Variant) -> String:
 	if not role_weights is Dictionary:
@@ -188,6 +222,13 @@ func _signal_positions() -> Array[Vector2]:
 			positions.append(Vector2(enemy["pos"]))
 	return positions
 
+func _active_speaker_positions() -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	for enemy in enemies:
+		if String(enemy.get("role", "basic")) == "speaker" and float(enemy.get("speaker_pulse", 0.0)) > 0.0:
+			positions.append(Vector2(enemy["pos"]))
+	return positions
+
 func _signal_aura_mult(enemy: Dictionary, signal_positions: Array[Vector2]) -> float:
 	if String(enemy.get("role", "basic")) == "signal":
 		return 1.0
@@ -197,6 +238,100 @@ func _signal_aura_mult(enemy: Dictionary, signal_positions: Array[Vector2]) -> f
 		if pos.distance_squared_to(signal_pos) <= radius_sq:
 			return SIGNAL_AURA_SPEED_MULT
 	return 1.0
+
+func _speaker_pulse_mult(enemy: Dictionary, speaker_positions: Array[Vector2]) -> float:
+	if String(enemy.get("role", "basic")) == "speaker":
+		return 1.0
+	var pos: Vector2 = enemy["pos"]
+	var radius_sq := SPEAKER_PULSE_RADIUS * SPEAKER_PULSE_RADIUS
+	for speaker_pos in speaker_positions:
+		if pos.distance_squared_to(speaker_pos) <= radius_sq:
+			return SPEAKER_PULSE_SPEED_MULT
+	return 1.0
+
+func _update_special_action(enemy: Dictionary, delta: float, player_pos: Vector2) -> void:
+	var role := String(enemy.get("role", "basic"))
+	if role == "speaker":
+		_update_speaker(enemy, delta, player_pos)
+	elif role == "charger":
+		_update_charger(enemy, delta, player_pos)
+
+func _update_speaker(enemy: Dictionary, delta: float, player_pos: Vector2) -> void:
+	enemy["speaker_pulse"] = maxf(0.0, float(enemy.get("speaker_pulse", 0.0)) - delta)
+	enemy["speaker_cooldown"] = maxf(0.0, float(enemy.get("speaker_cooldown", 0.0)) - delta)
+	if float(enemy.get("speaker_pulse", 0.0)) > 0.0:
+		enemy["action_state"] = "broadcast"
+		return
+	enemy["action_state"] = "idle"
+	if float(enemy.get("speaker_cooldown", 0.0)) > 0.0:
+		return
+	var pos: Vector2 = enemy["pos"]
+	if pos.distance_squared_to(player_pos) > 330.0 * 330.0:
+		return
+	enemy["speaker_pulse"] = SPEAKER_PULSE_DURATION
+	enemy["speaker_cooldown"] = SPEAKER_PULSE_COOLDOWN
+	enemy["action_state"] = "broadcast"
+
+func _update_charger(enemy: Dictionary, delta: float, player_pos: Vector2) -> void:
+	var state := String(enemy.get("action_state", "idle"))
+	enemy["action_timer"] = maxf(0.0, float(enemy.get("action_timer", 0.0)) - delta)
+	enemy["action_cooldown"] = maxf(0.0, float(enemy.get("action_cooldown", 0.0)) - delta)
+	var pos: Vector2 = enemy["pos"]
+	var to_player := player_pos - pos
+	var dist := to_player.length()
+	if state == "windup":
+		if to_player.length_squared() > 0.01:
+			enemy["dash_dir"] = to_player.normalized()
+		if float(enemy.get("action_timer", 0.0)) <= 0.0:
+			enemy["action_state"] = "dash"
+			enemy["action_timer"] = CHARGER_DASH_DURATION
+		return
+	if state == "dash":
+		if float(enemy.get("action_timer", 0.0)) <= 0.0:
+			enemy["action_state"] = "recover"
+			enemy["action_timer"] = CHARGER_RECOVER_DURATION
+		return
+	if state == "recover":
+		if float(enemy.get("action_timer", 0.0)) <= 0.0:
+			enemy["action_state"] = "idle"
+			enemy["action_cooldown"] = CHARGER_COOLDOWN
+		return
+	if float(enemy.get("action_cooldown", 0.0)) > 0.0:
+		return
+	if dist >= CHARGER_TRIGGER_MIN and dist <= CHARGER_TRIGGER_MAX and to_player.length_squared() > 0.01:
+		enemy["action_state"] = "windup"
+		enemy["action_timer"] = CHARGER_WINDUP_DURATION
+		enemy["dash_dir"] = to_player.normalized()
+
+func _next_enemy_pos(enemy: Dictionary, pos: Vector2, to_player: Vector2, dist: float, slow_mult: float, aura_mult: float, delta: float) -> Vector2:
+	var role := String(enemy.get("role", "basic"))
+	var state := String(enemy.get("action_state", "idle"))
+	var dir := to_player / dist
+	var speed := float(enemy["speed"]) * slow_mult * aura_mult
+	if role == "speaker" and state == "broadcast":
+		speed *= 0.42
+	elif role == "charger":
+		if state == "windup":
+			speed *= 0.12
+		elif state == "dash":
+			var stored_dash_dir: Vector2 = enemy.get("dash_dir", dir)
+			dir = stored_dash_dir
+			speed = float(enemy["speed"]) * slow_mult * CHARGER_DASH_SPEED_MULT
+		elif state == "recover":
+			speed *= 0.34
+	var next_pos := pos + dir * speed * delta
+	next_pos.x = clampf(next_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
+	next_pos.y = clampf(next_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+	return next_pos
+
+func _set_contact_hint(enemy: Dictionary) -> void:
+	var role := String(enemy.get("role", "basic"))
+	if role == "charger" and String(enemy.get("action_state", "idle")) == "dash":
+		last_contact_hint = "돌진 충돌"
+	elif last_contact_hint == "" and bool(enemy.get("speaker_boosted", false)):
+		last_contact_hint = "확성기 압박"
+	elif last_contact_hint == "" and bool(enemy.get("aura_boosted", false)):
+		last_contact_hint = "신호 가속"
 
 func nearest_enemy(player_pos: Vector2, max_range: float) -> int:
 	return nearest_enemy_excluding(player_pos, max_range, [])
@@ -299,3 +434,17 @@ func cleanup_dead() -> Array[Vector2]:
 func clear() -> void:
 	enemies.clear()
 	spawn_timer = 0.0
+	last_contact_hint = ""
+
+func role_summary() -> String:
+	var counts := {}
+	for enemy in enemies:
+		var role := "elite" if bool(enemy.get("elite", false)) else String(enemy.get("role", "basic"))
+		counts[role] = int(counts.get(role, 0)) + 1
+	var ordered := ["basic", "fast", "tank", "speaker", "charger", "signal", "elite"]
+	var parts: Array[String] = []
+	for role in ordered:
+		var count := int(counts.get(role, 0))
+		if count > 0:
+			parts.append("%s=%d" % [role, count])
+	return " ".join(parts)

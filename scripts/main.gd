@@ -226,6 +226,9 @@ func _update_enemies(delta: float) -> void:
 		hurt_feedback_cooldown = 0.32
 		effects.add_impact_shake(0.10, 2.8)
 		effects.add_status_ring(player_pos, C.NEON_RED, 18.0, 0.20)
+		var contact_hint := enemies.contact_hint()
+		if contact_hint != "":
+			effects.add_floater(player_pos + Vector2(0, -18), contact_hint, C.NEON_RED, 12)
 	if player_hp <= 0.0:
 		if boss.active:
 			boss_result_reason = "boss_recall"
@@ -1179,6 +1182,7 @@ func _debug_info() -> Dictionary:
 		"r01_zone_id": r01_map.current_zone_id(),
 		"r01_zone_name": r01_map.current_zone_name(),
 		"r01_zone_debug_label": r01_map.current_debug_label(),
+		"enemy_role_summary": enemies.role_summary(),
 		"enemy_count": enemies.enemies.size(),
 		"enemy_cap": C.ENEMY_CAP,
 		"player_hp": player_hp,
@@ -1494,11 +1498,26 @@ func _draw_enemy_nameplate(enemy: Dictionary) -> void:
 		return
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
-	var label := "ELITE" if bool(enemy.get("elite", false)) else ("FAST" if role == "fast" else ("TANK" if role == "tank" else "SIGNAL"))
-	var width := 42.0 if label != "SIGNAL" else 50.0
+	var label := "ELITE" if bool(enemy.get("elite", false)) else _enemy_role_label(role)
+	var width := 54.0 if label == "SIGNAL" or label == "LOUD" or label == "DASH" else 42.0
 	var y := -radius - 20.0
 	draw_rect(Rect2(pos + Vector2(-width * 0.5, y - 7.0), Vector2(width, 10.0)), Color(0.10, 0.06, 0.04, 0.62))
 	draw_string(UIFont.get_font(), pos + Vector2(0, y), label, HORIZONTAL_ALIGNMENT_CENTER, width, 8, _defense_color(String(enemy.get("defense_type", "normal"))))
+
+func _enemy_role_label(role: String) -> String:
+	match role:
+		"fast":
+			return "FAST"
+		"tank":
+			return "TANK"
+		"speaker":
+			return "LOUD"
+		"charger":
+			return "DASH"
+		"signal":
+			return "SIGNAL"
+		_:
+			return role.to_upper()
 
 func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
@@ -1511,6 +1530,8 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 		draw_arc(pos, radius + 16.0, -PI * 0.22, PI * 1.22, 28, C.VITAMIN_YELLOW, 2.5)
 	if bool(enemy.get("aura_boosted", false)):
 		draw_arc(pos, radius + 5.0, 0.0, TAU, 24, Color(1.0, 0.3, 0.36, 0.45), 1.5)
+	if bool(enemy.get("speaker_boosted", false)):
+		draw_arc(pos, radius + 8.0, PI * 0.1, PI * 1.1, 20, C.VITAMIN_YELLOW, 2.0)
 	match role:
 		"fast":
 			draw_arc(pos, radius + 3.0, -0.8, 0.8, 12, C.NEON_RED, 2.0)
@@ -1523,6 +1544,31 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 			draw_circle(pos, 92.0, Color(1.0, 0.91, 0.25, aura_alpha))
 			draw_arc(pos, 92.0, 0.0, TAU, 42, Color(1.0, 0.3, 0.36, 0.38), 2.0)
 			draw_arc(pos, radius + 5.0, 0.0, TAU, 24, C.VITAMIN_YELLOW, 2.5)
+		"speaker":
+			var pulse_left := float(enemy.get("speaker_pulse", 0.0))
+			draw_arc(pos, radius + 7.0, -PI * 0.16, PI * 1.16, 28, C.VITAMIN_YELLOW, 2.5)
+			draw_line(pos + Vector2(radius - 2.0, -2.0), pos + Vector2(radius + 12.0, -8.0), C.VITAMIN_YELLOW, 2.0)
+			draw_line(pos + Vector2(radius - 2.0, 2.0), pos + Vector2(radius + 12.0, 8.0), C.VITAMIN_YELLOW, 2.0)
+			if pulse_left > 0.0:
+				var ratio := 1.0 - clampf(pulse_left / EnemyController.SPEAKER_PULSE_DURATION, 0.0, 1.0)
+				var pulse_radius := lerpf(42.0, EnemyController.SPEAKER_PULSE_RADIUS, ratio)
+				draw_circle(pos, pulse_radius, Color(1.0, 0.91, 0.25, 0.08))
+				draw_arc(pos, pulse_radius, 0.0, TAU, 56, Color(1.0, 0.91, 0.25, 0.42), 2.4)
+		"charger":
+			var state := String(enemy.get("action_state", "idle"))
+			var dash_dir: Vector2 = enemy.get("dash_dir", Vector2.RIGHT)
+			if dash_dir.length_squared() <= 0.01:
+				dash_dir = Vector2.RIGHT
+			if state == "windup":
+				var telegraph_end := pos + dash_dir.normalized() * 150.0
+				draw_line(pos, telegraph_end, Color(1.0, 0.3, 0.36, 0.62), 3.0)
+				draw_arc(pos, radius + 9.0, -0.9 + dash_dir.angle(), 0.9 + dash_dir.angle(), 22, C.NEON_RED, 3.0)
+				draw_circle(pos, radius + 8.0, Color(1.0, 0.3, 0.36, 0.16))
+			elif state == "dash":
+				draw_line(pos - dash_dir.normalized() * 28.0, pos, Color(1.0, 0.3, 0.36, 0.72), 4.0)
+				draw_arc(pos, radius + 8.0, 0.0, TAU, 28, C.NEON_RED, 3.0)
+			else:
+				draw_arc(pos, radius + 5.0, -0.65, 0.65, 14, C.NEON_RED, 2.0)
 
 func _draw_enemy_defense_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]

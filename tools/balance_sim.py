@@ -22,6 +22,7 @@ META_PROGRESSION = ROOT / "scripts" / "meta_progression.gd"
 LOCAL_RESPONSE_STATE = ROOT / "scripts" / "local_response_state.gd"
 
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
+SPECIAL_ENEMY_ORDER = ["speaker", "charger"]
 
 DEFENSE_TYPES = {
     "normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
@@ -264,6 +265,34 @@ def charge_efficiency_table(config: BalanceConfig) -> str:
         )
     return markdown_table(
         ["enemy", "defense", "hp", "charge dmg", "focused dmg", "normal casts", "normal time", "focused casts", "focused time"],
+        rows,
+    )
+
+
+def special_enemy_role_table(config: BalanceConfig) -> str:
+    behavior_notes = {
+        "speaker": "periodic ad pulse; nearby enemies gain slight speed until the ring fades",
+        "charger": "windup line then straight dash; sidestep or slow/charge to punish",
+    }
+    rows: list[list[object]] = []
+    for enemy in SPECIAL_ENEMY_ORDER:
+        hp = config.enemy_hp.get(enemy)
+        if hp is None:
+            continue
+        auto_damage = effective_damage(config, enemy, "auto", config.auto_damage)
+        focused_damage = effective_damage(config, enemy, "focused", config.focused_charge_damage)
+        rows.append(
+            [
+                enemy,
+                config.enemy_defense.get(enemy, "normal"),
+                fmt_num(hp),
+                fmt_num(auto_damage),
+                fmt_num(focused_damage),
+                behavior_notes.get(enemy, ""),
+            ]
+        )
+    return markdown_table(
+        ["role", "defense", "hp", "auto dmg", "focused dmg", "behavior note"],
         rows,
     )
 
@@ -718,6 +747,10 @@ def main() -> None:
     print("## Charge Efficiency")
     print()
     print(charge_efficiency_table(config))
+    print()
+    print("## Special Enemy Role Preview")
+    print()
+    print(special_enemy_role_table(config))
     print()
     print("## Growth Stages")
     print()

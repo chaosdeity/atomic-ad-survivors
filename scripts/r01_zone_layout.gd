@@ -47,17 +47,21 @@ static func apply_spawn_pressure(params: Dictionary, zone_id: String) -> Diction
 		ZONE_HOUSING_LOOP:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.01
 			var loop_weights: Dictionary = result.get("role_weights", {}).duplicate(true)
-			loop_weights["basic"] = maxf(0.0, float(loop_weights.get("basic", 0.0)) - 0.02)
+			loop_weights["basic"] = maxf(0.0, float(loop_weights.get("basic", 0.0)) - 0.07)
 			loop_weights["fast"] = float(loop_weights.get("fast", 0.0)) + 0.01
 			loop_weights["tank"] = float(loop_weights.get("tank", 0.0)) + 0.01
+			loop_weights["speaker"] = float(loop_weights.get("speaker", 0.0)) + 0.03
+			loop_weights["charger"] = float(loop_weights.get("charger", 0.0)) + 0.03
 			result["role_weights"] = loop_weights
 		ZONE_MODEL_HOUSE_NEXUS:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.015
 			result["elite_chance"] = minf(0.60, float(result.get("elite_chance", 0.0)) + 0.015)
 			var nexus_weights: Dictionary = result.get("role_weights", {}).duplicate(true)
-			nexus_weights["basic"] = maxf(0.0, float(nexus_weights.get("basic", 0.0)) - 0.03)
+			nexus_weights["basic"] = maxf(0.0, float(nexus_weights.get("basic", 0.0)) - 0.08)
 			nexus_weights["tank"] = float(nexus_weights.get("tank", 0.0)) + 0.01
 			nexus_weights["signal"] = float(nexus_weights.get("signal", 0.0)) + 0.02
+			nexus_weights["speaker"] = float(nexus_weights.get("speaker", 0.0)) + 0.04
+			nexus_weights["charger"] = float(nexus_weights.get("charger", 0.0)) + 0.01
 			result["role_weights"] = nexus_weights
 	return result
 
