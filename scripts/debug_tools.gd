@@ -98,8 +98,8 @@ func help_text() -> String:
 		"Shift+F8 Boss  Shift+F9 Core",
 		"Ctrl+F9 Boss Enrage",
 		"Shift+F10 Defeat Boss",
-		"Shift+F11 Distortion",
-		"Shift+F4 Safety Demo",
+		"Shift+F11 Happiness Reset",
+		"Shift+F4 Home Inspection",
 		"Ctrl+F8 Boss Recall Reward",
 	])
 

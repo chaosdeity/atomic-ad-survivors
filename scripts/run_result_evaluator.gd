@@ -17,7 +17,7 @@ const TIER_LABELS := {
 	TIER_STABLE_90: "90초 안정",
 	TIER_SIGNAL_120: "120초 신호",
 	TIER_DEEP_180: "180초 심층",
-	TIER_BOSS_ROUTE_240: "240초 보스 경로",
+	TIER_BOSS_ROUTE_240: "240초 송출관 접근 절차",
 }
 
 static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
@@ -98,10 +98,13 @@ static func _torn_ad_flyer_reward(reward_tier: String, kills: int, level: int, p
 
 static func _campaign_core_fragment_reward(match_state: String, boss_result_reason: String, boss_hp_ratio: float) -> int:
 	if match_state == "boss_victory":
-		return 1
+		return 2
+	var reward := 0
 	if boss_result_reason == "boss_recall" and boss_hp_ratio <= 0.65:
-		return 1
-	return 0
+		reward += 1
+	if boss_result_reason == "boss_recall" and boss_hp_ratio <= 0.25:
+		reward += 1
+	return reward
 
 static func _signal_clue_candidates(elapsed: float, boss_result_reason: String, boss_hp_ratio: float) -> Array[String]:
 	var candidates: Array[String] = []
@@ -136,7 +139,7 @@ static func _reward_lines(
 	if campaign_core_fragment_reward > 0:
 		lines.append("보스 성과 후보(미지급): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
 	if boss_result_reason == "boss_recall":
-		lines.append("보스 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
+		lines.append("스마일 홈 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
 	if not signal_clue_candidates.is_empty():
 		lines.append("신호 단서 판정: %s" % ", ".join(signal_clue_candidates))
 	return lines

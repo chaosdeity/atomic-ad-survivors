@@ -538,28 +538,28 @@ def first_boss_preview_table(config: BalanceConfig) -> str:
             "rough 2s window expectation before cards/meta bonuses",
         ],
         [
-            "auto during distortion",
+            "auto during happiness reset",
             fmt_num(anti_charge_auto),
             f"{distortion_auto_shots} shots",
             fmt_num(distortion_auto_damage),
             "stable 5s damage while charge is resisted",
         ],
         [
-            "focused charge during distortion",
+            "focused charge during happiness reset",
             fmt_num(anti_charge_focus),
             f"-{fmt_num(focused_loss)} vs normal focus",
             f"{fmt_num(anti_charge_focus / config.focused_charge_damage * 100.0)}% efficiency",
-            "distortion makes blind charge timing a bad trade",
+            "family-pressure state makes blind charge timing a bad trade",
         ],
         [
-            "safety demo charge hit",
+            "home inspection charge hit",
             fmt_num(demo_hit_damage),
             f"{demo_hits_to_danger} hits down base HP",
             f"{fmt_num(demo_hit_damage / config.player_max_hp * 100.0)}% player HP",
             "threatening but not an instant failure from full HP",
         ],
         [
-            "safety demo recover core",
+            "home inspection recover core",
             f"{fmt_num(exposed_focus)} focus + {demo_auto_shots} autos",
             fmt_num(demo_window_damage),
             f"{fmt_num(demo_window_damage / hp * 100.0)}% boss HP",
@@ -577,7 +577,7 @@ def boss_analysis_upgrade_table(config: BalanceConfig) -> str:
     rows = []
     for label, base_window in [
         ("standard core expose", 2.0),
-        ("safety demo recover core", 2.2),
+        ("home inspection recover core", 2.2),
     ]:
         base_autos = base_window / config.auto_tick
         boosted_window = base_window + core_bonus
@@ -597,14 +597,14 @@ def boss_analysis_upgrade_table(config: BalanceConfig) -> str:
 def boss_victory_reward_table() -> str:
     rows = [
         [
-            "first boss clear",
+            "smile home node clear",
             "campaign_core_fragment +2",
             "boss analysis set to 3/3",
             "returns to Silence Outpost instead of plain victory",
         ],
         [
-            "repeat boss clear",
-            "campaign_core_fragment +1",
+            "repeat node clear",
+            "campaign_core_fragment +2",
             "clear count increments",
             "keeps boss rematches useful without save/load",
         ],
@@ -618,7 +618,7 @@ def boss_enrage_preview_table() -> str:
             "phase threshold",
             "25% HP",
             "phase 3",
-            "last broadcast begins; no new pattern rules",
+            "final family inspection begins; no new pattern rules",
         ],
         [
             "pattern cooldown",
@@ -628,7 +628,7 @@ def boss_enrage_preview_table() -> str:
         ],
         [
             "telegraphs",
-            "sweep/demo/distortion 1.25/1.25/1.15 -> 1.05/1.05/0.95",
+            "table/inspection/happiness 1.25/1.25/1.15 -> 1.05/1.05/0.95",
             "still readable",
             "finale asks mastery of known tells",
         ],

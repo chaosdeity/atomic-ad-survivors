@@ -4,7 +4,7 @@ const C := preload("res://scripts/game_config.gd")
 const EnemyController := preload("res://scripts/enemy_controller.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 
-const BOSS_NAME := "캠페인 송출관"
+const BOSS_NAME := "스마일 홈 시어머니"
 const MAX_HP := 1750.0
 const BODY_RADIUS := 58.0
 const DEFAULT_POS := Vector2(0, -92)
@@ -298,7 +298,7 @@ func _start_next_pattern(player_pos: Vector2) -> void:
 
 func _start_sweep(player_pos: Vector2) -> void:
 	state = "sweep_telegraph"
-	pattern_name = "황금 시간대 스윕"
+	pattern_name = "완벽한 식탁 검사"
 	pattern_timer = SWEEP_TELEGRAPH_TIME if phase < 3 else 1.05
 	sweep_axis = "horizontal" if pattern_index % 4 == 1 else "vertical"
 	sweep_line_coord = player_pos.y if sweep_axis == "horizontal" else player_pos.x
@@ -309,7 +309,7 @@ func _start_sweep(player_pos: Vector2) -> void:
 
 func _start_shield() -> void:
 	state = "shield"
-	pattern_name = "보증서 방패"
+	pattern_name = "평생 보증 앞치마"
 	pattern_timer = 5.2 if phase < 3 else 4.2
 	defense_type = EnemyController.DEFENSE_TYPE_ANTI_AUTO
 	core_exposed = false
@@ -319,7 +319,7 @@ func _start_shield() -> void:
 
 func _start_distortion_telegraph() -> void:
 	state = "distortion_telegraph"
-	pattern_name = "신호 왜곡 세일"
+	pattern_name = "행복 기준 재조정"
 	pattern_timer = DISTORTION_TELEGRAPH_TIME if phase < 3 else 0.95
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false
@@ -327,7 +327,7 @@ func _start_distortion_telegraph() -> void:
 
 func _start_distortion_active() -> void:
 	state = "distortion_active"
-	pattern_name = "신호 왜곡 세일"
+	pattern_name = "행복 기준 재조정"
 	pattern_timer = DISTORTION_ACTIVE_TIME if phase < 3 else 3.6
 	defense_type = EnemyController.DEFENSE_TYPE_ANTI_CHARGE
 	core_exposed = false
@@ -335,7 +335,7 @@ func _start_distortion_active() -> void:
 
 func _start_demo_telegraph(player_pos: Vector2) -> void:
 	state = "demo_telegraph"
-	pattern_name = "가정용 안전 시연"
+	pattern_name = "방문 점검 돌진"
 	pattern_timer = DEMO_TELEGRAPH_TIME if phase < 3 else 1.05
 	demo_start_pos = _clamp_demo_pos(pos)
 	pos = demo_start_pos
@@ -349,7 +349,7 @@ func _start_demo_telegraph(player_pos: Vector2) -> void:
 
 func _start_demo_charge() -> void:
 	state = "demo_charge"
-	pattern_name = "가정용 안전 시연"
+	pattern_name = "방문 점검 돌진"
 	pattern_timer = DEMO_CHARGE_TIME
 	demo_hit_done = false
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
@@ -358,7 +358,7 @@ func _start_demo_charge() -> void:
 
 func _start_demo_recover() -> void:
 	state = "demo_recover"
-	pattern_name = "가정용 안전 시연"
+	pattern_name = "방문 점검 돌진"
 	pattern_timer = DEMO_RECOVER_TIME
 	defense_type = EnemyController.DEFENSE_TYPE_PLATED
 	core_exposed = false

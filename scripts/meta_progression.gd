@@ -228,20 +228,24 @@ func grant_first_recall_trace() -> bool:
 	return true
 
 func record_boss_recall(boss_hp_ratio: float) -> Dictionary:
-	var fragment_awarded := false
-	if not bool(awarded_flags.get("first_boss_recall", false)):
-		awarded_flags["first_boss_recall"] = true
-		traces[TRACE_CAMPAIGN_CORE_FRAGMENT] = int(traces.get(TRACE_CAMPAIGN_CORE_FRAGMENT, 0)) + 1
-		fragment_awarded = true
+	var fragments_awarded := 0
 	var target_level := 1
 	if boss_hp_ratio <= 0.65:
 		target_level = 2
+		if not bool(awarded_flags.get("boss_hp_65_fragment", false)):
+			awarded_flags["boss_hp_65_fragment"] = true
+			fragments_awarded += 1
 	if boss_hp_ratio <= 0.25:
 		target_level = 3
+		if not bool(awarded_flags.get("boss_hp_25_fragment", false)):
+			awarded_flags["boss_hp_25_fragment"] = true
+			fragments_awarded += 1
+	if fragments_awarded > 0:
+		traces[TRACE_CAMPAIGN_CORE_FRAGMENT] = int(traces.get(TRACE_CAMPAIGN_CORE_FRAGMENT, 0)) + fragments_awarded
 	var before := boss_analysis_level
 	boss_analysis_level = maxi(boss_analysis_level, target_level)
 	return {
-		"fragment_awarded": fragment_awarded,
+		"fragments_awarded": fragments_awarded,
 		"analysis_before": before,
 		"analysis_after": boss_analysis_level,
 		"analysis_gained": maxi(0, boss_analysis_level - before),
@@ -249,7 +253,7 @@ func record_boss_recall(boss_hp_ratio: float) -> Dictionary:
 
 func record_boss_victory() -> Dictionary:
 	var first_clear := boss_clear_count <= 0
-	var fragments := 2 if first_clear else 1
+	var fragments := 2
 	boss_clear_count += 1
 	traces[TRACE_CAMPAIGN_CORE_FRAGMENT] = int(traces.get(TRACE_CAMPAIGN_CORE_FRAGMENT, 0)) + fragments
 	var before := boss_analysis_level
@@ -375,7 +379,7 @@ func unlock_condition_label(condition: String) -> String:
 		"boss_analysis_2":
 			return "보스 분석 2/3"
 		"boss_clear_1":
-			return "보스 침묵 1회"
+			return "결절 처리 1회"
 		_:
 			return ""
 
@@ -461,7 +465,7 @@ func has_any_upgrade() -> bool:
 	return false
 
 func boss_analysis_summary() -> String:
-	return "보스 분석: %d/3   침묵 횟수: %d   캠페인 코어 파편: %d   %s" % [
+	return "보스 분석: %d/3   처리 횟수: %d   캠페인 코어 파편: %d   %s" % [
 		boss_analysis_level,
 		boss_clear_count,
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
@@ -470,21 +474,21 @@ func boss_analysis_summary() -> String:
 
 func boss_hint() -> String:
 	if boss_clear_count > 0:
-		return "다음 조우 힌트: 침묵시킨 송출 신호를 외곽 추적에 씁니다"
+		return "다음 조우 힌트: 시어머니 뒤편의 송출관 신호를 추적하세요"
 	if has_all_signal_clues():
-		return "다음 조우 힌트: 세 단서가 겹쳤습니다. 240초 이후 송출관을 포착할 수 있습니다"
+		return "다음 조우 힌트: 세 단서가 겹쳤습니다. 240초 이후 스마일 홈 결절이 드러납니다"
 	if boss_analysis_level <= 0:
-		return "다음 조우 힌트: 보스 신호를 다시 추적하세요"
+		return "다음 조우 힌트: 스마일 홈의 검증 절차를 다시 추적하세요"
 	if boss_analysis_level == 1:
-		return "다음 조우 힌트: 코어 노출 중 방향집중 차징"
+		return "다음 조우 힌트: 앞치마 아래 결절 노출 중 방향집중 차징"
 	if boss_analysis_level == 2:
-		return "다음 조우 힌트: 방패/왜곡 상태를 구분하세요"
-	return "다음 조우 힌트: 깊은 체력 구간의 패턴 연결을 보세요"
+		return "다음 조우 힌트: 앞치마 방패와 가족 할인 압박을 구분하세요"
+	return "다음 조우 힌트: 가족사진 뒤편의 송출 흔적을 보세요"
 
 func boss_weakness_label() -> String:
 	if boss_analysis_level >= 2:
-		return "확인된 약점: 방패 파괴 후 코어 노출"
-	return "확인된 약점: 코어 노출 중 방향집중 차징"
+		return "확인된 약점: 앞치마 방패 파괴 후 결절 노출"
+	return "확인된 약점: 결절 노출 중 방향집중 차징"
 
 func upgrade_summary_lines() -> Array[String]:
 	var bonus := bonuses()

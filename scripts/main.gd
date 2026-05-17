@@ -621,12 +621,12 @@ func _update_preboss_signal_events() -> void:
 	elif preboss_signal_event_stage < 2 and elapsed >= 180.0:
 		preboss_signal_event_stage = 2
 		_set_boss_signal_state("detected")
-		_show_wave_notice("보스 신호가 근처에서 회전합니다")
+		_show_wave_notice("스마일 홈 검증 신호가 근처에서 회전합니다")
 	elif preboss_signal_event_stage < 3 and elapsed >= 240.0:
 		preboss_signal_event_stage = 3
 		_set_boss_signal_state("near")
 		boss_signal_unlocked = meta_progression.has_all_signal_clues()
-		_show_wave_notice("대형 송출체의 좌표가 겹쳐집니다")
+		_show_wave_notice("송출관 접근 절차가 열리고 있습니다")
 
 func _try_start_boss_encounter() -> void:
 	if boss.active or boss.defeated or match_state != "playing":
@@ -639,8 +639,8 @@ func _start_boss_encounter() -> void:
 	boss.start()
 	enemies.clear()
 	wave_notice_timer = 4.0
-	wave_notice_text = "보스 조우: 캠페인 송출관"
-	effects.show_combat_banner("캠페인 송출관", C.VITAMIN_YELLOW)
+	wave_notice_text = "보스 조우: 스마일 홈 시어머니"
+	effects.show_combat_banner("스마일 홈 시어머니", C.VITAMIN_YELLOW)
 	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
 	effects.add_impact_shake(0.28, 5.8)
 
@@ -649,8 +649,8 @@ func _on_boss_defeated() -> void:
 	boss_signal_unlocked = false
 	boss_result_reason = "boss_defeated"
 	wave_notice_timer = 5.0
-	wave_notice_text = "보스 신호 침묵"
-	effects.show_combat_banner("보스 신호 침묵", C.TOXIC_GREEN)
+	wave_notice_text = "스마일 홈 결절 침묵"
+	effects.show_combat_banner("스마일 홈 결절 침묵", C.TOXIC_GREEN)
 	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
 	effects.add_impact_shake(0.34, 7.0)
 	_finish_match("boss_victory")
@@ -719,7 +719,7 @@ func _preboss_stage_label() -> String:
 		return "신호 압력"
 	if clue_count == 2:
 		return "보스 신호 근접"
-	return "보스 좌표 확정"
+	return "스마일 홈 결절 노출"
 
 func _next_objective_label() -> String:
 	return _next_goal_label().replace("목표: ", "")
@@ -731,9 +731,9 @@ func _route_display_sortie_index() -> int:
 
 func _route_stage_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "송출 침묵"
+		return "스마일 홈 결절 침묵"
 	if _boss_route_ready():
-		return "보스 조우 가능"
+		return "스마일 홈 결절 노출"
 	var clue_count := meta_progression.signal_clue_count()
 	if _route_display_sortie_index() <= 1:
 		return "회수 1/1"
@@ -741,11 +741,11 @@ func _route_stage_label() -> String:
 
 func _next_goal_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "목표: 외곽 신호 추적 준비"
+		return "목표: 시어머니 뒤편의 송출관 신호 추적"
 	if boss.active:
-		return "목표: 캠페인 송출관 침묵"
+		return "목표: 스마일 홈 시어머니 처리"
 	if _boss_route_ready():
-		return "목표: 240초 이후 캠페인 송출관 조우"
+		return "목표: 240초 이후 스마일 홈 결절 조우"
 	if _route_display_sortie_index() <= 1:
 		return "목표: 108초 회수까지 생존"
 	var clue_count := meta_progression.signal_clue_count()
@@ -753,15 +753,15 @@ func _next_goal_label() -> String:
 		return "목표: 120초까지 생존해 미약한 보스 신호 확인"
 	if clue_count == 1:
 		return "목표: 180초까지 생존해 신호 방향 확인"
-	return "목표: 240초까지 생존해 보스 신호 근접"
+	return "목표: 240초까지 생존해 송출관 접근 절차 확인"
 
 func _combat_goal_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "외곽 신호 추적 준비"
+		return "송출관 후속 신호 추적"
 	if boss.active:
-		return "송출관 침묵"
+		return "시어머니 처리"
 	if _boss_route_ready():
-		return "송출관 접근 중: 240초"
+		return "스마일 홈 결절 접근: 240초"
 	if sortie_index <= 1:
 		return "회수 신호 대기"
 	var clue_count := meta_progression.signal_clue_count()
@@ -769,7 +769,7 @@ func _combat_goal_label() -> String:
 		return "목표 120초: 미약한 신호"
 	if clue_count == 1:
 		return "목표 180초: 신호 방향"
-	return "목표 240초: 신호 근접"
+	return "목표 240초: 접근 절차"
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
@@ -865,13 +865,13 @@ func _result_data(result_state: String) -> Dictionary:
 		var fragments := int(last_boss_victory_report.get("fragments_awarded", 0))
 		var clear_count := int(last_boss_victory_report.get("clear_count", meta_progression.boss_clear_count))
 		return {
-			"result": "송출 침묵",
-			"description": "캠페인 송출관의 광고 신호가 꺼지고, 보급소가 남은 코어 파편을 회수했습니다.",
+			"result": "스마일 홈 결절 침묵",
+			"description": "스마일 홈의 결절이 침묵했습니다. 시어머니의 뒤편에서 더 큰 송출관 신호가 들립니다.",
 			"trace": "캠페인 코어 파편 +%d" % fragments,
 			"progress_lines": [
-				"보스 침묵: %d회" % clear_count,
+				"처리 성공: %d회" % clear_count,
 				"보스 분석: %d/3" % meta_progression.boss_analysis_level,
-				"다음 목표: 외곽 신호 추적",
+				"TODO: boss outcome choice - destroy_node / extract_memory",
 			] + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
@@ -885,13 +885,15 @@ func _result_data(result_state: String) -> Dictionary:
 	if result_state == "recalled":
 		if boss_result_reason == "boss_recall":
 			var analysis_level := int(last_boss_recall_report.get("analysis_after", meta_progression.boss_analysis_level))
-			var trace_text := "캠페인 코어 파편" if bool(last_boss_recall_report.get("fragment_awarded", false)) else "캠페인 코어 파편 분석 갱신"
+			var fragments := int(last_boss_recall_report.get("fragments_awarded", 0))
+			var trace_text := "캠페인 코어 파편 +%d" % fragments if fragments > 0 else "없음"
 			return {
 				"result": "신호 과부하 회수",
-				"description": "캠페인 송출관의 방송이 폭주하기 직전, 침묵 보급소가 신호 좌표를 끊어냈습니다.",
+				"description": "스마일 홈 시어머니의 검증 절차에서 회수되었습니다.",
 				"trace": trace_text,
 				"progress_lines": [
 					"보스 분석: %d/3" % analysis_level,
+					_boss_analysis_milestone_label(analysis_level),
 					meta_progression.boss_weakness_label(),
 					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
 				] + _run_reward_lines(),
@@ -929,7 +931,14 @@ func _result_data(result_state: String) -> Dictionary:
 		"card_count": selected_card_count,
 		"peak_enemy_count": peak_enemy_count,
 		"final_enemy_count": enemies.enemies.size(),
-	}
+		}
+
+func _boss_analysis_milestone_label(analysis_level: int) -> String:
+	if analysis_level >= 3:
+		return "성과: 가족사진 뒤편의 송출 흔적이 흔들렸습니다"
+	if analysis_level >= 2:
+		return "성과: 앞치마 아래의 캠페인 결절이 드러났습니다"
+	return "성과: 검증 절차의 첫 틈을 기록했습니다"
 
 func _run_result_input(result_state: String) -> Dictionary:
 	return {
@@ -1284,7 +1293,7 @@ func _debug_boss_distortion() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_distortion()
-	effects.show_combat_banner("신호 왜곡 세일", Color(0.35, 0.70, 0.95))
+	effects.show_combat_banner("행복 기준 재조정", Color(0.35, 0.70, 0.95))
 
 func _debug_boss_safety_demo() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -1292,7 +1301,7 @@ func _debug_boss_safety_demo() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_safety_demo(player_pos)
-	effects.show_combat_banner("가정용 안전 시연", C.VITAMIN_YELLOW)
+	effects.show_combat_banner("방문 점검 돌진", C.VITAMIN_YELLOW)
 
 func _debug_boss_recall_reward() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
