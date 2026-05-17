@@ -212,7 +212,7 @@ func _update_enemies(delta: float) -> void:
 	var contact_damage := enemies.update_enemies(delta, player_pos)
 	if contact_damage <= 0.0:
 		return
-	player_hp = maxf(0.0, player_hp - contact_damage)
+	player_hp = maxf(0.0, player_hp - _incoming_damage(contact_damage))
 	if hurt_feedback_cooldown <= 0.0:
 		hurt_feedback_cooldown = 0.32
 		effects.add_impact_shake(0.10, 2.8)
@@ -231,12 +231,13 @@ func _update_boss(delta: float) -> void:
 		return
 	var result := boss.update(delta, player_pos)
 	if result.has("player_damage"):
-		player_hp = maxf(0.0, player_hp - float(result["player_damage"]))
+		var final_damage := _incoming_damage(float(result["player_damage"]))
+		player_hp = maxf(0.0, player_hp - final_damage)
 		if result.has("knockback"):
 			player_pos += Vector2(result["knockback"])
 			player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
 			player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
-		effects.add_damage_number(player_pos + Vector2(0, -16), float(result["player_damage"]), "hit")
+		effects.add_damage_number(player_pos + Vector2(0, -16), final_damage, "hit")
 		var heavy_hit := result.has("knockback")
 		effects.add_impact_shake(0.28 if heavy_hit else 0.18, 7.2 if heavy_hit else 5.2)
 		effects.add_status_ring(player_pos, C.NEON_RED, 32.0 if heavy_hit else 24.0, 0.38 if heavy_hit else 0.30)
@@ -263,7 +264,7 @@ func _update_auto_fire(delta: float) -> void:
 			effects.add_auto_shot(player_pos, boss.pos)
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
-	var hit := enemies.apply_damage(target_idx, damage, "auto")
+	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_register_attack_pose(target_pos - player_pos, 0.14)
@@ -292,7 +293,7 @@ func _update_charge(delta: float) -> void:
 			effects.add_charge_warning_ring(player_pos)
 			charge_warning_audio.play()
 		if charge_timer >= _charge_period():
-			charge_window_left = C.CHARGE_WINDOW
+			charge_window_left = _charge_window()
 			charge_open_age = 0.0
 			charge_warning_played = false
 			charge_ready_flash = C.CHARGE_READY_FLASH
@@ -352,7 +353,7 @@ func _fire_charge() -> void:
 		if idx < enemies.enemies.size():
 			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
 			effects.spawn_hit_spark(hit_pos, directed, rng)
-			var hit := enemies.apply_damage(idx, damage, damage_type)
+			var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage, idx), damage_type)
 			effects.add_damage_number(hit_pos, float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 			_apply_hit_knockback(idx, player_pos, 18.0 if directed else 9.0)
 			_apply_charge_hit_modifiers(idx, directed, aim_dir)
@@ -409,7 +410,7 @@ func _charge_hits_boss(directed: bool, aim_dir: Vector2) -> bool:
 func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bool = true) -> Dictionary:
 	if not boss.active:
 		return {}
-	var hit := boss.apply_damage(base_damage, damage_type)
+	var hit := boss.apply_damage(_boss_meta_damage(base_damage), damage_type)
 	if hit.is_empty():
 		return {}
 	if show_number:
@@ -442,7 +443,7 @@ func _try_split_shot(primary_idx: int) -> void:
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
 	if auto_damage_synergy:
 		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
-	var hit := enemies.apply_damage(secondary_idx, split_damage, "auto")
+	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
@@ -512,7 +513,7 @@ func _try_charge_followthrough(hit_indices: Array[int], limit: int, damage: floa
 		return
 	var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
 	var follow_damage := damage * 0.28
-	var hit := enemies.apply_damage(idx, follow_damage, "focused")
+	var hit := enemies.apply_damage(idx, _enemy_meta_damage(follow_damage, idx), "focused")
 	if not hit.is_empty():
 		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
 		_apply_hit_knockback(idx, player_pos, 10.0)
@@ -944,9 +945,12 @@ func _run_reward_lines() -> Array[String]:
 
 func _apply_run_result_progression() -> void:
 	var signal_report := meta_progression.grant_signal_clue_candidates(Array(last_run_result.get("signal_clue_candidates", [])))
+	var run_flyer_bonus := meta_progression.grant_run_flyer_bonus(int(last_run_result.get("torn_ad_flyer_reward", 0)))
 	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
 	for line in _signal_clue_reward_lines(signal_report):
 		reward_lines.append(line)
+	if run_flyer_bonus > 0:
+		reward_lines.append("전단 회수 동선 보정: 찢어진 광고 전단 +%d" % run_flyer_bonus)
 	last_run_result["reward_lines"] = reward_lines
 	_sync_boss_signal_from_clues()
 
@@ -1109,7 +1113,7 @@ func _fire_feedback(directed: bool) -> void:
 
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "", _route_stage_label(), _combat_goal_label())
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "", _route_stage_label(), _combat_goal_label())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -1181,7 +1185,7 @@ func _debug_open_charge() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
 	charge_timer = _charge_period()
-	charge_window_left = C.CHARGE_WINDOW
+	charge_window_left = _charge_window()
 	charge_open_age = 0.0
 	charge_warning_played = false
 	charge_ready_flash = C.CHARGE_READY_FLASH
@@ -1373,7 +1377,7 @@ func _draw_player() -> void:
 				player_pos + dir.rotated(0.46) * C.CHARGE_RANGE * 0.74,
 			]), Color(1.0, 0.91, 0.25, 0.11))
 	elif charge_ready_flash > 0.0 or charge_window_left > 0.0:
-		var ratio := charge_window_left / C.CHARGE_WINDOW
+		var ratio := charge_window_left / _charge_window()
 		var pulse := 1.0 + sin(charge_open_age * 28.0) * 0.13
 		var focus_color := Color(0.62, 1.0, 0.36, 0.22) if has_aim else Color(1.0, 0.91, 0.25, 0.20)
 		draw_arc(player_pos, C.CHARGE_RANGE, -PI, PI, 72, Color(1.0, 0.3, 0.36, 0.32), 3.0)
@@ -1589,12 +1593,16 @@ func _reset_player_stats() -> void:
 		"move_speed_mult": 0.0,
 		"auto_damage_mult": 0.0,
 		"auto_damage_bonus": float(meta_bonuses["auto_damage_bonus"]),
-		"auto_range_bonus": 0.0,
+		"auto_range_bonus": float(meta_bonuses["auto_range_bonus"]),
 		"charge_damage_mult": 0.0,
 		"charge_damage_bonus": float(meta_bonuses["charge_damage_bonus"]),
 		"charge_target_bonus": 0,
-		"charge_period_bonus": 0.0,
-		"xp_gain_mult": 0.0,
+		"charge_period_bonus": float(meta_bonuses["charge_period_bonus"]),
+		"charge_window_bonus": float(meta_bonuses["charge_window_bonus"]),
+		"xp_gain_mult": float(meta_bonuses["xp_gain_mult"]),
+		"low_hp_damage_reduction": float(meta_bonuses["low_hp_damage_reduction"]),
+		"boss_shield_damage_mult": float(meta_bonuses["boss_shield_damage_mult"]),
+		"elite_damage_mult": float(meta_bonuses["elite_damage_mult"]),
 		"split_shot_level": 0,
 		"kill_burst_level": 0,
 		"charge_puddle_level": 0,
@@ -1619,6 +1627,27 @@ func _auto_damage_per_tick() -> float:
 func _charge_period() -> float:
 	var emergency_bonus := -0.45 * float(player_stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0
 	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]) + emergency_bonus)
+
+func _charge_window() -> float:
+	return C.CHARGE_WINDOW + float(player_stats["charge_window_bonus"])
+
+func _incoming_damage(amount: float) -> float:
+	var reduction := 0.0
+	if player_hp <= float(player_stats["max_hp"]) * 0.35:
+		reduction = float(player_stats["low_hp_damage_reduction"])
+	return amount * maxf(0.65, 1.0 - reduction)
+
+func _enemy_meta_damage(base_damage: float, index: int) -> float:
+	if index < 0 or index >= enemies.enemies.size():
+		return base_damage
+	if bool(enemies.enemies[index].get("elite", false)):
+		return base_damage * (1.0 + float(player_stats["elite_damage_mult"]))
+	return base_damage
+
+func _boss_meta_damage(base_damage: float) -> float:
+	if boss.state == "shield":
+		return base_damage * (1.0 + float(player_stats["boss_shield_damage_mult"]))
+	return base_damage
 
 func _charge_state() -> String:
 	if charge_window_left > 0.0:

@@ -18,6 +18,7 @@ GAME_CONFIG = ROOT / "scripts" / "game_config.gd"
 ENEMY_CONTROLLER = ROOT / "scripts" / "enemy_controller.gd"
 LEVEL_UP_CARDS = ROOT / "scripts" / "level_up_cards.gd"
 BOSS_CONTROLLER = ROOT / "scripts" / "boss_controller.gd"
+META_PROGRESSION = ROOT / "scripts" / "meta_progression.gd"
 
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 
@@ -103,6 +104,27 @@ def parse_card_value(text: str, card_id: str) -> float:
     if not card_match:
         raise ValueError(f"Could not find card value for {card_id}")
     return float(card_match.group(1))
+
+
+def parse_meta_upgrades(text: str) -> list[dict[str, object]]:
+    upgrades_match = re.search(r"const\s+UPGRADES\s*:=\s*\[(?P<body>.*?)\n\]", text, re.S)
+    if not upgrades_match:
+        raise ValueError("Could not find UPGRADES")
+
+    upgrades: list[dict[str, object]] = []
+    for body in re.findall(r"\{(.*?)\}", upgrades_match.group("body"), re.S):
+        item: dict[str, object] = {}
+        for key, raw_value in re.findall(r'"([^"]+)":\s*("[^"]*"|[^,\n]+)', body):
+            value = raw_value.strip()
+            if value.startswith('"') and value.endswith('"'):
+                item[key] = value.strip('"')
+            elif re.match(r"[-+]?\d+(?:\.\d+)?$", value):
+                item[key] = float(value) if "." in value else int(value)
+            else:
+                item[key] = value
+        if item:
+            upgrades.append(item)
+    return upgrades
 
 
 def load_config() -> BalanceConfig:
@@ -356,6 +378,61 @@ def meta_progression_table(config: BalanceConfig) -> str:
         ["meta stage", "max hp", "auto dmg", "charge dmg", "focused dmg", "basic auto ttk", "tank auto ttk", "signal focus cleanup", "elite focus casts", "note"],
         rows,
     )
+
+
+def meta_upgrade_tree_table() -> str:
+    upgrades = parse_meta_upgrades(read_text(META_PROGRESSION))
+    rows: list[list[object]] = []
+    for index, upgrade in enumerate(upgrades, start=1):
+        rows.append([
+            index,
+            upgrade.get("category", "미분류"),
+            upgrade.get("name", ""),
+            upgrade.get("cost", 0),
+            "파편" if str(upgrade.get("trace", "")).endswith("CAMPAIGN_CORE_FRAGMENT") else str(upgrade.get("trace_label", "전단")),
+            upgrade.get("max_level", 1),
+            upgrade.get("unlock_condition", "-"),
+            upgrade.get("effect_text", ""),
+        ])
+    return markdown_table(["#", "category", "upgrade", "cost", "trace", "max", "unlock", "effect"], rows)
+
+
+def meta_upgrade_effect_preview(config: BalanceConfig) -> str:
+    upgrades = parse_meta_upgrades(read_text(META_PROGRESSION))
+    totals = {
+        "auto_damage_bonus": 0.0,
+        "auto_range_bonus": 0.0,
+        "charge_damage_bonus": 0.0,
+        "charge_period_bonus": 0.0,
+        "charge_window_bonus": 0.0,
+        "max_hp_bonus": 0.0,
+        "xp_gain_mult": 0.0,
+        "core_expose_bonus": 0.0,
+        "elite_damage_mult": 0.0,
+        "boss_shield_damage_mult": 0.0,
+        "low_hp_damage_reduction": 0.0,
+    }
+    for upgrade in upgrades:
+        level = int(upgrade.get("max_level", 1))
+        for key in totals:
+            totals[key] += float(upgrade.get(key, 0.0)) * level
+
+    capped_charge_period = max(1.2, config.charge_period + totals["charge_period_bonus"])
+    rows = [
+        ["upgrade count", len(upgrades), "target >= 12"],
+        ["max hp", fmt_num(config.player_max_hp + totals["max_hp_bonus"]), f"+{fmt_num(totals['max_hp_bonus'])} if fully bought"],
+        ["auto damage", fmt_num(config.auto_damage + totals["auto_damage_bonus"]), "flat meta only; card multipliers remain run-local"],
+        ["auto range", f"+{fmt_num(totals['auto_range_bonus'])}", "range gain is utility, not raw DPS"],
+        ["charge damage", fmt_num(config.charge_damage + totals["charge_damage_bonus"]), "flat meta only"],
+        ["charge period", f"{fmt_sec(config.charge_period)} -> {fmt_sec(capped_charge_period)}", "floor remains 1.2s"],
+        ["charge window", f"+{fmt_sec(totals['charge_window_bonus'])}", "input leniency only"],
+        ["xp gain", f"+{fmt_num(totals['xp_gain_mult'] * 100.0)}%", "accelerates card access"],
+        ["core expose", f"+{fmt_sec(totals['core_expose_bonus'])}", "boss response window, not boss HP reduction"],
+        ["elite direct damage", f"+{fmt_num(totals['elite_damage_mult'] * 100.0)}%", "direct-hit only"],
+        ["boss shield direct damage", f"+{fmt_num(totals['boss_shield_damage_mult'] * 100.0)}%", "shield-state only"],
+        ["low HP damage taken", f"-{fmt_num(totals['low_hp_damage_reduction'] * 100.0)}%", "only under 35% HP"],
+    ]
+    return markdown_table(["preview", "value", "note"], rows)
 
 
 def build_preview_table(config: BalanceConfig) -> str:
@@ -614,6 +691,14 @@ def main() -> None:
     print("## Meta Progression Preview")
     print()
     print(meta_progression_table(config))
+    print()
+    print("## Meta Upgrade Tree")
+    print()
+    print(meta_upgrade_tree_table())
+    print()
+    print("## Meta Upgrade Effect Preview")
+    print()
+    print(meta_upgrade_effect_preview(config))
     print()
     print("## Build Preview")
     print()

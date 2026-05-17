@@ -308,9 +308,9 @@ func build(parent: Node) -> void:
 	_apply_font(debug_label)
 	debug_panel.add_child(debug_label)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "") -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "") -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
-	var charge_ratio := charge_window_left / C.CHARGE_WINDOW if charge_window_left > 0.0 else charge_timer / charge_period
+	var charge_ratio := charge_window_left / charge_window_duration if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
 	match charge_state:
 		"open":
@@ -489,6 +489,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 			continue
 		var upgrade: Dictionary = upgrades[i]
 		var can_buy: bool = meta_progression.can_buy(String(upgrade["id"]))
+		var unlocked: bool = meta_progression.is_unlocked(String(upgrade["id"]))
 		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
 		button.visible = true
 		button.disabled = not can_buy
@@ -498,15 +499,19 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		button.add_theme_stylebox_override("normal", _supply_applied_style() if level > 0 else _button_style(Color("#fff7df")))
 		button.add_theme_stylebox_override("hover", _supply_applied_style() if level > 0 else _button_style(Color("#ffe7a8")))
 		button.add_theme_stylebox_override("disabled", _supply_applied_style() if level > 0 else _supply_disabled_style())
-		var state_text := "적용됨" if level > 0 else ("선택 가능" if can_buy else "흔적 부족")
+		var state_text := "적용됨" if level > 0 else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족"))
+		var unlock_text := ""
+		if not unlocked:
+			unlock_text = "  |  해금 %s" % meta_progression.unlock_condition_label(str(upgrade.get("unlock_condition", "")))
 		var trace_label := str(upgrade.get("trace_label", "전단"))
-		button.text = "%d. %s  [%s]  비용 %d %s  |  %s" % [
+		button.text = "%d. %s  [%s]  비용 %d %s  |  %s%s" % [
 			i + 1,
 			upgrade["name"],
 			state_text,
 			int(upgrade["cost"]),
 			trace_label,
 			upgrade["effect_text"],
+			unlock_text,
 		]
 
 func hide_result_screen() -> void:
