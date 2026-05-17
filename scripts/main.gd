@@ -53,6 +53,7 @@ var boss_result_reason := ""
 var last_boss_recall_report := {}
 var last_boss_victory_report := {}
 var last_run_result := {}
+var r01_visit_recorded_sortie_index := 0
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -94,6 +95,7 @@ func _ready() -> void:
 	_build_audio()
 	sprite_assets.load_all()
 	hud.build(self)
+	_record_r01_visit_for_current_sortie()
 	set_process(true)
 
 func _process(delta: float) -> void:
@@ -1154,6 +1156,7 @@ func _debug_overlay_text() -> String:
 func _debug_info() -> Dictionary:
 	_sync_boss_signal_from_clues()
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
+	var r01_summary := meta_progression.r01_state_summary()
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
@@ -1197,6 +1200,13 @@ func _debug_info() -> Dictionary:
 		"boss_clear_count": meta_progression.boss_clear_count,
 		"smile_home_boss_outcome": meta_progression.smile_home_boss_outcome,
 		"smile_home_boss_outcome_label": meta_progression.smile_home_boss_outcome_label(),
+		"r01_revisit_count": int(r01_summary.get("r01_revisit_count", 0)),
+		"r01_signal_records_found": int(r01_summary.get("r01_signal_records_found", 0)),
+		"r01_boss_outcome": str(r01_summary.get("r01_boss_outcome", "")),
+		"r01_campaign_pressure": int(r01_summary.get("r01_campaign_pressure", 0)),
+		"r01_trace_preserved_count": int(r01_summary.get("r01_trace_preserved_count", 0)),
+		"r01_trace_consumed_count": int(r01_summary.get("r01_trace_consumed_count", 0)),
+		"r01_campaign_used_count": int(r01_summary.get("r01_campaign_used_count", 0)),
 		"meta_summary": meta_progression.upgrade_summary(),
 	}
 
@@ -1581,6 +1591,7 @@ func _restart() -> void:
 	if was_supply or was_terminal_redeploy:
 		sortie_index += 1
 		first_sortie = false
+	_record_r01_visit_for_current_sortie()
 	boss.reset()
 	boss_result_reason = ""
 	last_boss_recall_report = {}
@@ -1620,6 +1631,12 @@ func _restart() -> void:
 	effects.clear()
 	charge_puddles.clear()
 	hud.reset()
+
+func _record_r01_visit_for_current_sortie() -> void:
+	if r01_visit_recorded_sortie_index == sortie_index:
+		return
+	r01_visit_recorded_sortie_index = sortie_index
+	meta_progression.record_r01_visit()
 
 func _reset_player_stats() -> void:
 	var meta_bonuses := meta_progression.bonuses()

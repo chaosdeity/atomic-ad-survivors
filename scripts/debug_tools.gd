@@ -142,6 +142,15 @@ func detail_text(info: Dictionary) -> String:
 		"boss analysis: %d/3" % int(info.get("boss_analysis_level", 0)),
 		"boss clears: %d" % int(info.get("boss_clear_count", 0)),
 		"boss outcome: %s" % str(info.get("smile_home_boss_outcome", "")),
+		"r01: visits=%d records=%d outcome=%s pressure=%d traces=%d/%d/%d" % [
+			int(info.get("r01_revisit_count", 0)),
+			int(info.get("r01_signal_records_found", 0)),
+			str(info.get("r01_boss_outcome", "")),
+			int(info.get("r01_campaign_pressure", 0)),
+			int(info.get("r01_trace_preserved_count", 0)),
+			int(info.get("r01_trace_consumed_count", 0)),
+			int(info.get("r01_campaign_used_count", 0)),
+		],
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])

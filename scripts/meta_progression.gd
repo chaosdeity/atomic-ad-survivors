@@ -1,5 +1,7 @@
 extends RefCounted
 
+const LocalResponseState := preload("res://scripts/local_response_state.gd")
+
 const TRACE_TORN_AD_FLYER := "torn_ad_flyer"
 const TRACE_CAMPAIGN_CORE_FRAGMENT := "campaign_core_fragment"
 const UPGRADE_CORE_SIGNAL_READING := "core_signal_reading"
@@ -223,6 +225,7 @@ var awarded_flags := {}
 var boss_analysis_level := 0
 var boss_clear_count := 0
 var smile_home_boss_outcome := SMILE_HOME_OUTCOME_NONE
+var local_response_state := LocalResponseState.new()
 
 func grant_first_recall_trace() -> bool:
 	if bool(awarded_flags.get("first_recall", false)):
@@ -275,6 +278,7 @@ func set_smile_home_boss_outcome(outcome: String) -> bool:
 	if not _is_valid_smile_home_boss_outcome(outcome):
 		return false
 	smile_home_boss_outcome = outcome
+	local_response_state.set_r01_boss_outcome(outcome)
 	return true
 
 func has_smile_home_boss_outcome() -> bool:
@@ -306,6 +310,7 @@ func grant_signal_clue_candidates(candidates: Array) -> Dictionary:
 		gained.append(clue_id)
 	if duplicates.size() > 0:
 		traces[TRACE_TORN_AD_FLYER] = int(traces.get(TRACE_TORN_AD_FLYER, 0)) + duplicates.size() * _duplicate_signal_flyer_value()
+	set_r01_signal_records_found(signal_clue_count())
 	return {
 		"gained": gained,
 		"duplicates": duplicates,
@@ -332,6 +337,23 @@ func signal_clue_count() -> int:
 		if bool(signal_clues.get(String(clue_id), false)):
 			count += 1
 	return count
+
+func record_r01_visit() -> void:
+	local_response_state.record_r01_visit()
+
+func set_r01_signal_records_found(count: int) -> void:
+	local_response_state.set_r01_signal_records_found(count)
+
+func set_r01_boss_outcome(outcome: String) -> bool:
+	return set_smile_home_boss_outcome(outcome)
+
+func record_r01_trace_choice(choice: String) -> bool:
+	return local_response_state.record_r01_trace_choice(choice)
+
+func r01_state_summary() -> Dictionary:
+	local_response_state.set_r01_signal_records_found(signal_clue_count())
+	local_response_state.set_r01_boss_outcome(smile_home_boss_outcome)
+	return local_response_state.r01_state_summary()
 
 func has_signal_clue(clue_id: String) -> bool:
 	return bool(signal_clues.get(clue_id, false))

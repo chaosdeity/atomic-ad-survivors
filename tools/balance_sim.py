@@ -19,6 +19,7 @@ ENEMY_CONTROLLER = ROOT / "scripts" / "enemy_controller.gd"
 LEVEL_UP_CARDS = ROOT / "scripts" / "level_up_cards.gd"
 BOSS_CONTROLLER = ROOT / "scripts" / "boss_controller.gd"
 META_PROGRESSION = ROOT / "scripts" / "meta_progression.gd"
+LOCAL_RESPONSE_STATE = ROOT / "scripts" / "local_response_state.gd"
 
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 
@@ -621,6 +622,22 @@ def smile_home_outcome_table() -> str:
     return markdown_table(["state", "label", "display note"], rows)
 
 
+def local_response_state_preview_table() -> str:
+    source = read_text(LOCAL_RESPONSE_STATE) if LOCAL_RESPONSE_STATE.exists() else ""
+    max_records_match = re.search(r"R01_MAX_SIGNAL_RECORDS\s*:=\s*(\d+)", source)
+    max_pressure_match = re.search(r"R01_MAX_CAMPAIGN_PRESSURE\s*:=\s*(\d+)", source)
+    max_records = max_records_match.group(1) if max_records_match else "3"
+    max_pressure = max_pressure_match.group(1) if max_pressure_match else "5"
+    rows = [
+        ["visit", "record_r01_visit()", "increments once per sortie hook; no reward payout"],
+        ["signal records", f"0..{max_records}", "mirrors current story clues; records are not spent"],
+        ["boss outcome", "none / destroy_node / extract_memory", "synced from smile_home_boss_outcome"],
+        ["campaign pressure", f"0..{max_pressure}", "hidden debug band from records, outcome, campaign-use traces"],
+        ["trace choice", "preserve / consume / campaign_use", "aggregate counters only; no trace UI or payout here"],
+    ]
+    return markdown_table(["state area", "preview", "boundary note"], rows)
+
+
 def boss_enrage_preview_table() -> str:
     rows = [
         [
@@ -732,6 +749,10 @@ def main() -> None:
     print("## Smile Home Outcome Preview")
     print()
     print(smile_home_outcome_table())
+    print()
+    print("## R01 Local Response State Preview")
+    print()
+    print(local_response_state_preview_table())
     print()
     print("## Boss Enrage Preview")
     print()
