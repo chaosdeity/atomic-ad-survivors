@@ -95,5 +95,42 @@ static func r01_outpost_phrase(state: Dictionary) -> String:
 		_:
 			return "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다. 출격 게시판이 모델하우스 방향을 제대로 붙잡지 못한다."
 
+static func r01_finale_recovery_description(state: Dictionary) -> String:
+	var records := clampi(int(state.get("r01_signal_records_found", 0)), 0, 3)
+	var visit_index := maxi(0, int(state.get("r01_revisit_count", 0)) - 1)
+	match records:
+		0:
+			return _pick([
+				"침묵 보급소가 외곽 주택가의 회수선을 고정했습니다. 주택가의 광고음은 아직 윤서의 이름을 정확히 발음하지 못합니다.",
+				"같은 울타리를 세 번 지나친 뒤에야 보급소 신호가 돌아왔습니다. 기록판은 아직 빈칸을 남겨 둡니다.",
+			], visit_index)
+		1:
+			return _pick([
+				"첫 잡음 영수증이 끊기기 전에 회수됐습니다. 다음 광고는 더 긴 문장 뒤에 숨어 있습니다.",
+				"보급소 기록판에 얇은 영수증 잡음이 붙었습니다. 주택가는 다음 루프를 이미 준비하고 있습니다.",
+			], visit_index)
+		2:
+			return _pick([
+				"길 잃은 카탈로그가 모델하우스 쪽으로 접혔습니다. 아직 마지막 절차가 빠져 있습니다.",
+				"같은 집들의 순서가 어긋나기 시작했습니다. 보급소가 세 번째 신호 자리를 비워 둡니다.",
+			], visit_index)
+		_:
+			return _pick([
+				"개장 전 점검표가 완성됐습니다. 외곽 주택가 중앙의 모델하우스 결절이 다음 출격을 기다립니다.",
+				"송출관 접근 절차가 끊기지 않고 보급소까지 넘어왔습니다. 스마일 홈 시어머니의 검증 신호가 가까워졌습니다.",
+			], visit_index)
+
+static func r01_finale_recovery_progress_phrase(state: Dictionary) -> String:
+	var records := clampi(int(state.get("r01_signal_records_found", 0)), 0, 3)
+	match records:
+		0:
+			return "다음 출격: 첫 신호 이벤트 추적"
+		1:
+			return "다음 출격: 두 번째 신호 기록 추적"
+		2:
+			return "다음 출격: 모델하우스 접근 신호 확인"
+		_:
+			return "다음 출격: 모델하우스 결절 접근 준비"
+
 static func _pick(phrases: Array[String], index: int) -> String:
 	return phrases[abs(index) % phrases.size()]

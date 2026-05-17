@@ -463,7 +463,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
 	var result_title := str(result_data.get("result", ""))
-	result_label.add_theme_font_size_override("font_size", 9 if result_title == "긴급 회수" or result_title == "신호 과부하 회수" else 10)
+	result_label.add_theme_font_size_override("font_size", 9 if result_title == "긴급 회수" or result_title == "신호 과부하 회수" or result_title == "신호 과부하 강제 회수" else 10)
 	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),

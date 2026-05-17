@@ -939,6 +939,8 @@ func _session_progress_data() -> Dictionary:
 		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_state),
 		"r01_sortie_goal_short_phrase": RoutePhraseResolver.r01_sortie_goal_short_phrase(r01_state),
 		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
+		"r01_finale_recovery_description": RoutePhraseResolver.r01_finale_recovery_description(r01_state),
+		"r01_finale_recovery_progress_phrase": RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
 	}
 
 func _r01_phrase_state() -> Dictionary:
@@ -951,6 +953,16 @@ func _session_progress_lines() -> Array[String]:
 		"%s" % _route_stage_label(),
 		_next_goal_label(),
 	]
+
+func _finale_recovery_lines() -> Array[String]:
+	var r01_state := _r01_phrase_state()
+	var lines: Array[String] = [
+		"외곽 주택가 정찰 완료",
+		RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
+	]
+	for line in _run_reward_lines():
+		lines.append(line)
+	return lines
 
 func _apply_first_recall_collapse(delta: float) -> void:
 	recall_pressure_spawn_timer -= delta
@@ -1062,8 +1074,8 @@ func _result_data(result_state: String) -> Dictionary:
 				"final_enemy_count": enemies.enemies.size(),
 			}
 		return {
-			"result": "긴급 회수",
-			"description": "캠페인 신호에 삼켜지기 직전, 침묵 보급소가 당신을 끌어냈습니다.",
+			"result": "신호 과부하 강제 회수",
+			"description": "캠페인 신호가 윤서의 이름을 끝까지 읽기 전에, 침묵 보급소가 회수선을 당겼습니다.",
 			"trace": "찢어진 광고 전단",
 			"progress_lines": _session_progress_lines() + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
@@ -1075,8 +1087,23 @@ func _result_data(result_state: String) -> Dictionary:
 			"peak_enemy_count": peak_enemy_count,
 			"final_enemy_count": enemies.enemies.size(),
 		}
+	if result_state == "victory":
+		return {
+			"result": "정상 회수",
+			"description": RoutePhraseResolver.r01_finale_recovery_description(_r01_phrase_state()),
+			"trace": "",
+			"progress_lines": _finale_recovery_lines(),
+			"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
+			"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
+			"survival_time": elapsed,
+			"level": level,
+			"kills": kills,
+			"card_count": selected_card_count,
+			"peak_enemy_count": peak_enemy_count,
+			"final_enemy_count": enemies.enemies.size(),
+		}
 	return {
-		"result": "SURVIVED" if result_state == "victory" else "GAME OVER",
+		"result": "GAME OVER",
 		"progress_lines": _session_progress_lines() + _run_reward_lines(),
 		"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
 		"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",

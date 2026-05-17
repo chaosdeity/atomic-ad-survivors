@@ -689,6 +689,17 @@ def route_phrase_preview_table() -> str:
     return markdown_table(["state", "sortie board / next goal", "outpost phrase note"], rows)
 
 
+def finale_recovery_phrase_preview_table() -> str:
+    rows = [
+        ["records=0", "정상 회수", "침묵 보급소가 외곽 주택가의 회수선을 고정했습니다. 주택가의 광고음은 아직 윤서의 이름을 정확히 발음하지 못합니다.", "다음 출격: 첫 신호 이벤트 추적"],
+        ["records=1", "정상 회수", "첫 잡음 영수증이 끊기기 전에 회수됐습니다. 다음 광고는 더 긴 문장 뒤에 숨어 있습니다.", "다음 출격: 두 번째 신호 기록 추적"],
+        ["records=2", "정상 회수", "길 잃은 카탈로그가 모델하우스 쪽으로 접혔습니다. 아직 마지막 절차가 빠져 있습니다.", "다음 출격: 모델하우스 접근 신호 확인"],
+        ["records=3", "정상 회수", "개장 전 점검표가 완성됐습니다. 외곽 주택가 중앙의 모델하우스 결절이 다음 출격을 기다립니다.", "다음 출격: 모델하우스 결절 접근 준비"],
+        ["first forced recall", "신호 과부하 강제 회수", "캠페인 신호가 윤서의 이름을 끝까지 읽기 전에, 침묵 보급소가 회수선을 당겼습니다.", "first sortie only"],
+    ]
+    return markdown_table(["state", "result title", "description preview", "progress note"], rows)
+
+
 def boss_enrage_preview_table() -> str:
     rows = [
         [
@@ -816,6 +827,10 @@ def main() -> None:
     print("## R01 Route Phrase Preview")
     print()
     print(route_phrase_preview_table())
+    print()
+    print("## R01 Finale Recovery Phrase Preview")
+    print()
+    print(finale_recovery_phrase_preview_table())
     print()
     print("## Boss Enrage Preview")
     print()
