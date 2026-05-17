@@ -437,7 +437,12 @@ func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> vo
 			var card := cards[i]
 			button.visible = true
 			button.disabled = false
-			button.text = "%d\n%s\n\n%s" % [i + 1, card["name"], card["effect_text"]]
+			var weapon_hint := String(card.get("weapon_hint", ""))
+			button.add_theme_font_size_override("font_size", 8 if weapon_hint != "" else 9)
+			var effect_text := String(card["effect_text"])
+			if weapon_hint != "":
+				effect_text = "%s\n\n%s" % [effect_text, weapon_hint]
+			button.text = "%d\n%s\n\n%s" % [i + 1, card["name"], effect_text]
 		else:
 			button.visible = false
 			button.disabled = true
