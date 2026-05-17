@@ -30,6 +30,25 @@ const FLYER_DROP_WARNING := 0.82
 const FLYER_DROP_LINGER := 0.30
 const FLYER_DROP_RADIUS := 42.0
 const FLYER_DROP_DAMAGE := 10.0
+const CHARGE_WEAPON_RETURN_STAMP := "return_stamp"
+const CHARGE_WEAPON_RECALL_LINE := "recall_line"
+const CHARGE_WEAPON_EMERGENCY_BROADCAST := "emergency_broadcast"
+const CHARGE_WEAPONS := [
+	{"id": CHARGE_WEAPON_RETURN_STAMP, "name": "반품 도장", "label": "관통 표식"},
+	{"id": CHARGE_WEAPON_RECALL_LINE, "name": "회수선 투척", "label": "위치 제어"},
+	{"id": CHARGE_WEAPON_EMERGENCY_BROADCAST, "name": "긴급 방송", "label": "광역 표식"},
+]
+const RETURN_STAMP_DURATION := 5.0
+const RETURN_STAMP_WIDTH := 22.0
+const RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS := 38.0
+const RECALL_LINE_RADIUS := 92.0
+const RECALL_LINE_MIN_DISTANCE := 64.0
+const RECALL_LINE_PULL_DISTANCE := 54.0
+const BROADCAST_RADIUS := 178.0
+const BROADCAST_MARK_DURATION := 4.6
+const BROADCAST_CHAIN_RADIUS := 58.0
+const BROADCAST_CHAIN_TARGETS := 4
+const BROADCAST_CHAIN_DAMAGE := 16.0
 const BOSS_SIGNAL_LABELS := {
 	"none": "없음",
 	"faint": "미약함",
@@ -69,6 +88,7 @@ var last_run_result := {}
 var r01_visit_recorded_sortie_index := 0
 
 var auto_timer := 0.0
+var charge_weapon_index := 0
 var charge_timer := 0.0
 var charge_window_left := 0.0
 var charge_ready_flash := 0.0
@@ -82,6 +102,8 @@ var attack_pose_dir := Vector2.RIGHT
 var hurt_feedback_cooldown := 0.0
 var auto_shot_counter := 0
 var charge_puddles: Array[Dictionary] = []
+var charge_effect_anchor := Vector2.ZERO
+var charge_effect_anchor_active := false
 var active_threats: Array[Dictionary] = []
 var pressure_ring_timer := 0.0
 var flyer_drop_timer := 0.0
@@ -156,6 +178,7 @@ func _process(delta: float) -> void:
 		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 		_update_wave_events(wave_params)
 	_update_enemies(delta)
+	_update_charge_marks(delta)
 	_update_threats(delta)
 	if match_state == "game_over" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
@@ -175,6 +198,10 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if debug_tools.handle_input(event, self):
+		_update_hud()
+		return
+
+	if _handle_charge_weapon_toggle(event):
 		_update_hud()
 		return
 
@@ -201,6 +228,49 @@ func _input(event: InputEvent) -> void:
 			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
+
+func _handle_charge_weapon_toggle(event: InputEvent) -> bool:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return false
+	if event.keycode != KEY_TAB:
+		return false
+	if match_state != "playing" or paused_for_card:
+		return true
+	var step := -1 if event.shift_pressed else 1
+	charge_weapon_index = posmod(charge_weapon_index + step, CHARGE_WEAPONS.size())
+	var weapon_name := _charge_weapon_name()
+	effects.show_combat_banner("%s: %s" % [weapon_name, _charge_weapon_label()], _charge_weapon_color())
+	effects.add_floater(player_pos + Vector2(0, -10), "차징 전환", _charge_weapon_color(), 13)
+	return true
+
+func _charge_weapon_id() -> String:
+	if CHARGE_WEAPONS.is_empty():
+		return CHARGE_WEAPON_RETURN_STAMP
+	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
+	return String(weapon.get("id", CHARGE_WEAPON_RETURN_STAMP))
+
+func _charge_weapon_name() -> String:
+	if CHARGE_WEAPONS.is_empty():
+		return "반품 도장"
+	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
+	return String(weapon.get("name", "반품 도장"))
+
+func _charge_weapon_label() -> String:
+	if CHARGE_WEAPONS.is_empty():
+		return "관통 표식"
+	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
+	return String(weapon.get("label", "관통 표식"))
+
+func _charge_weapon_color() -> Color:
+	match _charge_weapon_id():
+		CHARGE_WEAPON_RETURN_STAMP:
+			return C.NEON_RED
+		CHARGE_WEAPON_RECALL_LINE:
+			return C.TOXIC_GREEN
+		CHARGE_WEAPON_EMERGENCY_BROADCAST:
+			return Color(0.35, 0.70, 0.95)
+		_:
+			return C.VITAMIN_YELLOW
 
 func _build_camera() -> void:
 	camera = Camera2D.new()
@@ -403,24 +473,30 @@ func _update_auto_fire(delta: float) -> void:
 	if auto_timer > 0.0:
 		return
 	auto_timer = C.AUTO_TICK
-	var target_idx := enemies.nearest_enemy(player_pos, _auto_range())
+	var target_idx := _preferred_auto_target(player_pos, _auto_range())
+	var priority_target := target_idx != -1 and _enemy_has_return_stamp(enemies.enemies[target_idx])
 	var boss_in_range := boss.active and player_pos.distance_to(boss.pos) <= _auto_range() + BossController.BODY_RADIUS
 	if target_idx == -1 and not boss_in_range:
 		return
 	var damage := _auto_damage_per_tick()
-	if boss_in_range and (target_idx == -1 or boss.target_distance_sq(player_pos) <= player_pos.distance_squared_to(enemies.enemies[target_idx]["pos"])):
+	if boss_in_range and not priority_target and (target_idx == -1 or boss.target_distance_sq(player_pos) <= player_pos.distance_squared_to(enemies.enemies[target_idx]["pos"])):
 		var boss_hit := _apply_boss_damage(damage, "auto")
 		if not boss_hit.is_empty():
 			_register_attack_pose(boss.pos - player_pos, 0.14)
 			effects.add_auto_shot(player_pos, boss.pos)
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
+	if priority_target:
+		damage *= 1.12
 	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_register_attack_pose(target_pos - player_pos, 0.14)
 		_apply_hit_knockback(target_idx, player_pos, 5.5)
-	_handle_dead_positions(enemies.cleanup_dead())
+		if priority_target:
+			effects.add_status_ring(target_pos, C.NEON_RED, 19.0, 0.22)
+			effects.add_floater(target_pos + Vector2(0, -6), "반품 추적", C.NEON_RED, 11)
+	_handle_dead_positions(_cleanup_dead_positions())
 	effects.add_auto_shot(player_pos, target_pos)
 	if paused_for_card:
 		return
@@ -473,7 +549,7 @@ func _update_charge_puddles(delta: float) -> void:
 				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), float(hit_enemies[n]["damage"]), "puddle", String(hit_enemies[n]["effectiveness"]))
 			if not boss_hit.is_empty():
 				effects.add_damage_number(Vector2(boss_hit["pos"]), float(boss_hit["damage"]), "puddle", String(boss_hit["effectiveness"]))
-		_handle_dead_positions(enemies.cleanup_dead())
+		_handle_dead_positions(_cleanup_dead_positions())
 	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
 func _charge_missed() -> void:
@@ -482,13 +558,18 @@ func _charge_missed() -> void:
 	miss_audio.play()
 
 func _fire_charge() -> void:
-	var mouse_world := get_global_mouse_position()
-	var aim := mouse_world - player_pos
-	var directed := aim.length() > C.CHARGE_AIM_DEADZONE
-	var aim_dir := aim.normalized() if directed else Vector2.RIGHT
-	var hit_indices := _charge_hit_indices(directed, aim_dir)
-	var limit := _charge_target_limit(directed)
-	var damage := _charge_damage(directed)
+	var aim_data := _charge_aim_data()
+	var aim: Vector2 = aim_data["aim"]
+	var aim_dir: Vector2 = aim_data["dir"]
+	var directed := bool(aim_data["directed"])
+	var weapon_id := _charge_weapon_id()
+	var damage_directed := directed
+	if weapon_id == CHARGE_WEAPON_RETURN_STAMP or weapon_id == CHARGE_WEAPON_RECALL_LINE:
+		damage_directed = true
+	elif weapon_id == CHARGE_WEAPON_EMERGENCY_BROADCAST:
+		damage_directed = false
+	var limit := _charge_target_limit(damage_directed)
+	var damage := _charge_damage(damage_directed)
 	var perfect := _is_perfect_charge()
 	if perfect:
 		damage *= 1.0 + 0.25 * float(player_stats["perfect_charge_level"])
@@ -496,40 +577,291 @@ func _fire_charge() -> void:
 	if _emergency_charge_active():
 		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
 
+	charge_effect_anchor_active = false
 	var hit_count := 0
-	var damage_type := "focused" if directed else "charge"
-	_register_attack_pose(aim_dir, 0.20 if directed else 0.16)
-	for n in range(mini(limit, hit_indices.size())):
-		var idx: int = hit_indices[n]
-		if idx < enemies.enemies.size():
-			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-			effects.spawn_hit_spark(hit_pos, directed, rng)
-			var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage, idx), damage_type)
-			effects.add_damage_number(hit_pos, float(hit["damage"]), damage_type, String(hit["effectiveness"]))
-			_apply_hit_knockback(idx, player_pos, 18.0 if directed else 9.0)
-			_apply_charge_hit_modifiers(idx, directed, aim_dir)
-			hit_count += 1
-
-	if hit_count < limit and _charge_hits_boss(directed, aim_dir):
-		var boss_hit := _apply_boss_damage(damage, damage_type)
-		if not boss_hit.is_empty():
-			effects.spawn_hit_spark(boss.pos, directed, rng)
-			effects.add_status_ring(boss.pos, C.TOXIC_GREEN if directed else C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 14.0, 0.32)
-			hit_count += 1
-
-	if directed:
-		_try_charge_followthrough(hit_indices, limit, damage, aim_dir)
-	_handle_dead_positions(enemies.cleanup_dead())
+	match weapon_id:
+		CHARGE_WEAPON_RETURN_STAMP:
+			hit_count = _fire_return_stamp(aim_dir, limit + 4, damage)
+		CHARGE_WEAPON_RECALL_LINE:
+			hit_count = _fire_recall_line(aim, directed, aim_dir, limit, damage)
+		CHARGE_WEAPON_EMERGENCY_BROADCAST:
+			hit_count = _fire_emergency_broadcast(limit + 10, damage)
+		_:
+			hit_count = _fire_return_stamp(aim_dir, limit + 4, damage)
+	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
-	_fire_feedback(directed)
-	effects.spawn_charge_particles(player_pos, aim_dir, directed, rng)
-	effects.add_burst(player_pos, aim_dir, 0.36 if directed else 0.28, directed)
-	effects.add_charge_floater(player_pos, directed)
+	charge_effect_anchor_active = false
+	var visual_directed := weapon_id != CHARGE_WEAPON_EMERGENCY_BROADCAST
+	_fire_feedback(visual_directed)
+	effects.spawn_charge_particles(player_pos, aim_dir, visual_directed, rng)
 	charge_window_left = 0.0
 	charge_timer = 0.0
 	charge_open_age = 0.0
 	charge_warning_played = false
 	charge_miss_notice = 0.0
+
+func _charge_aim_data() -> Dictionary:
+	var aim := get_global_mouse_position() - player_pos
+	var directed := aim.length() > C.CHARGE_AIM_DEADZONE
+	var aim_dir := aim.normalized() if directed else _fallback_aim_dir()
+	return {"aim": aim, "directed": directed, "dir": aim_dir}
+
+func _fallback_aim_dir() -> Vector2:
+	var dir := last_move_dir
+	if dir.length_squared() <= 0.01:
+		dir = attack_pose_dir
+	if dir.length_squared() <= 0.01:
+		dir = Vector2.RIGHT
+	return dir.normalized()
+
+func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float) -> int:
+	var hit_indices := _charge_line_hit_indices(aim_dir, C.CHARGE_RANGE + 28.0, RETURN_STAMP_WIDTH)
+	var hit_count := 0
+	var line_end := player_pos + aim_dir * C.CHARGE_RANGE
+	_register_attack_pose(aim_dir, 0.24)
+	for n in range(mini(limit, hit_indices.size())):
+		var idx: int = hit_indices[n]
+		if idx < 0 or idx >= enemies.enemies.size():
+			continue
+		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+		line_end = hit_pos
+		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage, idx), "focused")
+		if hit.is_empty():
+			continue
+		_apply_return_stamp(idx)
+		effects.spawn_hit_spark(hit_pos, true, rng)
+		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
+		effects.add_impact_line(player_pos + aim_dir * 16.0, hit_pos, C.NEON_RED)
+		effects.add_status_ring(hit_pos, C.NEON_RED, 17.0, 0.30)
+		effects.add_floater(hit_pos + Vector2(0, -6), "반품", C.NEON_RED, 11)
+		enemies.knockback_enemy(idx, aim_dir, 12.0)
+		_apply_charge_hit_modifiers(idx, true, aim_dir)
+		hit_count += 1
+	if hit_count < limit and _charge_line_hits_boss(aim_dir, C.CHARGE_RANGE + 28.0, RETURN_STAMP_WIDTH):
+		var boss_hit := _apply_boss_damage(damage, "focused")
+		if not boss_hit.is_empty():
+			line_end = boss.pos
+			effects.spawn_hit_spark(boss.pos, true, rng)
+			effects.add_status_ring(boss.pos, C.NEON_RED, BossController.BODY_RADIUS + 16.0, 0.34)
+			effects.add_floater(boss.pos + Vector2(0, -10), "반품 검사", C.NEON_RED, 12)
+			hit_count += 1
+	charge_effect_anchor = line_end
+	charge_effect_anchor_active = true
+	effects.add_impact_line(player_pos + aim_dir * 14.0, line_end, C.NEON_RED)
+	effects.add_burst(player_pos, aim_dir, 0.34, true)
+	effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
+	return hit_count
+
+func _fire_recall_line(aim: Vector2, directed: bool, aim_dir: Vector2, limit: int, damage: float) -> int:
+	var landing := _charge_landing_point(aim, directed, aim_dir)
+	var radius := RECALL_LINE_RADIUS + 4.0 * float(player_stats["charge_target_bonus"])
+	var hit_indices := _enemy_indices_in_radius(landing, radius, limit + 3)
+	var hit_count := 0
+	charge_effect_anchor = landing
+	charge_effect_anchor_active = true
+	_register_attack_pose(aim_dir, 0.24)
+	effects.add_impact_line(player_pos + aim_dir * 12.0, landing, C.TOXIC_GREEN)
+	effects.add_status_ring(landing, C.TOXIC_GREEN, radius, 0.44)
+	effects.add_status_ring(landing, C.VITAMIN_YELLOW, 24.0, 0.28)
+	effects.add_floater(landing, "회수선!", C.TOXIC_GREEN, 14)
+	for n in range(hit_indices.size()):
+		var idx: int = hit_indices[n]
+		if idx < 0 or idx >= enemies.enemies.size():
+			continue
+		var before_pos: Vector2 = enemies.enemies[idx]["pos"]
+		_pull_enemy_toward(idx, landing, RECALL_LINE_PULL_DISTANCE)
+		enemies.apply_slow(idx, 0.45, 0.62)
+		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage * 0.72, idx), "charge")
+		if hit.is_empty():
+			continue
+		effects.spawn_hit_spark(hit_pos, true, rng)
+		effects.add_damage_number(hit_pos, float(hit["damage"]), "charge", String(hit["effectiveness"]))
+		effects.add_impact_line(before_pos, hit_pos, C.TOXIC_GREEN)
+		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 13.0, 0.22)
+		_apply_charge_hit_modifiers(idx, false, aim_dir)
+		hit_count += 1
+	if boss.active and boss.contains_point(landing, radius):
+		var boss_hit := _apply_boss_damage(damage * 0.72, "charge")
+		if not boss_hit.is_empty():
+			effects.spawn_hit_spark(boss.pos, true, rng)
+			effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 14.0, 0.30)
+			hit_count += 1
+	return hit_count
+
+func _fire_emergency_broadcast(limit: int, damage: float) -> int:
+	var radius := BROADCAST_RADIUS + 3.0 * float(player_stats["charge_target_bonus"])
+	var hit_indices := _enemy_indices_in_radius(player_pos, radius, limit)
+	var hit_count := 0
+	charge_effect_anchor = player_pos
+	charge_effect_anchor_active = true
+	_register_attack_pose(_fallback_aim_dir(), 0.18)
+	effects.add_status_ring(player_pos, Color(0.35, 0.70, 0.95), radius, 0.60)
+	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, radius * 0.54, 0.46)
+	effects.add_floater(player_pos + Vector2(0, -10), "긴급 방송!", Color(0.35, 0.70, 0.95), 15)
+	for n in range(hit_indices.size()):
+		var idx: int = hit_indices[n]
+		if idx < 0 or idx >= enemies.enemies.size():
+			continue
+		_apply_broadcast_mark(idx)
+		enemies.apply_slow(idx, 0.85, 0.70)
+		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage * 0.68, idx), "charge")
+		if hit.is_empty():
+			continue
+		effects.add_damage_number(hit_pos, float(hit["damage"]), "charge", String(hit["effectiveness"]))
+		effects.add_status_ring(hit_pos, Color(0.35, 0.70, 0.95), 14.0, 0.28)
+		if n < 8:
+			effects.add_impact_line(player_pos, hit_pos, Color(0.35, 0.70, 0.95))
+		hit_count += 1
+	if boss.active and boss.contains_point(player_pos, radius):
+		var boss_hit := _apply_boss_damage(damage * 0.68, "charge")
+		if not boss_hit.is_empty():
+			effects.add_status_ring(boss.pos, Color(0.35, 0.70, 0.95), BossController.BODY_RADIUS + 20.0, 0.34)
+			hit_count += 1
+	return hit_count
+
+func _charge_landing_point(aim: Vector2, directed: bool, aim_dir: Vector2) -> Vector2:
+	if not directed:
+		return player_pos + aim_dir * RECALL_LINE_MIN_DISTANCE
+	var distance := clampf(aim.length(), RECALL_LINE_MIN_DISTANCE, C.CHARGE_RANGE * 0.92)
+	return player_pos + aim_dir * distance
+
+func _pull_enemy_toward(index: int, center: Vector2, max_distance: float) -> void:
+	if index < 0 or index >= enemies.enemies.size():
+		return
+	var pos: Vector2 = enemies.enemies[index]["pos"]
+	var to_center := center - pos
+	var distance := to_center.length()
+	if distance <= 1.0:
+		return
+	enemies.knockback_enemy(index, to_center.normalized(), minf(max_distance, distance * 0.72))
+
+func _apply_return_stamp(index: int) -> void:
+	if index < 0 or index >= enemies.enemies.size():
+		return
+	enemies.enemies[index]["return_stamp_timer"] = RETURN_STAMP_DURATION
+
+func _apply_broadcast_mark(index: int) -> void:
+	if index < 0 or index >= enemies.enemies.size():
+		return
+	enemies.enemies[index]["broadcast_mark_timer"] = BROADCAST_MARK_DURATION
+
+func _update_charge_marks(delta: float) -> void:
+	for enemy in enemies.enemies:
+		if enemy.has("return_stamp_timer"):
+			enemy["return_stamp_timer"] = maxf(0.0, float(enemy["return_stamp_timer"]) - delta)
+			if float(enemy["return_stamp_timer"]) <= 0.0:
+				enemy.erase("return_stamp_timer")
+		if enemy.has("broadcast_mark_timer"):
+			enemy["broadcast_mark_timer"] = maxf(0.0, float(enemy["broadcast_mark_timer"]) - delta)
+			if float(enemy["broadcast_mark_timer"]) <= 0.0:
+				enemy.erase("broadcast_mark_timer")
+
+func _preferred_auto_target(origin: Vector2, max_range: float, excluded: Array = []) -> int:
+	var stamped_idx := _nearest_marked_enemy(origin, max_range + RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS, "return_stamp_timer", excluded)
+	if stamped_idx != -1:
+		return stamped_idx
+	return enemies.nearest_enemy_excluding(origin, max_range, excluded)
+
+func _nearest_marked_enemy(origin: Vector2, max_range: float, mark_key: String, excluded: Array = []) -> int:
+	var best := -1
+	var best_dist := max_range * max_range
+	for i in range(enemies.enemies.size()):
+		if excluded.has(i):
+			continue
+		if float(enemies.enemies[i].get(mark_key, 0.0)) <= 0.0:
+			continue
+		var dist := origin.distance_squared_to(enemies.enemies[i]["pos"])
+		if dist < best_dist:
+			best_dist = dist
+			best = i
+	return best
+
+func _enemy_has_return_stamp(enemy: Dictionary) -> bool:
+	return float(enemy.get("return_stamp_timer", 0.0)) > 0.0
+
+func _enemy_has_broadcast_mark(enemy: Dictionary) -> bool:
+	return float(enemy.get("broadcast_mark_timer", 0.0)) > 0.0
+
+func _cleanup_dead_positions(allow_broadcast_chain: bool = true) -> Array[Vector2]:
+	var broadcast_positions: Array[Vector2] = []
+	for enemy in enemies.enemies:
+		if float(enemy.get("hp", 0.0)) <= 0.0 and _enemy_has_broadcast_mark(enemy):
+			broadcast_positions.append(Vector2(enemy["pos"]))
+	var dead_positions := enemies.cleanup_dead()
+	if allow_broadcast_chain and broadcast_positions.size() > 0:
+		dead_positions.append_array(_trigger_broadcast_chains(broadcast_positions))
+	return dead_positions
+
+func _trigger_broadcast_chains(marked_positions: Array[Vector2]) -> Array[Vector2]:
+	var chain_dead_positions: Array[Vector2] = []
+	var chain_count := mini(4, marked_positions.size())
+	for n in range(chain_count):
+		var pos := marked_positions[n]
+		var hit_indices := _enemy_indices_in_radius(pos, BROADCAST_CHAIN_RADIUS, BROADCAST_CHAIN_TARGETS)
+		if hit_indices.is_empty():
+			continue
+		effects.add_small_burst(pos)
+		effects.add_status_ring(pos, Color(0.35, 0.70, 0.95), BROADCAST_CHAIN_RADIUS, 0.34)
+		effects.add_floater(pos, "방송 연쇄!", Color(0.35, 0.70, 0.95), 12)
+		for idx in hit_indices:
+			if idx < 0 or idx >= enemies.enemies.size():
+				continue
+			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+			var hit := enemies.apply_damage(idx, _enemy_meta_damage(BROADCAST_CHAIN_DAMAGE, idx), "burst")
+			if hit.is_empty():
+				continue
+			effects.add_damage_number(hit_pos, float(hit["damage"]), "burst", String(hit["effectiveness"]))
+			_apply_hit_knockback(idx, pos, 10.0)
+		chain_dead_positions.append_array(_cleanup_dead_positions(false))
+	return chain_dead_positions
+
+func _enemy_indices_in_radius(center: Vector2, radius: float, max_targets: int = -1) -> Array[int]:
+	var indices: Array[int] = []
+	var radius_sq := radius * radius
+	for i in range(enemies.enemies.size()):
+		if center.distance_squared_to(enemies.enemies[i]["pos"]) <= radius_sq:
+			indices.append(i)
+	indices.sort_custom(func(a: int, b: int) -> bool:
+		return center.distance_squared_to(enemies.enemies[a]["pos"]) < center.distance_squared_to(enemies.enemies[b]["pos"])
+	)
+	if max_targets <= 0 or indices.size() <= max_targets:
+		return indices
+	var limited: Array[int] = []
+	for n in range(max_targets):
+		limited.append(indices[n])
+	return limited
+
+func _charge_line_hit_indices(aim_dir: Vector2, max_range: float, width: float) -> Array[int]:
+	var hit_indices: Array[int] = []
+	for i in range(enemies.enemies.size()):
+		var to_enemy: Vector2 = enemies.enemies[i]["pos"] - player_pos
+		var forward := to_enemy.dot(aim_dir)
+		if forward < 0.0 or forward > max_range:
+			continue
+		var lateral_sq := maxf(0.0, to_enemy.length_squared() - forward * forward)
+		var radius := width + float(enemies.enemies[i].get("radius", 8.0))
+		if lateral_sq > radius * radius:
+			continue
+		hit_indices.append(i)
+	hit_indices.sort_custom(func(a: int, b: int) -> bool:
+		var a_forward := Vector2(enemies.enemies[a]["pos"] - player_pos).dot(aim_dir)
+		var b_forward := Vector2(enemies.enemies[b]["pos"] - player_pos).dot(aim_dir)
+		return a_forward < b_forward
+	)
+	return hit_indices
+
+func _charge_line_hits_boss(aim_dir: Vector2, max_range: float, width: float) -> bool:
+	if not boss.active:
+		return false
+	var to_boss := boss.pos - player_pos
+	var forward := to_boss.dot(aim_dir)
+	if forward < 0.0 or forward > max_range + BossController.BODY_RADIUS:
+		return false
+	var lateral_sq := maxf(0.0, to_boss.length_squared() - forward * forward)
+	var radius := width + BossController.BODY_RADIUS
+	return lateral_sq <= radius * radius
 
 func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 	var hit_indices: Array[int] = []
@@ -587,18 +919,23 @@ func _try_split_shot(primary_idx: int) -> void:
 		cadence = maxi(2, cadence - 1)
 	if auto_shot_counter % cadence != 0:
 		return
-	var secondary_idx := enemies.nearest_enemy_excluding(player_pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx])
+	var secondary_idx := _preferred_auto_target(player_pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx])
 	if secondary_idx == -1:
 		return
+	var priority_target := _enemy_has_return_stamp(enemies.enemies[secondary_idx])
 	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
 	if auto_damage_synergy:
 		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
+	if priority_target:
+		split_damage *= 1.12
 	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
-	_handle_dead_positions(enemies.cleanup_dead())
+		if priority_target:
+			effects.add_status_ring(target_pos, C.NEON_RED, 17.0, 0.22)
+	_handle_dead_positions(_cleanup_dead_positions())
 	effects.add_alt_shot(player_pos, target_pos)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0 if auto_damage_synergy else 14.0, 0.28 if auto_damage_synergy else 0.24)
 	effects.add_floater(target_pos, "증폭 분열!" if auto_damage_synergy else "분열!", C.TOXIC_GREEN, 14)
@@ -628,7 +965,7 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 		effects.add_floater(pos, "연쇄!", C.CORAL_PINK, 14)
 		if int(player_stats["charge_puddle_level"]) > 0:
 			_spawn_burst_residue_puddle(pos)
-		dead_positions = enemies.cleanup_dead()
+		dead_positions = _cleanup_dead_positions()
 	return dead_positions
 
 func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> void:
@@ -671,13 +1008,15 @@ func _try_charge_followthrough(hit_indices: Array[int], limit: int, damage: floa
 		effects.add_impact_line(player_pos + aim_dir * 18.0, hit_pos, C.TOXIC_GREEN)
 		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 16.0, 0.26)
 		effects.add_floater(hit_pos, "관통!", C.TOXIC_GREEN, 13)
-	_handle_dead_positions(enemies.cleanup_dead())
+	_handle_dead_positions(_cleanup_dead_positions())
 
 func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 	var puddle_level := int(player_stats["charge_puddle_level"])
 	if puddle_level <= 0:
 		return
 	var pos := player_pos + (aim_dir * C.CHARGE_RANGE * 0.62 if directed else Vector2.ZERO)
+	if charge_effect_anchor_active:
+		pos = charge_effect_anchor
 	var area_combo := int(player_stats["kill_burst_level"]) > 0
 	charge_puddles.append({
 		"pos": pos,
@@ -1321,7 +1660,7 @@ func _active_notice_text() -> String:
 
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label())
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -1358,6 +1697,7 @@ func _debug_info() -> Dictionary:
 		"max_hp": float(player_stats["max_hp"]),
 		"level": level,
 		"xp": xp,
+		"charge_weapon": _charge_weapon_name(),
 		"charge_state": _charge_state(),
 		"charge_timer": charge_timer,
 		"charge_period": _charge_period(),
@@ -1607,6 +1947,7 @@ func _draw_player() -> void:
 	var charge_state := _charge_state()
 	var aim := get_global_mouse_position() - player_pos
 	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
+	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
 	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
 	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
 	if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
@@ -1630,6 +1971,7 @@ func _draw_player() -> void:
 				player_pos + dir.rotated(-0.46) * C.CHARGE_RANGE * 0.74,
 				player_pos + dir.rotated(0.46) * C.CHARGE_RANGE * 0.74,
 			]), Color(1.0, 0.91, 0.25, 0.11))
+		_draw_charge_weapon_preview(aim, preview_dir, false)
 	elif charge_ready_flash > 0.0 or charge_window_left > 0.0:
 		var ratio := charge_window_left / _charge_window()
 		var pulse := 1.0 + sin(charge_open_age * 28.0) * 0.13
@@ -1647,6 +1989,37 @@ func _draw_player() -> void:
 			]), Color(0.62, 1.0, 0.36, 0.22))
 			draw_line(player_pos, player_pos + dir * C.CHARGE_RANGE, Color(1.0, 0.3, 0.36, 0.78), 3.0)
 			draw_arc(player_pos, C.CHARGE_RANGE * 0.58, -0.55 + dir.angle(), 0.55 + dir.angle(), 28, C.TOXIC_GREEN, 3.0)
+		_draw_charge_weapon_preview(aim, preview_dir, true)
+
+func _draw_charge_weapon_preview(aim: Vector2, aim_dir: Vector2, open: bool) -> void:
+	var alpha := 0.58 if open else 0.34
+	match _charge_weapon_id():
+		CHARGE_WEAPON_RETURN_STAMP:
+			var line_color := C.NEON_RED
+			line_color.a = alpha
+			var edge_color := C.VITAMIN_YELLOW
+			edge_color.a = alpha * 0.62
+			var end_pos := player_pos + aim_dir * (C.CHARGE_RANGE + 28.0)
+			var side := aim_dir.rotated(PI * 0.5) * RETURN_STAMP_WIDTH
+			draw_line(player_pos, end_pos, line_color, 5.0 if open else 3.0)
+			draw_line(player_pos + side, end_pos + side, edge_color, 1.5)
+			draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
+		CHARGE_WEAPON_RECALL_LINE:
+			var landing := _charge_landing_point(aim, aim.length() > C.CHARGE_AIM_DEADZONE, aim_dir)
+			var line_color := C.TOXIC_GREEN
+			line_color.a = alpha
+			var fill_color := C.TOXIC_GREEN
+			fill_color.a = alpha * 0.18
+			draw_line(player_pos, landing, line_color, 3.5 if open else 2.2)
+			draw_circle(landing, RECALL_LINE_RADIUS, fill_color)
+			draw_arc(landing, RECALL_LINE_RADIUS, 0.0, TAU, 48, line_color, 3.0 if open else 2.0)
+			draw_arc(landing, 22.0, 0.0, TAU, 28, C.VITAMIN_YELLOW, 2.0)
+		CHARGE_WEAPON_EMERGENCY_BROADCAST:
+			var wave_color := Color(0.35, 0.70, 0.95, alpha)
+			var fill_color := Color(0.35, 0.70, 0.95, alpha * 0.12)
+			draw_circle(player_pos, BROADCAST_RADIUS, fill_color)
+			draw_arc(player_pos, BROADCAST_RADIUS, 0.0, TAU, 72, wave_color, 3.0 if open else 2.0)
+			draw_arc(player_pos, BROADCAST_RADIUS * 0.56, PI * 0.12, PI * 1.76, 46, C.VITAMIN_YELLOW, 2.0)
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
@@ -1655,11 +2028,29 @@ func _draw_enemies() -> void:
 		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
 		_draw_enemy_role_marker(enemy)
 		_draw_enemy_defense_marker(enemy)
+		_draw_charge_weapon_markers(enemy)
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
 		_draw_enemy_nameplate(enemy)
 		_draw_enemy_hit_feedback(enemy)
+
+func _draw_charge_weapon_markers(enemy: Dictionary) -> void:
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	if _enemy_has_return_stamp(enemy):
+		var ratio := clampf(float(enemy.get("return_stamp_timer", 0.0)) / RETURN_STAMP_DURATION, 0.0, 1.0)
+		var stamp_color := C.NEON_RED
+		stamp_color.a = 0.50 + 0.30 * ratio
+		draw_rect(Rect2(pos + Vector2(-radius - 4.0, -radius - 4.0), Vector2((radius + 4.0) * 2.0, (radius + 4.0) * 2.0)), Color(1.0, 0.3, 0.36, 0.10 * ratio), false, 2.0)
+		draw_arc(pos, radius + 10.0, -PI * 0.22, PI * 1.22, 28, stamp_color, 2.5)
+		draw_line(pos + Vector2(-radius - 2.0, 0), pos + Vector2(radius + 2.0, 0), stamp_color, 2.0)
+	if _enemy_has_broadcast_mark(enemy):
+		var ratio := clampf(float(enemy.get("broadcast_mark_timer", 0.0)) / BROADCAST_MARK_DURATION, 0.0, 1.0)
+		var mark_color := Color(0.35, 0.70, 0.95, 0.46 + 0.26 * ratio)
+		draw_circle(pos, radius + 12.0, Color(0.35, 0.70, 0.95, 0.08 + 0.05 * ratio))
+		draw_arc(pos, radius + 12.0 + sin(elapsed * 9.0) * 2.0, 0.0, TAU, 30, mark_color, 2.2)
+		draw_arc(pos, radius + 5.0, PI * 0.15, PI * 1.65, 22, C.VITAMIN_YELLOW, 1.8)
 
 func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
 	var hit_flash := float(enemy.get("hit_flash", 0.0))
@@ -1878,6 +2269,8 @@ func _restart() -> void:
 	charge_ready_flash = 0.0
 	charge_warning_played = false
 	charge_miss_notice = 0.0
+	charge_effect_anchor = Vector2.ZERO
+	charge_effect_anchor_active = false
 	enemies.clear()
 	effects.clear()
 	charge_puddles.clear()

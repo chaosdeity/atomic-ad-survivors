@@ -6,6 +6,7 @@ const UIFont := preload("res://scripts/ui_font.gd")
 var hud: CanvasLayer
 var hp_bar: ColorRect
 var charge_bar: ColorRect
+var charge_weapon_label: Label
 var charge_button: Label
 var prompt_label: Label
 var stat_label: Label
@@ -97,6 +98,19 @@ func build(parent: Node) -> void:
 	charge_bar.position = Vector2(11, 25)
 	charge_bar.size = Vector2(0, 6)
 	root.add_child(charge_bar)
+
+	charge_weapon_label = Label.new()
+	charge_weapon_label.position = Vector2(10, 35)
+	charge_weapon_label.size = Vector2(112, 14)
+	charge_weapon_label.clip_text = true
+	charge_weapon_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	charge_weapon_label.add_theme_font_size_override("font_size", 8)
+	charge_weapon_label.add_theme_color_override("font_color", C.INK)
+	charge_weapon_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
+	charge_weapon_label.add_theme_constant_override("shadow_offset_x", 1)
+	charge_weapon_label.add_theme_constant_override("shadow_offset_y", 1)
+	_apply_font(charge_weapon_label)
+	root.add_child(charge_weapon_label)
 
 	charge_button = Label.new()
 	charge_button.position = Vector2(362, 208)
@@ -340,7 +354,7 @@ func build(parent: Node) -> void:
 	_apply_font(debug_label)
 	debug_panel.add_child(debug_label)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "") -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "", charge_weapon_name: String = "") -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / charge_window_duration if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
@@ -369,6 +383,8 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 		_:
 			charge_button.text = "차징\n%.1f초" % maxf(0.0, charge_period - charge_timer)
 			charge_button.add_theme_color_override("font_color", C.INK)
+	charge_weapon_label.text = "무기 %s" % charge_weapon_name
+	charge_weapon_label.visible = charge_weapon_name != "" and not _blocking_panel_visible()
 	stat_label.text = "시간 %03d / %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
 	var route_text := route_stage_text
 	if route_goal_text != "":

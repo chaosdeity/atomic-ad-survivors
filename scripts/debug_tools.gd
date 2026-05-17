@@ -95,6 +95,7 @@ func help_text() -> String:
 	return "\n".join([
 		"DEBUG KEYS",
 		"F1 Help  F12 HUD",
+		"Tab Charge Weapon",
 		"F2 Cards  F3 Charge",
 		"F4 HP=20",
 		"F5 175s  F6 270s  F7 299s",
@@ -125,6 +126,7 @@ func detail_text(info: Dictionary) -> String:
 		"enemies: %d / %d" % [int(info.get("enemy_count", 0)), int(info.get("enemy_cap", 0))],
 		"hp: %.0f / %.0f" % [float(info.get("player_hp", 0.0)), float(info.get("max_hp", 0.0))],
 		"level/xp: %d / %.1f" % [int(info.get("level", 0)), float(info.get("xp", 0.0))],
+		"weapon: %s" % str(info.get("charge_weapon", "")),
 		"charge: %s" % str(info.get("charge_state", "")),
 		"charge timer: %.1f / %.1f" % [float(info.get("charge_timer", 0.0)), float(info.get("charge_period", 0.0))],
 		"charge window: %.1f" % float(info.get("charge_window_left", 0.0)),
