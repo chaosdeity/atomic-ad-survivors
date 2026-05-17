@@ -14,6 +14,7 @@ const MetaProgression := preload("res://scripts/meta_progression.gd")
 const RoutePhraseResolver := preload("res://scripts/route_phrase_resolver.gd")
 const BossController := preload("res://scripts/boss_controller.gd")
 const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
+const R01MapController := preload("res://scripts/r01_map_controller.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -85,6 +86,7 @@ var debug_tools := DebugTools.new()
 var sprite_assets := SpriteAssets.new()
 var meta_progression := MetaProgression.new()
 var boss := BossController.new()
+var r01_map := R01MapController.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -96,11 +98,13 @@ func _ready() -> void:
 	_build_audio()
 	sprite_assets.load_all()
 	hud.build(self)
+	r01_map.reset(elapsed, true)
 	_record_r01_visit_for_current_sortie()
 	set_process(true)
 
 func _process(delta: float) -> void:
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
+		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -109,6 +113,7 @@ func _process(delta: float) -> void:
 			_handle_terminal_action()
 		return
 	if paused_for_card:
+		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
 		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
@@ -116,6 +121,7 @@ func _process(delta: float) -> void:
 		return
 
 	elapsed += delta
+	_update_r01_zone(delta)
 	_update_first_recall_event(delta)
 	_update_preboss_signal_events()
 	_try_start_boss_encounter()
@@ -130,7 +136,7 @@ func _process(delta: float) -> void:
 	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	_update_player(delta)
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	if not boss.active:
 		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 		_update_wave_events(wave_params)
@@ -614,6 +620,11 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 	elif WaveDirector.is_finale(elapsed) and wave_notice_timer <= 0.0:
 		_show_wave_notice("피날레: 마지막 광고 공세")
 
+func _update_r01_zone(delta: float) -> void:
+	var changed := r01_map.update(delta, elapsed, match_state == "playing")
+	if changed and not _first_recall_active():
+		effects.show_combat_banner(r01_map.active_notice_text(), C.VITAMIN_YELLOW)
+
 func _update_preboss_signal_events() -> void:
 	if _first_recall_active():
 		return
@@ -757,8 +768,8 @@ func _combat_goal_label() -> String:
 	if boss.active:
 		return "시어머니 처리"
 	if sortie_index <= 1:
-		return "회수 신호 대기"
-	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
+		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
+	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
@@ -772,6 +783,7 @@ func _session_progress_data() -> Dictionary:
 		"sortie_index": sortie_index,
 		"preboss_stage": _preboss_stage_label(),
 		"route_stage_label": _route_stage_label(),
+		"r01_zone_name": r01_map.current_zone_name(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
@@ -813,7 +825,7 @@ func _apply_first_recall_collapse(delta: float) -> void:
 		_finish_match("recalled")
 
 func _spawn_recall_pressure(count: int) -> void:
-	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0), sortie_index)
+	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0), sortie_index, r01_map.current_zone_id())
 	wave_params["spawn_count_min"] = 7
 	wave_params["spawn_count_max"] = 10
 	wave_params["elite_chance"] = 0.48
@@ -1132,9 +1144,14 @@ func _fire_feedback(directed: bool) -> void:
 	fire_audio.play()
 	effects.fire_feedback(directed)
 
+func _active_notice_text() -> String:
+	if wave_notice_timer > 0.0:
+		return wave_notice_text
+	return r01_map.active_notice_text()
+
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, wave_notice_text if wave_notice_timer > 0.0 else "", _route_stage_label(), _combat_goal_label())
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -1152,13 +1169,16 @@ func _debug_overlay_text() -> String:
 
 func _debug_info() -> Dictionary:
 	_sync_boss_signal_from_clues()
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	var r01_summary := _r01_phrase_state()
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
 		"match_duration": C.MATCH_DURATION,
 		"wave_name": wave_params["name"],
+		"r01_zone_id": r01_map.current_zone_id(),
+		"r01_zone_name": r01_map.current_zone_name(),
+		"r01_zone_debug_label": r01_map.current_debug_label(),
 		"enemy_count": enemies.enemies.size(),
 		"enemy_cap": C.ENEMY_CAP,
 		"player_hp": player_hp,
@@ -1235,6 +1255,7 @@ func _debug_jump_time(seconds: float) -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
 	elapsed = clampf(seconds, 0.0, C.MATCH_DURATION)
+	r01_map.force_elapsed(elapsed, true)
 	if elapsed >= WaveDirector.MID_EVENT_TIME:
 		mid_event_triggered = true
 	_update_preboss_signal_events()
@@ -1353,7 +1374,7 @@ func _debug_clear_enemies() -> void:
 func _debug_spawn_swarm() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index)
+	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	var count := mini(24, C.ENEMY_CAP - enemies.enemies.size())
 	for i in range(count):
 		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
@@ -1370,18 +1391,7 @@ func _draw() -> void:
 	effects.draw_screen_flash(self, camera.global_position)
 
 func _draw_arena() -> void:
-	draw_rect(Rect2(-C.ARENA_HALF, C.ARENA_HALF * 2.0), C.AD_PAPER)
-	var tile := 32
-	for x in range(int(-C.ARENA_HALF.x), int(C.ARENA_HALF.x) + tile, tile):
-		var color := C.MINT_FADE if int(x / tile) % 2 == 0 else C.PASTEL_BEIGE
-		draw_line(Vector2(x, -C.ARENA_HALF.y), Vector2(x, C.ARENA_HALF.y), color, 1.0)
-	for y in range(int(-C.ARENA_HALF.y), int(C.ARENA_HALF.y) + tile, tile):
-		var color := C.SAGE_GREEN if int(y / tile) % 2 == 0 else C.CORAL_PINK
-		draw_line(Vector2(-C.ARENA_HALF.x, y), Vector2(C.ARENA_HALF.x, y), color, 1.0)
-	for i in range(18):
-		var p := Vector2((i * 83) % int(C.ARENA_HALF.x * 2.0) - C.ARENA_HALF.x, (i * 47) % int(C.ARENA_HALF.y * 2.0) - C.ARENA_HALF.y)
-		draw_rect(Rect2(p, Vector2(36, 18)), C.LEMON_YELLOW)
-		draw_rect(Rect2(p, Vector2(36, 18)), C.COCOA, false, 1.0)
+	r01_map.draw(self, elapsed, player_pos, _boss_route_ready(), boss.active)
 
 func _draw_charge_puddles() -> void:
 	for puddle in charge_puddles:
@@ -1630,6 +1640,7 @@ func _restart() -> void:
 	effects.clear()
 	charge_puddles.clear()
 	hud.reset()
+	r01_map.reset(elapsed, true)
 
 func _record_r01_visit_for_current_sortie() -> void:
 	if r01_visit_recorded_sortie_index == sortie_index:

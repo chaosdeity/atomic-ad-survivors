@@ -119,6 +119,7 @@ func detail_text(info: Dictionary) -> String:
 		"state: %s" % str(info.get("match_state", "")),
 		"time: %.1f / %.0f" % [float(info.get("elapsed", 0.0)), float(info.get("match_duration", 0.0))],
 		"wave: %s" % str(info.get("wave_name", "")),
+		str(info.get("r01_zone_debug_label", "R01 zone:")),
 		"enemies: %d / %d" % [int(info.get("enemy_count", 0)), int(info.get("enemy_cap", 0))],
 		"hp: %.0f / %.0f" % [float(info.get("player_hp", 0.0)), float(info.get("max_hp", 0.0))],
 		"level/xp: %d / %.1f" % [int(info.get("level", 0)), float(info.get("xp", 0.0))],

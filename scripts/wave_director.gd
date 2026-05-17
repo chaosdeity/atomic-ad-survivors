@@ -1,5 +1,7 @@
 extends RefCounted
 
+const R01ZoneLayout := preload("res://scripts/r01_zone_layout.gd")
+
 const MID_EVENT_TIME := 180.0
 
 const WAVES := [
@@ -83,11 +85,18 @@ const WAVES := [
 	},
 ]
 
-static func params_for_time(elapsed: float, sortie_index: int = 1) -> Dictionary:
+static func params_for_time(elapsed: float, sortie_index: int = 1, r01_zone_id: String = "") -> Dictionary:
+	var params := {}
 	for wave in WAVES:
 		if elapsed >= float(wave["start"]) and elapsed < float(wave["end"]):
-			return _apply_preboss_pressure(wave.duplicate(true), elapsed, sortie_index)
-	return _apply_preboss_pressure(WAVES[WAVES.size() - 1].duplicate(true), elapsed, sortie_index)
+			params = wave.duplicate(true)
+			break
+	if params.is_empty():
+		params = WAVES[WAVES.size() - 1].duplicate(true)
+	params = _apply_preboss_pressure(params, elapsed, sortie_index)
+	if r01_zone_id != "":
+		params = R01ZoneLayout.apply_spawn_pressure(params, r01_zone_id)
+	return params
 
 static func is_finale(elapsed: float) -> bool:
 	return elapsed >= 270.0
