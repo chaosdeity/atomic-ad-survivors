@@ -18,7 +18,7 @@ const COLLISION_NONE := "no_collision"
 const NAV_BLOCK := "block"
 const NAV_SOFT_AVOID := "soft_avoid"
 const NAV_IGNORE := "ignore"
-const MODEL_HOUSE_CLEAR_RADIUS := 118.0
+const MODEL_HOUSE_CLEAR_RADIUS := 128.0
 const STATE_VARIANTS := [
 	STATE_FIRST_VISIT,
 	STATE_BROADCAST_RECORD_3,
@@ -78,11 +78,11 @@ const ADJACENCY := [
 
 const KIND_COLLISION_META := {
 	"floor": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "ground_readability", "shape": "rect", "size": Vector2(116, 56)},
-	"house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "hard_structure", "shape": "rect", "size": Vector2(116, 88)},
-	"model_house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_objective_structure", "shape": "rect", "size": Vector2(168, 118)},
-	"ad_device": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_ad_device", "shape": "circle", "radius": 44.0},
-	"road_barrier": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "lane_soft_blocker", "shape": "rect", "size": Vector2(84, 30)},
-	"mailbox": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "enemy_source", "shape": "circle", "radius": 22.0},
+	"house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "hard_structure", "shape": "rect", "size": Vector2(106, 74)},
+	"model_house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_objective_structure", "shape": "rect", "size": Vector2(154, 104)},
+	"ad_device": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_ad_device", "shape": "circle", "radius": 38.0},
+	"road_barrier": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "lane_soft_blocker", "shape": "rect", "size": Vector2(74, 24)},
+	"mailbox": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "enemy_source", "shape": "circle", "radius": 18.0},
 	"flyer": {"collision_class": COLLISION_HAZARD, "nav_behavior": NAV_IGNORE, "risk_role": "flyer_drop_source", "shape": "circle", "radius": 32.0},
 	"scraps": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "density_only", "shape": "circle", "radius": 26.0},
 	"route": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "route_hint", "shape": "rect", "size": Vector2(96, 40)},
@@ -127,24 +127,24 @@ const ZONE_PROPS := {
 		{"id": "blank_customer_photo_hint", "offset": Vector2(-28, -104), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
 	"subdivision_loop_center": [
-		{"id": "house_front_placeholder", "offset": Vector2(-142, -88), "kind": "house", "state": "all"},
-		{"id": "mirror_house_left", "offset": Vector2(-290, 112), "kind": "house", "state": "all"},
-		{"id": "mirror_house_right", "offset": Vector2(250, -98), "kind": "house", "state": "all"},
-		{"id": "sales_speaker_tower", "offset": Vector2(205, 122), "kind": "ad_device", "state": "all"},
-		{"id": "cul_de_sac_barrier", "offset": Vector2(-12, -158), "kind": "road_barrier", "state": "all"},
-		{"id": "mailbox_device_placeholder", "offset": Vector2(-66, 88), "kind": "mailbox", "state": "all"},
+		{"id": "house_front_placeholder", "offset": Vector2(-166, -116), "kind": "house", "state": "all"},
+		{"id": "mirror_house_left", "offset": Vector2(-322, 132), "kind": "house", "state": "all"},
+		{"id": "mirror_house_right", "offset": Vector2(282, -124), "kind": "house", "state": "all"},
+		{"id": "sales_speaker_tower", "offset": Vector2(248, 136), "kind": "ad_device", "state": "all"},
+		{"id": "cul_de_sac_barrier", "offset": Vector2(-22, -178), "kind": "road_barrier", "state": "all"},
+		{"id": "mailbox_device_placeholder", "offset": Vector2(-92, 118), "kind": "mailbox", "state": "all"},
 		{"id": "flyer_pile_placeholder", "offset": Vector2(42, 74), "kind": "flyer", "state": "all"},
 		{"id": "price_customer_tag_placeholder", "offset": Vector2(-118, -42), "kind": "tag", "state": "all"},
-		{"id": "recommended_route_decal_placeholder", "offset": Vector2(132, -18), "kind": "route", "state": "all"},
-		{"id": "same_house_repeat_marker", "offset": Vector2(112, -104), "kind": "house", "state": STATE_BROADCAST_RECORD_3},
+		{"id": "recommended_route_decal_placeholder", "offset": Vector2(154, -20), "kind": "route", "state": "all"},
+		{"id": "same_house_repeat_marker", "offset": Vector2(136, -146), "kind": "house", "state": STATE_BROADCAST_RECORD_3},
 		{"id": "exposed_nameplate_marker", "offset": Vector2(78, 112), "kind": "tag", "state": STATE_DESTROY_NODE},
 		{"id": "family_window_photo_marker", "offset": Vector2(-18, -132), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
 	"model_house_node_anchor": [
-		{"id": "model_house_mass_placeholder", "offset": Vector2(178, -94), "kind": "model_house", "state": "all"},
+		{"id": "model_house_mass_placeholder", "offset": Vector2(208, -118), "kind": "model_house", "state": "all"},
 		{"id": "model_house_node_placeholder", "offset": Vector2(0, 18), "kind": "node", "state": "all"},
-		{"id": "parking_demo_car", "offset": Vector2(-160, 116), "kind": "road_barrier", "state": "all"},
-		{"id": "family_plan_terminal", "offset": Vector2(168, 112), "kind": "ad_device", "state": "all"},
+		{"id": "parking_demo_car", "offset": Vector2(-178, 132), "kind": "road_barrier", "state": "all"},
+		{"id": "family_plan_terminal", "offset": Vector2(204, 126), "kind": "ad_device", "state": "all"},
 		{"id": "consultation_kiosk_socket_placeholder", "offset": Vector2(-92, 62), "kind": "kiosk", "state": "all"},
 		{"id": "family_window_loop_placeholder", "offset": Vector2(106, -70), "kind": "photo", "state": "all"},
 		{"id": "doorbell_projector_placeholder", "offset": Vector2(96, 66), "kind": "projector", "state": "all"},
@@ -447,10 +447,15 @@ func _slide_or_stop(old_pos: Vector2, blocked_pos: Vector2, record: Dictionary, 
 	var perp := dir.rotated(PI * 0.5)
 	var slip_scale := 0.95 if _role_can_slip_soft(role) else 0.72
 	var candidates := [
+		_push_out_of_record(blocked_pos, record, radius),
 		old_pos + (dir + perp * slip_scale).normalized() * length,
 		old_pos + (dir - perp * slip_scale).normalized() * length,
+		old_pos + (dir + perp * slip_scale * 1.8).normalized() * length * 1.35,
+		old_pos + (dir - perp * slip_scale * 1.8).normalized() * length * 1.35,
 		old_pos + perp * length * 0.78,
 		old_pos - perp * length * 0.78,
+		old_pos + perp * length * 1.45,
+		old_pos - perp * length * 1.45,
 	]
 	for candidate in candidates:
 		var clamped := Vector2(
@@ -460,6 +465,24 @@ func _slide_or_stop(old_pos: Vector2, blocked_pos: Vector2, record: Dictionary, 
 		if not _point_overlaps_record(clamped, record, radius):
 			return clamped
 	return old_pos
+
+func _push_out_of_record(point: Vector2, record: Dictionary, radius: float) -> Vector2:
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	var shape := String(record.get("shape", "circle"))
+	if shape == "rect":
+		var size: Vector2 = record.get("size", Vector2(24, 24))
+		var half := size * 0.5 + Vector2(radius + 2.0, radius + 2.0)
+		var delta := point - pos
+		var overlap_x := half.x - absf(delta.x)
+		var overlap_y := half.y - absf(delta.y)
+		if overlap_x < overlap_y:
+			return point + Vector2(signf(delta.x) if absf(delta.x) > 0.01 else 1.0, 0.0) * overlap_x
+		return point + Vector2(0.0, signf(delta.y) if absf(delta.y) > 0.01 else 1.0) * overlap_y
+	var away := point - pos
+	if away.length_squared() <= 0.01:
+		away = Vector2.RIGHT
+	var target_radius := float(record.get("radius", 12.0)) + radius + 2.0
+	return pos + away.normalized() * target_radius
 
 func _role_can_slip_soft(role: String) -> bool:
 	return role == "fast" or role == "charger" or role == "coupon" or role == "paper"
@@ -599,43 +622,132 @@ func _fake_return_route_probe() -> Dictionary:
 
 func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false) -> void:
 	_draw_ground(canvas, elapsed)
+	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
-	_draw_zone_fields(canvas)
 	_draw_props(canvas, elapsed, show_debug_labels)
 	_draw_collision_overlay(canvas, show_debug_labels)
 	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
 	_draw_world_bounds(canvas, show_debug_labels)
 
+func draw_foreground_hints(canvas: CanvasItem, _elapsed: float, show_debug_labels: bool = false) -> void:
+	if show_debug_labels:
+		return
+	for record in active_collision_records():
+		var collision_class := String(record.get("collision_class", COLLISION_NONE))
+		var kind := String(record.get("kind", ""))
+		if collision_class == COLLISION_HARD:
+			_draw_hard_blocker_foreground(canvas, record)
+		elif collision_class == COLLISION_SOFT and (kind == "mailbox" or kind == "road_barrier" or kind == "sign"):
+			_draw_soft_blocker_foreground(canvas, record)
+
 func _draw_ground(canvas: CanvasItem, elapsed: float) -> void:
-	canvas.draw_rect(WORLD_BOUNDS, Color("#f2e3c8"))
+	canvas.draw_rect(WORLD_BOUNDS, Color("#e7d8b7"))
+	_draw_rect_band(canvas, Rect2(Vector2(WORLD_BOUNDS.position.x, WORLD_BOUNDS.position.y), Vector2(460, WORLD_BOUNDS.size.y)), Color(0.56, 0.68, 0.70, 0.18), Color(0.34, 0.44, 0.46, 0.13))
+	_draw_rect_band(canvas, Rect2(Vector2(82, 178), Vector2(600, 208)), Color(0.15, 0.26, 0.22, 0.18), Color(0.08, 0.13, 0.11, 0.18))
+	_draw_rect_band(canvas, Rect2(Vector2(-620, -318), Vector2(360, 118)), Color(0.96, 0.72, 0.88, 0.12), Color(0.42, 0.25, 0.38, 0.12))
+	_draw_model_house_axis(canvas)
 	var tile := 64
 	for x in range(int(WORLD_BOUNDS.position.x), int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x) + tile, tile):
-		var color := Color(0.77, 0.66, 0.52, 0.15) if int(x / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.12)
+		var color := Color(0.77, 0.66, 0.52, 0.08) if int(x / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.06)
 		canvas.draw_line(Vector2(x, WORLD_BOUNDS.position.y), Vector2(x, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y), color, 1.0)
 	for y in range(int(WORLD_BOUNDS.position.y), int(WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y) + tile, tile):
-		var color := Color(0.75, 0.52, 0.48, 0.12) if int(y / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.12)
+		var color := Color(0.75, 0.52, 0.48, 0.07) if int(y / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.06)
 		canvas.draw_line(Vector2(WORLD_BOUNDS.position.x, y), Vector2(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x, y), color, 1.0)
 	var pulse := 0.03 + 0.02 * sin(elapsed * 0.7)
 	canvas.draw_rect(Rect2(WORLD_BOUNDS.position + Vector2(0, WORLD_BOUNDS.size.y - 128), Vector2(WORLD_BOUNDS.size.x, 128)), Color(0.62, 0.78, 0.68, pulse))
+	_draw_subdivision_loop(canvas)
+	_draw_drain_pocket(canvas, elapsed)
+	_draw_fake_ad_walkway(canvas)
+
+func _draw_rect_band(canvas: CanvasItem, rect: Rect2, fill: Color, border: Color) -> void:
+	canvas.draw_rect(rect, fill)
+	canvas.draw_rect(rect, border, false, 2.0)
+
+func _draw_model_house_axis(canvas: CanvasItem) -> void:
+	var a := anchor_position("subdivision_loop_center") + Vector2(110, -48)
+	var b := anchor_position("model_house_node_anchor") + Vector2(80, -32)
+	canvas.draw_line(a, b, Color(0.60, 0.44, 0.34, 0.28), 64.0)
+	canvas.draw_line(a, b, Color(0.86, 0.74, 0.58, 0.28), 48.0)
+	canvas.draw_line(a, b, Color(0.28, 0.22, 0.19, 0.22), 4.0)
+	var dir := (b - a).normalized()
+	var side := dir.rotated(PI * 0.5)
+	for i in range(8):
+		var p := a.lerp(b, float(i) / 7.0)
+		canvas.draw_line(p - side * 24.0, p - side * 16.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
+		canvas.draw_line(p + side * 16.0, p + side * 24.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
+
+func _draw_subdivision_loop(canvas: CanvasItem) -> void:
+	var center := anchor_position("subdivision_loop_center")
+	var outer := _ellipse_points(center, Vector2(420, 238), 48)
+	var inner := _ellipse_points(center, Vector2(292, 150), 48)
+	canvas.draw_polyline(outer, Color(0.48, 0.41, 0.34, 0.36), 54.0)
+	canvas.draw_polyline(outer, Color(0.75, 0.67, 0.55, 0.42), 38.0)
+	canvas.draw_polyline(inner, Color(0.70, 0.83, 0.66, 0.18), 48.0)
+	canvas.draw_polyline(outer, Color(0.24, 0.20, 0.18, 0.18), 2.0)
+	canvas.draw_polyline(inner, Color(0.24, 0.20, 0.18, 0.16), 2.0)
+	for i in range(16):
+		var p := center + Vector2(cos(float(i) / 16.0 * TAU) * 356.0, sin(float(i) / 16.0 * TAU) * 194.0)
+		canvas.draw_rect(Rect2(p - Vector2(12, 1.5), Vector2(24, 3)), Color(1.0, 0.94, 0.62, 0.22))
+
+func _draw_drain_pocket(canvas: CanvasItem, elapsed: float) -> void:
+	var anchor := anchor_position("drain_pocket_anchor")
+	var trench := PackedVector2Array([
+		anchor + Vector2(-250, 62),
+		anchor + Vector2(-96, 18),
+		anchor + Vector2(76, 52),
+		anchor + Vector2(280, 20),
+	])
+	canvas.draw_polyline(trench, Color(0.07, 0.12, 0.10, 0.48), 42.0)
+	canvas.draw_polyline(trench, Color(0.16, 0.34, 0.22, 0.42), 18.0)
+	canvas.draw_polyline(trench, Color(0.62, 1.0, 0.36, 0.10 + 0.04 * sin(elapsed * 1.7)), 3.0)
+	for i in range(6):
+		var p := anchor + Vector2(-170 + i * 70, 42 + (i % 2) * 12)
+		canvas.draw_line(p + Vector2(-16, -8), p + Vector2(16, 8), Color(0.04, 0.08, 0.06, 0.42), 3.0)
+
+func _draw_fake_ad_walkway(canvas: CanvasItem) -> void:
+	var anchor := anchor_position("fake_return_route_anchor")
+	for i in range(5):
+		var p := anchor + Vector2(-166 + i * 62, 42 - i * 18)
+		var rect := Rect2(p - Vector2(24, 9), Vector2(48, 18))
+		canvas.draw_rect(rect, Color(0.93, 0.60, 0.79, 0.12))
+		canvas.draw_rect(rect, Color(0.42, 0.25, 0.36, 0.18), false, 1.2)
+		canvas.draw_line(p + Vector2(-18, 6), p + Vector2(14, -5), Color(0.95, 0.54, 0.78, 0.20), 2.0)
+	for i in range(3):
+		var p := anchor + Vector2(12 + i * 44, -78 + i * 10)
+		canvas.draw_line(p + Vector2(-18, -5), p + Vector2(16, 5), Color(0.23, 0.18, 0.18, 0.28), 3.0)
+
+func _ellipse_points(center: Vector2, radius: Vector2, count: int) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for i in range(count + 1):
+		var angle := float(i) / float(count) * TAU
+		points.append(center + Vector2(cos(angle) * radius.x, sin(angle) * radius.y))
+	return points
 
 func _draw_travel_corridors(canvas: CanvasItem) -> void:
 	for edge in ADJACENCY:
 		var a := anchor_position(edge[0])
 		var b := anchor_position(edge[1])
-		canvas.draw_line(a, b, Color(1.0, 0.83, 0.46, 0.15), 28.0)
-		canvas.draw_line(a, b, Color(0.52, 0.30, 0.24, 0.30), 3.0)
+		var corridor_color := Color(0.96, 0.74, 0.44, 0.18)
+		if edge[1] == "fake_return_route_anchor":
+			corridor_color = Color(0.95, 0.54, 0.78, 0.08)
+		elif edge[1] == "drain_pocket_anchor":
+			corridor_color = Color(0.22, 0.36, 0.27, 0.20)
+		canvas.draw_line(a, b, corridor_color, 30.0)
+		canvas.draw_line(a, b, Color(0.42, 0.31, 0.26, 0.26), 2.0)
 		var dir := (b - a).normalized()
 		var mid := a.lerp(b, 0.55)
-		canvas.draw_line(mid - dir.rotated(PI * 0.5) * 10.0, mid + dir * 38.0, Color(1.0, 0.92, 0.48, 0.46), 2.0)
+		if edge[1] != "fake_return_route_anchor":
+			canvas.draw_line(mid - dir.rotated(PI * 0.5) * 10.0, mid + dir * 38.0, Color(1.0, 0.92, 0.48, 0.36), 2.0)
 
 func _draw_zone_fields(canvas: CanvasItem) -> void:
 	for zone_id in ZONES.keys():
 		var zone: Dictionary = ZONES[zone_id]
 		var pos: Vector2 = zone["pos"]
 		var radius := float(zone["radius"])
-		canvas.draw_circle(pos, radius, zone["color"])
-		canvas.draw_arc(pos, radius, 0.0, TAU, 64, Color(0.24, 0.18, 0.16, 0.26), 2.0)
+		var color: Color = zone["color"]
+		canvas.draw_circle(pos, radius, Color(color.r, color.g, color.b, color.a * 0.62))
+		canvas.draw_arc(pos, radius, 0.0, TAU, 64, Color(0.24, 0.18, 0.16, 0.12), 1.4)
 
 func _draw_zone_markers(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool) -> void:
 	for zone_id in ZONES.keys():
@@ -661,17 +773,20 @@ func _draw_marker_label(canvas: CanvasItem, zone_id: String, zone: Dictionary, p
 		canvas.draw_string(UIFont.get_font(), label_pos + Vector2(0, 25), String(zone["role"]), HORIZONTAL_ALIGNMENT_LEFT, 206, 7, Color(0.76, 0.89, 0.95, 0.88))
 		canvas.draw_string(UIFont.get_font(), label_pos + Vector2(0, 37), "distance %.0f" % distance, HORIZONTAL_ALIGNMENT_LEFT, 206, 7, Color(0.74, 1.0, 0.58, 0.88))
 		return
-	canvas.draw_rect(Rect2(label_pos + Vector2(-4, -12), Vector2(132, 22)), Color(0.08, 0.06, 0.05, 0.40))
-	canvas.draw_string(UIFont.get_font(), label_pos, String(zone["display_name"]), HORIZONTAL_ALIGNMENT_LEFT, 124, 9, Color(1.0, 0.86, 0.52, 0.90))
+	return
 
 func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
+	var props: Array[Dictionary] = []
 	for zone_id in ZONE_PROPS.keys():
 		var anchor := anchor_position(zone_id)
 		for prop in ZONE_PROPS[zone_id]:
 			if not _prop_visible_for_variant(prop, state_variant):
 				continue
 			var pos := anchor + Vector2(prop["offset"])
-			_draw_prop(canvas, pos, String(prop["kind"]), String(prop["id"]), elapsed, show_debug_labels)
+			props.append({"pos": pos, "kind": String(prop["kind"]), "id": String(prop["id"])})
+	props.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Vector2(a["pos"]).y < Vector2(b["pos"]).y)
+	for prop in props:
+		_draw_prop(canvas, Vector2(prop["pos"]), String(prop["kind"]), String(prop["id"]), elapsed, show_debug_labels)
 
 func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 	var state := String(prop.get("state", "all"))
@@ -682,35 +797,25 @@ func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, elapsed: float, show_debug_labels: bool) -> void:
 	match kind:
 		"floor":
-			canvas.draw_rect(Rect2(pos - Vector2(58, 28), Vector2(116, 56)), Color(0.74, 0.82, 0.78, 0.20))
+			canvas.draw_rect(Rect2(pos - Vector2(58, 28), Vector2(116, 56)), Color(0.74, 0.82, 0.78, 0.16))
 		"house":
 			_draw_house_placeholder(canvas, pos)
 		"model_house":
 			_draw_model_house_placeholder(canvas, pos)
 		"ad_device":
-			var pulse := 1.0 + 0.04 * sin(elapsed * 2.6)
-			canvas.draw_circle(pos, 38.0 * pulse, Color(1.0, 0.91, 0.25, 0.20))
-			canvas.draw_arc(pos, 43.0 * pulse, 0.0, TAU, 42, Color(1.0, 0.30, 0.36, 0.56), 3.0)
-			canvas.draw_rect(Rect2(pos - Vector2(22, 16), Vector2(44, 32)), Color(0.58, 0.38, 0.30, 0.46))
-			canvas.draw_line(pos + Vector2(-10, 24), pos + Vector2(-18, 46), Color(0.42, 0.29, 0.24, 0.58), 3.0)
-			canvas.draw_line(pos + Vector2(10, 24), pos + Vector2(18, 46), Color(0.42, 0.29, 0.24, 0.58), 3.0)
+			_draw_ad_device(canvas, pos, elapsed)
 		"road_barrier":
-			canvas.draw_rect(Rect2(pos - Vector2(40, 13), Vector2(80, 26)), Color(0.82, 0.66, 0.42, 0.46))
-			canvas.draw_rect(Rect2(pos - Vector2(40, 13), Vector2(80, 26)), Color(0.34, 0.22, 0.18, 0.48), false, 2.0)
-			for i in range(3):
-				canvas.draw_line(pos + Vector2(-30 + i * 24, -9), pos + Vector2(-14 + i * 24, 9), Color(1.0, 0.91, 0.25, 0.42), 2.0)
+			_draw_road_barrier(canvas, pos)
 		"mailbox":
-			canvas.draw_rect(Rect2(pos + Vector2(-12, -18), Vector2(24, 28)), Color(0.78, 0.90, 0.84, 0.68))
-			canvas.draw_circle(pos + Vector2(0, -18), 12.0, Color(0.93, 0.62, 0.54, 0.66))
-			canvas.draw_line(pos + Vector2(0, 10), pos + Vector2(0, 28), Color(0.42, 0.29, 0.24, 0.74), 2.0)
+			_draw_mailbox(canvas, pos)
 		"flyer", "scraps":
 			for i in range(8):
 				var p := pos + Vector2(float((i * 17) % 42) - 18.0, float((i * 11) % 30) - 14.0)
-				canvas.draw_rect(Rect2(p, Vector2(9, 4)), Color(1.0, 0.88, 0.50, 0.44))
+				canvas.draw_rect(Rect2(p, Vector2(9, 4)), Color(1.0, 0.88, 0.50, 0.38))
+			if kind == "flyer":
+				canvas.draw_arc(pos, 28.0, -0.4, 1.8, 20, Color(1.0, 0.30, 0.36, 0.28), 1.8)
 		"route":
-			canvas.draw_line(pos + Vector2(-42, 18), pos + Vector2(46, -12), Color(1.0, 0.58, 0.82, 0.30), 9.0)
-			canvas.draw_line(pos + Vector2(28, -26), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.42), 3.0)
-			canvas.draw_line(pos + Vector2(28, 4), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.42), 3.0)
+			_draw_route_decal(canvas, pos, prop_id.find("return") != -1)
 		"tag":
 			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(1.0, 0.90, 0.56, 0.62))
 			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(0.44, 0.25, 0.20, 0.62), false, 1.0)
@@ -720,6 +825,7 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_circle(pos + Vector2(8, -2), 4.0, Color(1.0, 0.74, 0.82, 0.42))
 		"node":
 			var pulse := 1.0 + 0.06 * sin(elapsed * 2.8)
+			canvas.draw_circle(pos + Vector2(3, 8), 40.0, Color(0.0, 0.0, 0.0, 0.14))
 			canvas.draw_circle(pos, 38.0 * pulse, Color(1.0, 0.88, 0.28, 0.22))
 			canvas.draw_arc(pos, 42.0 * pulse, 0.0, TAU, 48, Color(1.0, 0.35, 0.42, 0.78), 3.0)
 			canvas.draw_rect(Rect2(pos - Vector2(24, 16), Vector2(48, 32)), Color(1.0, 0.93, 0.76, 0.66))
@@ -734,10 +840,7 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_line(pos + Vector2(-42, 0), pos + Vector2(42, 0), Color(0.35, 0.70, 0.95, 0.28), 2.0)
 			canvas.draw_line(pos + Vector2(0, -26), pos + Vector2(0, 26), Color(0.35, 0.70, 0.95, 0.28), 2.0)
 		"sign":
-			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 28)), Color(1.0, 0.88, 0.44, 0.72))
-			canvas.draw_line(pos + Vector2(-18, -2), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
-			canvas.draw_line(pos + Vector2(8, -12), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
-			canvas.draw_line(pos + Vector2(8, 8), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+			_draw_sign(canvas, pos)
 		"drain":
 			canvas.draw_circle(pos, 28.0, Color(0.18, 0.40, 0.24, 0.48))
 			canvas.draw_arc(pos, 30.0, 0.0, TAU, 32, Color(0.62, 1.0, 0.36, 0.64), 2.4)
@@ -755,9 +858,7 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_rect(Rect2(pos + Vector2(-14, -42), Vector2(28, 18)), Color(0.78, 0.86, 0.88, 0.70))
 			canvas.draw_arc(pos + Vector2(12, -32), 20.0, -0.7, 0.7, 14, Color(1.0, 0.91, 0.25, 0.54), 2.0)
 		"fake_recovery":
-			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 36)), Color(0.84, 0.66, 0.86, 0.20), false, 2.0)
-			canvas.draw_line(pos + Vector2(-22, 12), pos + Vector2(24, -10), Color(1.0, 0.62, 0.88, 0.42), 3.0)
-			canvas.draw_line(pos + Vector2(-4, -14), pos + Vector2(24, -10), Color(1.0, 0.62, 0.88, 0.36), 2.0)
+			_draw_broken_ad_panel(canvas, pos)
 		"residue":
 			canvas.draw_circle(pos, 24.0, Color(0.95, 0.72, 1.0, 0.17))
 			canvas.draw_arc(pos, 34.0, -PI * 0.15, PI * 1.2, 34, Color(0.95, 0.72, 1.0, 0.54), 2.0)
@@ -767,25 +868,106 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 		_draw_prop_label(canvas, pos, prop_id)
 
 func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
-	canvas.draw_rect(Rect2(pos - Vector2(48, 6), Vector2(96, 54)), Color(0.80, 0.58, 0.48, 0.36))
+	_draw_blocker_shadow(canvas, pos, Vector2(126, 44))
+	canvas.draw_rect(Rect2(pos - Vector2(54, 2), Vector2(108, 56)), Color(0.76, 0.54, 0.45, 0.76))
+	canvas.draw_rect(Rect2(pos - Vector2(54, 2), Vector2(108, 56)), Color(0.24, 0.15, 0.13, 0.52), false, 2.0)
 	canvas.draw_colored_polygon(PackedVector2Array([
-		pos + Vector2(-58, -4),
-		pos + Vector2(0, -42),
-		pos + Vector2(58, -4),
-	]), Color(0.95, 0.63, 0.56, 0.44))
-	canvas.draw_rect(Rect2(pos + Vector2(-32, 12), Vector2(20, 18)), Color(1.0, 0.91, 0.45, 0.32))
-	canvas.draw_rect(Rect2(pos + Vector2(18, 7), Vector2(18, 41)), Color(0.34, 0.21, 0.18, 0.36))
+		pos + Vector2(-68, 0),
+		pos + Vector2(0, -50),
+		pos + Vector2(68, 0),
+	]), Color(0.92, 0.50, 0.42, 0.78))
+	canvas.draw_polyline(PackedVector2Array([pos + Vector2(-68, 0), pos + Vector2(0, -50), pos + Vector2(68, 0)]), Color(0.24, 0.15, 0.13, 0.58), 2.0)
+	canvas.draw_rect(Rect2(pos + Vector2(-36, 12), Vector2(22, 19)), Color(1.0, 0.91, 0.45, 0.46))
+	canvas.draw_rect(Rect2(pos + Vector2(20, 9), Vector2(20, 45)), Color(0.28, 0.17, 0.15, 0.72))
+	canvas.draw_line(pos + Vector2(-46, 58), pos + Vector2(48, 58), Color(0.20, 0.13, 0.11, 0.42), 4.0)
 
 func _draw_model_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
-	canvas.draw_rect(Rect2(pos - Vector2(72, -2), Vector2(144, 74)), Color(0.78, 0.55, 0.46, 0.42))
+	_draw_blocker_shadow(canvas, pos, Vector2(184, 56))
+	canvas.draw_rect(Rect2(pos - Vector2(78, -2), Vector2(156, 82)), Color(0.78, 0.55, 0.46, 0.82))
+	canvas.draw_rect(Rect2(pos - Vector2(78, -2), Vector2(156, 82)), Color(0.22, 0.14, 0.12, 0.58), false, 2.4)
 	canvas.draw_colored_polygon(PackedVector2Array([
-		pos + Vector2(-86, 0),
-		pos + Vector2(0, -58),
-		pos + Vector2(86, 0),
-	]), Color(0.95, 0.68, 0.50, 0.54))
-	canvas.draw_rect(Rect2(pos + Vector2(-44, 20), Vector2(28, 30)), Color(1.0, 0.91, 0.25, 0.28))
-	canvas.draw_rect(Rect2(pos + Vector2(22, 12), Vector2(30, 60)), Color(0.34, 0.21, 0.18, 0.40))
-	canvas.draw_arc(pos + Vector2(0, 0), 80.0, 0.1, PI - 0.1, 36, Color(1.0, 0.91, 0.25, 0.24), 3.0)
+		pos + Vector2(-96, 0),
+		pos + Vector2(0, -68),
+		pos + Vector2(96, 0),
+	]), Color(0.96, 0.67, 0.48, 0.84))
+	canvas.draw_polyline(PackedVector2Array([pos + Vector2(-96, 0), pos + Vector2(0, -68), pos + Vector2(96, 0)]), Color(0.22, 0.14, 0.12, 0.62), 2.6)
+	canvas.draw_rect(Rect2(pos + Vector2(-50, 22), Vector2(32, 34)), Color(1.0, 0.91, 0.25, 0.40))
+	canvas.draw_rect(Rect2(pos + Vector2(24, 14), Vector2(34, 66)), Color(0.28, 0.17, 0.15, 0.76))
+	canvas.draw_arc(pos + Vector2(0, 0), 90.0, 0.1, PI - 0.1, 36, Color(1.0, 0.91, 0.25, 0.30), 3.0)
+	canvas.draw_line(pos + Vector2(-72, 84), pos + Vector2(78, 84), Color(0.20, 0.13, 0.11, 0.44), 5.0)
+
+func _draw_blocker_shadow(canvas: CanvasItem, pos: Vector2, size: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos + Vector2(-size.x * 0.5 + 8.0, size.y * 0.34), Vector2(size.x, 12.0)), Color(0.0, 0.0, 0.0, 0.13))
+
+func _draw_ad_device(canvas: CanvasItem, pos: Vector2, elapsed: float) -> void:
+	var pulse := 1.0 + 0.04 * sin(elapsed * 2.6)
+	canvas.draw_rect(Rect2(pos + Vector2(-46, 40), Vector2(92, 10)), Color(0.0, 0.0, 0.0, 0.13))
+	canvas.draw_line(pos + Vector2(-16, 20), pos + Vector2(-24, 52), Color(0.28, 0.19, 0.16, 0.76), 4.0)
+	canvas.draw_line(pos + Vector2(16, 20), pos + Vector2(24, 52), Color(0.28, 0.19, 0.16, 0.76), 4.0)
+	canvas.draw_rect(Rect2(pos - Vector2(34, 24), Vector2(68, 42)), Color(0.58, 0.38, 0.30, 0.82))
+	canvas.draw_rect(Rect2(pos - Vector2(34, 24), Vector2(68, 42)), Color(0.16, 0.10, 0.09, 0.68), false, 2.2)
+	canvas.draw_rect(Rect2(pos - Vector2(25, 14), Vector2(50, 20)), Color(1.0, 0.91, 0.25, 0.30))
+	canvas.draw_circle(pos, 38.0 * pulse, Color(1.0, 0.91, 0.25, 0.12))
+	canvas.draw_arc(pos, 43.0 * pulse, 0.0, TAU, 42, Color(1.0, 0.30, 0.36, 0.48), 3.0)
+
+func _draw_road_barrier(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos + Vector2(-42, 20), Vector2(84, 8)), Color(0.0, 0.0, 0.0, 0.11))
+	canvas.draw_rect(Rect2(pos - Vector2(38, 12), Vector2(76, 24)), Color(0.82, 0.66, 0.42, 0.76))
+	canvas.draw_rect(Rect2(pos - Vector2(38, 12), Vector2(76, 24)), Color(0.24, 0.16, 0.13, 0.62), false, 2.0)
+	for i in range(3):
+		canvas.draw_line(pos + Vector2(-28 + i * 24, -8), pos + Vector2(-12 + i * 24, 8), Color(1.0, 0.91, 0.25, 0.62), 2.0)
+	canvas.draw_line(pos + Vector2(-34, 15), pos + Vector2(-34, 28), Color(0.24, 0.16, 0.13, 0.62), 2.0)
+	canvas.draw_line(pos + Vector2(34, 15), pos + Vector2(34, 28), Color(0.24, 0.16, 0.13, 0.62), 2.0)
+
+func _draw_mailbox(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos + Vector2(-18, 25), Vector2(36, 6)), Color(0.0, 0.0, 0.0, 0.12))
+	canvas.draw_line(pos + Vector2(0, 8), pos + Vector2(0, 30), Color(0.28, 0.18, 0.15, 0.84), 3.0)
+	canvas.draw_rect(Rect2(pos + Vector2(-15, -18), Vector2(30, 28)), Color(0.78, 0.90, 0.84, 0.86))
+	canvas.draw_circle(pos + Vector2(0, -18), 15.0, Color(0.93, 0.62, 0.54, 0.80))
+	canvas.draw_rect(Rect2(pos + Vector2(-15, -18), Vector2(30, 28)), Color(0.20, 0.13, 0.11, 0.46), false, 1.6)
+	canvas.draw_line(pos + Vector2(10, -12), pos + Vector2(20, -18), Color(1.0, 0.91, 0.25, 0.72), 2.0)
+
+func _draw_route_decal(canvas: CanvasItem, pos: Vector2, broken: bool) -> void:
+	if broken:
+		for i in range(3):
+			var p := pos + Vector2(-38 + i * 30, 12 - i * 8)
+			canvas.draw_line(p + Vector2(-10, 4), p + Vector2(14, -4), Color(1.0, 0.58, 0.82, 0.18), 5.0)
+			canvas.draw_rect(Rect2(p + Vector2(-8, -7), Vector2(16, 14)), Color(0.36, 0.20, 0.30, 0.10), false, 1.0)
+		return
+	canvas.draw_line(pos + Vector2(-42, 18), pos + Vector2(46, -12), Color(1.0, 0.58, 0.82, 0.26), 9.0)
+	canvas.draw_line(pos + Vector2(28, -26), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.38), 3.0)
+	canvas.draw_line(pos + Vector2(28, 4), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.38), 3.0)
+
+func _draw_sign(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos + Vector2(-26, 25), Vector2(52, 6)), Color(0.0, 0.0, 0.0, 0.11))
+	canvas.draw_line(pos + Vector2(0, 9), pos + Vector2(0, 30), Color(0.28, 0.18, 0.15, 0.76), 2.4)
+	canvas.draw_rect(Rect2(pos - Vector2(30, 20), Vector2(60, 30)), Color(1.0, 0.88, 0.44, 0.82))
+	canvas.draw_rect(Rect2(pos - Vector2(30, 20), Vector2(60, 30)), Color(0.24, 0.15, 0.13, 0.52), false, 1.8)
+	canvas.draw_line(pos + Vector2(-18, -3), pos + Vector2(20, -3), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+	canvas.draw_line(pos + Vector2(8, -13), pos + Vector2(20, -3), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+	canvas.draw_line(pos + Vector2(8, 7), pos + Vector2(20, -3), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+
+func _draw_broken_ad_panel(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos - Vector2(30, 17), Vector2(58, 32)), Color(0.84, 0.66, 0.86, 0.10), false, 2.0)
+	canvas.draw_line(pos + Vector2(-22, 11), pos + Vector2(24, -10), Color(1.0, 0.62, 0.88, 0.30), 3.0)
+	canvas.draw_line(pos + Vector2(-22, -10), pos + Vector2(22, 10), Color(0.20, 0.13, 0.16, 0.30), 2.0)
+	canvas.draw_line(pos + Vector2(-6, -16), pos + Vector2(9, 14), Color(0.20, 0.13, 0.16, 0.26), 2.0)
+
+func _draw_hard_blocker_foreground(canvas: CanvasItem, record: Dictionary) -> void:
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	var shape := String(record.get("shape", "circle"))
+	if shape == "rect":
+		var size: Vector2 = record.get("size", Vector2(48, 36))
+		var y := pos.y + size.y * 0.5 - 10.0
+		canvas.draw_rect(Rect2(Vector2(pos.x - size.x * 0.48, y), Vector2(size.x * 0.96, 11.0)), Color(0.16, 0.09, 0.08, 0.24))
+		canvas.draw_line(Vector2(pos.x - size.x * 0.44, y + 10.0), Vector2(pos.x + size.x * 0.44, y + 10.0), Color(1.0, 0.91, 0.25, 0.16), 2.0)
+		return
+	var radius := float(record.get("radius", 24.0))
+	canvas.draw_arc(pos + Vector2(0, 8), radius * 0.82, 0.0, PI, 22, Color(0.12, 0.07, 0.06, 0.26), 4.0)
+
+func _draw_soft_blocker_foreground(canvas: CanvasItem, record: Dictionary) -> void:
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	canvas.draw_circle(pos + Vector2(1, 6), 5.0, Color(0.10, 0.06, 0.05, 0.18))
 
 func _draw_prop_label(canvas: CanvasItem, pos: Vector2, prop_id: String) -> void:
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(-54, 44), prop_id, HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.20, 0.14, 0.12, 0.58))

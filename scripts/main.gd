@@ -2036,8 +2036,9 @@ func _draw() -> void:
 	_draw_threats()
 	effects.draw_behind(self)
 	boss.draw(self, elapsed)
-	_draw_player()
-	_draw_enemies()
+	_draw_actor_stack()
+	if R01LayoutBlockout.ENABLED:
+		r01_blockout.draw_foreground_hints(self, elapsed, debug_tools.blockout_debug_labels_visible())
 	effects.draw_front(self)
 	effects.draw_screen_flash(self, camera.global_position)
 
@@ -2128,17 +2129,33 @@ func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) ->
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
+		_draw_enemy(enemy)
+
+func _draw_actor_stack() -> void:
+	var actors: Array[Dictionary] = [{"type": "player", "sort_y": player_pos.y}]
+	for enemy in enemies.enemies:
 		var pos: Vector2 = enemy["pos"]
-		var radius := float(enemy["radius"])
-		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
-		_draw_enemy_role_marker(enemy)
-		_draw_enemy_defense_marker(enemy)
-		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
-		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
-			sprite_assets.draw_enemy_fallback(self, enemy)
-		_draw_charge_weapon_markers(enemy)
-		_draw_enemy_nameplate(enemy)
-		_draw_enemy_hit_feedback(enemy)
+		actors.append({"type": "enemy", "sort_y": pos.y, "enemy": enemy})
+	actors.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return float(a["sort_y"]) < float(b["sort_y"]))
+	for actor in actors:
+		if String(actor["type"]) == "player":
+			_draw_player()
+		else:
+			_draw_enemy(actor["enemy"])
+
+func _draw_enemy(enemy: Dictionary) -> void:
+	var pos: Vector2 = enemy["pos"]
+	var radius := float(enemy["radius"])
+	draw_circle(pos + Vector2(2, 3), radius + 1.5, Color(0, 0, 0, 0.18))
+	draw_arc(pos, radius + 3.0, 0.0, TAU, 24, Color(1.0, 0.96, 0.72, 0.18), 1.4)
+	_draw_enemy_role_marker(enemy)
+	_draw_enemy_defense_marker(enemy)
+	var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
+	if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
+		sprite_assets.draw_enemy_fallback(self, enemy)
+	_draw_charge_weapon_markers(enemy)
+	_draw_enemy_nameplate(enemy)
+	_draw_enemy_hit_feedback(enemy)
 
 func _draw_charge_weapon_markers(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]

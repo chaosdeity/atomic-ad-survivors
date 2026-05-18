@@ -290,20 +290,20 @@ func build(parent: Node) -> void:
 
 	outpost_visual_layer = Control.new()
 	outpost_visual_layer.position = Vector2(10, 8)
-	outpost_visual_layer.size = Vector2(300, 148)
+	outpost_visual_layer.size = Vector2(304, 148)
 	outpost_visual_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	supply_panel.add_child(outpost_visual_layer)
 	outpost_blockout.build_preview_layer(outpost_visual_layer, {}, null, false)
 
 	_add_flat_backing(supply_panel, Vector2(10, 8), Vector2(300, 148), Color(1.0, 0.96, 0.84, 0.14))
-	_add_flat_backing(supply_panel, Vector2(316, 8), Vector2(140, 102), Color(1.0, 0.96, 0.84, 0.88))
+	_add_flat_backing(supply_panel, Vector2(318, 8), Vector2(138, 102), Color(1.0, 0.96, 0.84, 0.88))
 	_add_flat_backing(supply_panel, Vector2(12, 160), Vector2(444, 14), Color(1.0, 0.96, 0.84, 0.88))
 	_add_flat_backing(supply_panel, Vector2(12, 174), Vector2(444, 48), Color(1.0, 0.97, 0.88, 0.92))
 	_add_flat_backing(supply_panel, Vector2(12, 224), Vector2(444, 18), Color(1.0, 0.96, 0.84, 0.82))
 
 	supply_label = Label.new()
-	supply_label.position = Vector2(320, 12)
-	supply_label.size = Vector2(132, 94)
+	supply_label.position = Vector2(322, 12)
+	supply_label.size = Vector2(130, 94)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
 	supply_label.add_theme_font_size_override("font_size", FONT_TINY)

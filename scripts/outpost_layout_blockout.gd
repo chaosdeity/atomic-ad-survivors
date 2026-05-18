@@ -23,9 +23,9 @@ const STATE_BOSS_ANALYSIS_3 := "boss_analysis_3"
 const STATE_BOSS_CLEARED := "boss_cleared"
 const STATE_DESTROY_NODE := "destroy_node"
 const STATE_EXTRACT_MEMORY := "extract_memory"
-const NORMAL_ALPHA_SCALE := 0.42
-const NORMAL_LINE_ALPHA_SCALE := 0.34
-const NORMAL_LABEL_ALPHA_SCALE := 0.18
+const NORMAL_ALPHA_SCALE := 0.68
+const NORMAL_LINE_ALPHA_SCALE := 0.58
+const NORMAL_LABEL_ALPHA_SCALE := 0.44
 
 const FACILITIES := [
 	{
@@ -155,8 +155,10 @@ func build_preview_layer(parent: Control, progress: Dictionary, meta_progression
 	var offset := (preview_size - world_px) * 0.5
 	_draw_preview_ground(parent, offset, scale, state)
 	_draw_corridors(parent, offset, scale, show_debug_labels)
+	_draw_facility_links(parent, offset, scale, state)
 	for facility in FACILITIES:
 		_draw_facility(parent, facility, offset, scale, state, show_debug_labels)
+	_draw_platform_priority(parent, offset, scale, state)
 	return state
 
 func facility_count() -> int:
@@ -303,11 +305,11 @@ func facility_variant(facility_id: String, state: Dictionary = {}) -> String:
 			return variant
 
 func _draw_preview_ground(parent: Control, offset: Vector2, scale: float, state: Dictionary) -> void:
-	_add_rect(parent, offset, WORLD_BOUNDS.size * scale, Color(0.15, 0.14, 0.12, 0.025))
+	_add_rect(parent, offset, WORLD_BOUNDS.size * scale, Color(0.15, 0.14, 0.12, 0.055))
 	for i in range(1, 3):
-		_add_rect(parent, offset + Vector2(0, WORLD_BOUNDS.size.y * scale * float(i) / 3.0), Vector2(WORLD_BOUNDS.size.x * scale, 1), Color(0.18, 0.14, 0.11, 0.025))
+		_add_rect(parent, offset + Vector2(0, WORLD_BOUNDS.size.y * scale * float(i) / 3.0), Vector2(WORLD_BOUNDS.size.x * scale, 1), Color(0.18, 0.14, 0.11, 0.045))
 	for i in range(1, 3):
-		_add_rect(parent, offset + Vector2(WORLD_BOUNDS.size.x * scale * float(i) / 3.0, 0), Vector2(1, WORLD_BOUNDS.size.y * scale), Color(0.18, 0.14, 0.11, 0.022))
+		_add_rect(parent, offset + Vector2(WORLD_BOUNDS.size.x * scale * float(i) / 3.0, 0), Vector2(1, WORLD_BOUNDS.size.y * scale), Color(0.18, 0.14, 0.11, 0.038))
 	var variant := String(state.get("variant", STATE_DORMANT))
 	var signal_alpha := 0.022
 	if variant == STATE_DESTROY_NODE:
@@ -315,13 +317,27 @@ func _draw_preview_ground(parent: Control, offset: Vector2, scale: float, state:
 	elif variant == STATE_EXTRACT_MEMORY:
 		signal_alpha = 0.035
 	_add_rect(parent, offset + Vector2(0, 0), WORLD_BOUNDS.size * scale, Color(0.35, 0.70, 0.95, signal_alpha))
+	_add_rect(parent, _to_preview(Vector2(520, 300), offset, scale), Vector2(400, 230) * scale, Color(0.36, 0.47, 0.48, 0.055))
+	_add_rect(parent, _to_preview(Vector2(555, 640), offset, scale), Vector2(330, 120) * scale, Color(0.22, 0.34, 0.32, 0.07))
 
 func _draw_corridors(parent: Control, offset: Vector2, scale: float, show_debug_labels: bool) -> void:
 	var center := _to_preview(Vector2(720, 445), offset, scale)
 	var anchors := [Vector2(280, 670), Vector2(1090, 555), Vector2(670, 260), Vector2(720, 735), Vector2(1085, 370)]
-	var color := Color(0.36, 0.30, 0.24, 0.11 if not show_debug_labels else 0.18)
+	var color := Color(0.36, 0.30, 0.24, 0.18 if not show_debug_labels else 0.24)
 	for anchor in anchors:
-		_add_line(parent, center, _to_preview(anchor, offset, scale), color, 2.0 if not show_debug_labels else 3.0)
+		_add_line(parent, center, _to_preview(anchor, offset, scale), color, 3.0 if not show_debug_labels else 4.0)
+
+func _draw_facility_links(parent: Control, offset: Vector2, scale: float, state: Dictionary) -> void:
+	var platform := _to_preview(Vector2(720, 500), offset, scale)
+	var settlement := _to_preview(Vector2(280, 640), offset, scale)
+	var bench := _to_preview(Vector2(1090, 555), offset, scale)
+	var gate := _to_preview(Vector2(720, 735), offset, scale)
+	var board := _to_preview(Vector2(670, 230), offset, scale)
+	var link_alpha := 0.16 if bool(state.get("first_recall_seen", false)) else 0.10
+	_add_line(parent, platform, settlement, Color(0.96, 0.78, 0.48, link_alpha), 2.2)
+	_add_line(parent, platform, bench, Color(0.62, 1.0, 0.36, link_alpha), 2.2)
+	_add_line(parent, platform, gate, Color(1.0, 0.91, 0.25, link_alpha + 0.04), 3.0)
+	_add_line(parent, platform, board, Color(0.35, 0.70, 0.95, link_alpha), 2.0)
 
 func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scale: float, state: Dictionary, show_debug_labels: bool) -> void:
 	var bounds: Rect2 = facility["bounds"]
@@ -333,6 +349,8 @@ func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scal
 	if not show_debug_labels:
 		fill = _scaled_alpha(fill, NORMAL_ALPHA_SCALE)
 		border = _scaled_alpha(border, NORMAL_LINE_ALPHA_SCALE)
+	if facility_id == "recovery_platform" and not show_debug_labels:
+		_add_rect(parent, rect.position - Vector2(6, 5), rect.size + Vector2(12, 10), Color(0.62, 1.0, 0.36, 0.055))
 	_add_panel(parent, rect.position, rect.size, fill, Color(border.r, border.g, border.b, border.a * (0.42 if show_debug_labels else 0.22)))
 	if show_debug_labels:
 		_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.56), 8)
@@ -348,36 +366,59 @@ func _draw_facility_marks(parent: Control, facility_id: String, rect: Rect2, sta
 	var variant := facility_variant(facility_id, state)
 	match facility_id:
 		"recovery_platform":
-			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(38, 1), Vector2(76, 2), Color(0.36, 0.54, 0.58, 0.075))
-			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(1, 24), Vector2(2, 48), Color(0.36, 0.54, 0.58, 0.055))
+			var center := rect.position + rect.size * 0.5
+			_add_rect(parent, center - Vector2(52, 3), Vector2(104, 6), Color(0.36, 0.54, 0.58, 0.18))
+			_add_rect(parent, center - Vector2(3, 34), Vector2(6, 68), Color(0.36, 0.54, 0.58, 0.14))
+			_add_rect(parent, center - Vector2(70, 36), Vector2(140, 8), Color(0.62, 1.0, 0.36, 0.10))
+			_add_rect(parent, center + Vector2(-70, 28), Vector2(140, 8), Color(0.62, 1.0, 0.36, 0.10))
+			if variant != "quiet_pad":
+				_add_rect(parent, center - Vector2(30, 22), Vector2(60, 44), Color(1.0, 0.91, 0.25, 0.10))
 		"settlement_counter":
 			var cards := maxi(1, int(state.get("signal_record_count", 0)))
+			_add_rect(parent, rect.position + Vector2(8, rect.size.y - 24), Vector2(rect.size.x - 16, 12), Color(0.24, 0.16, 0.12, 0.13))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 72, 18), Vector2(50, 16), Color(0.35, 0.70, 0.95, 0.09))
 			for i in range(cards):
-				_add_rect(parent, rect.position + Vector2(14 + i * 18, 26), Vector2(15, 10), Color(0.96, 0.82, 0.54, 0.085))
+				_add_rect(parent, rect.position + Vector2(14 + i * 18, 26), Vector2(15, 10), Color(0.96, 0.82, 0.54, 0.18))
 			if variant == "core_fragment_tray":
-				_add_rect(parent, rect.position + Vector2(rect.size.x - 52, 27), Vector2(36, 8), Color(0.62, 1.0, 0.36, 0.085))
+				_add_rect(parent, rect.position + Vector2(rect.size.x - 52, 27), Vector2(36, 8), Color(0.62, 1.0, 0.36, 0.18))
+		"maintenance_bench":
+			for i in range(4):
+				_add_rect(parent, rect.position + Vector2(20 + i * 30, 24), Vector2(20, 8), Color(0.62, 1.0, 0.36, 0.11 if variant == "bench_lit" else 0.055))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 78, 18), Vector2(54, 26), Color(0.35, 0.70, 0.95, 0.08))
 		"name_archive":
 			var slots := maxi(1, int(state.get("boss_analysis_level", 0)))
 			for i in range(6):
-				var alpha := 0.095 if i < slots else 0.035
+				var alpha := 0.16 if i < slots else 0.06
 				if variant == "photo_afterimage_slot":
-					alpha = 0.11 if i % 2 == 0 else 0.05
+					alpha = 0.18 if i % 2 == 0 else 0.08
 				_add_rect(parent, rect.position + Vector2(16 + (i % 2) * 38, 25 + int(i / 2) * 18), Vector2(27, 11), Color(0.96, 0.82, 0.56, alpha))
 		"sortie_board":
 			var records := int(state.get("signal_record_count", 0))
 			for i in range(3):
-				var alpha := 0.095 if i < records else 0.03
+				var alpha := 0.17 if i < records else 0.055
 				_add_rect(parent, rect.position + Vector2(24 + i * 44, 26), Vector2(32, 18), Color(0.96, 0.79, 0.48, alpha))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 92, 34), Vector2(58, 6), Color(1.0, 0.91, 0.25, 0.10))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 80, 48), Vector2(72, 4), Color(0.35, 0.70, 0.95, 0.09))
 			if variant == "broken_route_line":
-				_add_rect(parent, rect.position + Vector2(30, 58), Vector2(140, 2), Color(0.25, 0.22, 0.18, 0.07), -8.0)
+				_add_rect(parent, rect.position + Vector2(30, 58), Vector2(140, 2), Color(0.25, 0.22, 0.18, 0.13), -8.0)
 			elif variant == "memory_route_note":
-				_add_rect(parent, rect.position + Vector2(120, 50), Vector2(80, 2), Color(0.95, 0.52, 0.62, 0.09), 10.0)
+				_add_rect(parent, rect.position + Vector2(120, 50), Vector2(80, 2), Color(0.95, 0.52, 0.62, 0.15), 10.0)
 		"charging_tuner":
 			var waves := maxi(1, int(state.get("boss_analysis_level", 0)))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 74, 18), Vector2(48, 28), Color(0.28, 0.44, 0.52, 0.12))
 			for i in range(waves):
-				_add_rect(parent, rect.position + Vector2(24 + i * 21, 36 - (i % 2) * 5), Vector2(18, 3), Color(0.35, 0.70, 0.95, 0.09))
+				_add_rect(parent, rect.position + Vector2(24 + i * 21, 36 - (i % 2) * 5), Vector2(18, 3), Color(0.35, 0.70, 0.95, 0.18))
 		"sortie_gate":
-			_add_rect(parent, rect.position + Vector2(28, rect.size.y * 0.5), Vector2(rect.size.x - 56, 3), Color(0.62, 1.0, 0.36, 0.05))
+			_add_rect(parent, rect.position + Vector2(28, rect.size.y * 0.5), Vector2(rect.size.x - 56, 4), Color(0.62, 1.0, 0.36, 0.16))
+			_add_rect(parent, rect.position + Vector2(48, 12), Vector2(22, rect.size.y - 24), Color(1.0, 0.91, 0.25, 0.08))
+			_add_rect(parent, rect.position + Vector2(rect.size.x - 70, 12), Vector2(22, rect.size.y - 24), Color(1.0, 0.91, 0.25, 0.08))
+
+func _draw_platform_priority(parent: Control, offset: Vector2, scale: float, state: Dictionary) -> void:
+	var center := _to_preview(Vector2(720, 412), offset, scale)
+	var width := 116.0 * scale
+	var alpha := 0.16 if bool(state.get("first_recall_seen", false)) else 0.10
+	_add_rect(parent, center + Vector2(-width * 0.5, -2), Vector2(width, 4), Color(0.62, 1.0, 0.36, alpha))
+	_add_rect(parent, center + Vector2(-width * 0.34, 11), Vector2(width * 0.68, 3), Color(1.0, 0.91, 0.25, alpha * 0.8))
 
 func _facility_fill(facility_id: String, state: Dictionary) -> Color:
 	var variant := facility_variant(facility_id, state)
