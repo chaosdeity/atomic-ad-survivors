@@ -104,8 +104,37 @@ func add_damage_number(pos: Vector2, amount: float, kind: String, effectiveness:
 func add_status_ring(pos: Vector2, color: Color, radius: float = 15.0, life: float = 0.34) -> void:
 	status_rings.append({"pos": pos, "color": color, "radius": radius, "life": life, "duration": life})
 
-func add_impact_line(from_pos: Vector2, to_pos: Vector2, color: Color) -> void:
-	impact_lines.append({"from": from_pos, "to": to_pos, "color": color, "life": 0.18, "duration": 0.18})
+func add_impact_line(from_pos: Vector2, to_pos: Vector2, color: Color, width: float = 3.0, life: float = 0.18) -> void:
+	impact_lines.append({"from": from_pos, "to": to_pos, "color": color, "width": width, "life": life, "duration": life})
+
+func add_return_stamp_hit(pos: Vector2, dir: Vector2, perfect: bool = false, heavy: bool = false) -> void:
+	var safe_dir := dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
+	var radius := 25.0 if heavy else 19.0
+	if perfect:
+		radius += 4.0
+	add_status_ring(pos, C.NEON_RED, radius, 0.34 if heavy else 0.26)
+	add_slash(pos, safe_dir, C.NEON_RED, radius + 5.0, 0.16)
+	if perfect or heavy:
+		var stamp_color := C.VITAMIN_YELLOW if perfect else C.NEON_RED
+		floaters.append({
+			"pos": pos + Vector2(0, -26),
+			"text": "찍힘",
+			"life": 0.34,
+			"color": stamp_color,
+			"size": 10,
+		})
+
+func add_return_stamp_whiff(from_pos: Vector2, to_pos: Vector2) -> void:
+	var color := Color(0.35, 0.70, 0.95, 0.85)
+	add_impact_line(from_pos, to_pos, color, 2.0, 0.13)
+	miss_rings.append({"pos": to_pos, "life": 0.22, "duration": 0.22})
+	floaters.append({
+		"pos": to_pos + Vector2(0, -18),
+		"text": "헛도장",
+		"life": 0.36,
+		"color": color,
+		"size": 10,
+	})
 
 func add_slash(pos: Vector2, dir: Vector2, color: Color, radius: float = 20.0, life: float = 0.16) -> void:
 	var safe_dir := dir.normalized() if dir.length_squared() > 0.0 else Vector2.RIGHT
@@ -155,11 +184,11 @@ func shake_offset(rng: RandomNumberGenerator) -> Vector2:
 	return Vector2(rng.randf_range(-shake_power, shake_power), rng.randf_range(-shake_power, shake_power))
 
 func spawn_charge_particles(origin: Vector2, dir: Vector2, directed: bool, rng: RandomNumberGenerator) -> void:
-	var count := 54 if directed else 30
+	var count := 44 if directed else 24
 	for i in range(count):
-		var spread := rng.randf_range(-0.55, 0.55) if directed else rng.randf_range(-PI, PI)
+		var spread := rng.randf_range(-0.24, 0.24) if directed else rng.randf_range(-PI, PI)
 		var out_dir := dir.rotated(spread) if directed else Vector2.RIGHT.rotated(spread)
-		var speed := rng.randf_range(95.0, 285.0 if directed else 175.0)
+		var speed := rng.randf_range(125.0, 315.0 if directed else 150.0)
 		particles.append({
 			"pos": origin + out_dir * rng.randf_range(6.0, 26.0),
 			"vel": out_dir * speed,
@@ -236,7 +265,7 @@ func draw_front(canvas: CanvasItem) -> void:
 	for line in impact_lines:
 		var color: Color = line["color"]
 		color.a = clampf(float(line["life"]) / maxf(0.001, float(line["duration"])), 0.0, 1.0)
-		canvas.draw_line(line["from"], line["to"], color, 3.0)
+		canvas.draw_line(line["from"], line["to"], color, float(line.get("width", 3.0)))
 	for slash in slashes:
 		var ratio := float(slash["life"]) / maxf(0.001, float(slash["duration"]))
 		var color: Color = slash["color"]

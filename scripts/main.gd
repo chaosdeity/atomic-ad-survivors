@@ -35,9 +35,10 @@ const CHARGE_WEAPON_RETURN_STAMP := "return_stamp"
 const CHARGE_WEAPONS := [
 	{"id": CHARGE_WEAPON_RETURN_STAMP, "name": "반품 도장", "label": "관통 표식"},
 ]
+const RETURN_STAMP_RANGE := 248.0
 const RETURN_STAMP_DURATION := 5.0
-const RETURN_STAMP_WIDTH := 22.0
-const RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS := 38.0
+const RETURN_STAMP_WIDTH := 10.0
+const RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS := 48.0
 const MAX_PENDING_KILL_CONTEXTS := 32
 const BOSS_SIGNAL_LABELS := {
 	"none": "없음",
@@ -540,8 +541,8 @@ func _fire_charge() -> void:
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	charge_effect_anchor_active = false
-	_fire_feedback(true)
-	effects.spawn_charge_particles(player_pos, aim_dir, true, rng)
+	_fire_feedback(hit_count > 0)
+	effects.spawn_charge_particles(player_pos, aim_dir, hit_count > 0, rng)
 	charge_window_left = 0.0
 	charge_timer = 0.0
 	charge_open_age = 0.0
@@ -563,41 +564,55 @@ func _fallback_aim_dir() -> Vector2:
 	return dir.normalized()
 
 func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bool) -> int:
-	var hit_indices := _charge_line_hit_indices(aim_dir, C.CHARGE_RANGE + 28.0, RETURN_STAMP_WIDTH)
+	var hit_indices := _charge_line_hit_indices(aim_dir, RETURN_STAMP_RANGE, RETURN_STAMP_WIDTH)
 	var hit_count := 0
-	var line_end := player_pos + aim_dir * C.CHARGE_RANGE
+	var line_start := player_pos + aim_dir * 14.0
+	var trace_end := player_pos + aim_dir * RETURN_STAMP_RANGE
+	var anchor_pos := trace_end
 	_register_attack_pose(aim_dir, 0.24)
 	for n in range(mini(limit, hit_indices.size())):
 		var idx: int = hit_indices[n]
 		if idx < 0 or idx >= enemies.enemies.size():
 			continue
 		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-		line_end = hit_pos
+		anchor_pos = hit_pos
 		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage, idx), "focused")
 		if hit.is_empty():
 			continue
 		_apply_return_stamp(idx, perfect)
 		effects.spawn_hit_spark(hit_pos, true, rng)
 		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
-		effects.add_impact_line(player_pos + aim_dir * 16.0, hit_pos, C.NEON_RED)
-		effects.add_status_ring(hit_pos, C.NEON_RED, 22.0 if perfect else 17.0, 0.38 if perfect else 0.30)
-		effects.add_floater(hit_pos + Vector2(0, -6), "완벽 반품" if perfect else "반품", C.NEON_RED, 12 if perfect else 11)
+		var heavy_target := bool(enemies.enemies[idx].get("elite", false)) or String(enemies.enemies[idx].get("role", "basic")) in ["tank", "signal", "speaker", "charger"]
+		effects.add_impact_line(line_start, hit_pos, C.NEON_RED, 3.5 if heavy_target else 2.5, 0.16)
+		effects.add_return_stamp_hit(hit_pos, aim_dir, perfect, heavy_target)
+		effects.add_floater(hit_pos + Vector2(0, -6), "완벽 반품" if perfect else ("엘리트 반품" if heavy_target else "반품"), C.NEON_RED, 12 if perfect or heavy_target else 11)
 		enemies.knockback_enemy(idx, aim_dir, 12.0)
 		_apply_charge_hit_modifiers(idx, true, aim_dir)
 		hit_count += 1
-	if hit_count < limit and _charge_line_hits_boss(aim_dir, C.CHARGE_RANGE + 28.0, RETURN_STAMP_WIDTH):
+	if hit_count < limit and _charge_line_hits_boss(aim_dir, RETURN_STAMP_RANGE, RETURN_STAMP_WIDTH):
 		var boss_hit := _apply_boss_damage(damage, "focused")
 		if not boss_hit.is_empty():
-			line_end = boss.pos
+			anchor_pos = boss.pos
 			effects.spawn_hit_spark(boss.pos, true, rng)
-			effects.add_status_ring(boss.pos, C.NEON_RED, BossController.BODY_RADIUS + 16.0, 0.34)
-			effects.add_floater(boss.pos + Vector2(0, -10), "반품 검사", C.NEON_RED, 12)
+			effects.add_impact_line(line_start, boss.pos, C.NEON_RED, 5.0, 0.22)
+			effects.add_return_stamp_hit(boss.pos, aim_dir, perfect, true)
+			effects.add_status_ring(boss.pos, C.NEON_RED, BossController.BODY_RADIUS + 24.0, 0.42)
+			var boss_stamp_label := "결절 반품" if boss.core_exposed else "외피 반품"
+			effects.add_floater(boss.pos + Vector2(0, -10), boss_stamp_label, C.NEON_RED, 13)
+			effects.add_impact_shake(0.16, 4.8)
 			hit_count += 1
-	charge_effect_anchor = line_end
+	charge_effect_anchor = anchor_pos
 	charge_effect_anchor_active = true
-	effects.add_impact_line(player_pos + aim_dir * 14.0, line_end, C.NEON_RED)
-	effects.add_burst(player_pos, aim_dir, 0.34, true)
-	effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
+	if hit_count > 0:
+		effects.add_impact_line(line_start, trace_end, C.NEON_RED, 4.0 if hit_count >= 3 else 3.0, 0.20)
+		effects.add_status_ring(trace_end, C.NEON_RED, 9.0, 0.18)
+		if hit_count >= 3:
+			effects.add_floater(player_pos, "연속 반품 x%d" % hit_count, C.NEON_RED, 14)
+			effects.add_impact_shake(0.18, 4.2)
+		else:
+			effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
+	else:
+		effects.add_return_stamp_whiff(line_start, trace_end)
 	return hit_count
 
 func _apply_return_stamp(index: int, perfect: bool = false) -> void:
@@ -607,12 +622,20 @@ func _apply_return_stamp(index: int, perfect: bool = false) -> void:
 	if perfect and int(player_stats["perfect_charge_level"]) > 0:
 		duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
+	enemies.enemies[index]["return_stamp_flash"] = 0.30
 
 func _update_charge_marks(delta: float) -> void:
 	for enemy in enemies.enemies:
+		if enemy.has("return_stamp_flash"):
+			enemy["return_stamp_flash"] = maxf(0.0, float(enemy["return_stamp_flash"]) - delta)
+			if float(enemy["return_stamp_flash"]) <= 0.0:
+				enemy.erase("return_stamp_flash")
 		if enemy.has("return_stamp_timer"):
 			enemy["return_stamp_timer"] = maxf(0.0, float(enemy["return_stamp_timer"]) - delta)
 			if float(enemy["return_stamp_timer"]) <= 0.0:
+				var pos: Vector2 = enemy["pos"]
+				var radius := float(enemy.get("radius", 8.0))
+				effects.add_status_ring(pos, Color(0.35, 0.70, 0.95), radius + 8.0, 0.20)
 				enemy.erase("return_stamp_timer")
 
 func _preferred_auto_target(origin: Vector2, max_range: float, excluded: Array = [], for_split: bool = false) -> int:
@@ -1875,33 +1898,15 @@ func _draw_player() -> void:
 		var warning_ratio := 1.0 - clampf(warning_left / C.CHARGE_WARNING_TIME, 0.0, 1.0)
 		var pulse := 1.0 + sin(warning_ratio * PI * 5.0) * 0.12
 		draw_arc(player_pos, 23.0 * pulse, -PI / 2.0, TAU * warning_ratio - PI / 2.0, 36, C.NEON_RED, 3.0)
-		draw_arc(player_pos, C.CHARGE_RANGE * (0.82 + warning_ratio * 0.18), 0.0, TAU, 72, Color(1.0, 0.91, 0.25, 0.20 + warning_ratio * 0.24), 2.0)
-		draw_circle(player_pos, 34.0 + warning_ratio * 15.0, Color(1.0, 0.91, 0.25, 0.08))
-		if has_aim:
-			var dir := aim.normalized()
-			draw_colored_polygon(PackedVector2Array([
-				player_pos,
-				player_pos + dir.rotated(-0.46) * C.CHARGE_RANGE * 0.74,
-				player_pos + dir.rotated(0.46) * C.CHARGE_RANGE * 0.74,
-			]), Color(1.0, 0.91, 0.25, 0.11))
+		draw_circle(player_pos, 29.0 + warning_ratio * 10.0, Color(1.0, 0.91, 0.25, 0.07))
 		_draw_charge_weapon_preview(aim, preview_dir, false)
 	elif charge_ready_flash > 0.0 or charge_window_left > 0.0:
 		var ratio := charge_window_left / _charge_window()
 		var pulse := 1.0 + sin(charge_open_age * 28.0) * 0.13
 		var focus_color := Color(0.62, 1.0, 0.36, 0.22) if has_aim else Color(1.0, 0.91, 0.25, 0.20)
-		draw_arc(player_pos, C.CHARGE_RANGE, -PI, PI, 72, Color(1.0, 0.3, 0.36, 0.32), 3.0)
 		draw_arc(player_pos, 18.0 * pulse, -PI / 2.0, TAU * ratio - PI / 2.0, 32, C.TOXIC_GREEN if has_aim else C.VITAMIN_YELLOW, 4.0)
 		draw_arc(player_pos, 25.0 + charge_open_age * 42.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.70), 2.0)
 		draw_circle(player_pos, 34.0 + charge_open_age * 20.0, focus_color)
-		if has_aim:
-			var dir := aim.normalized()
-			draw_colored_polygon(PackedVector2Array([
-				player_pos,
-				player_pos + dir.rotated(-0.55) * C.CHARGE_RANGE,
-				player_pos + dir.rotated(0.55) * C.CHARGE_RANGE,
-			]), Color(0.62, 1.0, 0.36, 0.22))
-			draw_line(player_pos, player_pos + dir * C.CHARGE_RANGE, Color(1.0, 0.3, 0.36, 0.78), 3.0)
-			draw_arc(player_pos, C.CHARGE_RANGE * 0.58, -0.55 + dir.angle(), 0.55 + dir.angle(), 28, C.TOXIC_GREEN, 3.0)
 		_draw_charge_weapon_preview(aim, preview_dir, true)
 
 func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) -> void:
@@ -1910,11 +1915,12 @@ func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) ->
 	line_color.a = alpha
 	var edge_color := C.VITAMIN_YELLOW
 	edge_color.a = alpha * 0.62
-	var end_pos := player_pos + aim_dir * (C.CHARGE_RANGE + 28.0)
+	var end_pos := player_pos + aim_dir * RETURN_STAMP_RANGE
 	var side := aim_dir.rotated(PI * 0.5) * RETURN_STAMP_WIDTH
-	draw_line(player_pos, end_pos, line_color, 5.0 if open else 3.0)
+	draw_line(player_pos, end_pos, line_color, 4.0 if open else 2.4)
 	draw_line(player_pos + side, end_pos + side, edge_color, 1.5)
 	draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
+	draw_arc(end_pos, 8.0 if open else 6.0, 0.0, TAU, 24, line_color, 2.0)
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
@@ -1923,10 +1929,10 @@ func _draw_enemies() -> void:
 		draw_circle(pos + Vector2(2, 3), radius, Color(0, 0, 0, 0.14))
 		_draw_enemy_role_marker(enemy)
 		_draw_enemy_defense_marker(enemy)
-		_draw_charge_weapon_markers(enemy)
 		var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
 		if not sprite_assets.draw_enemy(self, enemy, enemy_frame):
 			sprite_assets.draw_enemy_fallback(self, enemy)
+		_draw_charge_weapon_markers(enemy)
 		_draw_enemy_nameplate(enemy)
 		_draw_enemy_hit_feedback(enemy)
 
@@ -1935,11 +1941,18 @@ func _draw_charge_weapon_markers(enemy: Dictionary) -> void:
 	var radius := float(enemy["radius"])
 	if _enemy_has_return_stamp(enemy):
 		var ratio := clampf(float(enemy.get("return_stamp_timer", 0.0)) / RETURN_STAMP_DURATION, 0.0, 1.0)
+		var flash := clampf(float(enemy.get("return_stamp_flash", 0.0)) / 0.30, 0.0, 1.0)
+		var expiry_pulse := sin(elapsed * 18.0) * 0.5 + 0.5 if ratio < 0.28 else 0.0
 		var stamp_color := C.NEON_RED
-		stamp_color.a = 0.50 + 0.30 * ratio
-		draw_rect(Rect2(pos + Vector2(-radius - 4.0, -radius - 4.0), Vector2((radius + 4.0) * 2.0, (radius + 4.0) * 2.0)), Color(1.0, 0.3, 0.36, 0.10 * ratio), false, 2.0)
-		draw_arc(pos, radius + 10.0, -PI * 0.22, PI * 1.22, 28, stamp_color, 2.5)
-		draw_line(pos + Vector2(-radius - 2.0, 0), pos + Vector2(radius + 2.0, 0), stamp_color, 2.0)
+		stamp_color.a = 0.58 + 0.28 * ratio + 0.18 * flash
+		var box_radius := radius + 6.0 + flash * 4.0
+		draw_rect(Rect2(pos - Vector2(box_radius, box_radius), Vector2(box_radius * 2.0, box_radius * 2.0)), Color(1.0, 0.3, 0.36, 0.08 + 0.10 * flash + 0.05 * expiry_pulse), false, 2.0)
+		draw_arc(pos, radius + 10.0 + flash * 6.0 + expiry_pulse * 3.0, -PI * 0.22, PI * 1.22, 28, stamp_color, 2.5 + flash * 1.0)
+		draw_line(pos + Vector2(-radius - 4.0, 0), pos + Vector2(radius + 4.0, 0), stamp_color, 2.0)
+		draw_line(pos + Vector2(0, -radius - 4.0), pos + Vector2(0, radius + 4.0), Color(1.0, 0.91, 0.25, stamp_color.a * 0.68), 1.5)
+		var text_pos := pos + Vector2(0, -radius - 12.0)
+		draw_string(UIFont.get_font(), text_pos + Vector2(1, 1), "반품", HORIZONTAL_ALIGNMENT_CENTER, -1.0, 8, Color(0.08, 0.03, 0.03, stamp_color.a))
+		draw_string(UIFont.get_font(), text_pos, "반품", HORIZONTAL_ALIGNMENT_CENTER, -1.0, 8, stamp_color)
 
 func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
 	var hit_flash := float(enemy.get("hit_flash", 0.0))
