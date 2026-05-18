@@ -32,27 +32,12 @@ const FLYER_DROP_LINGER := 0.30
 const FLYER_DROP_RADIUS := 42.0
 const FLYER_DROP_DAMAGE := 10.0
 const CHARGE_WEAPON_RETURN_STAMP := "return_stamp"
-const CHARGE_WEAPON_RECALL_LINE := "recall_line"
-const CHARGE_WEAPON_EMERGENCY_BROADCAST := "emergency_broadcast"
 const CHARGE_WEAPONS := [
 	{"id": CHARGE_WEAPON_RETURN_STAMP, "name": "반품 도장", "label": "관통 표식"},
-	{"id": CHARGE_WEAPON_RECALL_LINE, "name": "회수선 투척", "label": "위치 제어"},
-	{"id": CHARGE_WEAPON_EMERGENCY_BROADCAST, "name": "긴급 방송", "label": "광역 표식"},
 ]
 const RETURN_STAMP_DURATION := 5.0
 const RETURN_STAMP_WIDTH := 22.0
 const RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS := 38.0
-const RECALL_LINE_RADIUS := 92.0
-const RECALL_LINE_MIN_DISTANCE := 64.0
-const RECALL_LINE_PULL_DISTANCE := 54.0
-const RECALL_LINE_FOCUS_DURATION := 4.2
-const RECALL_LINE_SPLIT_PRIORITY_RADIUS := 118.0
-const BROADCAST_RADIUS := 178.0
-const BROADCAST_MARK_DURATION := 4.6
-const BROADCAST_CHAIN_RADIUS := 58.0
-const BROADCAST_CHAIN_TARGETS := 4
-const BROADCAST_CHAIN_DAMAGE := 16.0
-const BROADCAST_SPLIT_RADIUS := 128.0
 const MAX_PENDING_KILL_CONTEXTS := 32
 const BOSS_SIGNAL_LABELS := {
 	"none": "없음",
@@ -93,7 +78,6 @@ var last_run_result := {}
 var r01_visit_recorded_sortie_index := 0
 
 var auto_timer := 0.0
-var charge_weapon_index := 0
 var charge_timer := 0.0
 var charge_window_left := 0.0
 var charge_ready_flash := 0.0
@@ -109,8 +93,6 @@ var auto_shot_counter := 0
 var charge_puddles: Array[Dictionary] = []
 var charge_effect_anchor := Vector2.ZERO
 var charge_effect_anchor_active := false
-var last_recall_line_pos := Vector2.ZERO
-var last_recall_line_timer := 0.0
 var pending_kill_burst_contexts: Array[Dictionary] = []
 var active_threats: Array[Dictionary] = []
 var pressure_ring_timer := 0.0
@@ -215,10 +197,6 @@ func _input(event: InputEvent) -> void:
 		_update_hud()
 		return
 
-	if _handle_charge_weapon_toggle(event):
-		_update_hud()
-		return
-
 	if paused_for_card:
 		var choice := _card_choice_from_event(event)
 		if choice != -1:
@@ -243,48 +221,17 @@ func _input(event: InputEvent) -> void:
 		elif charge_window_left > 0.0:
 			_fire_charge()
 
-func _handle_charge_weapon_toggle(event: InputEvent) -> bool:
-	if not event is InputEventKey or not event.pressed or event.echo:
-		return false
-	if event.keycode != KEY_TAB:
-		return false
-	if match_state != "playing" or paused_for_card:
-		return true
-	var step := -1 if event.shift_pressed else 1
-	charge_weapon_index = posmod(charge_weapon_index + step, CHARGE_WEAPONS.size())
-	var weapon_name := _charge_weapon_name()
-	effects.show_combat_banner("%s: %s" % [weapon_name, _charge_weapon_label()], _charge_weapon_color())
-	effects.add_floater(player_pos + Vector2(0, -10), "차징 전환", _charge_weapon_color(), 13)
-	return true
-
 func _charge_weapon_id() -> String:
-	if CHARGE_WEAPONS.is_empty():
-		return CHARGE_WEAPON_RETURN_STAMP
-	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
-	return String(weapon.get("id", CHARGE_WEAPON_RETURN_STAMP))
+	return CHARGE_WEAPON_RETURN_STAMP
 
 func _charge_weapon_name() -> String:
-	if CHARGE_WEAPONS.is_empty():
-		return "반품 도장"
-	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
-	return String(weapon.get("name", "반품 도장"))
+	return "반품 도장"
 
 func _charge_weapon_label() -> String:
-	if CHARGE_WEAPONS.is_empty():
-		return "관통 표식"
-	var weapon: Dictionary = CHARGE_WEAPONS[clampi(charge_weapon_index, 0, CHARGE_WEAPONS.size() - 1)]
-	return String(weapon.get("label", "관통 표식"))
+	return "관통 표식"
 
 func _charge_weapon_color() -> Color:
-	match _charge_weapon_id():
-		CHARGE_WEAPON_RETURN_STAMP:
-			return C.NEON_RED
-		CHARGE_WEAPON_RECALL_LINE:
-			return C.TOXIC_GREEN
-		CHARGE_WEAPON_EMERGENCY_BROADCAST:
-			return Color(0.35, 0.70, 0.95)
-		_:
-			return C.VITAMIN_YELLOW
+	return C.NEON_RED
 
 func _build_camera() -> void:
 	camera = Camera2D.new()
@@ -577,17 +524,10 @@ func _charge_missed() -> void:
 
 func _fire_charge() -> void:
 	var aim_data := _charge_aim_data()
-	var aim: Vector2 = aim_data["aim"]
 	var aim_dir: Vector2 = aim_data["dir"]
-	var directed := bool(aim_data["directed"])
-	var weapon_id := _charge_weapon_id()
-	var damage_directed := directed
-	if weapon_id == CHARGE_WEAPON_RETURN_STAMP or weapon_id == CHARGE_WEAPON_RECALL_LINE:
-		damage_directed = true
-	elif weapon_id == CHARGE_WEAPON_EMERGENCY_BROADCAST:
-		damage_directed = false
-	var limit := _charge_target_limit(damage_directed)
-	var damage := _charge_damage(damage_directed)
+	var directed := true
+	var limit := _charge_target_limit(directed)
+	var damage := _charge_damage(directed)
 	var perfect := _is_perfect_charge()
 	if perfect:
 		damage *= 1.0 + 0.25 * float(player_stats["perfect_charge_level"])
@@ -596,22 +536,12 @@ func _fire_charge() -> void:
 		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
 
 	charge_effect_anchor_active = false
-	var hit_count := 0
-	match weapon_id:
-		CHARGE_WEAPON_RETURN_STAMP:
-			hit_count = _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
-		CHARGE_WEAPON_RECALL_LINE:
-			hit_count = _fire_recall_line(aim, directed, aim_dir, limit, damage, perfect)
-		CHARGE_WEAPON_EMERGENCY_BROADCAST:
-			hit_count = _fire_emergency_broadcast(limit + 10, damage, perfect)
-		_:
-			hit_count = _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
+	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	charge_effect_anchor_active = false
-	var visual_directed := weapon_id != CHARGE_WEAPON_EMERGENCY_BROADCAST
-	_fire_feedback(visual_directed)
-	effects.spawn_charge_particles(player_pos, aim_dir, visual_directed, rng)
+	_fire_feedback(true)
+	effects.spawn_charge_particles(player_pos, aim_dir, true, rng)
 	charge_window_left = 0.0
 	charge_timer = 0.0
 	charge_open_age = 0.0
@@ -670,100 +600,6 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 	effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
 	return hit_count
 
-func _fire_recall_line(aim: Vector2, directed: bool, aim_dir: Vector2, limit: int, damage: float, perfect: bool) -> int:
-	var landing := _charge_landing_point(aim, directed, aim_dir)
-	var radius := RECALL_LINE_RADIUS + 4.0 * float(player_stats["charge_target_bonus"])
-	if perfect:
-		radius += 18.0
-	var pull_distance := RECALL_LINE_PULL_DISTANCE + (16.0 if perfect else 0.0)
-	var hit_indices := _enemy_indices_in_radius(landing, radius, limit + 3)
-	var hit_count := 0
-	charge_effect_anchor = landing
-	charge_effect_anchor_active = true
-	last_recall_line_pos = landing
-	last_recall_line_timer = RECALL_LINE_FOCUS_DURATION + (0.8 if perfect else 0.0)
-	_register_attack_pose(aim_dir, 0.24)
-	effects.add_impact_line(player_pos + aim_dir * 12.0, landing, C.TOXIC_GREEN)
-	effects.add_status_ring(landing, C.TOXIC_GREEN, radius, 0.44)
-	effects.add_status_ring(landing, C.VITAMIN_YELLOW, 24.0, 0.28)
-	effects.add_floater(landing, "완벽 회수선!" if perfect else "회수선!", C.TOXIC_GREEN, 14)
-	for n in range(hit_indices.size()):
-		var idx: int = hit_indices[n]
-		if idx < 0 or idx >= enemies.enemies.size():
-			continue
-		var before_pos: Vector2 = enemies.enemies[idx]["pos"]
-		_pull_enemy_toward(idx, landing, pull_distance)
-		enemies.apply_slow(idx, 0.45, 0.62)
-		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage * 0.72, idx), "charge")
-		if hit.is_empty():
-			continue
-		effects.spawn_hit_spark(hit_pos, true, rng)
-		effects.add_damage_number(hit_pos, float(hit["damage"]), "charge", String(hit["effectiveness"]))
-		effects.add_impact_line(before_pos, hit_pos, C.TOXIC_GREEN)
-		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 13.0, 0.22)
-		_apply_charge_hit_modifiers(idx, false, aim_dir)
-		hit_count += 1
-	if boss.active and boss.contains_point(landing, radius):
-		var boss_hit := _apply_boss_damage(damage * 0.72, "charge")
-		if not boss_hit.is_empty():
-			effects.spawn_hit_spark(boss.pos, true, rng)
-			effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 14.0, 0.30)
-			hit_count += 1
-	return hit_count
-
-func _fire_emergency_broadcast(limit: int, damage: float, perfect: bool) -> int:
-	var radius := BROADCAST_RADIUS + 3.0 * float(player_stats["charge_target_bonus"])
-	if perfect:
-		radius += 22.0
-		limit += 2
-	var hit_indices := _enemy_indices_in_radius(player_pos, radius, limit)
-	var hit_count := 0
-	charge_effect_anchor = player_pos
-	charge_effect_anchor_active = true
-	_register_attack_pose(_fallback_aim_dir(), 0.18)
-	effects.add_status_ring(player_pos, Color(0.35, 0.70, 0.95), radius, 0.60)
-	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, radius * 0.54, 0.46)
-	effects.add_floater(player_pos + Vector2(0, -10), "완벽 방송!" if perfect else "긴급 방송!", Color(0.35, 0.70, 0.95), 15)
-	for n in range(hit_indices.size()):
-		var idx: int = hit_indices[n]
-		if idx < 0 or idx >= enemies.enemies.size():
-			continue
-		_apply_broadcast_mark(idx, perfect)
-		enemies.apply_slow(idx, 0.85, 0.70)
-		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage * 0.68, idx), "charge")
-		if hit.is_empty():
-			continue
-		effects.add_damage_number(hit_pos, float(hit["damage"]), "charge", String(hit["effectiveness"]))
-		effects.add_status_ring(hit_pos, Color(0.35, 0.70, 0.95), 14.0, 0.28)
-		if n < 8:
-			effects.add_impact_line(player_pos, hit_pos, Color(0.35, 0.70, 0.95))
-		_apply_charge_hit_modifiers(idx, false, _fallback_aim_dir())
-		hit_count += 1
-	if boss.active and boss.contains_point(player_pos, radius):
-		var boss_hit := _apply_boss_damage(damage * 0.68, "charge")
-		if not boss_hit.is_empty():
-			effects.add_status_ring(boss.pos, Color(0.35, 0.70, 0.95), BossController.BODY_RADIUS + 20.0, 0.34)
-			hit_count += 1
-	return hit_count
-
-func _charge_landing_point(aim: Vector2, directed: bool, aim_dir: Vector2) -> Vector2:
-	if not directed:
-		return player_pos + aim_dir * RECALL_LINE_MIN_DISTANCE
-	var distance := clampf(aim.length(), RECALL_LINE_MIN_DISTANCE, C.CHARGE_RANGE * 0.92)
-	return player_pos + aim_dir * distance
-
-func _pull_enemy_toward(index: int, center: Vector2, max_distance: float) -> void:
-	if index < 0 or index >= enemies.enemies.size():
-		return
-	var pos: Vector2 = enemies.enemies[index]["pos"]
-	var to_center := center - pos
-	var distance := to_center.length()
-	if distance <= 1.0:
-		return
-	enemies.knockback_enemy(index, to_center.normalized(), minf(max_distance, distance * 0.72))
-
 func _apply_return_stamp(index: int, perfect: bool = false) -> void:
 	if index < 0 or index >= enemies.enemies.size():
 		return
@@ -772,38 +608,17 @@ func _apply_return_stamp(index: int, perfect: bool = false) -> void:
 		duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
 
-func _apply_broadcast_mark(index: int, perfect: bool = false) -> void:
-	if index < 0 or index >= enemies.enemies.size():
-		return
-	var duration := BROADCAST_MARK_DURATION
-	if perfect and int(player_stats["perfect_charge_level"]) > 0:
-		duration += 0.8 + 0.2 * float(player_stats["perfect_charge_level"])
-	enemies.enemies[index]["broadcast_mark_timer"] = duration
-
 func _update_charge_marks(delta: float) -> void:
-	last_recall_line_timer = maxf(0.0, last_recall_line_timer - delta)
 	for enemy in enemies.enemies:
 		if enemy.has("return_stamp_timer"):
 			enemy["return_stamp_timer"] = maxf(0.0, float(enemy["return_stamp_timer"]) - delta)
 			if float(enemy["return_stamp_timer"]) <= 0.0:
 				enemy.erase("return_stamp_timer")
-		if enemy.has("broadcast_mark_timer"):
-			enemy["broadcast_mark_timer"] = maxf(0.0, float(enemy["broadcast_mark_timer"]) - delta)
-			if float(enemy["broadcast_mark_timer"]) <= 0.0:
-				enemy.erase("broadcast_mark_timer")
 
 func _preferred_auto_target(origin: Vector2, max_range: float, excluded: Array = [], for_split: bool = false) -> int:
 	var stamped_idx := _nearest_marked_enemy(origin, max_range + RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS, "return_stamp_timer", excluded)
 	if stamped_idx != -1:
 		return stamped_idx
-	if for_split and _charge_weapon_id() == CHARGE_WEAPON_RECALL_LINE and last_recall_line_timer > 0.0:
-		var recall_idx := _nearest_enemy_near_anchor(origin, max_range + 24.0, last_recall_line_pos, RECALL_LINE_SPLIT_PRIORITY_RADIUS, excluded)
-		if recall_idx != -1:
-			return recall_idx
-	if for_split and _charge_weapon_id() == CHARGE_WEAPON_EMERGENCY_BROADCAST:
-		var broadcast_idx := _nearest_marked_enemy(origin, max_range + 36.0, "broadcast_mark_timer", excluded)
-		if broadcast_idx != -1:
-			return broadcast_idx
 	return enemies.nearest_enemy_excluding(origin, max_range, excluded)
 
 func _nearest_marked_enemy(origin: Vector2, max_range: float, mark_key: String, excluded: Array = []) -> int:
@@ -820,113 +635,25 @@ func _nearest_marked_enemy(origin: Vector2, max_range: float, mark_key: String, 
 			best = i
 	return best
 
-func _nearest_enemy_near_anchor(origin: Vector2, max_range: float, anchor: Vector2, anchor_radius: float, excluded: Array = []) -> int:
-	var best := -1
-	var best_anchor_dist := anchor_radius * anchor_radius
-	var origin_range_sq := max_range * max_range
-	for i in range(enemies.enemies.size()):
-		if excluded.has(i):
-			continue
-		var pos: Vector2 = enemies.enemies[i]["pos"]
-		if origin.distance_squared_to(pos) > origin_range_sq:
-			continue
-		var anchor_dist := anchor.distance_squared_to(pos)
-		if anchor_dist < best_anchor_dist:
-			best_anchor_dist = anchor_dist
-			best = i
-	return best
-
 func _enemy_has_return_stamp(enemy: Dictionary) -> bool:
 	return float(enemy.get("return_stamp_timer", 0.0)) > 0.0
 
-func _enemy_has_broadcast_mark(enemy: Dictionary) -> bool:
-	return float(enemy.get("broadcast_mark_timer", 0.0)) > 0.0
-
-func _cleanup_dead_positions(allow_broadcast_chain: bool = true) -> Array[Vector2]:
+func _cleanup_dead_positions(allow_burst_context: bool = true) -> Array[Vector2]:
 	var dead_events: Array[Dictionary] = []
 	for enemy in enemies.enemies:
 		if float(enemy.get("hp", 0.0)) <= 0.0:
-			var pos := Vector2(enemy["pos"])
 			dead_events.append({
-				"pos": pos,
+				"pos": Vector2(enemy["pos"]),
 				"return_stamp": _enemy_has_return_stamp(enemy),
-				"broadcast_mark": _enemy_has_broadcast_mark(enemy),
-				"recall_focus": last_recall_line_timer > 0.0 and pos.distance_squared_to(last_recall_line_pos) <= RECALL_LINE_SPLIT_PRIORITY_RADIUS * RECALL_LINE_SPLIT_PRIORITY_RADIUS,
 			})
 	var dead_positions := enemies.cleanup_dead()
-	if allow_broadcast_chain and int(player_stats.get("kill_burst_level", 0)) > 0:
+	if allow_burst_context and int(player_stats.get("kill_burst_level", 0)) > 0:
 		_queue_kill_burst_contexts(dead_events)
-	var broadcast_positions := _dead_event_positions(dead_events, "broadcast_mark")
-	if allow_broadcast_chain and broadcast_positions.size() > 0:
-		dead_positions.append_array(_trigger_broadcast_chains(broadcast_positions))
-		dead_positions.append_array(_trigger_broadcast_split_shots(broadcast_positions))
 	return dead_positions
-
-func _trigger_broadcast_chains(marked_positions: Array[Vector2]) -> Array[Vector2]:
-	var chain_dead_positions: Array[Vector2] = []
-	var chain_count := mini(4, marked_positions.size())
-	var burst_level := int(player_stats.get("kill_burst_level", 0))
-	var chain_radius := BROADCAST_CHAIN_RADIUS + (8.0 if burst_level > 0 else 0.0)
-	var chain_targets := BROADCAST_CHAIN_TARGETS + (1 if burst_level > 0 else 0)
-	var chain_damage := BROADCAST_CHAIN_DAMAGE + 2.0 * float(burst_level)
-	for n in range(chain_count):
-		var pos := marked_positions[n]
-		var hit_indices := _enemy_indices_in_radius(pos, chain_radius, chain_targets)
-		if hit_indices.is_empty():
-			continue
-		effects.add_small_burst(pos)
-		effects.add_status_ring(pos, Color(0.35, 0.70, 0.95), chain_radius, 0.34)
-		effects.add_floater(pos, "방송 폭죽!" if burst_level > 0 else "방송 연쇄!", Color(0.35, 0.70, 0.95), 12)
-		for idx in hit_indices:
-			if idx < 0 or idx >= enemies.enemies.size():
-				continue
-			var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-			var hit := enemies.apply_damage(idx, _enemy_meta_damage(chain_damage, idx), "burst")
-			if hit.is_empty():
-				continue
-			effects.add_damage_number(hit_pos, float(hit["damage"]), "burst", String(hit["effectiveness"]))
-			_apply_hit_knockback(idx, pos, 10.0)
-		chain_dead_positions.append_array(_cleanup_dead_positions(false))
-	return chain_dead_positions
-
-func _trigger_broadcast_split_shots(marked_positions: Array[Vector2]) -> Array[Vector2]:
-	var split_level := int(player_stats.get("split_shot_level", 0))
-	if split_level <= 0:
-		var no_split_positions: Array[Vector2] = []
-		return no_split_positions
-	var split_dead_positions: Array[Vector2] = []
-	var shots_left := 1 + mini(2, split_level)
-	for pos in marked_positions:
-		if shots_left <= 0:
-			break
-		var target_idx := _nearest_marked_enemy(pos, BROADCAST_SPLIT_RADIUS, "broadcast_mark_timer")
-		if target_idx == -1:
-			target_idx = enemies.nearest_enemy(pos, BROADCAST_SPLIT_RADIUS)
-		if target_idx == -1:
-			continue
-		var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
-		var split_damage := _auto_damage_per_tick() * minf(0.62, 0.36 + 0.07 * split_level)
-		var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(split_damage, target_idx), "auto")
-		if hit.is_empty():
-			continue
-		effects.add_alt_shot(pos, target_pos)
-		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
-		effects.add_status_ring(target_pos, Color(0.35, 0.70, 0.95), 18.0, 0.24)
-		effects.add_floater(target_pos, "방송 분열!", Color(0.35, 0.70, 0.95), 12)
-		shots_left -= 1
-		split_dead_positions.append_array(_cleanup_dead_positions(false))
-	return split_dead_positions
-
-func _dead_event_positions(dead_events: Array[Dictionary], flag: String) -> Array[Vector2]:
-	var positions: Array[Vector2] = []
-	for event in dead_events:
-		if bool(event.get(flag, false)):
-			positions.append(Vector2(event["pos"]))
-	return positions
 
 func _queue_kill_burst_contexts(dead_events: Array[Dictionary]) -> void:
 	for event in dead_events:
-		if bool(event.get("return_stamp", false)) or bool(event.get("broadcast_mark", false)) or bool(event.get("recall_focus", false)):
+		if bool(event.get("return_stamp", false)):
 			pending_kill_burst_contexts.append(event.duplicate(true))
 	while pending_kill_burst_contexts.size() > MAX_PENDING_KILL_CONTEXTS:
 		pending_kill_burst_contexts.pop_front()
@@ -1046,36 +773,24 @@ func _try_split_shot(primary_idx: int) -> void:
 	if secondary_idx == -1:
 		return
 	var priority_target := _enemy_has_return_stamp(enemies.enemies[secondary_idx])
-	var recall_target := _charge_weapon_id() == CHARGE_WEAPON_RECALL_LINE and last_recall_line_timer > 0.0 and last_recall_line_pos.distance_squared_to(enemies.enemies[secondary_idx]["pos"]) <= RECALL_LINE_SPLIT_PRIORITY_RADIUS * RECALL_LINE_SPLIT_PRIORITY_RADIUS
-	var broadcast_target := _enemy_has_broadcast_mark(enemies.enemies[secondary_idx])
 	var target_pos: Vector2 = enemies.enemies[secondary_idx]["pos"]
 	var split_damage := _auto_damage_per_tick() * minf(0.85, 0.55 + 0.10 * split_level)
 	if auto_damage_synergy:
 		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
 	if priority_target:
 		split_damage *= 1.12
-	elif recall_target or broadcast_target:
-		split_damage *= 1.06
 	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
 		if priority_target:
 			effects.add_status_ring(target_pos, C.NEON_RED, 17.0, 0.22)
-		elif recall_target:
-			effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0, 0.24)
-		elif broadcast_target:
-			effects.add_status_ring(target_pos, Color(0.35, 0.70, 0.95), 18.0, 0.24)
 	_handle_dead_positions(_cleanup_dead_positions())
 	effects.add_alt_shot(player_pos, target_pos)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0 if auto_damage_synergy else 14.0, 0.28 if auto_damage_synergy else 0.24)
 	var split_label := "증폭 분열!" if auto_damage_synergy else "분열!"
 	if priority_target:
 		split_label = "반품 분열!"
-	elif recall_target:
-		split_label = "회수 분열!"
-	elif broadcast_target:
-		split_label = "방송 분열!"
 	effects.add_floater(target_pos, split_label, C.TOXIC_GREEN, 14)
 
 func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
@@ -1094,17 +809,6 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 		max_targets += 1
 		burst_color = C.NEON_RED
 		burst_label = "반품 폭죽!"
-	elif bool(context.get("recall_focus", false)):
-		chance = minf(0.92, chance + 0.20)
-		radius += 14.0
-		max_targets += 1
-		burst_color = C.TOXIC_GREEN
-		burst_label = "회수 폭죽!"
-	elif bool(context.get("broadcast_mark", false)):
-		chance = minf(0.92, chance + 0.16)
-		radius += 8.0
-		burst_color = Color(0.35, 0.70, 0.95)
-		burst_label = "방송 폭죽!"
 	if rng.randf() > chance:
 		return dead_positions
 	var damage := 22.0 + 8.0 * burst_level
@@ -1132,23 +836,11 @@ func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> 
 		var slow_mult := maxf(0.20, 0.58 - 0.08 * slow_level)
 		var slow_color := C.TOXIC_GREEN
 		var slow_label := "오류!"
-		match _charge_weapon_id():
-			CHARGE_WEAPON_RETURN_STAMP:
-				if _enemy_has_return_stamp(enemies.enemies[idx]):
-					slow_duration += 0.30 + 0.08 * slow_level
-					slow_mult = maxf(0.20, slow_mult - 0.06)
-					slow_color = C.NEON_RED
-					slow_label = "반품 오류!"
-			CHARGE_WEAPON_RECALL_LINE:
-				slow_duration = maxf(slow_duration, 0.95 + 0.20 * slow_level)
-				slow_mult = maxf(0.24, minf(slow_mult, 0.64 - 0.06 * slow_level))
-				slow_color = C.TOXIC_GREEN
-				slow_label = "회수 오류!"
-			CHARGE_WEAPON_EMERGENCY_BROADCAST:
-				slow_duration = maxf(slow_duration, 0.80 + 0.18 * slow_level)
-				slow_mult = maxf(0.30, minf(slow_mult, 0.72 - 0.05 * slow_level))
-				slow_color = Color(0.35, 0.70, 0.95)
-				slow_label = "방송 오류!"
+		if _enemy_has_return_stamp(enemies.enemies[idx]):
+			slow_duration += 0.30 + 0.08 * slow_level
+			slow_mult = maxf(0.20, slow_mult - 0.06)
+			slow_color = C.NEON_RED
+			slow_label = "반품 오류!"
 		enemies.apply_slow(idx, slow_duration, slow_mult)
 		effects.add_status_ring(enemies.enemies[idx]["pos"], slow_color, 15.0, 0.30)
 		if slow_level >= 2:
@@ -1197,26 +889,10 @@ func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 	if charge_effect_anchor_active:
 		pos = charge_effect_anchor
 	var area_combo := int(player_stats["kill_burst_level"]) > 0
-	var weapon_id := _charge_weapon_id()
-	var radius := 42.0 + 6.0 * puddle_level + (4.0 if area_combo else 0.0)
-	var dps := (17.0 + 6.0 * puddle_level) * (1.10 if area_combo else 1.0)
-	var life := 2.0 + 0.25 * puddle_level
-	var label := "연쇄 잔류!" if area_combo else "잔류!"
-	match weapon_id:
-		CHARGE_WEAPON_RETURN_STAMP:
-			radius += 4.0
-			dps *= 1.06
-			life += 0.10
-			label = "반품 잔류!" if not area_combo else "반품 연쇄 잔류!"
-		CHARGE_WEAPON_RECALL_LINE:
-			radius += 12.0
-			dps *= 0.94
-			label = "회수 잔류!" if not area_combo else "회수 연쇄 잔류!"
-		CHARGE_WEAPON_EMERGENCY_BROADCAST:
-			radius = 76.0 + 8.0 * puddle_level
-			dps = 10.0 + 3.5 * puddle_level
-			life = 1.35 + 0.18 * puddle_level
-			label = "방송 잔류!"
+	var radius := 46.0 + 6.0 * puddle_level + (4.0 if area_combo else 0.0)
+	var dps := (17.0 + 6.0 * puddle_level) * (1.10 if area_combo else 1.0) * 1.06
+	var life := 2.10 + 0.25 * puddle_level
+	var label := "반품 연쇄 잔류!" if area_combo else "반품 잔류!"
 	charge_puddles.append({
 		"pos": pos,
 		"radius": radius,
@@ -1844,45 +1520,15 @@ func _apply_charge_weapon_card_hints(cards: Array[Dictionary]) -> void:
 func _charge_weapon_card_hint(card_id: String) -> String:
 	match card_id:
 		"split_ad_round":
-			match _charge_weapon_id():
-				CHARGE_WEAPON_RETURN_STAMP:
-					return "반품 표식 대상에게 분열탄이 우선 튑니다."
-				CHARGE_WEAPON_RECALL_LINE:
-					return "회수선 착탄지 주변에서 분열탄이 우선 튑니다."
-				CHARGE_WEAPON_EMERGENCY_BROADCAST:
-					return "방송 표식 처치 후 보조 분열이 이어집니다."
+			return "?? ?? ???? ???? ?? ???."
 		"toxic_ad_puddle":
-			match _charge_weapon_id():
-				CHARGE_WEAPON_RETURN_STAMP:
-					return "반품 표식 위치에 잔류 잉크가 남습니다."
-				CHARGE_WEAPON_RECALL_LINE:
-					return "회수선 착탄지에 잔류 잉크가 남습니다."
-				CHARGE_WEAPON_EMERGENCY_BROADCAST:
-					return "방송 범위 안에 얕고 넓은 잔류가 남습니다."
+			return "?? ?? ??? ?? ??? ????."
 		"coupon_chain_pop":
-			match _charge_weapon_id():
-				CHARGE_WEAPON_RETURN_STAMP:
-					return "반품 표식 처치가 폭죽 후보가 됩니다."
-				CHARGE_WEAPON_RECALL_LINE:
-					return "끌어모은 적 사이에서 폭죽이 더 잘 번집니다."
-				CHARGE_WEAPON_EMERGENCY_BROADCAST:
-					return "방송 표식 처치 연쇄와 폭죽이 연결됩니다."
+			return "?? ?? ??? ?? ??? ???."
 		"perfect_airtime":
-			match _charge_weapon_id():
-				CHARGE_WEAPON_RETURN_STAMP:
-					return "완벽 타이밍이면 첫 표식이 더 오래 남습니다."
-				CHARGE_WEAPON_RECALL_LINE:
-					return "완벽 타이밍이면 당김 반경이 소폭 커집니다."
-				CHARGE_WEAPON_EMERGENCY_BROADCAST:
-					return "완벽 타이밍이면 방송 범위가 소폭 커집니다."
+			return "?? ????? ? ??? ? ?? ????."
 		"resync_error":
-			match _charge_weapon_id():
-				CHARGE_WEAPON_RETURN_STAMP:
-					return "반품 표식 적 감속이 더 선명해집니다."
-				CHARGE_WEAPON_RECALL_LINE:
-					return "착탄지 주변 적이 잠깐 더 느려집니다."
-				CHARGE_WEAPON_EMERGENCY_BROADCAST:
-					return "방송 표식 적 전체가 짧게 교란됩니다."
+			return "?? ?? ? ??? ? ??????."
 	return ""
 
 func _card_choice_from_event(event: InputEvent) -> int:
@@ -2258,35 +1904,17 @@ func _draw_player() -> void:
 			draw_arc(player_pos, C.CHARGE_RANGE * 0.58, -0.55 + dir.angle(), 0.55 + dir.angle(), 28, C.TOXIC_GREEN, 3.0)
 		_draw_charge_weapon_preview(aim, preview_dir, true)
 
-func _draw_charge_weapon_preview(aim: Vector2, aim_dir: Vector2, open: bool) -> void:
+func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) -> void:
 	var alpha := 0.58 if open else 0.34
-	match _charge_weapon_id():
-		CHARGE_WEAPON_RETURN_STAMP:
-			var line_color := C.NEON_RED
-			line_color.a = alpha
-			var edge_color := C.VITAMIN_YELLOW
-			edge_color.a = alpha * 0.62
-			var end_pos := player_pos + aim_dir * (C.CHARGE_RANGE + 28.0)
-			var side := aim_dir.rotated(PI * 0.5) * RETURN_STAMP_WIDTH
-			draw_line(player_pos, end_pos, line_color, 5.0 if open else 3.0)
-			draw_line(player_pos + side, end_pos + side, edge_color, 1.5)
-			draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
-		CHARGE_WEAPON_RECALL_LINE:
-			var landing := _charge_landing_point(aim, aim.length() > C.CHARGE_AIM_DEADZONE, aim_dir)
-			var line_color := C.TOXIC_GREEN
-			line_color.a = alpha
-			var fill_color := C.TOXIC_GREEN
-			fill_color.a = alpha * 0.18
-			draw_line(player_pos, landing, line_color, 3.5 if open else 2.2)
-			draw_circle(landing, RECALL_LINE_RADIUS, fill_color)
-			draw_arc(landing, RECALL_LINE_RADIUS, 0.0, TAU, 48, line_color, 3.0 if open else 2.0)
-			draw_arc(landing, 22.0, 0.0, TAU, 28, C.VITAMIN_YELLOW, 2.0)
-		CHARGE_WEAPON_EMERGENCY_BROADCAST:
-			var wave_color := Color(0.35, 0.70, 0.95, alpha)
-			var fill_color := Color(0.35, 0.70, 0.95, alpha * 0.12)
-			draw_circle(player_pos, BROADCAST_RADIUS, fill_color)
-			draw_arc(player_pos, BROADCAST_RADIUS, 0.0, TAU, 72, wave_color, 3.0 if open else 2.0)
-			draw_arc(player_pos, BROADCAST_RADIUS * 0.56, PI * 0.12, PI * 1.76, 46, C.VITAMIN_YELLOW, 2.0)
+	var line_color := C.NEON_RED
+	line_color.a = alpha
+	var edge_color := C.VITAMIN_YELLOW
+	edge_color.a = alpha * 0.62
+	var end_pos := player_pos + aim_dir * (C.CHARGE_RANGE + 28.0)
+	var side := aim_dir.rotated(PI * 0.5) * RETURN_STAMP_WIDTH
+	draw_line(player_pos, end_pos, line_color, 5.0 if open else 3.0)
+	draw_line(player_pos + side, end_pos + side, edge_color, 1.5)
+	draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
@@ -2312,12 +1940,6 @@ func _draw_charge_weapon_markers(enemy: Dictionary) -> void:
 		draw_rect(Rect2(pos + Vector2(-radius - 4.0, -radius - 4.0), Vector2((radius + 4.0) * 2.0, (radius + 4.0) * 2.0)), Color(1.0, 0.3, 0.36, 0.10 * ratio), false, 2.0)
 		draw_arc(pos, radius + 10.0, -PI * 0.22, PI * 1.22, 28, stamp_color, 2.5)
 		draw_line(pos + Vector2(-radius - 2.0, 0), pos + Vector2(radius + 2.0, 0), stamp_color, 2.0)
-	if _enemy_has_broadcast_mark(enemy):
-		var ratio := clampf(float(enemy.get("broadcast_mark_timer", 0.0)) / BROADCAST_MARK_DURATION, 0.0, 1.0)
-		var mark_color := Color(0.35, 0.70, 0.95, 0.46 + 0.26 * ratio)
-		draw_circle(pos, radius + 12.0, Color(0.35, 0.70, 0.95, 0.08 + 0.05 * ratio))
-		draw_arc(pos, radius + 12.0 + sin(elapsed * 9.0) * 2.0, 0.0, TAU, 30, mark_color, 2.2)
-		draw_arc(pos, radius + 5.0, PI * 0.15, PI * 1.65, 22, C.VITAMIN_YELLOW, 1.8)
 
 func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
 	var hit_flash := float(enemy.get("hit_flash", 0.0))
@@ -2538,8 +2160,6 @@ func _restart() -> void:
 	charge_miss_notice = 0.0
 	charge_effect_anchor = Vector2.ZERO
 	charge_effect_anchor_active = false
-	last_recall_line_pos = Vector2.ZERO
-	last_recall_line_timer = 0.0
 	pending_kill_burst_contexts.clear()
 	enemies.clear()
 	effects.clear()
