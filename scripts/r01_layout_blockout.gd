@@ -18,6 +18,7 @@ const COLLISION_NONE := "no_collision"
 const NAV_BLOCK := "block"
 const NAV_SOFT_AVOID := "soft_avoid"
 const NAV_IGNORE := "ignore"
+const MODEL_HOUSE_CLEAR_RADIUS := 118.0
 const STATE_VARIANTS := [
 	STATE_FIRST_VISIT,
 	STATE_BROADCAST_RECORD_3,
@@ -59,7 +60,7 @@ const ZONES := {
 		"radius": 128.0,
 	},
 	"fake_return_route_anchor": {
-		"display_name": "가짜 귀환로",
+		"display_name": "끊긴 광고 산책로",
 		"role": "false recovery mimic / route risk",
 		"pos": Vector2(-500, -205),
 		"color": Color(0.96, 0.68, 0.96, 0.25),
@@ -93,7 +94,7 @@ const KIND_COLLISION_META := {
 	"crack": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "ground_trace", "shape": "rect", "size": Vector2(74, 28)},
 	"trace": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "trace_anchor", "shape": "circle", "radius": 22.0},
 	"speaker": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "signal_event_source", "shape": "circle", "radius": 32.0},
-	"fake_recovery": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "fake_route_event_not_ui", "shape": "rect", "size": Vector2(66, 46)},
+	"fake_recovery": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "false_route_signal_not_recovery_ui", "shape": "rect", "size": Vector2(66, 46)},
 	"residue": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "transmitter_residue", "shape": "circle", "radius": 36.0},
 }
 
@@ -489,7 +490,7 @@ func _probe_start_position(index: int, count: int) -> Vector2:
 func _model_house_anchor_probe() -> Dictionary:
 	var anchor := anchor_position("model_house_node_anchor")
 	var blocked_samples := 0
-	var sample_radius := 118.0
+	var sample_radius := MODEL_HOUSE_CLEAR_RADIUS
 	for i in range(16):
 		var angle := float(i) / 16.0 * TAU
 		var p := anchor + Vector2(cos(angle), sin(angle)) * sample_radius
@@ -669,8 +670,9 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_rect(Rect2(pos + Vector2(-14, -42), Vector2(28, 18)), Color(0.78, 0.86, 0.88, 0.70))
 			canvas.draw_arc(pos + Vector2(12, -32), 20.0, -0.7, 0.7, 14, Color(1.0, 0.91, 0.25, 0.54), 2.0)
 		"fake_recovery":
-			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 36)), Color(0.96, 0.70, 1.0, 0.38))
-			canvas.draw_arc(pos, 28.0, PI * 0.2, PI * 1.55, 28, Color(1.0, 0.62, 0.88, 0.78), 2.4)
+			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 36)), Color(0.84, 0.66, 0.86, 0.20), false, 2.0)
+			canvas.draw_line(pos + Vector2(-22, 12), pos + Vector2(24, -10), Color(1.0, 0.62, 0.88, 0.42), 3.0)
+			canvas.draw_line(pos + Vector2(-4, -14), pos + Vector2(24, -10), Color(1.0, 0.62, 0.88, 0.36), 2.0)
 		"residue":
 			canvas.draw_circle(pos, 24.0, Color(0.95, 0.72, 1.0, 0.17))
 			canvas.draw_arc(pos, 34.0, -PI * 0.15, PI * 1.2, 34, Color(0.95, 0.72, 1.0, 0.54), 2.0)
@@ -698,7 +700,6 @@ func _draw_density_tests(canvas: CanvasItem, elapsed: float, show_debug_labels: 
 	_draw_density_group(canvas, Vector2(90, -30), 30, 7.0, Color(1.0, 0.91, 0.25, 0.42), "30 density combat read")
 	_draw_density_group(canvas, Vector2(155, 76), 100, 4.8, Color(1.0, 0.72, 0.50, 0.34), "100 density tier mix")
 	_draw_density_group(canvas, Vector2(350, 82), 300, 2.2, Color(0.96, 0.84, 0.52, 0.22), "300 tiny LOD no AI")
-	canvas.draw_string(UIFont.get_font(), Vector2(240, 210), "density placeholders are draw-only: no collision / no HP / no AI", HORIZONTAL_ALIGNMENT_CENTER, 360, 8, Color(0.30, 0.20, 0.16, 0.76))
 
 func _draw_density_group(canvas: CanvasItem, center: Vector2, count: int, radius: float, color: Color, label: String) -> void:
 	for i in range(count):
@@ -717,7 +718,6 @@ func _draw_collision_overlay(canvas: CanvasItem, show_debug_labels: bool) -> voi
 	for record in active_collision_records():
 		var collision_class := String(record.get("collision_class", COLLISION_NONE))
 		if collision_class == COLLISION_NONE:
-			_draw_collision_shape(canvas, record, Color(0.45, 0.45, 0.45, 0.26), 1.0, true)
 			continue
 		var color := _collision_color(collision_class)
 		var width := 4.0 if collision_class == COLLISION_HARD else 2.4

@@ -124,7 +124,7 @@ func help_text() -> String:
 		"Ctrl+F10 Destroy Node",
 		"Ctrl+F11 Extract Memory",
 		"Ctrl+1/2/3/4 R01 Blockout State",
-		"F12 also shows R01 collision/nav overlay",
+		"F12 R01 debug overlay",
 	])
 
 func detail_text(info: Dictionary) -> String:
@@ -137,12 +137,11 @@ func detail_text(info: Dictionary) -> String:
 		"wave: %s" % str(info.get("wave_name", "")),
 		str(info.get("r01_zone_debug_label", "R01 zone:")),
 		"blockout: %s %s %.1f screens nearest=%s" % [str(info.get("r01_blockout_variant", "")), str(info.get("r01_blockout_world", "")), float(info.get("r01_blockout_screens", 0.0)), str(info.get("r01_blockout_nearest", ""))],
-		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d none=%d" % [
+		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d" % [
 			int(info.get("r01_collision_hard", 0)),
 			int(info.get("r01_collision_soft", 0)),
 			int(info.get("r01_collision_hazard", 0)),
 			int(info.get("r01_collision_trigger", 0)),
-			int(info.get("r01_collision_none", 0)),
 		],
 		"r01 pathing: %s" % str(info.get("r01_pathing_probe", "")),
 		"roles: %s" % str(info.get("enemy_role_summary", "")),
@@ -186,7 +185,7 @@ func detail_text(info: Dictionary) -> String:
 	])
 
 func blockout_debug_labels_visible() -> bool:
-	return C.DEBUG_TOOLS_ENABLED and (help_visible or detail_visible)
+	return C.DEBUG_TOOLS_ENABLED and detail_visible
 
 func detail_debug_visible() -> bool:
 	return C.DEBUG_TOOLS_ENABLED and detail_visible
