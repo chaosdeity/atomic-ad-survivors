@@ -124,13 +124,13 @@ func help_text() -> String:
 		"Ctrl+F10 Destroy Node",
 		"Ctrl+F11 Extract Memory",
 		"Ctrl+1/2/3/4 R01 Blockout State",
-		"F12 R01 debug overlay",
+		"F12 R01/outpost debug overlay",
 	])
 
 func detail_text(info: Dictionary) -> String:
 	if not C.DEBUG_TOOLS_ENABLED or not detail_visible:
 		return ""
-	return "\n".join([
+	var lines: Array[String] = [
 		"DEBUG HUD",
 		"state: %s" % str(info.get("match_state", "")),
 		"time: %.1f / %.0f" % [float(info.get("elapsed", 0.0)), float(info.get("match_duration", 0.0))],
@@ -144,6 +144,18 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("r01_collision_trigger", 0)),
 		],
 		"r01 pathing: %s" % str(info.get("r01_pathing_probe", "")),
+		"outpost: %s %s facilities=%d" % [
+			str(info.get("outpost_variant", "")),
+			str(info.get("outpost_world_bounds", "")),
+			int(info.get("outpost_facility_count", 0)),
+		],
+		"outpost collision: hard=%d soft=%d interact=%d decor=%d exit=%d" % [
+			int(info.get("outpost_collision_hard", 0)),
+			int(info.get("outpost_collision_soft", 0)),
+			int(info.get("outpost_collision_interaction", 0)),
+			int(info.get("outpost_collision_decorative", 0)),
+			int(info.get("outpost_collision_exit", 0)),
+		],
 		"roles: %s" % str(info.get("enemy_role_summary", "")),
 		"threats: %d last=%s" % [int(info.get("threat_count", 0)), str(info.get("last_threat_label", ""))],
 		"enemies: %d / %d" % [int(info.get("enemy_count", 0)), int(info.get("enemy_cap", 0))],
@@ -182,7 +194,12 @@ func detail_text(info: Dictionary) -> String:
 		"r01 outpost: %s" % str(info.get("r01_outpost_phrase", "")),
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
-	])
+	]
+	var outpost_insert_index := 10
+	for line in Array(info.get("outpost_debug_lines", [])):
+		lines.insert(outpost_insert_index, str(line))
+		outpost_insert_index += 1
+	return "\n".join(lines)
 
 func blockout_debug_labels_visible() -> bool:
 	return C.DEBUG_TOOLS_ENABLED and detail_visible

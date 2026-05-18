@@ -2,6 +2,7 @@ extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
+const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
 var hud: CanvasLayer
 var hp_bar: ColorRect
@@ -35,6 +36,7 @@ var supply_feedback_label: Label
 var supply_footer_divider: ColorRect
 var debug_panel: Panel
 var debug_label: Label
+var outpost_blockout := OutpostLayoutBlockout.new()
 
 const FONT_TINY := 9
 const FONT_SMALL := 10
@@ -70,109 +72,6 @@ func _supply_locked_style() -> StyleBoxFlat:
 
 func _apply_font(control: Control) -> void:
 	control.add_theme_font_override("font", UIFont.get_font())
-
-func _outpost_style(fill_color: Color, border_color: Color, border_width: int = 1, corner_radius: int = 3) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill_color
-	style.border_color = border_color
-	style.set_border_width_all(border_width)
-	style.set_corner_radius_all(corner_radius)
-	style.content_margin_left = 3
-	style.content_margin_right = 3
-	style.content_margin_top = 3
-	style.content_margin_bottom = 3
-	return style
-
-func _add_outpost_panel(parent: Control, position: Vector2, size: Vector2, fill_color: Color, border_color: Color) -> Panel:
-	var panel := Panel.new()
-	panel.position = position
-	panel.size = size
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _outpost_style(fill_color, border_color))
-	parent.add_child(panel)
-	return panel
-
-func _add_outpost_rect(parent: Control, position: Vector2, size: Vector2, color: Color, rotation_degrees: float = 0.0) -> ColorRect:
-	var rect := ColorRect.new()
-	rect.position = position
-	rect.size = size
-	rect.color = color
-	rect.rotation = deg_to_rad(rotation_degrees)
-	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(rect)
-	return rect
-
-func _add_outpost_label(parent: Control, text: String, position: Vector2, size: Vector2, color: Color) -> Label:
-	var label := Label.new()
-	label.position = position
-	label.size = size
-	label.text = text
-	label.clip_text = true
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", FONT_TINY)
-	label.add_theme_color_override("font_color", color)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_apply_font(label)
-	parent.add_child(label)
-	return label
-
-func _build_outpost_visual_layer(parent: Control) -> void:
-	parent.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var ink_dim := Color(0.16, 0.14, 0.13, 0.19)
-	var ink_faint := Color(0.16, 0.14, 0.13, 0.10)
-	var rust_dim := Color(0.48, 0.29, 0.22, 0.20)
-	var paper_dim := Color(0.97, 0.88, 0.65, 0.20)
-	var green_dim := Color(0.42, 0.58, 0.48, 0.18)
-	var signal_dim := Color(0.40, 0.54, 0.60, 0.13)
-	var label_dim := Color(0.25, 0.21, 0.17, 0.34)
-
-	_add_outpost_rect(parent, Vector2(0, 0), Vector2(464, 246), Color(0.11, 0.10, 0.09, 0.04))
-	_add_outpost_rect(parent, Vector2(8, 58), Vector2(448, 2), ink_faint)
-	_add_outpost_rect(parent, Vector2(8, 210), Vector2(448, 2), ink_faint)
-	_add_outpost_rect(parent, Vector2(230, 54), Vector2(3, 158), Color(0.40, 0.32, 0.25, 0.09))
-
-	var counter := _add_outpost_panel(parent, Vector2(18, 174), Vector2(116, 39), Color(0.43, 0.34, 0.27, 0.15), ink_dim)
-	_add_outpost_label(counter, "정산 카운터", Vector2(8, 3), Vector2(100, 11), label_dim)
-	_add_outpost_rect(counter, Vector2(14, 17), Vector2(26, 11), paper_dim)
-	_add_outpost_rect(counter, Vector2(45, 16), Vector2(18, 13), Color(0.90, 0.74, 0.48, 0.17))
-	_add_outpost_rect(counter, Vector2(72, 15), Vector2(28, 4), rust_dim)
-	_add_outpost_rect(counter, Vector2(72, 23), Vector2(20, 3), rust_dim)
-
-	var bench := _add_outpost_panel(parent, Vector2(13, 68), Vector2(106, 37), Color(0.36, 0.47, 0.42, 0.13), green_dim)
-	_add_outpost_label(bench, "정비대", Vector2(20, 2), Vector2(66, 11), label_dim)
-	_add_outpost_rect(bench, Vector2(10, 19), Vector2(68, 5), rust_dim)
-	_add_outpost_rect(bench, Vector2(22, 11), Vector2(16, 22), Color(0.34, 0.28, 0.22, 0.15))
-	_add_outpost_rect(bench, Vector2(81, 14), Vector2(10, 15), Color(0.86, 0.92, 0.65, 0.17))
-	_add_outpost_rect(bench, Vector2(47, 12), Vector2(26, 2), ink_faint, -12.0)
-
-	var archive := _add_outpost_panel(parent, Vector2(352, 68), Vector2(89, 80), Color(0.30, 0.27, 0.23, 0.13), ink_dim)
-	_add_outpost_label(archive, "이름 보관함", Vector2(8, 4), Vector2(73, 11), label_dim)
-	for row in range(3):
-		for column in range(2):
-			_add_outpost_rect(archive, Vector2(12 + column * 34, 20 + row * 17), Vector2(26, 10), Color(0.94, 0.82, 0.60, 0.14))
-	_add_outpost_rect(archive, Vector2(11, 20), Vector2(27, 1), Color(0.66, 0.47, 0.35, 0.16))
-	_add_outpost_rect(archive, Vector2(46, 54), Vector2(26, 2), Color(0.58, 0.72, 0.64, 0.18))
-
-	var board := _add_outpost_panel(parent, Vector2(292, 12), Vector2(146, 48), Color(0.44, 0.34, 0.22, 0.14), rust_dim)
-	_add_outpost_label(board, "출격 게시판", Vector2(40, 4), Vector2(72, 11), label_dim)
-	_add_outpost_rect(board, Vector2(12, 18), Vector2(38, 15), Color(0.94, 0.78, 0.54, 0.18), -3.0)
-	_add_outpost_rect(board, Vector2(59, 18), Vector2(29, 16), Color(0.72, 0.80, 0.74, 0.15), 2.0)
-	_add_outpost_rect(board, Vector2(97, 18), Vector2(35, 15), Color(0.94, 0.78, 0.54, 0.12), -1.0)
-	_add_outpost_rect(board, Vector2(16, 38), Vector2(102, 2), Color(0.42, 0.32, 0.25, 0.17))
-
-	var charger := _add_outpost_panel(parent, Vector2(316, 178), Vector2(118, 36), Color(0.32, 0.42, 0.47, 0.13), signal_dim)
-	_add_outpost_label(charger, "차징 조율대", Vector2(17, 2), Vector2(84, 11), label_dim)
-	_add_outpost_rect(charger, Vector2(13, 19), Vector2(34, 4), Color(0.43, 0.73, 0.58, 0.18))
-	_add_outpost_rect(charger, Vector2(56, 15), Vector2(36, 11), Color(0.90, 0.81, 0.48, 0.14))
-	_add_outpost_rect(charger, Vector2(94, 17), Vector2(10, 7), Color(0.72, 0.37, 0.34, 0.15))
-
-	_add_outpost_rect(parent, Vector2(124, 190), Vector2(208, 2), Color(0.31, 0.35, 0.36, 0.13), -8.0)
-	_add_outpost_rect(parent, Vector2(132, 198), Vector2(188, 2), Color(0.31, 0.35, 0.36, 0.10), -8.0)
-	_add_outpost_rect(parent, Vector2(144, 170), Vector2(28, 5), Color(0.78, 0.46, 0.34, 0.13), -8.0)
-	_add_outpost_rect(parent, Vector2(186, 162), Vector2(18, 4), Color(0.94, 0.78, 0.54, 0.13), -8.0)
-	_add_outpost_rect(parent, Vector2(236, 151), Vector2(24, 4), Color(0.42, 0.55, 0.58, 0.13), -8.0)
-	_add_outpost_label(parent, "회수선 고정 흔적", Vector2(156, 194), Vector2(118, 12), Color(0.25, 0.21, 0.17, 0.22))
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -385,7 +284,7 @@ func build(parent: Node) -> void:
 	outpost_visual_layer.size = supply_panel.size
 	outpost_visual_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	supply_panel.add_child(outpost_visual_layer)
-	_build_outpost_visual_layer(outpost_visual_layer)
+	outpost_blockout.build_preview_layer(outpost_visual_layer, {}, null, false)
 
 	supply_label = Label.new()
 	supply_label.position = Vector2(14, 8)
@@ -456,15 +355,15 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_restart_button)
 
 	debug_panel = Panel.new()
-	debug_panel.position = Vector2(8, 38)
-	debug_panel.size = Vector2(182, 220)
+	debug_panel.position = Vector2(8, 10)
+	debug_panel.size = Vector2(464, 248)
 	debug_panel.visible = false
 	root.add_child(debug_panel)
 
 	debug_label = Label.new()
 	debug_label.position = Vector2(8, 6)
-	debug_label.size = Vector2(166, 208)
-	debug_label.add_theme_font_size_override("font_size", FONT_TINY)
+	debug_label.size = Vector2(448, 236)
+	debug_label.add_theme_font_size_override("font_size", 7)
 	debug_label.add_theme_color_override("font_color", C.INK)
 	debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_font(debug_label)
@@ -620,6 +519,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	card_chosen_callback = Callable()
 	result_panel.visible = false
 	supply_panel.visible = true
+	var outpost_state := outpost_blockout.build_preview_layer(outpost_visual_layer, session_progress, meta_progression, false)
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
 	supply_restart_button.text = "재출격 - 강화 적용 후 출격" if meta_progression.has_any_upgrade() else "재출격 - 선택 없이 출격"
@@ -631,11 +531,13 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
-	supply_label.text = "침묵 보급소\n%s\n지역 반응: %s\n게시판: %s\n다음 목표: %s\n구매: 1/2/3/4키 또는 버튼 클릭" % [
+	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
+	supply_label.text = "침묵 보급소\n%s\n지역 반응: %s\n게시판: %s\n다음 목표: %s\n%s\n구매: 1/2/3/4키 또는 버튼 클릭" % [
 		_supply_currency_text(meta_progression),
 		str(session_progress.get("r01_outpost_phrase", meta_progression.smile_home_boss_outcome_label())),
 		board_text,
 		str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))),
+		str(outpost_lines[1]),
 	]
 	var upgrades: Array = meta_progression.upgrade_defs()
 	supply_scroll_hint_label.text = "강화 목록 %d개 - 휠/드래그로 아래 항목 보기 - %s" % [upgrades.size(), boss_hint]

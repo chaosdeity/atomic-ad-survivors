@@ -16,6 +16,7 @@ const BossController := preload("res://scripts/boss_controller.gd")
 const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
+const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -122,6 +123,7 @@ var meta_progression := MetaProgression.new()
 var boss := BossController.new()
 var r01_map := R01MapController.new()
 var r01_blockout := R01LayoutBlockout.new()
+var outpost_blockout := OutpostLayoutBlockout.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -1332,6 +1334,7 @@ func _session_progress_data() -> Dictionary:
 	var r01_state := _r01_phrase_state()
 	return {
 		"sortie_index": sortie_index,
+		"first_recall_done": first_recall_done,
 		"preboss_stage": _preboss_stage_label(),
 		"route_stage_label": _route_stage_label(),
 		"r01_zone_name": r01_map.current_zone_name(),
@@ -1341,6 +1344,9 @@ func _session_progress_data() -> Dictionary:
 		"boss_route_ready": _boss_route_ready(),
 		"signal_clue_count": meta_progression.signal_clue_count(),
 		"signal_clue_required": MetaProgression.SIGNAL_CLUES.size(),
+		"boss_analysis_level": meta_progression.boss_analysis_level,
+		"boss_clear_count": meta_progression.boss_clear_count,
+		"smile_home_boss_outcome": meta_progression.smile_home_boss_outcome,
 		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
 		"next_objective_short": _next_objective_short_label(),
@@ -1776,6 +1782,8 @@ func _debug_info() -> Dictionary:
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	var r01_summary := _r01_phrase_state()
 	var r01_collision_summary := r01_blockout.collision_summary() if R01LayoutBlockout.ENABLED else {}
+	var outpost_state := outpost_blockout.state_from_progress(_session_progress_data(), meta_progression)
+	var outpost_collision_summary := outpost_blockout.collision_summary(outpost_state)
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
@@ -1795,6 +1803,15 @@ func _debug_info() -> Dictionary:
 		"r01_collision_trigger": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_TRIGGER, 0)),
 		"r01_collision_none": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_NONE, 0)),
 		"r01_pathing_probe": r01_blockout.pathing_probe_label() if R01LayoutBlockout.ENABLED else "",
+		"outpost_variant": str(outpost_state.get("variant", "")),
+		"outpost_facility_count": outpost_blockout.facility_count(),
+		"outpost_world_bounds": "%.0fx%.0f" % [OutpostLayoutBlockout.WORLD_BOUNDS.size.x, OutpostLayoutBlockout.WORLD_BOUNDS.size.y],
+		"outpost_collision_hard": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_HARD, 0)),
+		"outpost_collision_soft": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_SOFT, 0)),
+		"outpost_collision_interaction": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_INTERACTION, 0)),
+		"outpost_collision_decorative": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_DECORATIVE, 0)),
+		"outpost_collision_exit": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_EXIT, 0)),
+		"outpost_debug_lines": outpost_blockout.debug_lines(outpost_state),
 		"enemy_role_summary": enemies.role_summary(),
 		"threat_count": active_threats.size(),
 		"last_threat_label": last_threat_label,
