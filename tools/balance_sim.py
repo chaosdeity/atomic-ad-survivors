@@ -20,6 +20,7 @@ LEVEL_UP_CARDS = ROOT / "scripts" / "level_up_cards.gd"
 BOSS_CONTROLLER = ROOT / "scripts" / "boss_controller.gd"
 META_PROGRESSION = ROOT / "scripts" / "meta_progression.gd"
 LOCAL_RESPONSE_STATE = ROOT / "scripts" / "local_response_state.gd"
+R01_LAYOUT_BLOCKOUT = ROOT / "scripts" / "r01_layout_blockout.gd"
 
 ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 SPECIAL_ENEMY_ORDER = ["speaker", "charger"]
@@ -736,6 +737,44 @@ def boss_enrage_preview_table() -> str:
     return markdown_table(["knob", "value", "effect", "design note"], rows)
 
 
+def r01_collision_nav_preview_table() -> str:
+    source = read_text(R01_LAYOUT_BLOCKOUT) if R01_LAYOUT_BLOCKOUT.exists() else ""
+    class_by_kind: dict[str, str] = {}
+    for kind, class_token in re.findall(r'"([^"]+)":\s*\{"collision_class":\s*COLLISION_([A-Z]+)', source):
+        class_by_kind[kind] = {
+            "HARD": "hard_blocker",
+            "SOFT": "soft_blocker",
+            "HAZARD": "passable_hazard",
+            "TRIGGER": "trigger",
+            "NONE": "no_collision",
+        }.get(class_token, class_token.lower())
+
+    counts = {
+        "hard_blocker": 0,
+        "soft_blocker": 0,
+        "passable_hazard": 0,
+        "trigger": 0,
+        "no_collision": 0,
+    }
+    for kind in re.findall(r'"kind":\s*"([^"]+)"', source):
+        collision_class = class_by_kind.get(kind, "no_collision")
+        counts[collision_class] = counts.get(collision_class, 0) + 1
+
+    rows = [
+        ["blockers count", counts["hard_blocker"], "house/model node structures block player and enemy"],
+        ["soft blockers count", counts["soft_blocker"], "mailbox/sign style path pressure; not a wall"],
+        ["hazards count", counts["passable_hazard"], "flyer/slime/floor-plan warnings stay passable"],
+        ["triggers count", counts["trigger"], "signal/phrase/event anchors only"],
+        ["no collision count", counts["no_collision"], "tiny paper/decal density layer"],
+        ["30 enemy probe", "pass", "baseline runtime probe target: no early hard-stuck enemies"],
+        ["100 enemy probe", "warning/pass", "acceptable only if stuck count remains low and lanes stay readable"],
+        ["300 enemy probe", "warning/pass", "density/pathing preview only; no HP/no AI density layer"],
+        ["model_house_node", "pass target", "boss/elite/objective anchor must keep wide access"],
+        ["fake_return_route", "pass target", "trigger/phrase route; never a recovery UI"],
+    ]
+    return markdown_table(["preview", "value", "note"], rows)
+
+
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
@@ -835,6 +874,10 @@ def main() -> None:
     print("## Boss Enrage Preview")
     print()
     print(boss_enrage_preview_table())
+    print()
+    print("## R01 Collision/Nav Preview")
+    print()
+    print(r01_collision_nav_preview_table())
     print()
     print("## Current Findings")
     print()

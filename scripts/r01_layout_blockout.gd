@@ -10,6 +10,14 @@ const STATE_FIRST_VISIT := "first_visit"
 const STATE_BROADCAST_RECORD_3 := "broadcast_record_3"
 const STATE_DESTROY_NODE := "destroy_node"
 const STATE_EXTRACT_MEMORY := "extract_memory"
+const COLLISION_HARD := "hard_blocker"
+const COLLISION_SOFT := "soft_blocker"
+const COLLISION_HAZARD := "passable_hazard"
+const COLLISION_TRIGGER := "trigger"
+const COLLISION_NONE := "no_collision"
+const NAV_BLOCK := "block"
+const NAV_SOFT_AVOID := "soft_avoid"
+const NAV_IGNORE := "ignore"
 const STATE_VARIANTS := [
 	STATE_FIRST_VISIT,
 	STATE_BROADCAST_RECORD_3,
@@ -66,6 +74,43 @@ const ADJACENCY := [
 	["subdivision_loop_center", "drain_pocket_anchor"],
 	["subdivision_loop_center", "fake_return_route_anchor"],
 ]
+
+const KIND_COLLISION_META := {
+	"floor": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "ground_readability", "shape": "rect", "size": Vector2(116, 56)},
+	"house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "hard_structure", "shape": "rect", "size": Vector2(116, 88)},
+	"mailbox": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "enemy_source", "shape": "circle", "radius": 22.0},
+	"flyer": {"collision_class": COLLISION_HAZARD, "nav_behavior": NAV_IGNORE, "risk_role": "flyer_drop_source", "shape": "circle", "radius": 32.0},
+	"scraps": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "density_only", "shape": "circle", "radius": 26.0},
+	"route": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "route_hint", "shape": "rect", "size": Vector2(96, 40)},
+	"tag": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "trace_decal", "shape": "rect", "size": Vector2(44, 24)},
+	"photo": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "photo_flash_or_memory", "shape": "circle", "radius": 24.0},
+	"node": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "objective_anchor", "shape": "circle", "radius": 48.0},
+	"kiosk": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "elite_or_event_source", "shape": "rect", "size": Vector2(58, 54)},
+	"projector": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "photo_flash_source", "shape": "circle", "radius": 30.0},
+	"floor_plan": {"collision_class": COLLISION_HAZARD, "nav_behavior": NAV_IGNORE, "risk_role": "floor_plan_warning", "shape": "rect", "size": Vector2(96, 62)},
+	"sign": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "route_funnel", "shape": "rect", "size": Vector2(68, 42)},
+	"drain": {"collision_class": COLLISION_HAZARD, "nav_behavior": NAV_IGNORE, "risk_role": "slime_or_trace_pocket", "shape": "circle", "radius": 34.0},
+	"crack": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "ground_trace", "shape": "rect", "size": Vector2(74, 28)},
+	"trace": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "trace_anchor", "shape": "circle", "radius": 22.0},
+	"speaker": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "signal_event_source", "shape": "circle", "radius": 32.0},
+	"fake_recovery": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "fake_route_event_not_ui", "shape": "rect", "size": Vector2(66, 46)},
+	"residue": {"collision_class": COLLISION_TRIGGER, "nav_behavior": NAV_IGNORE, "risk_role": "transmitter_residue", "shape": "circle", "radius": 36.0},
+}
+
+const NAV_RULES := {
+	"basic": {"hard": "detour_or_stop", "soft": "slow_or_detour", "lane": "standard"},
+	"fast": {"hard": "detour_or_stop", "soft": "can_slip", "lane": "narrow_ok"},
+	"coupon": {"hard": "detour_or_stop", "soft": "can_slip", "lane": "narrow_ok"},
+	"paper": {"hard": "detour_or_stop", "soft": "can_slip", "lane": "narrow_ok"},
+	"robot": {"hard": "detour_or_stop", "soft": "follow_infrastructure", "lane": "road_pref"},
+	"infrastructure": {"hard": "detour_or_stop", "soft": "follow_infrastructure", "lane": "road_pref"},
+	"tank": {"hard": "detour_or_stop", "soft": "slow_or_detour", "lane": "wide_required"},
+	"elite": {"hard": "detour_or_stop", "soft": "slow_or_detour", "lane": "wide_required"},
+	"boss_objective": {"hard": "reserved_anchor", "soft": "clear_space", "lane": "wide_anchor_required"},
+	"speaker": {"hard": "anchor_avoid", "soft": "anchor_ok", "lane": "edge_anchor"},
+	"charger": {"hard": "detour_or_stop", "soft": "can_slip", "lane": "straight_warning"},
+	"signal": {"hard": "anchor_avoid", "soft": "anchor_ok", "lane": "mid_anchor"},
+}
 
 const ZONE_PROPS := {
 	"silence_edge_start": [
@@ -189,6 +234,84 @@ func density_counts() -> Dictionary:
 		"tiny_lod_density_only": 300,
 	}
 
+func active_collision_records(variant: String = state_variant) -> Array[Dictionary]:
+	var records: Array[Dictionary] = []
+	for zone_id in ZONE_PROPS.keys():
+		var anchor := anchor_position(zone_id)
+		for prop in ZONE_PROPS[zone_id]:
+			if not _prop_visible_for_variant(prop, variant):
+				continue
+			var kind := String(prop.get("kind", ""))
+			var meta := _collision_meta_for_kind(kind)
+			var record := meta.duplicate(true)
+			var offset: Vector2 = prop.get("offset", Vector2.ZERO)
+			record["asset_id"] = String(prop.get("id", kind))
+			record["zone_id"] = zone_id
+			record["kind"] = kind
+			record["pos"] = anchor + offset
+			record["debug_label"] = "%s/%s" % [zone_id, String(prop.get("id", kind))]
+			records.append(record)
+	return records
+
+func collision_summary(variant: String = state_variant) -> Dictionary:
+	var summary := {
+		COLLISION_HARD: 0,
+		COLLISION_SOFT: 0,
+		COLLISION_HAZARD: 0,
+		COLLISION_TRIGGER: 0,
+		COLLISION_NONE: 0,
+	}
+	for record in active_collision_records(variant):
+		var collision_class := String(record.get("collision_class", COLLISION_NONE))
+		summary[collision_class] = int(summary.get(collision_class, 0)) + 1
+	return summary
+
+func nav_preview_rules() -> Dictionary:
+	return NAV_RULES.duplicate(true)
+
+func resolve_player_position(old_pos: Vector2, next_pos: Vector2, radius: float) -> Vector2:
+	var clamped := clamp_player_position(next_pos)
+	for record in active_collision_records():
+		if String(record.get("collision_class", "")) != COLLISION_HARD:
+			continue
+		if _point_overlaps_record(clamped, record, radius):
+			return _slide_or_stop(old_pos, clamped, record, radius, "basic")
+	return clamped
+
+func resolve_enemy_position(old_pos: Vector2, next_pos: Vector2, role: String, radius: float) -> Vector2:
+	var clamped := Vector2(
+		clampf(next_pos.x, WORLD_BOUNDS.position.x + radius, WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x - radius),
+		clampf(next_pos.y, WORLD_BOUNDS.position.y + radius, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y - radius)
+	)
+	for record in active_collision_records():
+		var collision_class := String(record.get("collision_class", COLLISION_NONE))
+		if collision_class == COLLISION_HARD and _point_overlaps_record(clamped, record, radius):
+			return _slide_or_stop(old_pos, clamped, record, radius, role)
+		if collision_class == COLLISION_SOFT and _point_overlaps_record(clamped, record, radius):
+			if _role_can_slip_soft(role):
+				return clamped
+			return old_pos.lerp(clamped, 0.46 if role == "elite" or role == "tank" else 0.62)
+	return clamped
+
+func pathing_probe_results() -> Dictionary:
+	return {
+		"30": _run_pathing_probe(30),
+		"100": _run_pathing_probe(100),
+		"300": _run_pathing_probe(300),
+		"model_house_node": _model_house_anchor_probe(),
+		"fake_return_route": _fake_return_route_probe(),
+	}
+
+func pathing_probe_label() -> String:
+	var results := pathing_probe_results()
+	var parts: Array[String] = []
+	for key in ["30", "100", "300"]:
+		var result: Dictionary = results[key]
+		parts.append("%s=%s stuck=%d" % [key, String(result["status"]), int(result["stuck_count"])])
+	parts.append("node=%s" % String(results["model_house_node"].get("status", "")))
+	parts.append("fake=%s" % String(results["fake_return_route"].get("status", "")))
+	return " ".join(parts)
+
 func print_probe() -> void:
 	print("R01_BLOCKOUT_PROBE world_bounds=", WORLD_BOUNDS, " viewport=", C.VIEWPORT_SIZE, " camera_screens=", world_screen_count())
 	for zone_id in ZONES.keys():
@@ -198,7 +321,187 @@ func print_probe() -> void:
 		print("R01_BLOCKOUT_ADJACENCY ", edge[0], " -> ", edge[1], " distance=", anchor_position(edge[0]).distance_to(anchor_position(edge[1])))
 	for variant in STATE_VARIANTS:
 		print("R01_BLOCKOUT_STATE ", variant, " prop_counts=", prop_counts_for_state(variant))
+		print("R01_COLLISION_NAV_STATE ", variant, " collision_counts=", collision_summary(variant))
 	print("R01_BLOCKOUT_DENSITY ", density_counts())
+	print("R01_COLLISION_NAV_PREVIEW ", pathing_probe_results())
+
+func _collision_meta_for_kind(kind: String) -> Dictionary:
+	return KIND_COLLISION_META.get(kind, {
+		"collision_class": COLLISION_NONE,
+		"nav_behavior": NAV_IGNORE,
+		"risk_role": "unknown",
+		"shape": "circle",
+		"radius": 12.0,
+	})
+
+func _point_overlaps_record(point: Vector2, record: Dictionary, radius: float) -> bool:
+	var shape := String(record.get("shape", "circle"))
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	if shape == "rect":
+		var size: Vector2 = record.get("size", Vector2(24, 24))
+		var rect := Rect2(pos - size * 0.5 - Vector2(radius, radius), size + Vector2(radius * 2.0, radius * 2.0))
+		return rect.has_point(point)
+	var check_radius := float(record.get("radius", 12.0)) + radius
+	return point.distance_squared_to(pos) <= check_radius * check_radius
+
+func _slide_or_stop(old_pos: Vector2, blocked_pos: Vector2, record: Dictionary, radius: float, role: String) -> Vector2:
+	var delta := blocked_pos - old_pos
+	var length := delta.length()
+	if length <= 0.01:
+		return old_pos
+	var dir := delta / length
+	var perp := dir.rotated(PI * 0.5)
+	var slip_scale := 0.95 if _role_can_slip_soft(role) else 0.72
+	var candidates := [
+		old_pos + (dir + perp * slip_scale).normalized() * length,
+		old_pos + (dir - perp * slip_scale).normalized() * length,
+		old_pos + perp * length * 0.78,
+		old_pos - perp * length * 0.78,
+	]
+	for candidate in candidates:
+		var clamped := Vector2(
+			clampf(candidate.x, WORLD_BOUNDS.position.x + radius, WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x - radius),
+			clampf(candidate.y, WORLD_BOUNDS.position.y + radius, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y - radius)
+		)
+		if not _point_overlaps_record(clamped, record, radius):
+			return clamped
+	return old_pos
+
+func _role_can_slip_soft(role: String) -> bool:
+	return role == "fast" or role == "charger" or role == "coupon" or role == "paper"
+
+func _run_pathing_probe(count: int) -> Dictionary:
+	var target := anchor_position("subdivision_loop_center")
+	var stuck_count := 0
+	var hard_hits := 0
+	var soft_hits := 0
+	var role_counts := {}
+	for i in range(count):
+		var role := _probe_role_for_index(i)
+		role_counts[role] = int(role_counts.get(role, 0)) + 1
+		var start := _probe_start_position(i, count)
+		var pos := start
+		var radius := _probe_radius_for_role(role)
+		var moved_total := 0.0
+		var local_hard_hits := 0
+		var local_soft_hits := 0
+		for step in range(72):
+			var to_target := target - pos
+			if to_target.length() < 18.0:
+				break
+			var old_pos := pos
+			var desired := pos + to_target.normalized() * _probe_step_for_role(role)
+			pos = resolve_enemy_position(pos, desired, role, radius)
+			var moved := old_pos.distance_to(pos)
+			moved_total += moved
+			if moved < 0.6:
+				local_hard_hits += 1
+			elif moved < _probe_step_for_role(role) * 0.72:
+				local_soft_hits += 1
+		if moved_total < 42.0 or local_hard_hits > 18:
+			stuck_count += 1
+		hard_hits += local_hard_hits
+		soft_hits += local_soft_hits
+	var allowed_stuck := 0
+	if count == 100:
+		allowed_stuck = 4
+	elif count == 300:
+		allowed_stuck = 14
+	var status := "pass"
+	if stuck_count > allowed_stuck:
+		status = "warning"
+	if count == 300:
+		status = "pass" if stuck_count <= allowed_stuck else "warning"
+	return {
+		"status": status,
+		"count": count,
+		"stuck_count": stuck_count,
+		"hard_hits": hard_hits,
+		"soft_hits": soft_hits,
+		"roles": role_counts,
+		"note": "300 is density/pathing preview, not final spawn count" if count == 300 else "runtime blockout probe",
+	}
+
+func _probe_role_for_index(index: int) -> String:
+	var roles := ["basic", "fast", "basic", "tank", "speaker", "charger", "signal", "coupon", "robot", "elite"]
+	return roles[index % roles.size()]
+
+func _probe_radius_for_role(role: String) -> float:
+	match role:
+		"elite":
+			return 15.0
+		"tank":
+			return 13.0
+		"signal":
+			return 11.0
+		"speaker":
+			return 10.0
+		"charger":
+			return 9.0
+		"fast", "coupon", "paper":
+			return 7.0
+		_:
+			return 8.0
+
+func _probe_step_for_role(role: String) -> float:
+	match role:
+		"fast", "charger", "coupon", "paper":
+			return 10.0
+		"elite", "tank":
+			return 6.5
+		"speaker", "signal", "robot", "infrastructure":
+			return 7.2
+		_:
+			return 8.0
+
+func _probe_start_position(index: int, count: int) -> Vector2:
+	var angle := fmod(float(index) * 2.399963, TAU)
+	var ring := 320.0 + float(index % 5) * 34.0 + float(count % 7) * 3.0
+	var center := anchor_position("subdivision_loop_center")
+	var p := center + Vector2(cos(angle), sin(angle)) * ring
+	return Vector2(
+		clampf(p.x, WORLD_BOUNDS.position.x + 32.0, WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x - 32.0),
+		clampf(p.y, WORLD_BOUNDS.position.y + 32.0, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y - 32.0)
+	)
+
+func _model_house_anchor_probe() -> Dictionary:
+	var anchor := anchor_position("model_house_node_anchor")
+	var blocked_samples := 0
+	var sample_radius := 118.0
+	for i in range(16):
+		var angle := float(i) / 16.0 * TAU
+		var p := anchor + Vector2(cos(angle), sin(angle)) * sample_radius
+		for record in active_collision_records():
+			if String(record.get("collision_class", "")) == COLLISION_HARD and _point_overlaps_record(p, record, 15.0):
+				blocked_samples += 1
+				break
+	var status := "pass" if blocked_samples <= 2 else "warning"
+	return {
+		"status": status,
+		"blocked_samples": blocked_samples,
+		"sample_radius": sample_radius,
+		"note": "boss/elite/objective anchor remains open" if status == "pass" else "model node needs wider lane",
+	}
+
+func _fake_return_route_probe() -> Dictionary:
+	var records := active_collision_records()
+	var hard_count := 0
+	var trigger_count := 0
+	for record in records:
+		if String(record.get("zone_id", "")) != "fake_return_route_anchor":
+			continue
+		var collision_class := String(record.get("collision_class", ""))
+		if collision_class == COLLISION_HARD:
+			hard_count += 1
+		elif collision_class == COLLISION_TRIGGER:
+			trigger_count += 1
+	var status := "pass" if hard_count == 0 and trigger_count >= 2 else "warning"
+	return {
+		"status": status,
+		"hard_count": hard_count,
+		"trigger_count": trigger_count,
+		"note": "fake_return_route is event/phrase driven, not recovery UI",
+	}
 
 func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false) -> void:
 	_draw_ground(canvas, elapsed)
@@ -206,6 +509,7 @@ func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_la
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
 	_draw_zone_fields(canvas)
 	_draw_props(canvas, elapsed, show_debug_labels)
+	_draw_collision_overlay(canvas, show_debug_labels)
 	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
 	_draw_world_bounds(canvas, show_debug_labels)
 
@@ -384,6 +688,71 @@ func _draw_density_group(canvas: CanvasItem, center: Vector2, count: int, radius
 		else:
 			canvas.draw_circle(p, radius, color)
 	canvas.draw_string(UIFont.get_font(), center + Vector2(-96, -94), label, HORIZONTAL_ALIGNMENT_CENTER, 192, 8, Color(0.30, 0.20, 0.16, 0.70))
+
+func _draw_collision_overlay(canvas: CanvasItem, show_debug_labels: bool) -> void:
+	if not show_debug_labels:
+		return
+	for record in active_collision_records():
+		var collision_class := String(record.get("collision_class", COLLISION_NONE))
+		if collision_class == COLLISION_NONE:
+			_draw_collision_shape(canvas, record, Color(0.45, 0.45, 0.45, 0.26), 1.0, true)
+			continue
+		var color := _collision_color(collision_class)
+		var width := 4.0 if collision_class == COLLISION_HARD else 2.4
+		var fill_alpha := 0.06
+		if collision_class == COLLISION_HAZARD:
+			fill_alpha = 0.18
+		elif collision_class == COLLISION_TRIGGER:
+			fill_alpha = 0.04
+		_draw_collision_shape(canvas, record, Color(color.r, color.g, color.b, fill_alpha), 0.0, false)
+		_draw_collision_shape(canvas, record, color, width, true)
+		_draw_collision_label(canvas, record)
+
+func _collision_color(collision_class: String) -> Color:
+	match collision_class:
+		COLLISION_HARD:
+			return Color(0.13, 0.09, 0.07, 0.92)
+		COLLISION_SOFT:
+			return Color(0.35, 0.70, 0.95, 0.72)
+		COLLISION_HAZARD:
+			return Color(1.0, 0.30, 0.36, 0.70)
+		COLLISION_TRIGGER:
+			return Color(0.62, 1.0, 0.36, 0.72)
+		_:
+			return Color(0.38, 0.38, 0.38, 0.34)
+
+func _draw_collision_shape(canvas: CanvasItem, record: Dictionary, color: Color, width: float, outline: bool) -> void:
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	var shape := String(record.get("shape", "circle"))
+	if shape == "rect":
+		var size: Vector2 = record.get("size", Vector2(24, 24))
+		var rect := Rect2(pos - size * 0.5, size)
+		canvas.draw_rect(rect, color, not outline, width)
+		return
+	var radius := float(record.get("radius", 12.0))
+	if outline:
+		canvas.draw_arc(pos, radius, 0.0, TAU, 36, color, width)
+	else:
+		canvas.draw_circle(pos, radius, color)
+
+func _draw_collision_label(canvas: CanvasItem, record: Dictionary) -> void:
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	var collision_class := String(record.get("collision_class", COLLISION_NONE))
+	var label := ""
+	match collision_class:
+		COLLISION_HARD:
+			label = "HARD"
+		COLLISION_SOFT:
+			label = "SOFT"
+		COLLISION_HAZARD:
+			label = "HAZARD"
+		COLLISION_TRIGGER:
+			label = "TRIGGER"
+		_:
+			label = "NONE"
+	var color := _collision_color(collision_class)
+	canvas.draw_rect(Rect2(pos + Vector2(-30, -36), Vector2(60, 11)), Color(0.08, 0.06, 0.05, 0.58))
+	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, -28), label, HORIZONTAL_ALIGNMENT_CENTER, 60, 7, color)
 
 func _draw_world_bounds(canvas: CanvasItem, show_debug_labels: bool) -> void:
 	canvas.draw_rect(WORLD_BOUNDS, Color(0.34, 0.20, 0.16, 0.65), false, 4.0)

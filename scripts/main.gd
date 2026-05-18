@@ -267,7 +267,10 @@ func _update_player(delta: float) -> void:
 	player_is_moving = input_dir.length_squared() > 0.0
 	if player_is_moving:
 		last_move_dir = input_dir
+	var old_pos := player_pos
 	player_pos += input_dir * _move_speed() * delta
+	if R01LayoutBlockout.ENABLED:
+		player_pos = r01_blockout.resolve_player_position(old_pos, player_pos, C.PLAYER_RADIUS)
 	_clamp_player_to_world()
 
 func _clamp_player_to_world() -> void:
@@ -278,7 +281,13 @@ func _clamp_player_to_world() -> void:
 	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 
 func _update_enemies(delta: float) -> void:
+	var old_positions: Array[Vector2] = []
+	if R01LayoutBlockout.ENABLED:
+		for enemy in enemies.enemies:
+			old_positions.append(Vector2(enemy["pos"]))
 	var contact_damage := enemies.update_enemies(delta, player_pos)
+	if R01LayoutBlockout.ENABLED:
+		_apply_r01_enemy_navigation(old_positions)
 	if contact_damage <= 0.0:
 		return
 	player_hp = maxf(0.0, player_hp - _incoming_damage(contact_damage))
@@ -297,6 +306,17 @@ func _update_enemies(delta: float) -> void:
 			_finish_match("recalled")
 		else:
 			_finish_match("recalled" if _first_recall_active() else "game_over")
+
+func _apply_r01_enemy_navigation(old_positions: Array[Vector2]) -> void:
+	var count := mini(old_positions.size(), enemies.enemies.size())
+	for i in range(count):
+		var enemy := enemies.enemies[i]
+		var role := "elite" if bool(enemy.get("elite", false)) else String(enemy.get("role", "basic"))
+		if String(enemy.get("sprite_kind", "")) == "coupon":
+			role = "coupon" if role == "basic" or role == "fast" else role
+		elif String(enemy.get("sprite_kind", "")) == "appliance":
+			role = "robot" if role == "basic" else role
+		enemy["pos"] = r01_blockout.resolve_enemy_position(old_positions[i], Vector2(enemy["pos"]), role, float(enemy.get("radius", 8.0)))
 
 func _update_threats(delta: float) -> void:
 	_update_active_threats(delta)
@@ -1599,6 +1619,7 @@ func _debug_info() -> Dictionary:
 	_sync_boss_signal_from_clues()
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	var r01_summary := _r01_phrase_state()
+	var r01_collision_summary := r01_blockout.collision_summary() if R01LayoutBlockout.ENABLED else {}
 	return {
 		"match_state": match_state,
 		"elapsed": elapsed,
@@ -1612,6 +1633,12 @@ func _debug_info() -> Dictionary:
 		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
 		"r01_blockout_world": "%.0fx%.0f" % [R01LayoutBlockout.WORLD_BOUNDS.size.x, R01LayoutBlockout.WORLD_BOUNDS.size.y],
 		"r01_blockout_screens": r01_blockout.world_screen_count(),
+		"r01_collision_hard": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_HARD, 0)),
+		"r01_collision_soft": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_SOFT, 0)),
+		"r01_collision_hazard": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_HAZARD, 0)),
+		"r01_collision_trigger": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_TRIGGER, 0)),
+		"r01_collision_none": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_NONE, 0)),
+		"r01_pathing_probe": r01_blockout.pathing_probe_label() if R01LayoutBlockout.ENABLED else "",
 		"enemy_role_summary": enemies.role_summary(),
 		"threat_count": active_threats.size(),
 		"last_threat_label": last_threat_label,
