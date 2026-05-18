@@ -319,7 +319,7 @@ func _draw_preview_ground(parent: Control, offset: Vector2, scale: float, state:
 func _draw_corridors(parent: Control, offset: Vector2, scale: float, show_debug_labels: bool) -> void:
 	var center := _to_preview(Vector2(720, 445), offset, scale)
 	var anchors := [Vector2(280, 670), Vector2(1090, 555), Vector2(670, 260), Vector2(720, 735), Vector2(1085, 370)]
-	var color := Color(0.36, 0.30, 0.24, 0.04 if not show_debug_labels else 0.18)
+	var color := Color(0.36, 0.30, 0.24, 0.11 if not show_debug_labels else 0.18)
 	for anchor in anchors:
 		_add_line(parent, center, _to_preview(anchor, offset, scale), color, 2.0 if not show_debug_labels else 3.0)
 
@@ -340,7 +340,7 @@ func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scal
 		_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.44 * NORMAL_LABEL_ALPHA_SCALE), 8)
 	_draw_facility_marks(parent, facility_id, rect, state)
 	var anchor := _to_preview(Vector2(facility["interaction_anchor"]), offset, scale)
-	_add_rect(parent, anchor - Vector2(3, 3), Vector2(6, 6), Color(0.62, 1.0, 0.36, 0.045 if not show_debug_labels else 0.18))
+	_add_rect(parent, anchor - Vector2(4, 4), Vector2(8, 8), Color(0.62, 1.0, 0.36, 0.12 if not show_debug_labels else 0.18))
 	if show_debug_labels:
 		_add_label(parent, "%s\n%s\n%s" % [facility_id, collision, facility_variant(facility_id, state)], rect.position + Vector2(2, rect.size.y + 2), Vector2(122, 26), Color(0.08, 0.05, 0.04, 0.68), 7, HORIZONTAL_ALIGNMENT_LEFT)
 

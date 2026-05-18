@@ -48,6 +48,12 @@ const PRESSURE_REPLACE_START := 150.0
 var enemies: Array[Dictionary] = []
 var spawn_timer := 0.0
 var last_contact_hint := ""
+var movement_bounds := Rect2(-C.ARENA_HALF, C.ARENA_HALF * 2.0)
+var spawn_position_provider := Callable()
+
+func configure_world(bounds: Rect2, provider: Callable = Callable()) -> void:
+	movement_bounds = bounds
+	spawn_position_provider = provider
 
 func update_spawning(delta: float, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
 	spawn_timer -= delta
@@ -72,18 +78,6 @@ func update_spawning(delta: float, elapsed: float, player_pos: Vector2, rng: Ran
 		spawn_enemy(elapsed, player_pos, rng, pressure_params)
 
 func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary = {}) -> void:
-	var side := rng.randi_range(0, 3)
-	var pos := Vector2.ZERO
-	if side == 0:
-		pos = player_pos + Vector2(-270, rng.randf_range(-160, 160))
-	elif side == 1:
-		pos = player_pos + Vector2(270, rng.randf_range(-160, 160))
-	elif side == 2:
-		pos = player_pos + Vector2(rng.randf_range(-260, 260), -165)
-	else:
-		pos = player_pos + Vector2(rng.randf_range(-260, 260), 165)
-	pos.x = clampf(pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-	pos.y = clampf(pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 	var elite_chance := float(wave_params.get("elite_chance", 0.14 if elapsed > 45.0 else 0.0))
 	var hp_mult := float(wave_params.get("hp_mult", 1.0))
 	var speed_mult := float(wave_params.get("speed_mult", 1.0))
@@ -91,6 +85,8 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 	var elite := rng.randf() < elite_chance
 	var role := "elite" if elite else _pick_role(rng, wave_params.get("role_weights", {"basic": 1.0}))
 	var role_stats: Dictionary = ROLE_STATS.get(role, ROLE_STATS["basic"])
+	var radius := 15.0 if elite else float(role_stats.get("radius", 8.0))
+	var pos := _spawn_position(elapsed, player_pos, rng, radius, role)
 	var sprite_kind := "housewife"
 	if not elite:
 		sprite_kind = String(role_stats.get("sprite", TIER1_SPRITE_KINDS[rng.randi_range(0, TIER1_SPRITE_KINDS.size() - 1)]))
@@ -100,7 +96,7 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"pos": pos,
 		"hp": base_hp * hp_mult,
 		"max_hp": base_hp * hp_mult,
-		"radius": 15.0 if elite else float(role_stats.get("radius", 8.0)),
+		"radius": radius,
 		"speed": base_speed * speed_mult,
 		"contact_damage_mult": contact_damage_mult * (2.15 if elite else float(role_stats.get("contact", 1.0))),
 		"elite": elite,
@@ -119,6 +115,28 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"speaker_pulse": 0.0,
 		"speaker_cooldown": rng.randf_range(1.0, 3.8),
 	})
+
+func _spawn_position(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String) -> Vector2:
+	if spawn_position_provider.is_valid():
+		var provided: Vector2 = spawn_position_provider.call(player_pos, rng, radius, role, elapsed)
+		return _clamp_to_movement_bounds(provided, radius)
+	var side := rng.randi_range(0, 3)
+	var pos := Vector2.ZERO
+	if side == 0:
+		pos = player_pos + Vector2(-270, rng.randf_range(-160, 160))
+	elif side == 1:
+		pos = player_pos + Vector2(270, rng.randf_range(-160, 160))
+	elif side == 2:
+		pos = player_pos + Vector2(rng.randf_range(-260, 260), -165)
+	else:
+		pos = player_pos + Vector2(rng.randf_range(-260, 260), 165)
+	return _clamp_to_movement_bounds(pos, radius)
+
+func _clamp_to_movement_bounds(pos: Vector2, radius: float) -> Vector2:
+	return Vector2(
+		clampf(pos.x, movement_bounds.position.x + radius, movement_bounds.position.x + movement_bounds.size.x - radius),
+		clampf(pos.y, movement_bounds.position.y + radius, movement_bounds.position.y + movement_bounds.size.y - radius)
+	)
 
 func spawn_elite_group(count: int, elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, wave_params: Dictionary) -> void:
 	var params := wave_params.duplicate(true)
@@ -320,9 +338,7 @@ func _next_enemy_pos(enemy: Dictionary, pos: Vector2, to_player: Vector2, dist: 
 		elif state == "recover":
 			speed *= 0.34
 	var next_pos := pos + dir * speed * delta
-	next_pos.x = clampf(next_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-	next_pos.y = clampf(next_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
-	return next_pos
+	return _clamp_to_movement_bounds(next_pos, float(enemy.get("radius", 8.0)))
 
 func _set_contact_hint(enemy: Dictionary) -> void:
 	var role := String(enemy.get("role", "basic"))
@@ -385,9 +401,7 @@ func knockback_enemy(index: int, dir: Vector2, distance: float) -> void:
 	if index < 0 or index >= enemies.size() or dir.length_squared() <= 0.0:
 		return
 	var pos: Vector2 = enemies[index]["pos"] + dir.normalized() * distance
-	pos.x = clampf(pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-	pos.y = clampf(pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
-	enemies[index]["pos"] = pos
+	enemies[index]["pos"] = _clamp_to_movement_bounds(pos, float(enemies[index].get("radius", 8.0)))
 
 func apply_damage(index: int, base_damage: float, damage_type: String) -> Dictionary:
 	if index < 0 or index >= enemies.size():

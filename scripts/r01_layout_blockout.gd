@@ -79,6 +79,9 @@ const ADJACENCY := [
 const KIND_COLLISION_META := {
 	"floor": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "ground_readability", "shape": "rect", "size": Vector2(116, 56)},
 	"house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "hard_structure", "shape": "rect", "size": Vector2(116, 88)},
+	"model_house": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_objective_structure", "shape": "rect", "size": Vector2(168, 118)},
+	"ad_device": {"collision_class": COLLISION_HARD, "nav_behavior": NAV_BLOCK, "risk_role": "large_ad_device", "shape": "circle", "radius": 44.0},
+	"road_barrier": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "lane_soft_blocker", "shape": "rect", "size": Vector2(84, 30)},
 	"mailbox": {"collision_class": COLLISION_SOFT, "nav_behavior": NAV_SOFT_AVOID, "risk_role": "enemy_source", "shape": "circle", "radius": 22.0},
 	"flyer": {"collision_class": COLLISION_HAZARD, "nav_behavior": NAV_IGNORE, "risk_role": "flyer_drop_source", "shape": "circle", "radius": 32.0},
 	"scraps": {"collision_class": COLLISION_NONE, "nav_behavior": NAV_IGNORE, "risk_role": "density_only", "shape": "circle", "radius": 26.0},
@@ -119,11 +122,16 @@ const ZONE_PROPS := {
 		{"id": "sparse_flyer_scraps", "offset": Vector2(18, -42), "kind": "scraps", "state": "all"},
 		{"id": "weak_route_hint", "offset": Vector2(96, 28), "kind": "route", "state": "all"},
 		{"id": "distant_mailbox_hint", "offset": Vector2(132, -72), "kind": "mailbox", "state": "all"},
+		{"id": "quiet_service_van_shell", "offset": Vector2(-164, 82), "kind": "road_barrier", "state": "all"},
 		{"id": "quiet_nameplate_marker", "offset": Vector2(-114, -48), "kind": "tag", "state": STATE_DESTROY_NODE},
 		{"id": "blank_customer_photo_hint", "offset": Vector2(-28, -104), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
 	"subdivision_loop_center": [
 		{"id": "house_front_placeholder", "offset": Vector2(-142, -88), "kind": "house", "state": "all"},
+		{"id": "mirror_house_left", "offset": Vector2(-290, 112), "kind": "house", "state": "all"},
+		{"id": "mirror_house_right", "offset": Vector2(250, -98), "kind": "house", "state": "all"},
+		{"id": "sales_speaker_tower", "offset": Vector2(205, 122), "kind": "ad_device", "state": "all"},
+		{"id": "cul_de_sac_barrier", "offset": Vector2(-12, -158), "kind": "road_barrier", "state": "all"},
 		{"id": "mailbox_device_placeholder", "offset": Vector2(-66, 88), "kind": "mailbox", "state": "all"},
 		{"id": "flyer_pile_placeholder", "offset": Vector2(42, 74), "kind": "flyer", "state": "all"},
 		{"id": "price_customer_tag_placeholder", "offset": Vector2(-118, -42), "kind": "tag", "state": "all"},
@@ -133,7 +141,10 @@ const ZONE_PROPS := {
 		{"id": "family_window_photo_marker", "offset": Vector2(-18, -132), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
 	"model_house_node_anchor": [
-		{"id": "model_house_node_placeholder", "offset": Vector2(0, -28), "kind": "node", "state": "all"},
+		{"id": "model_house_mass_placeholder", "offset": Vector2(178, -94), "kind": "model_house", "state": "all"},
+		{"id": "model_house_node_placeholder", "offset": Vector2(0, 18), "kind": "node", "state": "all"},
+		{"id": "parking_demo_car", "offset": Vector2(-160, 116), "kind": "road_barrier", "state": "all"},
+		{"id": "family_plan_terminal", "offset": Vector2(168, 112), "kind": "ad_device", "state": "all"},
 		{"id": "consultation_kiosk_socket_placeholder", "offset": Vector2(-92, 62), "kind": "kiosk", "state": "all"},
 		{"id": "family_window_loop_placeholder", "offset": Vector2(106, -70), "kind": "photo", "state": "all"},
 		{"id": "doorbell_projector_placeholder", "offset": Vector2(96, 66), "kind": "projector", "state": "all"},
@@ -153,6 +164,7 @@ const ZONE_PROPS := {
 	"fake_return_route_anchor": [
 		{"id": "recommended_route_decal_placeholder", "offset": Vector2(-74, 24), "kind": "route", "state": "all"},
 		{"id": "streetlight_speaker_placeholder", "offset": Vector2(48, -72), "kind": "speaker", "state": "all"},
+		{"id": "closed_return_lane_barrier", "offset": Vector2(-164, 66), "kind": "road_barrier", "state": "all"},
 		{"id": "fake_recovery_marker", "offset": Vector2(62, 48), "kind": "fake_recovery", "state": "all"},
 		{"id": "transmitter_residue_hint_placeholder", "offset": Vector2(-12, -118), "kind": "residue", "state": "all"},
 		{"id": "broken_return_arrow", "offset": Vector2(-128, -32), "kind": "route", "state": STATE_DESTROY_NODE},
@@ -198,6 +210,47 @@ func configure_camera(camera: Camera2D) -> void:
 	camera.limit_top = int(WORLD_BOUNDS.position.y)
 	camera.limit_right = int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x)
 	camera.limit_bottom = int(WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y)
+
+func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, elapsed: float) -> Vector2:
+	var view_half := C.VIEWPORT_SIZE * 0.5
+	var near_rect := Rect2(player_pos - view_half - Vector2(42, 42), C.VIEWPORT_SIZE + Vector2(84, 84))
+	var preferred_center := player_pos
+	if elapsed > 72.0 and rng.randf() < 0.38:
+		preferred_center = anchor_position("subdivision_loop_center")
+	if elapsed > 210.0 and rng.randf() < 0.36:
+		preferred_center = anchor_position("model_house_node_anchor")
+	for i in range(28):
+		var side := rng.randi_range(0, 3)
+		var offset := Vector2.ZERO
+		if side == 0:
+			offset = Vector2(-view_half.x - rng.randf_range(76.0, 250.0), rng.randf_range(-view_half.y - 90.0, view_half.y + 90.0))
+		elif side == 1:
+			offset = Vector2(view_half.x + rng.randf_range(76.0, 250.0), rng.randf_range(-view_half.y - 90.0, view_half.y + 90.0))
+		elif side == 2:
+			offset = Vector2(rng.randf_range(-view_half.x - 150.0, view_half.x + 150.0), -view_half.y - rng.randf_range(72.0, 210.0))
+		else:
+			offset = Vector2(rng.randf_range(-view_half.x - 150.0, view_half.x + 150.0), view_half.y + rng.randf_range(72.0, 210.0))
+		var candidate := _clamp_world_position(preferred_center + offset, radius)
+		if not near_rect.has_point(candidate) and is_spawn_position_valid(candidate, radius, role):
+			return candidate
+	for i in range(36):
+		var angle := fmod(float(i) * 2.399963 + rng.randf_range(-0.28, 0.28), TAU)
+		var ring := rng.randf_range(320.0, 520.0)
+		var candidate := _clamp_world_position(player_pos + Vector2(cos(angle), sin(angle)) * ring, radius)
+		if is_spawn_position_valid(candidate, radius, role):
+			return candidate
+	return _nearest_open_position(_clamp_world_position(player_pos + Vector2(view_half.x + 140.0, 0.0), radius), radius, role)
+
+func is_spawn_position_valid(pos: Vector2, radius: float, role: String = "basic") -> bool:
+	if not WORLD_BOUNDS.grow(-radius).has_point(pos):
+		return false
+	for record in active_collision_records():
+		var collision_class := String(record.get("collision_class", COLLISION_NONE))
+		if collision_class == COLLISION_HARD and _point_overlaps_record(pos, record, radius + 3.0):
+			return false
+		if collision_class == COLLISION_SOFT and not _role_can_slip_soft(role) and _point_overlaps_record(pos, record, radius):
+			return false
+	return true
 
 func anchor_position(zone_id: String) -> Vector2:
 	return Vector2(ZONES.get(zone_id, ZONES["silence_edge_start"]).get("pos", Vector2.ZERO))
@@ -366,6 +419,24 @@ func _point_overlaps_record(point: Vector2, record: Dictionary, radius: float) -
 		return rect.has_point(point)
 	var check_radius := float(record.get("radius", 12.0)) + radius
 	return point.distance_squared_to(pos) <= check_radius * check_radius
+
+func _clamp_world_position(pos: Vector2, radius: float) -> Vector2:
+	return Vector2(
+		clampf(pos.x, WORLD_BOUNDS.position.x + radius, WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x - radius),
+		clampf(pos.y, WORLD_BOUNDS.position.y + radius, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y - radius)
+	)
+
+func _nearest_open_position(pos: Vector2, radius: float, role: String) -> Vector2:
+	var clamped := _clamp_world_position(pos, radius)
+	if is_spawn_position_valid(clamped, radius, role):
+		return clamped
+	for ring in [36.0, 72.0, 120.0, 180.0, 250.0]:
+		for i in range(16):
+			var angle := float(i) / 16.0 * TAU
+			var candidate := _clamp_world_position(clamped + Vector2(cos(angle), sin(angle)) * ring, radius)
+			if is_spawn_position_valid(candidate, radius, role):
+				return candidate
+	return clamped
 
 func _slide_or_stop(old_pos: Vector2, blocked_pos: Vector2, record: Dictionary, radius: float, role: String) -> Vector2:
 	var delta := blocked_pos - old_pos
@@ -614,6 +685,20 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_rect(Rect2(pos - Vector2(58, 28), Vector2(116, 56)), Color(0.74, 0.82, 0.78, 0.20))
 		"house":
 			_draw_house_placeholder(canvas, pos)
+		"model_house":
+			_draw_model_house_placeholder(canvas, pos)
+		"ad_device":
+			var pulse := 1.0 + 0.04 * sin(elapsed * 2.6)
+			canvas.draw_circle(pos, 38.0 * pulse, Color(1.0, 0.91, 0.25, 0.20))
+			canvas.draw_arc(pos, 43.0 * pulse, 0.0, TAU, 42, Color(1.0, 0.30, 0.36, 0.56), 3.0)
+			canvas.draw_rect(Rect2(pos - Vector2(22, 16), Vector2(44, 32)), Color(0.58, 0.38, 0.30, 0.46))
+			canvas.draw_line(pos + Vector2(-10, 24), pos + Vector2(-18, 46), Color(0.42, 0.29, 0.24, 0.58), 3.0)
+			canvas.draw_line(pos + Vector2(10, 24), pos + Vector2(18, 46), Color(0.42, 0.29, 0.24, 0.58), 3.0)
+		"road_barrier":
+			canvas.draw_rect(Rect2(pos - Vector2(40, 13), Vector2(80, 26)), Color(0.82, 0.66, 0.42, 0.46))
+			canvas.draw_rect(Rect2(pos - Vector2(40, 13), Vector2(80, 26)), Color(0.34, 0.22, 0.18, 0.48), false, 2.0)
+			for i in range(3):
+				canvas.draw_line(pos + Vector2(-30 + i * 24, -9), pos + Vector2(-14 + i * 24, 9), Color(1.0, 0.91, 0.25, 0.42), 2.0)
 		"mailbox":
 			canvas.draw_rect(Rect2(pos + Vector2(-12, -18), Vector2(24, 28)), Color(0.78, 0.90, 0.84, 0.68))
 			canvas.draw_circle(pos + Vector2(0, -18), 12.0, Color(0.93, 0.62, 0.54, 0.66))
@@ -690,6 +775,17 @@ func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
 	]), Color(0.95, 0.63, 0.56, 0.44))
 	canvas.draw_rect(Rect2(pos + Vector2(-32, 12), Vector2(20, 18)), Color(1.0, 0.91, 0.45, 0.32))
 	canvas.draw_rect(Rect2(pos + Vector2(18, 7), Vector2(18, 41)), Color(0.34, 0.21, 0.18, 0.36))
+
+func _draw_model_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos - Vector2(72, -2), Vector2(144, 74)), Color(0.78, 0.55, 0.46, 0.42))
+	canvas.draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-86, 0),
+		pos + Vector2(0, -58),
+		pos + Vector2(86, 0),
+	]), Color(0.95, 0.68, 0.50, 0.54))
+	canvas.draw_rect(Rect2(pos + Vector2(-44, 20), Vector2(28, 30)), Color(1.0, 0.91, 0.25, 0.28))
+	canvas.draw_rect(Rect2(pos + Vector2(22, 12), Vector2(30, 60)), Color(0.34, 0.21, 0.18, 0.40))
+	canvas.draw_arc(pos + Vector2(0, 0), 80.0, 0.1, PI - 0.1, 36, Color(1.0, 0.91, 0.25, 0.24), 3.0)
 
 func _draw_prop_label(canvas: CanvasItem, pos: Vector2, prop_id: String) -> void:
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(-54, 44), prop_id, HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.20, 0.14, 0.12, 0.58))

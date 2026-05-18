@@ -136,6 +136,7 @@ func _ready() -> void:
 	r01_blockout.reset()
 	if R01LayoutBlockout.ENABLED:
 		r01_blockout.configure_camera(camera)
+		enemies.configure_world(R01LayoutBlockout.WORLD_BOUNDS, Callable(r01_blockout, "enemy_spawn_position"))
 		player_pos = r01_blockout.anchor_position("silence_edge_start")
 		r01_blockout.print_probe()
 	_build_audio()
@@ -1202,6 +1203,8 @@ func _try_start_boss_encounter() -> void:
 func _start_boss_encounter() -> void:
 	boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 	boss.start()
+	if R01LayoutBlockout.ENABLED:
+		boss.pos = r01_blockout.anchor_position("model_house_node_anchor")
 	_set_music("bgm_boss_smile_home")
 	enemies.clear()
 	active_threats.clear()

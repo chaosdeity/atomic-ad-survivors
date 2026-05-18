@@ -282,28 +282,28 @@ func build(parent: Node) -> void:
 	result_panel.add_child(restart_button)
 
 	supply_panel = Panel.new()
-	supply_panel.position = Vector2(8, 10)
-	supply_panel.size = Vector2(464, 246)
+	supply_panel.position = Vector2(6, 8)
+	supply_panel.size = Vector2(468, 252)
 	supply_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
 	supply_panel.visible = false
 	root.add_child(supply_panel)
 
 	outpost_visual_layer = Control.new()
-	outpost_visual_layer.position = Vector2.ZERO
-	outpost_visual_layer.size = supply_panel.size
+	outpost_visual_layer.position = Vector2(10, 8)
+	outpost_visual_layer.size = Vector2(300, 148)
 	outpost_visual_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	supply_panel.add_child(outpost_visual_layer)
 	outpost_blockout.build_preview_layer(outpost_visual_layer, {}, null, false)
 
-	_add_flat_backing(supply_panel, Vector2(12, 6), Vector2(440, 84), Color(1.0, 0.96, 0.84, 0.82))
-	_add_flat_backing(supply_panel, Vector2(12, 90), Vector2(440, 15), Color(1.0, 0.96, 0.84, 0.86))
-	_add_flat_backing(supply_panel, Vector2(12, 104), Vector2(440, 86), Color(1.0, 0.97, 0.88, 0.90))
-	_add_flat_backing(supply_panel, Vector2(14, 188), Vector2(436, 22), Color(1.0, 0.96, 0.84, 0.84))
-	_add_flat_backing(supply_panel, Vector2(94, 216), Vector2(276, 24), Color(1.0, 0.96, 0.84, 0.74))
+	_add_flat_backing(supply_panel, Vector2(10, 8), Vector2(300, 148), Color(1.0, 0.96, 0.84, 0.14))
+	_add_flat_backing(supply_panel, Vector2(316, 8), Vector2(140, 102), Color(1.0, 0.96, 0.84, 0.88))
+	_add_flat_backing(supply_panel, Vector2(12, 160), Vector2(444, 14), Color(1.0, 0.96, 0.84, 0.88))
+	_add_flat_backing(supply_panel, Vector2(12, 174), Vector2(444, 48), Color(1.0, 0.97, 0.88, 0.92))
+	_add_flat_backing(supply_panel, Vector2(12, 224), Vector2(444, 18), Color(1.0, 0.96, 0.84, 0.82))
 
 	supply_label = Label.new()
-	supply_label.position = Vector2(14, 8)
-	supply_label.size = Vector2(436, 80)
+	supply_label.position = Vector2(320, 12)
+	supply_label.size = Vector2(132, 94)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
 	supply_label.add_theme_font_size_override("font_size", FONT_TINY)
@@ -312,8 +312,8 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_label)
 
 	supply_scroll_hint_label = Label.new()
-	supply_scroll_hint_label.position = Vector2(14, 92)
-	supply_scroll_hint_label.size = Vector2(436, 12)
+	supply_scroll_hint_label.position = Vector2(14, 162)
+	supply_scroll_hint_label.size = Vector2(440, 11)
 	supply_scroll_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_scroll_hint_label.clip_text = true
 	supply_scroll_hint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -326,8 +326,8 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_scroll_hint_label)
 
 	supply_list_scroll = ScrollContainer.new()
-	supply_list_scroll.position = Vector2(14, 106)
-	supply_list_scroll.size = Vector2(436, 82)
+	supply_list_scroll.position = Vector2(14, 176)
+	supply_list_scroll.size = Vector2(440, 44)
 	supply_list_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	supply_list_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	supply_list_scroll.follow_focus = true
@@ -339,8 +339,8 @@ func build(parent: Node) -> void:
 	supply_list_scroll.add_child(supply_button_list)
 
 	supply_feedback_label = Label.new()
-	supply_feedback_label.position = Vector2(16, 190)
-	supply_feedback_label.size = Vector2(432, 18)
+	supply_feedback_label.position = Vector2(16, 224)
+	supply_feedback_label.size = Vector2(278, 18)
 	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	supply_feedback_label.add_theme_font_size_override("font_size", FONT_SMALL)
@@ -352,14 +352,14 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_feedback_label)
 
 	supply_footer_divider = ColorRect.new()
-	supply_footer_divider.position = Vector2(14, 215)
-	supply_footer_divider.size = Vector2(436, 1)
+	supply_footer_divider.position = Vector2(12, 158)
+	supply_footer_divider.size = Vector2(444, 1)
 	supply_footer_divider.color = Color("#8a7962")
 	supply_panel.add_child(supply_footer_divider)
 
 	supply_restart_button = Button.new()
-	supply_restart_button.position = Vector2(98, 218)
-	supply_restart_button.size = Vector2(268, 20)
+	supply_restart_button.position = Vector2(300, 224)
+	supply_restart_button.size = Vector2(154, 18)
 	supply_restart_button.add_theme_font_size_override("font_size", FONT_SMALL)
 	supply_restart_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_restart_button)
@@ -548,15 +548,14 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	if route_ready_text != "":
 		boss_hint = route_ready_text
 	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
-	supply_label.text = "침묵 보급소\n%s\n지역 반응: %s\n게시판: %s\n다음 목표: %s\n%s\n구매: 1/2/3/4키 또는 버튼 클릭" % [
+	supply_label.text = "침묵 보급소\n%s\n게시판: %s\n목표: %s\n%s" % [
 		_supply_currency_text(meta_progression),
-		str(session_progress.get("r01_outpost_phrase", meta_progression.smile_home_boss_outcome_label())),
 		board_text,
 		str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))),
 		str(outpost_lines[1]),
 	]
 	var upgrades: Array = meta_progression.upgrade_defs()
-	supply_scroll_hint_label.text = "강화 목록 %d개 - 휠/드래그로 아래 항목 보기 - %s" % [upgrades.size(), boss_hint]
+	supply_scroll_hint_label.text = "정비대/조율대 강화 %d개 - 정산 카운터 결과 반영 - %s" % [upgrades.size(), boss_hint]
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
@@ -580,7 +579,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var max_level := int(upgrade.get("max_level", 1))
 		button.visible = true
 		button.disabled = not can_buy
-		button.custom_minimum_size = Vector2(416, 42)
+		button.custom_minimum_size = Vector2(420, 38)
 		button.add_theme_font_size_override("font_size", FONT_TINY)
 		var button_text_color := C.INK if can_buy else Color("#4f4135")
 		var normal_style := _button_style(Color("#fff7df"))
@@ -661,7 +660,7 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		supply_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		supply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		supply_button.custom_minimum_size = Vector2(416, 42)
+		supply_button.custom_minimum_size = Vector2(420, 38)
 		supply_button.add_theme_font_size_override("font_size", FONT_TINY)
 		supply_button.add_theme_color_override("font_color", C.INK)
 		_apply_font(supply_button)
@@ -675,7 +674,7 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_upgrade_buttons.append(supply_button)
 
 func _supply_currency_text(meta_progression) -> String:
-	return "보유 흔적: 전단 %d개 | 코어 파편 %d개 | %s" % [
+	return "전단 %d / 코어 %d\n%s" % [
 		meta_progression.trace_count(),
 		meta_progression.trace_count("campaign_core_fragment"),
 		meta_progression.signal_clue_summary(),
