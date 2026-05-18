@@ -23,6 +23,7 @@ var result_label: Label
 var restart_button: Button
 var restart_callback := Callable()
 var supply_panel: Panel
+var outpost_visual_layer: Control
 var supply_label: Label
 var supply_scroll_hint_label: Label
 var supply_restart_button: Button
@@ -69,6 +70,109 @@ func _supply_locked_style() -> StyleBoxFlat:
 
 func _apply_font(control: Control) -> void:
 	control.add_theme_font_override("font", UIFont.get_font())
+
+func _outpost_style(fill_color: Color, border_color: Color, border_width: int = 1, corner_radius: int = 3) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill_color
+	style.border_color = border_color
+	style.set_border_width_all(border_width)
+	style.set_corner_radius_all(corner_radius)
+	style.content_margin_left = 3
+	style.content_margin_right = 3
+	style.content_margin_top = 3
+	style.content_margin_bottom = 3
+	return style
+
+func _add_outpost_panel(parent: Control, position: Vector2, size: Vector2, fill_color: Color, border_color: Color) -> Panel:
+	var panel := Panel.new()
+	panel.position = position
+	panel.size = size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _outpost_style(fill_color, border_color))
+	parent.add_child(panel)
+	return panel
+
+func _add_outpost_rect(parent: Control, position: Vector2, size: Vector2, color: Color, rotation_degrees: float = 0.0) -> ColorRect:
+	var rect := ColorRect.new()
+	rect.position = position
+	rect.size = size
+	rect.color = color
+	rect.rotation = deg_to_rad(rotation_degrees)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rect)
+	return rect
+
+func _add_outpost_label(parent: Control, text: String, position: Vector2, size: Vector2, color: Color) -> Label:
+	var label := Label.new()
+	label.position = position
+	label.size = size
+	label.text = text
+	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", FONT_TINY)
+	label.add_theme_color_override("font_color", color)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_font(label)
+	parent.add_child(label)
+	return label
+
+func _build_outpost_visual_layer(parent: Control) -> void:
+	parent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ink_dim := Color(0.16, 0.14, 0.13, 0.19)
+	var ink_faint := Color(0.16, 0.14, 0.13, 0.10)
+	var rust_dim := Color(0.48, 0.29, 0.22, 0.20)
+	var paper_dim := Color(0.97, 0.88, 0.65, 0.20)
+	var green_dim := Color(0.42, 0.58, 0.48, 0.18)
+	var signal_dim := Color(0.40, 0.54, 0.60, 0.13)
+	var label_dim := Color(0.25, 0.21, 0.17, 0.34)
+
+	_add_outpost_rect(parent, Vector2(0, 0), Vector2(464, 246), Color(0.11, 0.10, 0.09, 0.04))
+	_add_outpost_rect(parent, Vector2(8, 58), Vector2(448, 2), ink_faint)
+	_add_outpost_rect(parent, Vector2(8, 210), Vector2(448, 2), ink_faint)
+	_add_outpost_rect(parent, Vector2(230, 54), Vector2(3, 158), Color(0.40, 0.32, 0.25, 0.09))
+
+	var counter := _add_outpost_panel(parent, Vector2(18, 174), Vector2(116, 39), Color(0.43, 0.34, 0.27, 0.15), ink_dim)
+	_add_outpost_label(counter, "정산 카운터", Vector2(8, 3), Vector2(100, 11), label_dim)
+	_add_outpost_rect(counter, Vector2(14, 17), Vector2(26, 11), paper_dim)
+	_add_outpost_rect(counter, Vector2(45, 16), Vector2(18, 13), Color(0.90, 0.74, 0.48, 0.17))
+	_add_outpost_rect(counter, Vector2(72, 15), Vector2(28, 4), rust_dim)
+	_add_outpost_rect(counter, Vector2(72, 23), Vector2(20, 3), rust_dim)
+
+	var bench := _add_outpost_panel(parent, Vector2(13, 68), Vector2(106, 37), Color(0.36, 0.47, 0.42, 0.13), green_dim)
+	_add_outpost_label(bench, "정비대", Vector2(20, 2), Vector2(66, 11), label_dim)
+	_add_outpost_rect(bench, Vector2(10, 19), Vector2(68, 5), rust_dim)
+	_add_outpost_rect(bench, Vector2(22, 11), Vector2(16, 22), Color(0.34, 0.28, 0.22, 0.15))
+	_add_outpost_rect(bench, Vector2(81, 14), Vector2(10, 15), Color(0.86, 0.92, 0.65, 0.17))
+	_add_outpost_rect(bench, Vector2(47, 12), Vector2(26, 2), ink_faint, -12.0)
+
+	var archive := _add_outpost_panel(parent, Vector2(352, 68), Vector2(89, 80), Color(0.30, 0.27, 0.23, 0.13), ink_dim)
+	_add_outpost_label(archive, "이름 보관함", Vector2(8, 4), Vector2(73, 11), label_dim)
+	for row in range(3):
+		for column in range(2):
+			_add_outpost_rect(archive, Vector2(12 + column * 34, 20 + row * 17), Vector2(26, 10), Color(0.94, 0.82, 0.60, 0.14))
+	_add_outpost_rect(archive, Vector2(11, 20), Vector2(27, 1), Color(0.66, 0.47, 0.35, 0.16))
+	_add_outpost_rect(archive, Vector2(46, 54), Vector2(26, 2), Color(0.58, 0.72, 0.64, 0.18))
+
+	var board := _add_outpost_panel(parent, Vector2(292, 12), Vector2(146, 48), Color(0.44, 0.34, 0.22, 0.14), rust_dim)
+	_add_outpost_label(board, "출격 게시판", Vector2(40, 4), Vector2(72, 11), label_dim)
+	_add_outpost_rect(board, Vector2(12, 18), Vector2(38, 15), Color(0.94, 0.78, 0.54, 0.18), -3.0)
+	_add_outpost_rect(board, Vector2(59, 18), Vector2(29, 16), Color(0.72, 0.80, 0.74, 0.15), 2.0)
+	_add_outpost_rect(board, Vector2(97, 18), Vector2(35, 15), Color(0.94, 0.78, 0.54, 0.12), -1.0)
+	_add_outpost_rect(board, Vector2(16, 38), Vector2(102, 2), Color(0.42, 0.32, 0.25, 0.17))
+
+	var charger := _add_outpost_panel(parent, Vector2(316, 178), Vector2(118, 36), Color(0.32, 0.42, 0.47, 0.13), signal_dim)
+	_add_outpost_label(charger, "차징 조율대", Vector2(17, 2), Vector2(84, 11), label_dim)
+	_add_outpost_rect(charger, Vector2(13, 19), Vector2(34, 4), Color(0.43, 0.73, 0.58, 0.18))
+	_add_outpost_rect(charger, Vector2(56, 15), Vector2(36, 11), Color(0.90, 0.81, 0.48, 0.14))
+	_add_outpost_rect(charger, Vector2(94, 17), Vector2(10, 7), Color(0.72, 0.37, 0.34, 0.15))
+
+	_add_outpost_rect(parent, Vector2(124, 190), Vector2(208, 2), Color(0.31, 0.35, 0.36, 0.13), -8.0)
+	_add_outpost_rect(parent, Vector2(132, 198), Vector2(188, 2), Color(0.31, 0.35, 0.36, 0.10), -8.0)
+	_add_outpost_rect(parent, Vector2(144, 170), Vector2(28, 5), Color(0.78, 0.46, 0.34, 0.13), -8.0)
+	_add_outpost_rect(parent, Vector2(186, 162), Vector2(18, 4), Color(0.94, 0.78, 0.54, 0.13), -8.0)
+	_add_outpost_rect(parent, Vector2(236, 151), Vector2(24, 4), Color(0.42, 0.55, 0.58, 0.13), -8.0)
+	_add_outpost_label(parent, "회수선 고정 흔적", Vector2(156, 194), Vector2(118, 12), Color(0.25, 0.21, 0.17, 0.22))
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -275,6 +379,13 @@ func build(parent: Node) -> void:
 	supply_panel.add_theme_stylebox_override("panel", _panel_style(Color("#f5f0dc"), Color("#433227"), 3, 5))
 	supply_panel.visible = false
 	root.add_child(supply_panel)
+
+	outpost_visual_layer = Control.new()
+	outpost_visual_layer.position = Vector2.ZERO
+	outpost_visual_layer.size = supply_panel.size
+	outpost_visual_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	supply_panel.add_child(outpost_visual_layer)
+	_build_outpost_visual_layer(outpost_visual_layer)
 
 	supply_label = Label.new()
 	supply_label.position = Vector2(14, 8)
