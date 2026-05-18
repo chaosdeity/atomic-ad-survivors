@@ -132,18 +132,21 @@ func detail_text(info: Dictionary) -> String:
 		return ""
 	var lines: Array[String] = [
 		"DEBUG HUD",
-		"state: %s" % str(info.get("match_state", "")),
-		"time: %.1f / %.0f" % [float(info.get("elapsed", 0.0)), float(info.get("match_duration", 0.0))],
-		"wave: %s" % str(info.get("wave_name", "")),
-		str(info.get("r01_zone_debug_label", "R01 zone:")),
-		"blockout: %s %s %.1f screens nearest=%s" % [str(info.get("r01_blockout_variant", "")), str(info.get("r01_blockout_world", "")), float(info.get("r01_blockout_screens", 0.0)), str(info.get("r01_blockout_nearest", ""))],
+		"state %s  time %.1f/%.0f  fps %d" % [
+			str(info.get("match_state", "")),
+			float(info.get("elapsed", 0.0)),
+			float(info.get("match_duration", 0.0)),
+			int(info.get("fps", 0)),
+		],
+		"route %s" % str(info.get("route_stage_label", "")),
+		"goal %s" % str(info.get("next_goal_label", "")),
+		"r01 %s nearest=%s" % [str(info.get("r01_zone_debug_label", "R01 zone:")), str(info.get("r01_blockout_nearest", ""))],
 		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d" % [
 			int(info.get("r01_collision_hard", 0)),
 			int(info.get("r01_collision_soft", 0)),
 			int(info.get("r01_collision_hazard", 0)),
 			int(info.get("r01_collision_trigger", 0)),
 		],
-		"r01 pathing: %s" % str(info.get("r01_pathing_probe", "")),
 		"outpost: %s %s facilities=%d" % [
 			str(info.get("outpost_variant", "")),
 			str(info.get("outpost_world_bounds", "")),
@@ -156,49 +159,30 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("outpost_collision_decorative", 0)),
 			int(info.get("outpost_collision_exit", 0)),
 		],
-		"roles: %s" % str(info.get("enemy_role_summary", "")),
-		"threats: %d last=%s" % [int(info.get("threat_count", 0)), str(info.get("last_threat_label", ""))],
-		"enemies: %d / %d" % [int(info.get("enemy_count", 0)), int(info.get("enemy_cap", 0))],
-		"hp: %.0f / %.0f" % [float(info.get("player_hp", 0.0)), float(info.get("max_hp", 0.0))],
-		"level/xp: %d / %.1f" % [int(info.get("level", 0)), float(info.get("xp", 0.0))],
-		"charge: %s" % str(info.get("charge_state", "")),
-		"charge timer: %.1f / %.1f" % [float(info.get("charge_timer", 0.0)), float(info.get("charge_period", 0.0))],
-		"charge window: %.1f" % float(info.get("charge_window_left", 0.0)),
-		"cards: %d" % int(info.get("selected_card_count", 0)),
-		"mid event: %s" % str(info.get("mid_event_triggered", false)),
-		"sortie/session: %d / %d" % [int(info.get("sortie_index", 1)), int(info.get("session_depth", 1))],
-		"preboss: %s" % str(info.get("preboss_stage", "")),
-		"route: %s" % str(info.get("route_stage_label", "")),
-		"goal: %s" % str(info.get("next_goal_label", "")),
-		"boss route ready: %s" % str(info.get("boss_route_ready", false)),
-		"boss signal: %s unlocked=%s" % [str(info.get("boss_signal_state", "none")), str(info.get("boss_signal_unlocked", false))],
-		"boss: %s p%d %s %.0f/%.0f %s" % [str(info.get("boss_active", false)), int(info.get("boss_phase", 0)), str(info.get("boss_state", "")), float(info.get("boss_hp", 0.0)), float(info.get("boss_max_hp", 0.0)), str(info.get("boss_defense", ""))],
-		"first sortie: %s" % str(info.get("first_sortie", false)),
-		"recall done: %s" % str(info.get("first_recall_done", false)),
-		"recall stage: %d" % int(info.get("recall_stage", 0)),
+		"hp %.0f/%.0f  enemies %d/%d  charge %s" % [
+			float(info.get("player_hp", 0.0)),
+			float(info.get("max_hp", 0.0)),
+			int(info.get("enemy_count", 0)),
+			int(info.get("enemy_cap", 0)),
+			str(info.get("charge_state", "")),
+		],
+		"sortie %d  recall=%s stage=%d" % [
+			int(info.get("sortie_index", 1)),
+			str(info.get("first_recall_done", false)),
+			int(info.get("recall_stage", 0)),
+		],
 		"traces: flyer=%d core=%d" % [int(info.get("trace_torn_ad_flyer", 0)), int(info.get("trace_campaign_core_fragment", 0))],
 		"signal clues: %d/%d" % [int(info.get("signal_clue_count", 0)), int(info.get("signal_clue_required", 3))],
-		"boss analysis: %d/3" % int(info.get("boss_analysis_level", 0)),
-		"boss clears: %d" % int(info.get("boss_clear_count", 0)),
-		"boss outcome: %s" % str(info.get("smile_home_boss_outcome", "")),
-		"r01: visits=%d records=%d outcome=%s pressure=%d traces=%d/%d/%d" % [
-			int(info.get("r01_revisit_count", 0)),
-			int(info.get("r01_signal_records_found", 0)),
-			str(info.get("r01_boss_outcome", "")),
-			int(info.get("r01_campaign_pressure", 0)),
-			int(info.get("r01_trace_preserved_count", 0)),
-			int(info.get("r01_trace_consumed_count", 0)),
-			int(info.get("r01_campaign_used_count", 0)),
+		"boss analysis %d/3 clears=%d outcome=%s" % [
+			int(info.get("boss_analysis_level", 0)),
+			int(info.get("boss_clear_count", 0)),
+			str(info.get("smile_home_boss_outcome", "")),
 		],
-		"r01 goal: %s" % str(info.get("r01_sortie_goal_phrase", "")),
-		"r01 outpost: %s" % str(info.get("r01_outpost_phrase", "")),
-		"meta upgrades: %s" % str(info.get("meta_summary", "")),
-		"fps: %d" % int(info.get("fps", 0)),
 	]
-	var outpost_insert_index := 10
-	for line in Array(info.get("outpost_debug_lines", [])):
-		lines.insert(outpost_insert_index, str(line))
-		outpost_insert_index += 1
+	var outpost_debug := Array(info.get("outpost_debug_lines", []))
+	var max_outpost_lines := mini(outpost_debug.size(), 5)
+	for i in range(max_outpost_lines):
+		lines.append(str(outpost_debug[i]))
 	return "\n".join(lines)
 
 func blockout_debug_labels_visible() -> bool:

@@ -23,6 +23,9 @@ const STATE_BOSS_ANALYSIS_3 := "boss_analysis_3"
 const STATE_BOSS_CLEARED := "boss_cleared"
 const STATE_DESTROY_NODE := "destroy_node"
 const STATE_EXTRACT_MEMORY := "extract_memory"
+const NORMAL_ALPHA_SCALE := 0.42
+const NORMAL_LINE_ALPHA_SCALE := 0.34
+const NORMAL_LABEL_ALPHA_SCALE := 0.18
 
 const FACILITIES := [
 	{
@@ -151,7 +154,7 @@ func build_preview_layer(parent: Control, progress: Dictionary, meta_progression
 	var world_px := WORLD_BOUNDS.size * scale
 	var offset := (preview_size - world_px) * 0.5
 	_draw_preview_ground(parent, offset, scale, state)
-	_draw_corridors(parent, offset, scale)
+	_draw_corridors(parent, offset, scale, show_debug_labels)
 	for facility in FACILITIES:
 		_draw_facility(parent, facility, offset, scale, state, show_debug_labels)
 	return state
@@ -300,24 +303,25 @@ func facility_variant(facility_id: String, state: Dictionary = {}) -> String:
 			return variant
 
 func _draw_preview_ground(parent: Control, offset: Vector2, scale: float, state: Dictionary) -> void:
-	_add_rect(parent, offset, WORLD_BOUNDS.size * scale, Color(0.15, 0.14, 0.12, 0.06))
+	_add_rect(parent, offset, WORLD_BOUNDS.size * scale, Color(0.15, 0.14, 0.12, 0.025))
 	for i in range(1, 3):
-		_add_rect(parent, offset + Vector2(0, WORLD_BOUNDS.size.y * scale * float(i) / 3.0), Vector2(WORLD_BOUNDS.size.x * scale, 1), Color(0.18, 0.14, 0.11, 0.08))
+		_add_rect(parent, offset + Vector2(0, WORLD_BOUNDS.size.y * scale * float(i) / 3.0), Vector2(WORLD_BOUNDS.size.x * scale, 1), Color(0.18, 0.14, 0.11, 0.025))
 	for i in range(1, 3):
-		_add_rect(parent, offset + Vector2(WORLD_BOUNDS.size.x * scale * float(i) / 3.0, 0), Vector2(1, WORLD_BOUNDS.size.y * scale), Color(0.18, 0.14, 0.11, 0.07))
+		_add_rect(parent, offset + Vector2(WORLD_BOUNDS.size.x * scale * float(i) / 3.0, 0), Vector2(1, WORLD_BOUNDS.size.y * scale), Color(0.18, 0.14, 0.11, 0.022))
 	var variant := String(state.get("variant", STATE_DORMANT))
-	var signal_alpha := 0.05
+	var signal_alpha := 0.022
 	if variant == STATE_DESTROY_NODE:
-		signal_alpha = 0.025
+		signal_alpha = 0.012
 	elif variant == STATE_EXTRACT_MEMORY:
-		signal_alpha = 0.09
+		signal_alpha = 0.035
 	_add_rect(parent, offset + Vector2(0, 0), WORLD_BOUNDS.size * scale, Color(0.35, 0.70, 0.95, signal_alpha))
 
-func _draw_corridors(parent: Control, offset: Vector2, scale: float) -> void:
+func _draw_corridors(parent: Control, offset: Vector2, scale: float, show_debug_labels: bool) -> void:
 	var center := _to_preview(Vector2(720, 445), offset, scale)
 	var anchors := [Vector2(280, 670), Vector2(1090, 555), Vector2(670, 260), Vector2(720, 735), Vector2(1085, 370)]
+	var color := Color(0.36, 0.30, 0.24, 0.04 if not show_debug_labels else 0.18)
 	for anchor in anchors:
-		_add_line(parent, center, _to_preview(anchor, offset, scale), Color(0.36, 0.30, 0.24, 0.12), 3.0)
+		_add_line(parent, center, _to_preview(anchor, offset, scale), color, 2.0 if not show_debug_labels else 3.0)
 
 func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scale: float, state: Dictionary, show_debug_labels: bool) -> void:
 	var bounds: Rect2 = facility["bounds"]
@@ -326,11 +330,17 @@ func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scal
 	var collision := String(facility["body_collision"])
 	var fill := _facility_fill(facility_id, state)
 	var border := _collision_color(collision)
-	_add_panel(parent, rect.position, rect.size, fill, Color(border.r, border.g, border.b, border.a * 0.42))
-	_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.44), 8)
+	if not show_debug_labels:
+		fill = _scaled_alpha(fill, NORMAL_ALPHA_SCALE)
+		border = _scaled_alpha(border, NORMAL_LINE_ALPHA_SCALE)
+	_add_panel(parent, rect.position, rect.size, fill, Color(border.r, border.g, border.b, border.a * (0.42 if show_debug_labels else 0.22)))
+	if show_debug_labels:
+		_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.56), 8)
+	elif _normal_label_visible(facility_id):
+		_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.44 * NORMAL_LABEL_ALPHA_SCALE), 8)
 	_draw_facility_marks(parent, facility_id, rect, state)
 	var anchor := _to_preview(Vector2(facility["interaction_anchor"]), offset, scale)
-	_add_rect(parent, anchor - Vector2(4, 4), Vector2(8, 8), Color(0.62, 1.0, 0.36, 0.18))
+	_add_rect(parent, anchor - Vector2(3, 3), Vector2(6, 6), Color(0.62, 1.0, 0.36, 0.045 if not show_debug_labels else 0.18))
 	if show_debug_labels:
 		_add_label(parent, "%s\n%s\n%s" % [facility_id, collision, facility_variant(facility_id, state)], rect.position + Vector2(2, rect.size.y + 2), Vector2(122, 26), Color(0.08, 0.05, 0.04, 0.68), 7, HORIZONTAL_ALIGNMENT_LEFT)
 
@@ -338,36 +348,36 @@ func _draw_facility_marks(parent: Control, facility_id: String, rect: Rect2, sta
 	var variant := facility_variant(facility_id, state)
 	match facility_id:
 		"recovery_platform":
-			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(38, 1), Vector2(76, 2), Color(0.36, 0.54, 0.58, 0.18))
-			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(1, 24), Vector2(2, 48), Color(0.36, 0.54, 0.58, 0.14))
+			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(38, 1), Vector2(76, 2), Color(0.36, 0.54, 0.58, 0.075))
+			_add_rect(parent, rect.position + rect.size * 0.5 - Vector2(1, 24), Vector2(2, 48), Color(0.36, 0.54, 0.58, 0.055))
 		"settlement_counter":
 			var cards := maxi(1, int(state.get("signal_record_count", 0)))
 			for i in range(cards):
-				_add_rect(parent, rect.position + Vector2(14 + i * 18, 26), Vector2(15, 10), Color(0.96, 0.82, 0.54, 0.22))
+				_add_rect(parent, rect.position + Vector2(14 + i * 18, 26), Vector2(15, 10), Color(0.96, 0.82, 0.54, 0.085))
 			if variant == "core_fragment_tray":
-				_add_rect(parent, rect.position + Vector2(rect.size.x - 52, 27), Vector2(36, 8), Color(0.62, 1.0, 0.36, 0.20))
+				_add_rect(parent, rect.position + Vector2(rect.size.x - 52, 27), Vector2(36, 8), Color(0.62, 1.0, 0.36, 0.085))
 		"name_archive":
 			var slots := maxi(1, int(state.get("boss_analysis_level", 0)))
 			for i in range(6):
-				var alpha := 0.24 if i < slots else 0.10
+				var alpha := 0.095 if i < slots else 0.035
 				if variant == "photo_afterimage_slot":
-					alpha = 0.26 if i % 2 == 0 else 0.13
+					alpha = 0.11 if i % 2 == 0 else 0.05
 				_add_rect(parent, rect.position + Vector2(16 + (i % 2) * 38, 25 + int(i / 2) * 18), Vector2(27, 11), Color(0.96, 0.82, 0.56, alpha))
 		"sortie_board":
 			var records := int(state.get("signal_record_count", 0))
 			for i in range(3):
-				var alpha := 0.24 if i < records else 0.09
+				var alpha := 0.095 if i < records else 0.03
 				_add_rect(parent, rect.position + Vector2(24 + i * 44, 26), Vector2(32, 18), Color(0.96, 0.79, 0.48, alpha))
 			if variant == "broken_route_line":
-				_add_rect(parent, rect.position + Vector2(30, 58), Vector2(140, 2), Color(0.25, 0.22, 0.18, 0.18), -8.0)
+				_add_rect(parent, rect.position + Vector2(30, 58), Vector2(140, 2), Color(0.25, 0.22, 0.18, 0.07), -8.0)
 			elif variant == "memory_route_note":
-				_add_rect(parent, rect.position + Vector2(120, 50), Vector2(80, 2), Color(0.95, 0.52, 0.62, 0.23), 10.0)
+				_add_rect(parent, rect.position + Vector2(120, 50), Vector2(80, 2), Color(0.95, 0.52, 0.62, 0.09), 10.0)
 		"charging_tuner":
 			var waves := maxi(1, int(state.get("boss_analysis_level", 0)))
 			for i in range(waves):
-				_add_rect(parent, rect.position + Vector2(24 + i * 21, 36 - (i % 2) * 5), Vector2(18, 3), Color(0.35, 0.70, 0.95, 0.24))
+				_add_rect(parent, rect.position + Vector2(24 + i * 21, 36 - (i % 2) * 5), Vector2(18, 3), Color(0.35, 0.70, 0.95, 0.09))
 		"sortie_gate":
-			_add_rect(parent, rect.position + Vector2(28, rect.size.y * 0.5), Vector2(rect.size.x - 56, 3), Color(0.62, 1.0, 0.36, 0.13))
+			_add_rect(parent, rect.position + Vector2(28, rect.size.y * 0.5), Vector2(rect.size.x - 56, 3), Color(0.62, 1.0, 0.36, 0.05))
 
 func _facility_fill(facility_id: String, state: Dictionary) -> Color:
 	var variant := facility_variant(facility_id, state)
@@ -401,6 +411,12 @@ func _collision_color(collision_class: String) -> Color:
 			return Color(1.0, 0.91, 0.25, 0.64)
 		_:
 			return Color(0.44, 0.34, 0.28, 0.38)
+
+func _normal_label_visible(facility_id: String) -> bool:
+	return facility_id == "recovery_platform" or facility_id == "sortie_board" or facility_id == "sortie_gate"
+
+func _scaled_alpha(color: Color, scale: float) -> Color:
+	return Color(color.r, color.g, color.b, color.a * scale)
 
 func _to_preview(world_pos: Vector2, offset: Vector2, scale: float) -> Vector2:
 	return offset + (world_pos - WORLD_BOUNDS.position) * scale

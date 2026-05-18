@@ -59,19 +59,28 @@ func _button_style(fill_color: Color, border_width: int = 2) -> StyleBoxFlat:
 	return _panel_style(fill_color, C.COCOA, border_width, 3)
 
 func _supply_applied_style() -> StyleBoxFlat:
-	return _panel_style(Color("#e9ffd8"), C.TOXIC_GREEN, 2, 3)
+	return _panel_style(Color("#f1ffe6"), Color("#5f9f42"), 2, 3)
 
 func _supply_buyable_style() -> StyleBoxFlat:
 	return _panel_style(Color("#fff0b8"), C.NEON_RED, 2, 3)
 
 func _supply_disabled_style() -> StyleBoxFlat:
-	return _panel_style(Color("#e1d4bc"), Color("#8a7962"), 1, 3)
+	return _panel_style(Color("#eee2ca"), Color("#746653"), 1, 3)
 
 func _supply_locked_style() -> StyleBoxFlat:
-	return _panel_style(Color("#d1c6b1"), Color("#6b5b4a"), 1, 3)
+	return _panel_style(Color("#e4d9c3"), Color("#6b5b4a"), 1, 3)
 
 func _apply_font(control: Control) -> void:
 	control.add_theme_font_override("font", UIFont.get_font())
+
+func _add_flat_backing(parent: Control, position: Vector2, size: Vector2, color: Color) -> ColorRect:
+	var rect := ColorRect.new()
+	rect.position = position
+	rect.size = size
+	rect.color = color
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(rect)
+	return rect
 
 func build(parent: Node) -> void:
 	hud = CanvasLayer.new()
@@ -286,6 +295,12 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(outpost_visual_layer)
 	outpost_blockout.build_preview_layer(outpost_visual_layer, {}, null, false)
 
+	_add_flat_backing(supply_panel, Vector2(12, 6), Vector2(440, 84), Color(1.0, 0.96, 0.84, 0.82))
+	_add_flat_backing(supply_panel, Vector2(12, 90), Vector2(440, 15), Color(1.0, 0.96, 0.84, 0.86))
+	_add_flat_backing(supply_panel, Vector2(12, 104), Vector2(440, 86), Color(1.0, 0.97, 0.88, 0.90))
+	_add_flat_backing(supply_panel, Vector2(14, 188), Vector2(436, 22), Color(1.0, 0.96, 0.84, 0.84))
+	_add_flat_backing(supply_panel, Vector2(94, 216), Vector2(276, 24), Color(1.0, 0.96, 0.84, 0.74))
+
 	supply_label = Label.new()
 	supply_label.position = Vector2(14, 8)
 	supply_label.size = Vector2(436, 80)
@@ -355,14 +370,15 @@ func build(parent: Node) -> void:
 	supply_panel.add_child(supply_restart_button)
 
 	debug_panel = Panel.new()
-	debug_panel.position = Vector2(8, 10)
-	debug_panel.size = Vector2(464, 248)
+	debug_panel.position = Vector2(8, 38)
+	debug_panel.size = Vector2(300, 158)
+	debug_panel.add_theme_stylebox_override("panel", _panel_style(Color(0.96, 0.90, 0.78, 0.88), Color(0.26, 0.18, 0.14, 0.72), 2, 4))
 	debug_panel.visible = false
 	root.add_child(debug_panel)
 
 	debug_label = Label.new()
 	debug_label.position = Vector2(8, 6)
-	debug_label.size = Vector2(448, 236)
+	debug_label.size = Vector2(284, 146)
 	debug_label.add_theme_font_size_override("font_size", 7)
 	debug_label.add_theme_color_override("font_color", C.INK)
 	debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -566,7 +582,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		button.disabled = not can_buy
 		button.custom_minimum_size = Vector2(416, 42)
 		button.add_theme_font_size_override("font_size", FONT_TINY)
-		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
+		var button_text_color := C.INK if can_buy else Color("#4f4135")
 		var normal_style := _button_style(Color("#fff7df"))
 		var hover_style := _button_style(Color("#ffe7a8"))
 		var disabled_style := _supply_disabled_style()
@@ -576,8 +592,12 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		elif level >= max_level:
 			normal_style = _supply_applied_style()
 			disabled_style = _supply_applied_style()
+			button_text_color = Color("#24421f")
 		elif not unlocked:
 			disabled_style = _supply_locked_style()
+			button_text_color = Color("#5a4d3f")
+		button.add_theme_color_override("font_color", button_text_color)
+		button.add_theme_color_override("font_disabled_color", button_text_color)
 		button.add_theme_stylebox_override("normal", normal_style)
 		button.add_theme_stylebox_override("hover", hover_style)
 		button.add_theme_stylebox_override("disabled", disabled_style)
