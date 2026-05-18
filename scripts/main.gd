@@ -48,6 +48,7 @@ const BOSS_SIGNAL_LABELS := {
 	"near": "근접",
 	"silent": "침묵",
 }
+const TERMINAL_STATES := ["game_over", "victory", "recalled", "boss_victory"]
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -1440,7 +1441,7 @@ func _finish_match(result_state: String) -> void:
 func _should_show_supply_after_result(result_state: String) -> bool:
 	if result_state == "recalled" or result_state == "boss_victory":
 		return true
-	return result_state == "victory" and first_recall_done
+	return first_recall_done and (result_state == "victory" or result_state == "game_over")
 
 func _result_data(result_state: String) -> Dictionary:
 	if result_state == "boss_victory":
@@ -1615,7 +1616,7 @@ func _handle_terminal_action() -> void:
 	match match_state:
 		"recalled", "boss_victory":
 			_show_supply_depot()
-		"victory":
+		"victory", "game_over":
 			if _should_show_supply_after_result(match_state):
 				_show_supply_depot()
 			else:
@@ -2331,7 +2332,7 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 
 func _restart() -> void:
 	var was_supply := match_state == "supply"
-	var was_terminal_redeploy := (match_state == "game_over" or match_state == "victory" or match_state == "boss_victory") and first_recall_done
+	var was_terminal_redeploy := TERMINAL_STATES.has(match_state) and first_recall_done
 	if is_inside_tree():
 		get_tree().paused = false
 	if was_supply or was_terminal_redeploy:
