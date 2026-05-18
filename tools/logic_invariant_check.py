@@ -102,6 +102,9 @@ def check_result_routing(t: dict[str, str], results: list[Check]) -> None:
     terminal_body = function_body(main, "_handle_terminal_action")
     restart_body = function_body(main, "_restart")
     finish_body = function_body(main, "_finish_match")
+    debug_outcome_body = function_body(main, "_debug_set_smile_home_boss_outcome")
+    hud = t.get("hud", "")
+    restart_button_body = function_body(hud, "_on_restart_button_pressed")
 
     add(results, "PASS" if supply_body else "FAIL", "result routing", "_should_show_supply_after_result exists")
     add(
@@ -121,6 +124,24 @@ def check_result_routing(t: dict[str, str], results: list[Check]) -> None:
         "PASS" if has_all(terminal_body, ['"victory", "game_over"', "_should_show_supply_after_result", "_show_supply_depot"]) else "FAIL",
         "result routing",
         "_handle_terminal_action sends game_over/victory through supply gate",
+    )
+    add(
+        results,
+        "PASS" if has_all(finish_body, ['Callable(self, "_handle_terminal_action")', "hud.show_result_screen"]) else "FAIL",
+        "result routing",
+        "result screen button uses the same terminal action as space input",
+    )
+    add(
+        results,
+        "PASS" if has_all(debug_outcome_body, ['Callable(self, "_handle_terminal_action")']) else "FAIL",
+        "result routing",
+        "boss victory result refresh preserves terminal action callback",
+    )
+    add(
+        results,
+        "PASS" if has_all(restart_button_body, ["restart_callback.is_valid()", "restart_callback.call()"]) else "FAIL",
+        "result routing",
+        "HUD result button dispatches its assigned terminal callback",
     )
     add(
         results,

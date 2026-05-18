@@ -1431,9 +1431,7 @@ func _finish_match(result_state: String) -> void:
 		get_tree().paused = false
 	offered_cards.clear()
 	hud.hide_level_card()
-	var callback := Callable(self, "_restart")
-	if _should_show_supply_after_result(result_state):
-		callback = Callable(self, "_show_supply_depot")
+	var callback := Callable(self, "_handle_terminal_action")
 	hud.show_result_screen(_result_data(result_state), callback)
 	_set_music("")
 	_play_sfx("result_settle")
@@ -1994,7 +1992,7 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 		boss.set_outcome_visual(outcome)
 	effects.show_combat_banner(label, C.TOXIC_GREEN if applied else C.NEON_RED)
 	if match_state == "boss_victory":
-		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_show_supply_depot"))
+		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_handle_terminal_action"))
 	elif match_state == "supply":
 		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
 
