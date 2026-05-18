@@ -1972,6 +1972,8 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 		return
 	var applied := meta_progression.set_smile_home_boss_outcome(outcome)
 	var label := meta_progression.smile_home_boss_outcome_label() if applied else "잘못된 보스 처리 값"
+	if applied:
+		boss.set_outcome_visual(outcome)
 	effects.show_combat_banner(label, C.TOXIC_GREEN if applied else C.NEON_RED)
 	if match_state == "boss_victory":
 		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_show_supply_depot"))

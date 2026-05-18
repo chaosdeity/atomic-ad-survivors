@@ -47,6 +47,7 @@ var demo_hit_done := false
 var shields: Array[float] = []
 var hit_flash := 0.0
 var core_expose_bonus := 0.0
+var outcome_visual := ""
 var defense_rules := EnemyController.new()
 
 func start() -> void:
@@ -84,6 +85,7 @@ func reset() -> void:
 	shields.clear()
 	hit_flash = 0.0
 	core_expose_bonus = 0.0
+	outcome_visual = ""
 
 func update(delta: float, player_pos: Vector2) -> Dictionary:
 	if not active or defeated:
@@ -186,6 +188,9 @@ func force_expose_core(duration: float = 3.0) -> void:
 
 func set_core_expose_bonus(value: float) -> void:
 	core_expose_bonus = maxf(0.0, value)
+
+func set_outcome_visual(outcome: String) -> void:
+	outcome_visual = outcome
 
 func force_phase_two_preview() -> void:
 	if not active or defeated:
@@ -436,12 +441,16 @@ func _draw_telegraphs(canvas: CanvasItem) -> void:
 			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord - 26.0), Vector2(C.ARENA_HALF.x, sweep_line_coord - 26.0), hot, 3.0)
 			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord + 26.0), Vector2(C.ARENA_HALF.x, sweep_line_coord + 26.0), hot, 3.0)
 			canvas.draw_line(Vector2(-C.ARENA_HALF.x, sweep_line_coord), Vector2(C.ARENA_HALF.x, sweep_line_coord), hot, 5.0)
+			_draw_coupon_sweep_cues(canvas, Vector2(-C.ARENA_HALF.x + 46.0, sweep_line_coord), Vector2.RIGHT, alpha)
+			_draw_coupon_sweep_cues(canvas, Vector2(C.ARENA_HALF.x - 46.0, sweep_line_coord), Vector2.LEFT, alpha)
 		else:
 			var rect := Rect2(Vector2(sweep_line_coord - 26.0, -C.ARENA_HALF.y), Vector2(52.0, C.ARENA_HALF.y * 2.0))
 			canvas.draw_rect(rect, color)
 			canvas.draw_line(Vector2(sweep_line_coord - 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord - 26.0, C.ARENA_HALF.y), hot, 3.0)
 			canvas.draw_line(Vector2(sweep_line_coord + 26.0, -C.ARENA_HALF.y), Vector2(sweep_line_coord + 26.0, C.ARENA_HALF.y), hot, 3.0)
 			canvas.draw_line(Vector2(sweep_line_coord, -C.ARENA_HALF.y), Vector2(sweep_line_coord, C.ARENA_HALF.y), hot, 5.0)
+			_draw_coupon_sweep_cues(canvas, Vector2(sweep_line_coord, -C.ARENA_HALF.y + 46.0), Vector2.DOWN, alpha)
+			_draw_coupon_sweep_cues(canvas, Vector2(sweep_line_coord, C.ARENA_HALF.y - 46.0), Vector2.UP, alpha)
 	if state == "distortion_telegraph" or state == "distortion_active":
 		var active_alpha := 0.42 if state == "distortion_active" else 0.24
 		var wave_color := Color(0.35, 0.70, 0.95, active_alpha)
@@ -473,44 +482,225 @@ func _draw_telegraphs(canvas: CanvasItem) -> void:
 		canvas.draw_line(demo_start_pos - normal * half_width, demo_end_pos - normal * half_width, edge_color, 3.0)
 		canvas.draw_line(demo_start_pos, demo_end_pos, Color(0.08, 0.06, 0.05, alpha + 0.16), 2.0)
 		canvas.draw_circle(demo_end_pos, 12.0 + sin(Time.get_ticks_msec() * 0.012) * 2.0, edge_color)
+		_draw_demo_safety_cues(canvas, alpha)
+
+func _draw_coupon_sweep_cues(canvas: CanvasItem, anchor: Vector2, dir: Vector2, alpha: float) -> void:
+	var side := dir.orthogonal().normalized()
+	for i in range(-2, 3):
+		var center := anchor + side * float(i) * 13.0
+		var angle := dir.angle() + float(i) * 0.08
+		_draw_rotated_rect(canvas, center, Vector2(20, 11), angle, Color(1.0, 0.96, 0.72, alpha + 0.14), C.COCOA, 1.2)
+		canvas.draw_line(center - dir * 5.5, center + dir * 5.5, Color(1.0, 0.3, 0.36, alpha + 0.22), 1.0)
+
+func _draw_demo_safety_cues(canvas: CanvasItem, alpha: float) -> void:
+	var normal := demo_dir.orthogonal().normalized()
+	for i in range(4):
+		var ratio := (float(i) + 0.5) / 4.0
+		var center := demo_start_pos.lerp(demo_end_pos, ratio)
+		var offset := normal * (DEMO_RAIL_WIDTH * 0.5 + 12.0)
+		for side_sign in [-1.0, 1.0]:
+			var marker: Vector2 = center + offset * side_sign
+			canvas.draw_rect(Rect2(marker - Vector2(5, 5), Vector2(10, 10)), Color(1.0, 0.96, 0.72, alpha + 0.16))
+			canvas.draw_rect(Rect2(marker - Vector2(5, 5), Vector2(10, 10)), C.NEON_RED, false, 1.4)
+			canvas.draw_line(marker + Vector2(-4, 4), marker + Vector2(4, -4), C.NEON_RED, 1.2)
 
 func _draw_body(canvas: CanvasItem, elapsed: float) -> void:
 	var ring_color := _defense_color()
 	var pulse := 1.0 + sin(elapsed * 4.6) * 0.04
+	var damage_tier := _damage_visual_tier()
 	if phase >= 3:
 		canvas.draw_arc(pos, BODY_RADIUS + 22.0 + sin(elapsed * 9.0) * 4.0, 0.0, TAU, 64, Color(1.0, 0.3, 0.36, 0.55), 6.0)
 		canvas.draw_arc(pos, BODY_RADIUS + 34.0 + cos(elapsed * 7.5) * 5.0, 0.0, TAU, 64, Color(1.0, 0.91, 0.25, 0.38), 3.0)
+		_draw_family_pressure(canvas, elapsed)
+	if defeated:
+		_draw_outcome_hook(canvas, elapsed)
 	canvas.draw_circle(pos + Vector2(4, 8), BODY_RADIUS + 8.0, Color(0.0, 0.0, 0.0, 0.18))
-	canvas.draw_circle(pos, BODY_RADIUS * 0.92, Color("#f6dfaa"))
+	canvas.draw_circle(pos, BODY_RADIUS * 0.92, Color("#f6dfaa") if not defeated else Color("#d8ceb8"))
 	canvas.draw_arc(pos, (BODY_RADIUS + 10.0) * pulse, 0.0, TAU, 64, ring_color, 5.0)
-	canvas.draw_rect(Rect2(pos + Vector2(-46, -38), Vector2(92, 58)), Color("#f5e9d0"))
+	_draw_model_house_roof(canvas, elapsed, damage_tier)
+	_draw_coupon_skirt(canvas, elapsed, damage_tier)
+	_draw_domestic_attachments(canvas, elapsed, damage_tier)
+	canvas.draw_rect(Rect2(pos + Vector2(-46, -38), Vector2(92, 58)), Color("#f5e9d0") if not defeated else Color("#cfc4ad"))
 	canvas.draw_rect(Rect2(pos + Vector2(-46, -38), Vector2(92, 58)), C.COCOA, false, 4.0)
-	canvas.draw_rect(Rect2(pos + Vector2(-32, -26), Vector2(64, 34)), Color("#c8dcd8"))
-	canvas.draw_rect(Rect2(pos + Vector2(-32, -26), Vector2(64, 34)), ring_color, false, 2.0)
-	canvas.draw_line(pos + Vector2(-24, -58), pos + Vector2(-42, -86), C.COCOA, 3.0)
-	canvas.draw_line(pos + Vector2(24, -58), pos + Vector2(42, -86), C.COCOA, 3.0)
-	canvas.draw_circle(pos + Vector2(-42, -86), 5.0, C.VITAMIN_YELLOW)
-	canvas.draw_circle(pos + Vector2(42, -86), 5.0, C.NEON_RED)
+	_draw_crt_face(canvas, elapsed, ring_color, damage_tier)
+	_draw_doorbell_and_nameplate(canvas, elapsed, damage_tier)
 	if state == "distortion_telegraph" or state == "distortion_active":
 		var antenna_color := Color(0.35, 0.70, 0.95, 0.82)
 		canvas.draw_arc(pos + Vector2(-42, -86), 13.0 + sin(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
 		canvas.draw_arc(pos + Vector2(42, -86), 13.0 + cos(elapsed * 12.0) * 2.0, 0.0, TAU, 24, antenna_color, 2.5)
+		_draw_crt_glitch(canvas, elapsed, 0.86)
 	if state == "demo_telegraph":
 		canvas.draw_line(pos + demo_dir * 12.0, pos + demo_dir * 46.0, C.NEON_RED, 5.0)
 		canvas.draw_arc(pos, BODY_RADIUS + 18.0, demo_dir.angle() - 0.45, demo_dir.angle() + 0.45, 18, C.VITAMIN_YELLOW, 4.0)
 	elif state == "demo_charge":
 		canvas.draw_line(pos - demo_dir * 38.0, pos - demo_dir * 78.0, Color(1.0, 0.91, 0.25, 0.76), 5.0)
-	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.LEMON_YELLOW)
-	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.COCOA, false, 2.0)
-	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), "PRIME", HORIZONTAL_ALIGNMENT_CENTER, 112.0, 10, C.INK)
 	if core_exposed:
-		canvas.draw_circle(pos + Vector2(0, -9), 28.0 + sin(elapsed * 10.0) * 4.0, Color(0.62, 1.0, 0.36, 0.22))
-		canvas.draw_arc(pos + Vector2(0, -9), 24.0 + sin(elapsed * 14.0) * 3.0, 0.0, TAU, 36, C.TOXIC_GREEN, 4.0)
-		canvas.draw_circle(pos + Vector2(0, -9), 15.0 + sin(elapsed * 14.0) * 2.0, Color(0.62, 1.0, 0.36, 0.90))
-		canvas.draw_circle(pos + Vector2(0, -9), 6.0, C.VITAMIN_YELLOW)
+		_draw_core_exposed(canvas, elapsed, damage_tier)
 	if hit_flash > 0.0:
 		canvas.draw_circle(pos, BODY_RADIUS + 12.0, Color(1.0, 1.0, 0.86, hit_flash * 2.8))
 	_draw_shields(canvas, elapsed)
+
+func _damage_visual_tier() -> int:
+	if hp_ratio() <= 0.25:
+		return 2
+	if hp_ratio() <= 0.65:
+		return 1
+	return 0
+
+func _draw_model_house_roof(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
+	var roof_y := -59.0
+	var roof := PackedVector2Array([
+		pos + Vector2(-48, roof_y),
+		pos + Vector2(0, roof_y - 29),
+		pos + Vector2(48, roof_y),
+	])
+	canvas.draw_colored_polygon(roof, Color("#f2b8b0") if not defeated else Color("#b8a49b"))
+	for i in range(roof.size()):
+		canvas.draw_line(roof[i], roof[(i + 1) % roof.size()], C.COCOA, 3.0)
+	canvas.draw_rect(Rect2(pos + Vector2(-30, -59), Vector2(60, 14)), C.AD_PAPER if not defeated else Color("#c8bea8"))
+	canvas.draw_rect(Rect2(pos + Vector2(-30, -59), Vector2(60, 14)), C.COCOA, false, 2.0)
+	canvas.draw_line(pos + Vector2(-24, -72), pos + Vector2(-42, -96), C.COCOA, 3.0)
+	canvas.draw_line(pos + Vector2(24, -72), pos + Vector2(42, -96), C.COCOA, 3.0)
+	canvas.draw_circle(pos + Vector2(-42, -96), 5.0 + sin(elapsed * 10.0) * (1.5 if damage_tier > 0 else 0.4), C.VITAMIN_YELLOW)
+	canvas.draw_circle(pos + Vector2(42, -96), 5.0 + cos(elapsed * 9.0) * (1.5 if damage_tier > 0 else 0.4), C.NEON_RED)
+	if damage_tier >= 1:
+		canvas.draw_line(pos + Vector2(19, -75), pos + Vector2(37, -58), C.NEON_RED, 2.0)
+	if damage_tier >= 2:
+		canvas.draw_line(pos + Vector2(-35, -56), pos + Vector2(-17, -48), C.NEON_RED, 2.0)
+		canvas.draw_arc(pos + Vector2(0, -74), 24.0 + sin(elapsed * 8.0) * 2.5, 0.0, TAU, 36, Color(1.0, 0.3, 0.36, 0.38), 2.5)
+
+func _draw_coupon_skirt(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
+	var spread := 1.0
+	if state == "sweep_telegraph" or state == "sweep_fire":
+		spread = 1.35
+	for i in range(-3, 4):
+		var angle := PI * 0.5 + float(i) * 0.23 * spread + sin(elapsed * 3.5 + float(i)) * 0.025
+		var center := pos + Vector2(float(i) * 13.0 * spread, 45.0 + absf(float(i)) * 2.5)
+		var fill := Color("#fff7df") if i % 2 == 0 else Color("#fad89c")
+		if defeated:
+			fill = Color("#cfc5ad")
+			center.y += 10.0 + absf(float(i)) * 3.0
+			angle += 0.25 * sign(float(i))
+		_draw_rotated_rect(canvas, center, Vector2(23, 13), angle, fill, C.COCOA, 1.5)
+		canvas.draw_line(center + Vector2(-5, 2), center + Vector2(7, -2), C.NEON_RED if damage_tier >= 2 else C.COCOA, 1.0)
+	if damage_tier >= 1 and not defeated:
+		canvas.draw_line(pos + Vector2(-36, 35), pos + Vector2(35, 47), C.NEON_RED, 2.0)
+
+func _draw_domestic_attachments(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
+	var hose_color := C.COCOA if not defeated else Color("#7d7568")
+	var hose_end := pos + Vector2(-78, 24 + sin(elapsed * 3.0) * 2.0)
+	canvas.draw_line(pos + Vector2(-43, 5), hose_end, hose_color, 5.0)
+	canvas.draw_arc(hose_end, 13.0, PI * 0.15, PI * 1.25, 18, hose_color, 4.0)
+	canvas.draw_circle(hose_end + Vector2(-7, 5), 5.0, C.MINT_FADE if not defeated else Color("#899a94"))
+	var frame_pos := pos + Vector2(66, -4)
+	canvas.draw_rect(Rect2(frame_pos - Vector2(16, 13), Vector2(32, 26)), Color("#fff7df") if damage_tier < 1 else Color("#d4d8cf"))
+	canvas.draw_rect(Rect2(frame_pos - Vector2(16, 13), Vector2(32, 26)), C.COCOA, false, 2.0)
+	if damage_tier < 1:
+		canvas.draw_circle(frame_pos + Vector2(-6, -2), 3.0, C.CORAL_PINK)
+		canvas.draw_circle(frame_pos + Vector2(6, -2), 3.0, C.SAGE_GREEN)
+		canvas.draw_line(frame_pos + Vector2(-10, 8), frame_pos + Vector2(10, 8), C.COCOA, 1.0)
+	else:
+		canvas.draw_line(frame_pos + Vector2(-11, -9), frame_pos + Vector2(12, 10), C.NEON_RED, 1.5)
+		canvas.draw_line(frame_pos + Vector2(-12, 9), frame_pos + Vector2(11, -10), C.NEON_RED, 1.5)
+	var caster_y := 61.0
+	canvas.draw_line(pos + Vector2(-25, 42), pos + Vector2(-31, caster_y), C.COCOA, 3.0)
+	canvas.draw_line(pos + Vector2(25, 42), pos + Vector2(31, caster_y), C.COCOA, 3.0)
+	canvas.draw_circle(pos + Vector2(-31, caster_y), 6.0, C.INK)
+	canvas.draw_circle(pos + Vector2(31, caster_y), 6.0, C.INK)
+
+func _draw_crt_face(canvas: CanvasItem, elapsed: float, ring_color: Color, damage_tier: int) -> void:
+	var jitter := Vector2.ZERO
+	if damage_tier >= 1 and not defeated:
+		jitter = Vector2(sin(elapsed * 31.0) * 2.0, cos(elapsed * 23.0) * 1.2)
+	var screen_rect := Rect2(pos + Vector2(-32, -26) + jitter, Vector2(64, 34))
+	canvas.draw_rect(screen_rect, Color("#c8dcd8") if not defeated else Color("#313633"))
+	canvas.draw_rect(screen_rect, ring_color if not defeated else Color("#3b332f"), false, 2.0)
+	if defeated and outcome_visual == "destroy_node":
+		canvas.draw_line(screen_rect.position + Vector2(8, 8), screen_rect.position + Vector2(56, 26), C.INK, 2.0)
+		canvas.draw_line(screen_rect.position + Vector2(56, 8), screen_rect.position + Vector2(8, 26), C.INK, 2.0)
+		return
+	var face_color := C.INK if damage_tier < 2 else C.NEON_RED
+	if defeated and outcome_visual == "extract_memory":
+		face_color = Color(0.62, 1.0, 0.36, 0.92)
+	canvas.draw_circle(pos + Vector2(-13, -13) + jitter, 3.0, face_color)
+	canvas.draw_circle(pos + Vector2(13, -13) + jitter, 3.0, face_color)
+	canvas.draw_arc(pos + Vector2(0, -12) + jitter, 17.0, 0.10, PI - 0.10, 20, face_color, 2.5)
+	if damage_tier >= 1 and not defeated:
+		_draw_crt_glitch(canvas, elapsed, 0.52)
+	if damage_tier >= 2 and not defeated:
+		canvas.draw_string(UIFont.get_font(), pos + Vector2(0, -3), "OK?", HORIZONTAL_ALIGNMENT_CENTER, 56.0, 9, C.NEON_RED)
+
+func _draw_crt_glitch(canvas: CanvasItem, elapsed: float, alpha: float) -> void:
+	for i in range(4):
+		var y := -25.0 + float(i) * 9.0 + sin(elapsed * 15.0 + float(i)) * 1.4
+		var x_offset := sin(elapsed * 21.0 + float(i) * 2.0) * 5.0
+		canvas.draw_line(pos + Vector2(-31 + x_offset, y), pos + Vector2(31 + x_offset, y), Color(1.0, 0.3, 0.36, alpha), 1.4)
+
+func _draw_doorbell_and_nameplate(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
+	var bell_pos := pos + Vector2(-50, -16)
+	canvas.draw_circle(bell_pos, 7.0, C.VITAMIN_YELLOW if not defeated else Color("#9f9278"))
+	canvas.draw_circle(bell_pos, 3.0 + sin(elapsed * 7.0) * (1.0 if state == "distortion_active" else 0.25), C.NEON_RED)
+	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.LEMON_YELLOW if not defeated else Color("#b9aa86"))
+	canvas.draw_rect(Rect2(pos + Vector2(-58, 20), Vector2(116, 18)), C.COCOA, false, 2.0)
+	var label := "SMILE HOME"
+	if damage_tier >= 2 and not defeated:
+		label = "FAMILY PASS?"
+	elif defeated and outcome_visual == "extract_memory":
+		label = "MEMORY KEPT"
+	elif defeated and outcome_visual == "destroy_node":
+		label = "NODE CUT"
+	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), label, HORIZONTAL_ALIGNMENT_CENTER, 112.0, 9, C.INK)
+
+func _draw_core_exposed(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
+	var core_pos := pos + Vector2(0, -9)
+	var radius_bonus := 4.0 if damage_tier >= 2 else 0.0
+	canvas.draw_rect(Rect2(pos + Vector2(-24, -4), Vector2(48, 24)), Color(0.08, 0.06, 0.05, 0.36))
+	canvas.draw_line(pos + Vector2(-24, -4), pos + Vector2(-43, 12), C.COCOA, 2.5)
+	canvas.draw_line(pos + Vector2(24, -4), pos + Vector2(43, 12), C.COCOA, 2.5)
+	canvas.draw_circle(core_pos, 28.0 + radius_bonus + sin(elapsed * 10.0) * 4.0, Color(0.62, 1.0, 0.36, 0.22))
+	canvas.draw_arc(core_pos, 24.0 + radius_bonus + sin(elapsed * 14.0) * 3.0, 0.0, TAU, 36, C.TOXIC_GREEN, 4.0)
+	canvas.draw_circle(core_pos, 15.0 + radius_bonus + sin(elapsed * 14.0) * 2.0, Color(0.62, 1.0, 0.36, 0.90))
+	canvas.draw_circle(core_pos, 6.0, C.VITAMIN_YELLOW)
+
+func _draw_family_pressure(canvas: CanvasItem, elapsed: float) -> void:
+	for i in range(5):
+		var angle := elapsed * 1.2 + TAU * float(i) / 5.0
+		var center := pos + Vector2(cos(angle), sin(angle)) * (BODY_RADIUS + 48.0)
+		canvas.draw_rect(Rect2(center - Vector2(15, 10), Vector2(30, 20)), Color(1.0, 0.96, 0.72, 0.26))
+		canvas.draw_rect(Rect2(center - Vector2(15, 10), Vector2(30, 20)), C.NEON_RED, false, 1.5)
+		canvas.draw_line(center + Vector2(-10, 4), center + Vector2(10, -4), Color(1.0, 0.3, 0.36, 0.60), 1.0)
+	canvas.draw_arc(pos, BODY_RADIUS + 48.0 + sin(elapsed * 8.0) * 4.0, 0.0, TAU, 64, Color(1.0, 0.3, 0.36, 0.28), 2.0)
+
+func _draw_outcome_hook(canvas: CanvasItem, elapsed: float) -> void:
+	if outcome_visual == "extract_memory":
+		for i in range(4):
+			var offset := Vector2(-42 + float(i) * 28.0, -75 - sin(elapsed * 3.0 + float(i)) * 6.0)
+			canvas.draw_rect(Rect2(pos + offset, Vector2(20, 15)), Color(0.62, 1.0, 0.36, 0.18))
+			canvas.draw_rect(Rect2(pos + offset, Vector2(20, 15)), C.TOXIC_GREEN, false, 1.5)
+			canvas.draw_line(pos + offset + Vector2(4, 10), pos + offset + Vector2(16, 5), C.TOXIC_GREEN, 1.0)
+		canvas.draw_arc(pos, BODY_RADIUS + 40.0, PI * 1.08, PI * 1.92, 34, Color(0.62, 1.0, 0.36, 0.42), 3.0)
+	elif outcome_visual == "destroy_node":
+		for i in range(5):
+			var angle := -PI * 0.85 + float(i) * PI * 0.42
+			var from := pos + Vector2(cos(angle), sin(angle)) * 28.0
+			var to := pos + Vector2(cos(angle), sin(angle)) * (BODY_RADIUS + 34.0)
+			canvas.draw_line(from, to, Color(1.0, 0.3, 0.36, 0.72), 3.0)
+		canvas.draw_arc(pos, BODY_RADIUS + 30.0 + sin(elapsed * 8.0) * 2.0, 0.0, TAU, 40, Color(0.08, 0.06, 0.05, 0.44), 5.0)
+	else:
+		canvas.draw_arc(pos, BODY_RADIUS + 26.0, 0.0, TAU, 48, Color(1.0, 0.91, 0.25, 0.26), 3.0)
+
+func _draw_rotated_rect(canvas: CanvasItem, center: Vector2, size: Vector2, angle: float, fill: Color, border: Color, border_width: float) -> void:
+	var axis_x := Vector2(cos(angle), sin(angle)) * size.x * 0.5
+	var axis_y := Vector2(-sin(angle), cos(angle)) * size.y * 0.5
+	var points := PackedVector2Array([
+		center - axis_x - axis_y,
+		center + axis_x - axis_y,
+		center + axis_x + axis_y,
+		center - axis_x + axis_y,
+	])
+	canvas.draw_colored_polygon(points, fill)
+	for i in range(points.size()):
+		canvas.draw_line(points[i], points[(i + 1) % points.size()], border, border_width)
 
 func _draw_shields(canvas: CanvasItem, elapsed: float) -> void:
 	if shields.size() == 0:
@@ -519,9 +709,10 @@ func _draw_shields(canvas: CanvasItem, elapsed: float) -> void:
 		var angle := elapsed * 1.6 + TAU * float(i) / float(SHIELD_COUNT)
 		var shield_pos := pos + Vector2(cos(angle), sin(angle)) * 78.0
 		var ratio := clampf(float(shields[i]) / SHIELD_HP, 0.0, 1.0)
-		canvas.draw_rect(Rect2(shield_pos - Vector2(13, 9), Vector2(26, 18)), Color("#fff7df"))
-		canvas.draw_rect(Rect2(shield_pos - Vector2(13, 9), Vector2(26, 18)), C.COCOA, false, 2.0)
-		canvas.draw_line(shield_pos + Vector2(-8, 3), shield_pos + Vector2(8, -3), C.NEON_RED, 1.5)
+		_draw_rotated_rect(canvas, shield_pos, Vector2(30, 21), angle + PI * 0.08, Color("#fff7df"), C.COCOA, 2.0)
+		canvas.draw_circle(shield_pos, 6.0, Color(1.0, 0.3, 0.36, 0.28))
+		canvas.draw_arc(shield_pos, 8.0, 0.0, TAU, 18, C.NEON_RED, 1.6)
+		canvas.draw_line(shield_pos + Vector2(-9, 3), shield_pos + Vector2(9, -3), C.NEON_RED, 1.5)
 		canvas.draw_rect(Rect2(shield_pos + Vector2(-10, 12), Vector2(20.0 * ratio, 3)), C.TOXIC_GREEN)
 
 func _defense_color() -> Color:
