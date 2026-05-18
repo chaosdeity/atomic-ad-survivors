@@ -107,6 +107,11 @@ var charge_audio: AudioStreamPlayer
 var fire_audio: AudioStreamPlayer
 var hit_audio: AudioStreamPlayer
 var miss_audio: AudioStreamPlayer
+var sfx_players := {}
+var sfx_last_played := {}
+var sfx_cooldowns := {}
+var music_players := {}
+var current_music := ""
 var hud := HudController.new()
 var effects := EffectsController.new()
 var enemies := EnemyController.new()
@@ -130,6 +135,7 @@ func _ready() -> void:
 		player_pos = r01_blockout.anchor_position("silence_edge_start")
 		r01_blockout.print_probe()
 	_build_audio()
+	_set_music("amb_r01_suburb_loop")
 	sprite_assets.load_all()
 	hud.build(self)
 	r01_map.reset(elapsed, true)
@@ -222,6 +228,15 @@ func _input(event: InputEvent) -> void:
 		elif charge_window_left > 0.0:
 			_fire_charge()
 
+func _exit_tree() -> void:
+	for player in sfx_players.values():
+		if player is AudioStreamPlayer:
+			player.stop()
+	for player in music_players.values():
+		if player is AudioStreamPlayer:
+			player.stop()
+	current_music = ""
+
 func _charge_weapon_id() -> String:
 	return CHARGE_WEAPON_RETURN_STAMP
 
@@ -242,25 +257,80 @@ func _build_camera() -> void:
 	camera.make_current()
 
 func _build_audio() -> void:
-	charge_warning_audio = AudioStreamPlayer.new()
-	charge_warning_audio.stream = AudioFactory.make_double_tone_stream(360.0, 540.0, 0.22, 0.12)
-	add_child(charge_warning_audio)
+	var sfx_rng := RandomNumberGenerator.new()
+	sfx_rng.seed = 7022026
+	charge_warning_audio = _register_sfx_player("charge_warning", AudioFactory.make_double_tone_stream(360.0, 540.0, 0.22, 0.12), -15.0, 0.80)
+	charge_audio = _register_sfx_player("return_stamp_ready", AudioFactory.make_sfx_stream("return_stamp_ready", sfx_rng), -11.5, 0.34)
+	fire_audio = _register_sfx_player("return_stamp_hit", AudioFactory.make_sfx_stream("return_stamp_hit", sfx_rng), -10.5, 0.12)
+	hit_audio = _register_sfx_player("xp_pickup", AudioFactory.make_sfx_stream("xp_pickup", sfx_rng), -16.0, 0.10)
+	miss_audio = _register_sfx_player("return_stamp_whiff", AudioFactory.make_sfx_stream("return_stamp_whiff", sfx_rng), -12.5, 0.20)
+	var definitions := [
+		{"name": "auto_fire", "volume_db": -19.0, "cooldown": 0.16},
+		{"name": "enemy_hit", "volume_db": -21.0, "cooldown": 0.095},
+		{"name": "enemy_kill", "volume_db": -16.0, "cooldown": 0.12},
+		{"name": "return_stamp_mark", "volume_db": -15.5, "cooldown": 0.055},
+		{"name": "return_stamp_expire", "volume_db": -18.0, "cooldown": 0.18},
+		{"name": "return_stamp_combo", "volume_db": -11.5, "cooldown": 0.18},
+		{"name": "speaker_pulse", "volume_db": -15.0, "cooldown": 0.75},
+		{"name": "charger_warn", "volume_db": -13.0, "cooldown": 0.42},
+		{"name": "charger_dash", "volume_db": -14.5, "cooldown": 0.28},
+		{"name": "pressure_ring", "volume_db": -14.0, "cooldown": 1.00},
+		{"name": "pressure_ring_hit", "volume_db": -12.0, "cooldown": 0.45},
+		{"name": "danger_flyer_drop", "volume_db": -16.0, "cooldown": 0.55},
+		{"name": "danger_flyer_hit", "volume_db": -13.5, "cooldown": 0.30},
+		{"name": "outpost_return", "volume_db": -13.5, "cooldown": 0.50},
+		{"name": "upgrade_buy", "volume_db": -12.0, "cooldown": 0.18},
+		{"name": "result_settle", "volume_db": -13.0, "cooldown": 0.50},
+		{"name": "boss_warning", "volume_db": -12.5, "cooldown": 0.65},
+		{"name": "boss_hit", "volume_db": -17.0, "cooldown": 0.16},
+		{"name": "boss_core_expose", "volume_db": -11.5, "cooldown": 0.35},
+	]
+	for definition in definitions:
+		_register_sfx_player(String(definition["name"]), AudioFactory.make_sfx_stream(String(definition["name"]), sfx_rng), float(definition["volume_db"]), float(definition["cooldown"]))
+	_register_music_player("amb_r01_suburb_loop", AudioFactory.make_placeholder_loop_stream("amb_r01_suburb_loop", sfx_rng), -30.0)
+	_register_music_player("amb_outpost_loop", AudioFactory.make_placeholder_loop_stream("amb_outpost_loop", sfx_rng), -31.5)
+	_register_music_player("bgm_boss_smile_home", AudioFactory.make_placeholder_loop_stream("bgm_boss_smile_home", sfx_rng), -27.5)
 
-	charge_audio = AudioStreamPlayer.new()
-	charge_audio.stream = AudioFactory.make_tone_stream(620.0, 0.24, 0.20, 1180.0)
-	add_child(charge_audio)
+func _register_sfx_player(name: String, stream: AudioStream, volume_db: float, cooldown: float) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.volume_db = volume_db
+	add_child(player)
+	sfx_players[name] = player
+	sfx_cooldowns[name] = cooldown
+	return player
 
-	fire_audio = AudioStreamPlayer.new()
-	fire_audio.stream = AudioFactory.make_burst_stream(0.34, rng)
-	add_child(fire_audio)
+func _register_music_player(name: String, stream: AudioStream, volume_db: float) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.volume_db = volume_db
+	add_child(player)
+	music_players[name] = player
+	return player
 
-	hit_audio = AudioStreamPlayer.new()
-	hit_audio.stream = AudioFactory.make_tone_stream(740.0, 0.13, 0.10, 980.0)
-	add_child(hit_audio)
+func _set_music(name: String) -> void:
+	if current_music == name:
+		return
+	for music_name in music_players:
+		var player: AudioStreamPlayer = music_players[music_name]
+		if String(music_name) == name:
+			if not player.playing:
+				player.play()
+		else:
+			player.stop()
+	current_music = name
 
-	miss_audio = AudioStreamPlayer.new()
-	miss_audio.stream = AudioFactory.make_tone_stream(280.0, 0.16, 0.11, 180.0)
-	add_child(miss_audio)
+func _play_sfx(name: String, pitch_scale: float = 1.0, cooldown_override: float = -1.0) -> void:
+	if not sfx_players.has(name):
+		return
+	var now := float(Time.get_ticks_msec()) * 0.001
+	var cooldown := cooldown_override if cooldown_override >= 0.0 else float(sfx_cooldowns.get(name, 0.0))
+	if now - float(sfx_last_played.get(name, -999.0)) < cooldown:
+		return
+	var player: AudioStreamPlayer = sfx_players[name]
+	player.pitch_scale = pitch_scale
+	player.play()
+	sfx_last_played[name] = now
 
 func _update_player(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -288,6 +358,7 @@ func _update_enemies(delta: float) -> void:
 	var contact_damage := enemies.update_enemies(delta, player_pos)
 	if R01LayoutBlockout.ENABLED:
 		_apply_r01_enemy_navigation(old_positions)
+	_update_special_enemy_sfx()
 	if contact_damage <= 0.0:
 		return
 	player_hp = maxf(0.0, player_hp - _incoming_damage(contact_damage))
@@ -317,6 +388,23 @@ func _apply_r01_enemy_navigation(old_positions: Array[Vector2]) -> void:
 		elif String(enemy.get("sprite_kind", "")) == "appliance":
 			role = "robot" if role == "basic" else role
 		enemy["pos"] = r01_blockout.resolve_enemy_position(old_positions[i], Vector2(enemy["pos"]), role, float(enemy.get("radius", 8.0)))
+
+func _update_special_enemy_sfx() -> void:
+	for enemy in enemies.enemies:
+		var role := String(enemy.get("role", "basic"))
+		if role != "speaker" and role != "charger":
+			continue
+		var state := String(enemy.get("action_state", "idle"))
+		var previous_state := String(enemy.get("sfx_action_state", ""))
+		if previous_state == state:
+			continue
+		enemy["sfx_action_state"] = state
+		if role == "speaker" and state == "broadcast":
+			_play_sfx("speaker_pulse")
+		elif role == "charger" and state == "windup":
+			_play_sfx("charger_warn")
+		elif role == "charger" and state == "dash":
+			_play_sfx("charger_dash")
 
 func _update_threats(delta: float) -> void:
 	_update_active_threats(delta)
@@ -375,6 +463,7 @@ func _spawn_pressure_ring() -> void:
 		"hit_checked": false,
 	})
 	last_threat_label = "압박 링 예고"
+	_play_sfx("pressure_ring")
 
 func _spawn_flyer_drop() -> void:
 	var offset := _threat_offset(118.0, 32.0)
@@ -390,6 +479,7 @@ func _spawn_flyer_drop() -> void:
 		"hit_checked": false,
 	})
 	last_threat_label = "위험 전단 낙하 예고"
+	_play_sfx("danger_flyer_drop")
 
 func _resolve_threat_hit(threat: Dictionary) -> void:
 	var center: Vector2 = threat["pos"]
@@ -405,11 +495,14 @@ func _resolve_threat_hit(threat: Dictionary) -> void:
 	effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.28)
 	effects.add_impact_shake(0.18, 4.6)
 	if String(threat.get("type", "")) == THREAT_PRESSURE_RING:
+		_play_sfx("pressure_ring_hit")
 		var push_dir := (player_pos - center).normalized() if player_pos.distance_squared_to(center) > 0.01 else last_move_dir.normalized()
 		if push_dir.length_squared() <= 0.01:
 			push_dir = Vector2.RIGHT
 		player_pos += push_dir * PRESSURE_RING_KNOCKBACK
 		_clamp_player_to_world()
+	else:
+		_play_sfx("danger_flyer_hit")
 	if player_hp <= 0.0:
 		_finish_match("game_over")
 
@@ -437,7 +530,13 @@ func _threat_offset(max_radius: float, min_radius: float) -> Vector2:
 func _update_boss(delta: float) -> void:
 	if not boss.active:
 		return
+	var previous_state := boss.state
 	var result := boss.update(delta, player_pos)
+	if boss.active and boss.state != previous_state:
+		if boss.state == "core_exposed":
+			_play_sfx("boss_core_expose")
+		elif boss.state in ["sweep_telegraph", "shield", "distortion_telegraph", "demo_telegraph"]:
+			_play_sfx("boss_warning")
 	if result.has("player_damage"):
 		var final_damage := _incoming_damage(float(result["player_damage"]))
 		player_hp = maxf(0.0, player_hp - final_damage)
@@ -470,6 +569,7 @@ func _update_auto_fire(delta: float) -> void:
 		if not boss_hit.is_empty():
 			_register_attack_pose(boss.pos - player_pos, 0.14)
 			effects.add_auto_shot(player_pos, boss.pos)
+			_play_sfx("auto_fire")
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
 	if priority_target:
@@ -479,11 +579,13 @@ func _update_auto_fire(delta: float) -> void:
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_register_attack_pose(target_pos - player_pos, 0.14)
 		_apply_hit_knockback(target_idx, player_pos, 5.5)
+		_play_sfx("enemy_hit")
 		if priority_target:
 			effects.add_status_ring(target_pos, C.NEON_RED, 19.0, 0.22)
 			effects.add_floater(target_pos + Vector2(0, -6), "반품 추적", C.NEON_RED, 11)
 	_handle_dead_positions(_cleanup_dead_positions())
 	effects.add_auto_shot(player_pos, target_pos)
+	_play_sfx("auto_fire")
 	if paused_for_card:
 		return
 	_try_split_shot(target_idx)
@@ -511,7 +613,7 @@ func _update_charge(delta: float) -> void:
 			charge_warning_played = false
 			charge_ready_flash = C.CHARGE_READY_FLASH
 			effects.show_charge_ready()
-			charge_audio.play()
+			_play_sfx("return_stamp_ready")
 	charge_ready_flash = maxf(0.0, charge_ready_flash - delta)
 
 func _update_charge_puddles(delta: float) -> void:
@@ -541,7 +643,7 @@ func _update_charge_puddles(delta: float) -> void:
 func _charge_missed() -> void:
 	charge_miss_notice = 0.48
 	effects.show_charge_missed(player_pos)
-	miss_audio.play()
+	_play_sfx("return_stamp_whiff")
 
 func _fire_charge() -> void:
 	var aim_data := _charge_aim_data()
@@ -624,15 +726,18 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 	charge_effect_anchor = anchor_pos
 	charge_effect_anchor_active = true
 	if hit_count > 0:
+		_play_sfx("return_stamp_hit")
 		effects.add_impact_line(line_start, trace_end, C.NEON_RED, 4.0 if hit_count >= 3 else 3.0, 0.20)
 		effects.add_status_ring(trace_end, C.NEON_RED, 9.0, 0.18)
 		if hit_count >= 3:
+			_play_sfx("return_stamp_combo")
 			effects.add_floater(player_pos, "연속 반품 x%d" % hit_count, C.NEON_RED, 14)
 			effects.add_impact_shake(0.18, 4.2)
 		else:
 			effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
 	else:
 		effects.add_return_stamp_whiff(line_start, trace_end)
+		_play_sfx("return_stamp_whiff")
 	return hit_count
 
 func _apply_return_stamp(index: int, perfect: bool = false) -> void:
@@ -643,6 +748,7 @@ func _apply_return_stamp(index: int, perfect: bool = false) -> void:
 		duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
 	enemies.enemies[index]["return_stamp_flash"] = 0.30
+	_play_sfx("return_stamp_mark")
 
 func _update_charge_marks(delta: float) -> void:
 	for enemy in enemies.enemies:
@@ -657,6 +763,7 @@ func _update_charge_marks(delta: float) -> void:
 				var radius := float(enemy.get("radius", 8.0))
 				effects.add_status_ring(pos, Color(0.35, 0.70, 0.95), radius + 8.0, 0.20)
 				enemy.erase("return_stamp_timer")
+				_play_sfx("return_stamp_expire")
 
 func _preferred_auto_target(origin: Vector2, max_range: float, excluded: Array = [], for_split: bool = false) -> int:
 	var stamped_idx := _nearest_marked_enemy(origin, max_range + RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS, "return_stamp_timer", excluded)
@@ -789,6 +896,7 @@ func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bo
 	var hit := boss.apply_damage(_boss_meta_damage(base_damage), damage_type)
 	if hit.is_empty():
 		return {}
+	_play_sfx("boss_hit")
 	if show_number:
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 	if float(hit.get("shield_damage", 0.0)) > 0.0:
@@ -826,10 +934,12 @@ func _try_split_shot(primary_idx: int) -> void:
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
+		_play_sfx("enemy_hit")
 		if priority_target:
 			effects.add_status_ring(target_pos, C.NEON_RED, 17.0, 0.22)
 	_handle_dead_positions(_cleanup_dead_positions())
 	effects.add_alt_shot(player_pos, target_pos)
+	_play_sfx("auto_fire", 1.18)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0 if auto_damage_synergy else 14.0, 0.28 if auto_damage_synergy else 0.24)
 	var split_label := "증폭 분열!" if auto_damage_synergy else "분열!"
 	if priority_target:
@@ -993,9 +1103,12 @@ func _handle_dead_positions(dead_positions: Array[Vector2]) -> void:
 
 func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_bursts: bool) -> void:
 	var burst_dead_positions: Array[Vector2] = []
+	if dead_positions.size() > 0:
+		_play_sfx("enemy_kill", 0.96 + minf(0.16, float(dead_positions.size()) * 0.025))
 	for pos in dead_positions:
 		kills += 1
 		xp += _xp_gain()
+		_play_sfx("xp_pickup")
 		effects.spawn_pop_particles(pos, rng)
 		effects.add_burst(pos, Vector2.RIGHT, 0.18, false)
 		if allow_kill_bursts:
@@ -1005,7 +1118,7 @@ func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_
 	if xp >= _xp_requirement():
 		xp -= _xp_requirement()
 		level += 1
-		hit_audio.play()
+		_play_sfx("xp_pickup", 1.22, 0.0)
 		_show_level_card()
 
 func _update_wave_events(wave_params: Dictionary) -> void:
@@ -1050,6 +1163,7 @@ func _try_start_boss_encounter() -> void:
 func _start_boss_encounter() -> void:
 	boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 	boss.start()
+	_set_music("bgm_boss_smile_home")
 	enemies.clear()
 	active_threats.clear()
 	wave_notice_timer = 4.0
@@ -1057,6 +1171,7 @@ func _start_boss_encounter() -> void:
 	effects.show_combat_banner("스마일 홈 시어머니", C.VITAMIN_YELLOW)
 	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
 	effects.add_impact_shake(0.28, 5.8)
+	_play_sfx("boss_warning")
 
 func _on_boss_defeated() -> void:
 	boss_signal_state = "silent"
@@ -1277,6 +1392,8 @@ func _finish_match(result_state: String) -> void:
 	if _should_show_supply_after_result(result_state):
 		callback = Callable(self, "_show_supply_depot")
 	hud.show_result_screen(_result_data(result_state), callback)
+	_set_music("")
+	_play_sfx("result_settle")
 
 func _should_show_supply_after_result(result_state: String) -> bool:
 	if result_state == "recalled" or result_state == "boss_victory":
@@ -1449,6 +1566,8 @@ func _show_supply_depot() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
+	_set_music("amb_outpost_loop")
+	_play_sfx("outpost_return")
 
 func _handle_terminal_action() -> void:
 	match match_state:
@@ -1475,6 +1594,7 @@ func _apply_supply_upgrade_choice(index: int) -> void:
 		effects.show_combat_banner("영구 강화 적용: %s" % upgrade_name, C.TOXIC_GREEN)
 		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
 		effects.add_impact_shake(0.14, 2.2)
+		_play_sfx("upgrade_buy")
 	else:
 		effects.add_floater(player_pos, "흔적 부족", C.NEON_RED, 13)
 		upgrade_name = ""
@@ -1588,8 +1708,7 @@ func _card_choice_from_event(event: InputEvent) -> int:
 			return -1
 
 func _fire_feedback(directed: bool) -> void:
-	fire_audio.pitch_scale = 1.08 if directed else 0.92
-	fire_audio.play()
+	_play_sfx("return_stamp_hit", 1.08 if directed else 0.92)
 	effects.fire_feedback(directed)
 
 func _active_notice_text() -> String:
@@ -1709,7 +1828,7 @@ func _debug_open_charge() -> void:
 	charge_ready_flash = C.CHARGE_READY_FLASH
 	charge_miss_notice = 0.0
 	effects.show_charge_ready()
-	charge_audio.play()
+	_play_sfx("return_stamp_ready", 1.0, 0.0)
 
 func _debug_drop_hp() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -2211,6 +2330,7 @@ func _restart() -> void:
 	last_threat_label = ""
 	hud.reset()
 	r01_map.reset(elapsed, true)
+	_set_music("amb_r01_suburb_loop")
 
 func _record_r01_visit_for_current_sortie() -> void:
 	if r01_visit_recorded_sortie_index == sortie_index:
