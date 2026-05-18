@@ -187,3 +187,6 @@ func detail_text(info: Dictionary) -> String:
 
 func blockout_debug_labels_visible() -> bool:
 	return C.DEBUG_TOOLS_ENABLED and (help_visible or detail_visible)
+
+func detail_debug_visible() -> bool:
+	return C.DEBUG_TOOLS_ENABLED and detail_visible

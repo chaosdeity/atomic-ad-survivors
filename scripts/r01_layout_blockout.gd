@@ -160,19 +160,26 @@ const ZONE_PROPS := {
 }
 
 var state_variant := STATE_FIRST_VISIT
+var _collision_records_cache_variant := ""
+var _collision_records_cache: Array[Dictionary] = []
+var _pathing_probe_cache_variant := ""
+var _pathing_probe_cache := {}
 
 func reset() -> void:
 	state_variant = STATE_FIRST_VISIT
+	_clear_collision_cache()
 
 func set_state_variant(next_variant: String) -> bool:
 	if not STATE_VARIANTS.has(next_variant):
 		return false
 	state_variant = next_variant
+	_clear_collision_cache()
 	return true
 
 func next_state_variant() -> String:
 	var index := STATE_VARIANTS.find(state_variant)
 	state_variant = STATE_VARIANTS[(index + 1) % STATE_VARIANTS.size()]
+	_clear_collision_cache()
 	return state_variant
 
 func player_bounds() -> Rect2:
@@ -235,6 +242,8 @@ func density_counts() -> Dictionary:
 	}
 
 func active_collision_records(variant: String = state_variant) -> Array[Dictionary]:
+	if variant == state_variant and _collision_records_cache_variant == variant:
+		return _collision_records_cache
 	var records: Array[Dictionary] = []
 	for zone_id in ZONE_PROPS.keys():
 		var anchor := anchor_position(zone_id)
@@ -251,7 +260,16 @@ func active_collision_records(variant: String = state_variant) -> Array[Dictiona
 			record["pos"] = anchor + offset
 			record["debug_label"] = "%s/%s" % [zone_id, String(prop.get("id", kind))]
 			records.append(record)
+	if variant == state_variant:
+		_collision_records_cache_variant = variant
+		_collision_records_cache = records
 	return records
+
+func _clear_collision_cache() -> void:
+	_collision_records_cache_variant = ""
+	_collision_records_cache.clear()
+	_pathing_probe_cache_variant = ""
+	_pathing_probe_cache.clear()
 
 func collision_summary(variant: String = state_variant) -> Dictionary:
 	var summary := {
@@ -294,13 +312,17 @@ func resolve_enemy_position(old_pos: Vector2, next_pos: Vector2, role: String, r
 	return clamped
 
 func pathing_probe_results() -> Dictionary:
-	return {
+	if _pathing_probe_cache_variant == state_variant:
+		return _pathing_probe_cache.duplicate(true)
+	_pathing_probe_cache = {
 		"30": _run_pathing_probe(30),
 		"100": _run_pathing_probe(100),
 		"300": _run_pathing_probe(300),
 		"model_house_node": _model_house_anchor_probe(),
 		"fake_return_route": _fake_return_route_probe(),
 	}
+	_pathing_probe_cache_variant = state_variant
+	return _pathing_probe_cache.duplicate(true)
 
 func pathing_probe_label() -> String:
 	var results := pathing_probe_results()

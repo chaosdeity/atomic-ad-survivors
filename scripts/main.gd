@@ -1610,9 +1610,10 @@ func _debug_overlay_text() -> String:
 	var help := debug_tools.help_text()
 	if help != "":
 		sections.append(help)
-	var detail := debug_tools.detail_text(_debug_info())
-	if detail != "":
-		sections.append(detail)
+	if debug_tools.detail_debug_visible():
+		var detail := debug_tools.detail_text(_debug_info())
+		if detail != "":
+			sections.append(detail)
 	return "\n\n".join(sections)
 
 func _debug_info() -> Dictionary:
