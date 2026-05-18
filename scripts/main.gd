@@ -15,6 +15,7 @@ const RoutePhraseResolver := preload("res://scripts/route_phrase_resolver.gd")
 const BossController := preload("res://scripts/boss_controller.gd")
 const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 const R01MapController := preload("res://scripts/r01_map_controller.gd")
+const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -131,6 +132,7 @@ var sprite_assets := SpriteAssets.new()
 var meta_progression := MetaProgression.new()
 var boss := BossController.new()
 var r01_map := R01MapController.new()
+var r01_blockout := R01LayoutBlockout.new()
 
 func _ready() -> void:
 	rng.seed = 42
@@ -139,6 +141,11 @@ func _ready() -> void:
 	_reset_player_stats()
 	_ensure_input_map()
 	_build_camera()
+	r01_blockout.reset()
+	if R01LayoutBlockout.ENABLED:
+		r01_blockout.configure_camera(camera)
+		player_pos = r01_blockout.anchor_position("silence_edge_start")
+		r01_blockout.print_probe()
 	_build_audio()
 	sprite_assets.load_all()
 	hud.build(self)
@@ -313,6 +320,12 @@ func _update_player(delta: float) -> void:
 	if player_is_moving:
 		last_move_dir = input_dir
 	player_pos += input_dir * _move_speed() * delta
+	_clamp_player_to_world()
+
+func _clamp_player_to_world() -> void:
+	if R01LayoutBlockout.ENABLED:
+		player_pos = r01_blockout.clamp_player_position(player_pos)
+		return
 	player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
 	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 
@@ -428,8 +441,7 @@ func _resolve_threat_hit(threat: Dictionary) -> void:
 		if push_dir.length_squared() <= 0.01:
 			push_dir = Vector2.RIGHT
 		player_pos += push_dir * PRESSURE_RING_KNOCKBACK
-		player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-		player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+		_clamp_player_to_world()
 	if player_hp <= 0.0:
 		_finish_match("game_over")
 
@@ -463,8 +475,7 @@ func _update_boss(delta: float) -> void:
 		player_hp = maxf(0.0, player_hp - final_damage)
 		if result.has("knockback"):
 			player_pos += Vector2(result["knockback"])
-			player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-			player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+			_clamp_player_to_world()
 		effects.add_damage_number(player_pos + Vector2(0, -16), final_damage, "hit")
 		var heavy_hit := result.has("knockback")
 		effects.add_impact_shake(0.28 if heavy_hit else 0.18, 7.2 if heavy_hit else 5.2)
@@ -1927,6 +1938,11 @@ func _debug_info() -> Dictionary:
 		"r01_zone_id": r01_map.current_zone_id(),
 		"r01_zone_name": r01_map.current_zone_name(),
 		"r01_zone_debug_label": r01_map.current_debug_label(),
+		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
+		"r01_blockout_variant": r01_blockout.state_variant,
+		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
+		"r01_blockout_world": "%.0fx%.0f" % [R01LayoutBlockout.WORLD_BOUNDS.size.x, R01LayoutBlockout.WORLD_BOUNDS.size.y],
+		"r01_blockout_screens": r01_blockout.world_screen_count(),
 		"enemy_role_summary": enemies.role_summary(),
 		"threat_count": active_threats.size(),
 		"last_threat_label": last_threat_label,
@@ -2110,6 +2126,15 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 	elif match_state == "supply":
 		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
 
+func _debug_r01_blockout_variant(variant: String) -> void:
+	if not C.DEBUG_TOOLS_ENABLED or not R01LayoutBlockout.ENABLED:
+		return
+	if not r01_blockout.set_state_variant(variant):
+		return
+	effects.show_combat_banner("R01 blockout: %s" % variant, C.VITAMIN_YELLOW)
+	_update_hud()
+	queue_redraw()
+
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
@@ -2144,6 +2169,9 @@ func _draw() -> void:
 	effects.draw_screen_flash(self, camera.global_position)
 
 func _draw_arena() -> void:
+	if R01LayoutBlockout.ENABLED:
+		r01_blockout.draw(self, elapsed, player_pos, debug_tools.blockout_debug_labels_visible())
+		return
 	r01_map.draw(self, elapsed, player_pos, _boss_route_ready(), boss.active)
 
 func _draw_charge_puddles() -> void:
@@ -2479,7 +2507,7 @@ func _restart() -> void:
 	last_boss_victory_report = {}
 	last_run_result = {}
 	_reset_player_stats()
-	player_pos = Vector2.ZERO
+	player_pos = r01_blockout.anchor_position("silence_edge_start") if R01LayoutBlockout.ENABLED else Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
 	elapsed = 0.0
 	xp = 0.0

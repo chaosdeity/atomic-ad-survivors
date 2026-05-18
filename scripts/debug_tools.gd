@@ -12,6 +12,20 @@ func handle_input(event: InputEvent, main) -> bool:
 		return false
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return false
+	if event.ctrl_pressed:
+		match event.keycode:
+			KEY_1, KEY_KP_1:
+				main._debug_r01_blockout_variant("first_visit")
+				return true
+			KEY_2, KEY_KP_2:
+				main._debug_r01_blockout_variant("broadcast_record_3")
+				return true
+			KEY_3, KEY_KP_3:
+				main._debug_r01_blockout_variant("destroy_node")
+				return true
+			KEY_4, KEY_KP_4:
+				main._debug_r01_blockout_variant("extract_memory")
+				return true
 
 	match event.keycode:
 		KEY_F1:
@@ -110,6 +124,7 @@ func help_text() -> String:
 		"Ctrl+F8 Boss Recall Reward",
 		"Ctrl+F10 Destroy Node",
 		"Ctrl+F11 Extract Memory",
+		"Ctrl+1/2/3/4 R01 Blockout State",
 	])
 
 func detail_text(info: Dictionary) -> String:
@@ -121,6 +136,7 @@ func detail_text(info: Dictionary) -> String:
 		"time: %.1f / %.0f" % [float(info.get("elapsed", 0.0)), float(info.get("match_duration", 0.0))],
 		"wave: %s" % str(info.get("wave_name", "")),
 		str(info.get("r01_zone_debug_label", "R01 zone:")),
+		"blockout: %s %s %.1f screens nearest=%s" % [str(info.get("r01_blockout_variant", "")), str(info.get("r01_blockout_world", "")), float(info.get("r01_blockout_screens", 0.0)), str(info.get("r01_blockout_nearest", ""))],
 		"roles: %s" % str(info.get("enemy_role_summary", "")),
 		"threats: %d last=%s" % [int(info.get("threat_count", 0)), str(info.get("last_threat_label", ""))],
 		"enemies: %d / %d" % [int(info.get("enemy_count", 0)), int(info.get("enemy_cap", 0))],
@@ -161,3 +177,6 @@ func detail_text(info: Dictionary) -> String:
 		"meta upgrades: %s" % str(info.get("meta_summary", "")),
 		"fps: %d" % int(info.get("fps", 0)),
 	])
+
+func blockout_debug_labels_visible() -> bool:
+	return C.DEBUG_TOOLS_ENABLED and (help_visible or detail_visible)

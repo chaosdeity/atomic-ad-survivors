@@ -1,0 +1,391 @@
+extends RefCounted
+
+const C := preload("res://scripts/game_config.gd")
+const UIFont := preload("res://scripts/ui_font.gd")
+
+const ENABLED := true
+const WORLD_BOUNDS := Rect2(Vector2(-720, -405), Vector2(1920, 810))
+const PLAYER_MARGIN := 28.0
+const STATE_FIRST_VISIT := "first_visit"
+const STATE_BROADCAST_RECORD_3 := "broadcast_record_3"
+const STATE_DESTROY_NODE := "destroy_node"
+const STATE_EXTRACT_MEMORY := "extract_memory"
+const STATE_VARIANTS := [
+	STATE_FIRST_VISIT,
+	STATE_BROADCAST_RECORD_3,
+	STATE_DESTROY_NODE,
+	STATE_EXTRACT_MEMORY,
+]
+
+const ZONES := {
+	"silence_edge_start": {
+		"display_name": "침묵 가장자리",
+		"role": "low density entry / supply edge",
+		"pos": Vector2(-600, 170),
+		"color": Color(0.64, 0.78, 0.90, 0.34),
+		"marker": Color(0.72, 0.84, 0.92, 0.92),
+		"radius": 138.0,
+	},
+	"subdivision_loop_center": {
+		"display_name": "분양 주택 루프",
+		"role": "primary combat loop / repeated houses",
+		"pos": Vector2(-105, 28),
+		"color": Color(1.0, 0.75, 0.63, 0.28),
+		"marker": Color(1.0, 0.83, 0.66, 0.95),
+		"radius": 176.0,
+	},
+	"model_house_node_anchor": {
+		"display_name": "모델하우스 결절",
+		"role": "broadcast record / node approach",
+		"pos": Vector2(510, -238),
+		"color": Color(1.0, 0.86, 0.42, 0.30),
+		"marker": Color(1.0, 0.82, 0.42, 0.96),
+		"radius": 152.0,
+	},
+	"drain_pocket_anchor": {
+		"display_name": "배수로 침묵 주머니",
+		"role": "side pocket / trace candidate",
+		"pos": Vector2(260, 270),
+		"color": Color(0.18, 0.38, 0.27, 0.28),
+		"marker": Color(0.25, 0.52, 0.34, 0.94),
+		"radius": 128.0,
+	},
+	"fake_return_route_anchor": {
+		"display_name": "가짜 귀환로",
+		"role": "false recovery mimic / route risk",
+		"pos": Vector2(-500, -205),
+		"color": Color(0.96, 0.68, 0.96, 0.25),
+		"marker": Color(0.98, 0.72, 1.0, 0.92),
+		"radius": 122.0,
+	},
+}
+
+const ADJACENCY := [
+	["silence_edge_start", "subdivision_loop_center"],
+	["subdivision_loop_center", "model_house_node_anchor"],
+	["subdivision_loop_center", "drain_pocket_anchor"],
+	["subdivision_loop_center", "fake_return_route_anchor"],
+]
+
+const ZONE_PROPS := {
+	"silence_edge_start": [
+		{"id": "low_concentration_floor", "offset": Vector2(-70, 30), "kind": "floor", "state": "all"},
+		{"id": "sparse_flyer_scraps", "offset": Vector2(18, -42), "kind": "scraps", "state": "all"},
+		{"id": "weak_route_hint", "offset": Vector2(96, 28), "kind": "route", "state": "all"},
+		{"id": "distant_mailbox_hint", "offset": Vector2(132, -72), "kind": "mailbox", "state": "all"},
+		{"id": "quiet_nameplate_marker", "offset": Vector2(-114, -48), "kind": "tag", "state": STATE_DESTROY_NODE},
+		{"id": "blank_customer_photo_hint", "offset": Vector2(-28, -104), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
+	],
+	"subdivision_loop_center": [
+		{"id": "house_front_placeholder", "offset": Vector2(-142, -88), "kind": "house", "state": "all"},
+		{"id": "mailbox_device_placeholder", "offset": Vector2(-66, 88), "kind": "mailbox", "state": "all"},
+		{"id": "flyer_pile_placeholder", "offset": Vector2(42, 74), "kind": "flyer", "state": "all"},
+		{"id": "price_customer_tag_placeholder", "offset": Vector2(-118, -42), "kind": "tag", "state": "all"},
+		{"id": "recommended_route_decal_placeholder", "offset": Vector2(132, -18), "kind": "route", "state": "all"},
+		{"id": "same_house_repeat_marker", "offset": Vector2(112, -104), "kind": "house", "state": STATE_BROADCAST_RECORD_3},
+		{"id": "exposed_nameplate_marker", "offset": Vector2(78, 112), "kind": "tag", "state": STATE_DESTROY_NODE},
+		{"id": "family_window_photo_marker", "offset": Vector2(-18, -132), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
+	],
+	"model_house_node_anchor": [
+		{"id": "model_house_node_placeholder", "offset": Vector2(0, -28), "kind": "node", "state": "all"},
+		{"id": "consultation_kiosk_socket_placeholder", "offset": Vector2(-92, 62), "kind": "kiosk", "state": "all"},
+		{"id": "family_window_loop_placeholder", "offset": Vector2(106, -70), "kind": "photo", "state": "all"},
+		{"id": "doorbell_projector_placeholder", "offset": Vector2(96, 66), "kind": "projector", "state": "all"},
+		{"id": "floor_plan_line_placeholder", "offset": Vector2(-38, 98), "kind": "floor_plan", "state": "all"},
+		{"id": "open_house_direction_stack", "offset": Vector2(-150, -38), "kind": "sign", "state": STATE_BROADCAST_RECORD_3},
+		{"id": "dimmed_node_shell", "offset": Vector2(36, -118), "kind": "tag", "state": STATE_DESTROY_NODE},
+		{"id": "memory_afterimage_window", "offset": Vector2(144, 4), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
+	],
+	"drain_pocket_anchor": [
+		{"id": "toxic_ad_drain_placeholder", "offset": Vector2(-34, 2), "kind": "drain", "state": "all"},
+		{"id": "muted_floor_crack", "offset": Vector2(58, -44), "kind": "crack", "state": "all"},
+		{"id": "tiny_paper_fragments", "offset": Vector2(-86, 76), "kind": "scraps", "state": "all"},
+		{"id": "trace_candidate_marker", "offset": Vector2(74, 72), "kind": "trace", "state": "all"},
+		{"id": "quiet_drain_material_marker", "offset": Vector2(-98, -54), "kind": "trace", "state": STATE_DESTROY_NODE},
+		{"id": "receipt_fragment_marker", "offset": Vector2(118, 10), "kind": "tag", "state": STATE_EXTRACT_MEMORY},
+	],
+	"fake_return_route_anchor": [
+		{"id": "recommended_route_decal_placeholder", "offset": Vector2(-74, 24), "kind": "route", "state": "all"},
+		{"id": "streetlight_speaker_placeholder", "offset": Vector2(48, -72), "kind": "speaker", "state": "all"},
+		{"id": "fake_recovery_marker", "offset": Vector2(62, 48), "kind": "fake_recovery", "state": "all"},
+		{"id": "transmitter_residue_hint_placeholder", "offset": Vector2(-12, -118), "kind": "residue", "state": "all"},
+		{"id": "broken_return_arrow", "offset": Vector2(-128, -32), "kind": "route", "state": STATE_DESTROY_NODE},
+		{"id": "family_voice_risk_marker", "offset": Vector2(128, 10), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
+	],
+}
+
+var state_variant := STATE_FIRST_VISIT
+
+func reset() -> void:
+	state_variant = STATE_FIRST_VISIT
+
+func set_state_variant(next_variant: String) -> bool:
+	if not STATE_VARIANTS.has(next_variant):
+		return false
+	state_variant = next_variant
+	return true
+
+func next_state_variant() -> String:
+	var index := STATE_VARIANTS.find(state_variant)
+	state_variant = STATE_VARIANTS[(index + 1) % STATE_VARIANTS.size()]
+	return state_variant
+
+func player_bounds() -> Rect2:
+	return WORLD_BOUNDS.grow(-PLAYER_MARGIN)
+
+func clamp_player_position(pos: Vector2) -> Vector2:
+	var bounds := player_bounds()
+	return Vector2(
+		clampf(pos.x, bounds.position.x, bounds.position.x + bounds.size.x),
+		clampf(pos.y, bounds.position.y, bounds.position.y + bounds.size.y)
+	)
+
+func configure_camera(camera: Camera2D) -> void:
+	camera.limit_left = int(WORLD_BOUNDS.position.x)
+	camera.limit_top = int(WORLD_BOUNDS.position.y)
+	camera.limit_right = int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x)
+	camera.limit_bottom = int(WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y)
+
+func anchor_position(zone_id: String) -> Vector2:
+	return Vector2(ZONES.get(zone_id, ZONES["silence_edge_start"]).get("pos", Vector2.ZERO))
+
+func nearest_zone_id(pos: Vector2) -> String:
+	var best_id := "silence_edge_start"
+	var best_distance := INF
+	for zone_id in ZONES.keys():
+		var distance := pos.distance_squared_to(anchor_position(zone_id))
+		if distance < best_distance:
+			best_distance = distance
+			best_id = zone_id
+	return best_id
+
+func marker_debug_lines(player_pos: Vector2) -> Array[String]:
+	var lines: Array[String] = [
+		"R01 blockout: %s %.0fx%.0f world / %.1f screens" % [state_variant, WORLD_BOUNDS.size.x, WORLD_BOUNDS.size.y, world_screen_count()],
+		"nearest anchor: %s" % nearest_zone_id(player_pos),
+	]
+	for zone_id in ZONES.keys():
+		var zone: Dictionary = ZONES[zone_id]
+		lines.append("%s %.0fm" % [zone_id, player_pos.distance_to(Vector2(zone["pos"]))])
+	return lines
+
+func world_screen_count() -> float:
+	return (WORLD_BOUNDS.size.x / C.VIEWPORT_SIZE.x) * (WORLD_BOUNDS.size.y / C.VIEWPORT_SIZE.y)
+
+func prop_counts_for_state(variant: String = state_variant) -> Dictionary:
+	var counts := {}
+	for zone_id in ZONE_PROPS.keys():
+		var count := 0
+		for prop in ZONE_PROPS[zone_id]:
+			if _prop_visible_for_variant(prop, variant):
+				count += 1
+		counts[zone_id] = count
+	return counts
+
+func density_counts() -> Dictionary:
+	return {
+		"combat_readability": 30,
+		"tier_hierarchy": 100,
+		"tiny_lod_density_only": 300,
+	}
+
+func print_probe() -> void:
+	print("R01_BLOCKOUT_PROBE world_bounds=", WORLD_BOUNDS, " viewport=", C.VIEWPORT_SIZE, " camera_screens=", world_screen_count())
+	for zone_id in ZONES.keys():
+		var zone: Dictionary = ZONES[zone_id]
+		print("R01_BLOCKOUT_ANCHOR ", zone_id, " pos=", zone["pos"], " name=", zone["display_name"], " role=", zone["role"])
+	for edge in ADJACENCY:
+		print("R01_BLOCKOUT_ADJACENCY ", edge[0], " -> ", edge[1], " distance=", anchor_position(edge[0]).distance_to(anchor_position(edge[1])))
+	for variant in STATE_VARIANTS:
+		print("R01_BLOCKOUT_STATE ", variant, " prop_counts=", prop_counts_for_state(variant))
+	print("R01_BLOCKOUT_DENSITY ", density_counts())
+
+func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false) -> void:
+	_draw_ground(canvas, elapsed)
+	_draw_travel_corridors(canvas)
+	_draw_density_tests(canvas, elapsed, show_debug_labels)
+	_draw_zone_fields(canvas)
+	_draw_props(canvas, elapsed, show_debug_labels)
+	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
+	_draw_world_bounds(canvas, show_debug_labels)
+
+func _draw_ground(canvas: CanvasItem, elapsed: float) -> void:
+	canvas.draw_rect(WORLD_BOUNDS, Color("#f2e3c8"))
+	var tile := 64
+	for x in range(int(WORLD_BOUNDS.position.x), int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x) + tile, tile):
+		var color := Color(0.77, 0.66, 0.52, 0.15) if int(x / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.12)
+		canvas.draw_line(Vector2(x, WORLD_BOUNDS.position.y), Vector2(x, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y), color, 1.0)
+	for y in range(int(WORLD_BOUNDS.position.y), int(WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y) + tile, tile):
+		var color := Color(0.75, 0.52, 0.48, 0.12) if int(y / tile) % 2 == 0 else Color(0.66, 0.78, 0.70, 0.12)
+		canvas.draw_line(Vector2(WORLD_BOUNDS.position.x, y), Vector2(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x, y), color, 1.0)
+	var pulse := 0.03 + 0.02 * sin(elapsed * 0.7)
+	canvas.draw_rect(Rect2(WORLD_BOUNDS.position + Vector2(0, WORLD_BOUNDS.size.y - 128), Vector2(WORLD_BOUNDS.size.x, 128)), Color(0.62, 0.78, 0.68, pulse))
+
+func _draw_travel_corridors(canvas: CanvasItem) -> void:
+	for edge in ADJACENCY:
+		var a := anchor_position(edge[0])
+		var b := anchor_position(edge[1])
+		canvas.draw_line(a, b, Color(1.0, 0.83, 0.46, 0.15), 28.0)
+		canvas.draw_line(a, b, Color(0.52, 0.30, 0.24, 0.30), 3.0)
+		var dir := (b - a).normalized()
+		var mid := a.lerp(b, 0.55)
+		canvas.draw_line(mid - dir.rotated(PI * 0.5) * 10.0, mid + dir * 38.0, Color(1.0, 0.92, 0.48, 0.46), 2.0)
+
+func _draw_zone_fields(canvas: CanvasItem) -> void:
+	for zone_id in ZONES.keys():
+		var zone: Dictionary = ZONES[zone_id]
+		var pos: Vector2 = zone["pos"]
+		var radius := float(zone["radius"])
+		canvas.draw_circle(pos, radius, zone["color"])
+		canvas.draw_arc(pos, radius, 0.0, TAU, 64, Color(0.24, 0.18, 0.16, 0.26), 2.0)
+
+func _draw_zone_markers(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool) -> void:
+	for zone_id in ZONES.keys():
+		var zone: Dictionary = ZONES[zone_id]
+		var pos: Vector2 = zone["pos"]
+		var marker: Color = zone["marker"]
+		var pulse := 1.0 + 0.08 * sin(elapsed * 3.0 + pos.x * 0.01)
+		canvas.draw_circle(pos, 13.0 * pulse, Color(marker.r, marker.g, marker.b, 0.32))
+		canvas.draw_arc(pos, 22.0 * pulse, 0.0, TAU, 32, marker, 2.4)
+		canvas.draw_line(pos + Vector2(-16, 0), pos + Vector2(16, 0), marker, 2.0)
+		canvas.draw_line(pos + Vector2(0, -16), pos + Vector2(0, 16), marker, 2.0)
+		_draw_marker_label(canvas, zone_id, zone, player_pos, show_debug_labels)
+
+func _draw_marker_label(canvas: CanvasItem, zone_id: String, zone: Dictionary, player_pos: Vector2, show_debug_labels: bool) -> void:
+	var pos: Vector2 = zone["pos"]
+	var label_pos := pos + Vector2(-104, -70)
+	if show_debug_labels:
+		var distance := player_pos.distance_to(pos)
+		canvas.draw_rect(Rect2(label_pos + Vector2(-4, -12), Vector2(212, 50)), Color(0.08, 0.06, 0.05, 0.58))
+		canvas.draw_rect(Rect2(label_pos + Vector2(-4, -12), Vector2(212, 50)), Color(1.0, 0.96, 0.82, 0.38), false, 1.0)
+		canvas.draw_string(UIFont.get_font(), label_pos, zone_id, HORIZONTAL_ALIGNMENT_LEFT, 206, 8, Color(1.0, 0.96, 0.82, 0.94))
+		canvas.draw_string(UIFont.get_font(), label_pos + Vector2(0, 12), String(zone["display_name"]), HORIZONTAL_ALIGNMENT_LEFT, 206, 9, Color(1.0, 0.86, 0.52, 0.95))
+		canvas.draw_string(UIFont.get_font(), label_pos + Vector2(0, 25), String(zone["role"]), HORIZONTAL_ALIGNMENT_LEFT, 206, 7, Color(0.76, 0.89, 0.95, 0.88))
+		canvas.draw_string(UIFont.get_font(), label_pos + Vector2(0, 37), "distance %.0f" % distance, HORIZONTAL_ALIGNMENT_LEFT, 206, 7, Color(0.74, 1.0, 0.58, 0.88))
+		return
+	canvas.draw_rect(Rect2(label_pos + Vector2(-4, -12), Vector2(132, 22)), Color(0.08, 0.06, 0.05, 0.40))
+	canvas.draw_string(UIFont.get_font(), label_pos, String(zone["display_name"]), HORIZONTAL_ALIGNMENT_LEFT, 124, 9, Color(1.0, 0.86, 0.52, 0.90))
+
+func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
+	for zone_id in ZONE_PROPS.keys():
+		var anchor := anchor_position(zone_id)
+		for prop in ZONE_PROPS[zone_id]:
+			if not _prop_visible_for_variant(prop, state_variant):
+				continue
+			var pos := anchor + Vector2(prop["offset"])
+			_draw_prop(canvas, pos, String(prop["kind"]), String(prop["id"]), elapsed, show_debug_labels)
+
+func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
+	var state := String(prop.get("state", "all"))
+	if state == "all":
+		return true
+	return state == variant
+
+func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, elapsed: float, show_debug_labels: bool) -> void:
+	match kind:
+		"floor":
+			canvas.draw_rect(Rect2(pos - Vector2(58, 28), Vector2(116, 56)), Color(0.74, 0.82, 0.78, 0.20))
+		"house":
+			_draw_house_placeholder(canvas, pos)
+		"mailbox":
+			canvas.draw_rect(Rect2(pos + Vector2(-12, -18), Vector2(24, 28)), Color(0.78, 0.90, 0.84, 0.68))
+			canvas.draw_circle(pos + Vector2(0, -18), 12.0, Color(0.93, 0.62, 0.54, 0.66))
+			canvas.draw_line(pos + Vector2(0, 10), pos + Vector2(0, 28), Color(0.42, 0.29, 0.24, 0.74), 2.0)
+		"flyer", "scraps":
+			for i in range(8):
+				var p := pos + Vector2(float((i * 17) % 42) - 18.0, float((i * 11) % 30) - 14.0)
+				canvas.draw_rect(Rect2(p, Vector2(9, 4)), Color(1.0, 0.88, 0.50, 0.44))
+		"route":
+			canvas.draw_line(pos + Vector2(-42, 18), pos + Vector2(46, -12), Color(1.0, 0.58, 0.82, 0.30), 9.0)
+			canvas.draw_line(pos + Vector2(28, -26), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.42), 3.0)
+			canvas.draw_line(pos + Vector2(28, 4), pos + Vector2(48, -12), Color(1.0, 0.58, 0.82, 0.42), 3.0)
+		"tag":
+			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(1.0, 0.90, 0.56, 0.62))
+			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(0.44, 0.25, 0.20, 0.62), false, 1.0)
+		"photo":
+			canvas.draw_rect(Rect2(pos - Vector2(18, 18), Vector2(36, 32)), Color(0.42, 0.58, 0.68, 0.44))
+			canvas.draw_circle(pos + Vector2(-5, -4), 5.0, Color(1.0, 0.88, 0.62, 0.48))
+			canvas.draw_circle(pos + Vector2(8, -2), 4.0, Color(1.0, 0.74, 0.82, 0.42))
+		"node":
+			var pulse := 1.0 + 0.06 * sin(elapsed * 2.8)
+			canvas.draw_circle(pos, 38.0 * pulse, Color(1.0, 0.88, 0.28, 0.22))
+			canvas.draw_arc(pos, 42.0 * pulse, 0.0, TAU, 48, Color(1.0, 0.35, 0.42, 0.78), 3.0)
+			canvas.draw_rect(Rect2(pos - Vector2(24, 16), Vector2(48, 32)), Color(1.0, 0.93, 0.76, 0.66))
+		"kiosk":
+			canvas.draw_rect(Rect2(pos - Vector2(22, 24), Vector2(44, 42)), Color(0.70, 0.88, 0.82, 0.72))
+			canvas.draw_rect(Rect2(pos - Vector2(13, -18), Vector2(26, 18)), Color(1.0, 0.88, 0.58, 0.54))
+		"projector":
+			canvas.draw_circle(pos, 16.0, Color(1.0, 0.62, 0.78, 0.24))
+			canvas.draw_arc(pos, 24.0, -0.4, 1.9, 24, Color(1.0, 0.62, 0.78, 0.60), 2.0)
+		"floor_plan":
+			canvas.draw_rect(Rect2(pos - Vector2(42, 26), Vector2(84, 52)), Color(0.35, 0.70, 0.95, 0.08), false, 2.0)
+			canvas.draw_line(pos + Vector2(-42, 0), pos + Vector2(42, 0), Color(0.35, 0.70, 0.95, 0.28), 2.0)
+			canvas.draw_line(pos + Vector2(0, -26), pos + Vector2(0, 26), Color(0.35, 0.70, 0.95, 0.28), 2.0)
+		"sign":
+			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 28)), Color(1.0, 0.88, 0.44, 0.72))
+			canvas.draw_line(pos + Vector2(-18, -2), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+			canvas.draw_line(pos + Vector2(8, -12), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+			canvas.draw_line(pos + Vector2(8, 8), pos + Vector2(20, -2), Color(0.44, 0.25, 0.20, 0.70), 2.0)
+		"drain":
+			canvas.draw_circle(pos, 28.0, Color(0.18, 0.40, 0.24, 0.48))
+			canvas.draw_arc(pos, 30.0, 0.0, TAU, 32, Color(0.62, 1.0, 0.36, 0.64), 2.4)
+			for i in range(4):
+				canvas.draw_line(pos + Vector2(-20, -12 + i * 8), pos + Vector2(20, -12 + i * 8), Color(0.05, 0.10, 0.08, 0.42), 2.0)
+		"crack":
+			canvas.draw_line(pos + Vector2(-30, -4), pos + Vector2(-8, 6), Color(0.12, 0.12, 0.10, 0.36), 2.0)
+			canvas.draw_line(pos + Vector2(-8, 6), pos + Vector2(18, -10), Color(0.12, 0.12, 0.10, 0.36), 2.0)
+			canvas.draw_line(pos + Vector2(18, -10), pos + Vector2(34, 8), Color(0.12, 0.12, 0.10, 0.36), 2.0)
+		"trace":
+			canvas.draw_arc(pos, 18.0, 0.0, TAU, 28, Color(0.72, 1.0, 0.68, 0.72), 2.0)
+			canvas.draw_rect(Rect2(pos - Vector2(7, 7), Vector2(14, 14)), Color(0.72, 1.0, 0.68, 0.22), false, 2.0)
+		"speaker":
+			canvas.draw_line(pos + Vector2(0, -32), pos + Vector2(0, 28), Color(0.34, 0.25, 0.22, 0.72), 3.0)
+			canvas.draw_rect(Rect2(pos + Vector2(-14, -42), Vector2(28, 18)), Color(0.78, 0.86, 0.88, 0.70))
+			canvas.draw_arc(pos + Vector2(12, -32), 20.0, -0.7, 0.7, 14, Color(1.0, 0.91, 0.25, 0.54), 2.0)
+		"fake_recovery":
+			canvas.draw_rect(Rect2(pos - Vector2(28, 18), Vector2(56, 36)), Color(0.96, 0.70, 1.0, 0.38))
+			canvas.draw_arc(pos, 28.0, PI * 0.2, PI * 1.55, 28, Color(1.0, 0.62, 0.88, 0.78), 2.4)
+		"residue":
+			canvas.draw_circle(pos, 24.0, Color(0.95, 0.72, 1.0, 0.17))
+			canvas.draw_arc(pos, 34.0, -PI * 0.15, PI * 1.2, 34, Color(0.95, 0.72, 1.0, 0.54), 2.0)
+		_:
+			canvas.draw_circle(pos, 10.0, Color(1.0, 0.91, 0.25, 0.55))
+	if show_debug_labels:
+		_draw_prop_label(canvas, pos, prop_id)
+
+func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
+	canvas.draw_rect(Rect2(pos - Vector2(48, 6), Vector2(96, 54)), Color(0.80, 0.58, 0.48, 0.36))
+	canvas.draw_colored_polygon(PackedVector2Array([
+		pos + Vector2(-58, -4),
+		pos + Vector2(0, -42),
+		pos + Vector2(58, -4),
+	]), Color(0.95, 0.63, 0.56, 0.44))
+	canvas.draw_rect(Rect2(pos + Vector2(-32, 12), Vector2(20, 18)), Color(1.0, 0.91, 0.45, 0.32))
+	canvas.draw_rect(Rect2(pos + Vector2(18, 7), Vector2(18, 41)), Color(0.34, 0.21, 0.18, 0.36))
+
+func _draw_prop_label(canvas: CanvasItem, pos: Vector2, prop_id: String) -> void:
+	canvas.draw_string(UIFont.get_font(), pos + Vector2(-54, 44), prop_id, HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.20, 0.14, 0.12, 0.58))
+
+func _draw_density_tests(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
+	if not show_debug_labels:
+		return
+	_draw_density_group(canvas, Vector2(90, -30), 30, 7.0, Color(1.0, 0.91, 0.25, 0.42), "30 density combat read")
+	_draw_density_group(canvas, Vector2(155, 76), 100, 4.8, Color(1.0, 0.72, 0.50, 0.34), "100 density tier mix")
+	_draw_density_group(canvas, Vector2(350, 82), 300, 2.2, Color(0.96, 0.84, 0.52, 0.22), "300 tiny LOD no AI")
+	canvas.draw_string(UIFont.get_font(), Vector2(240, 210), "density placeholders are draw-only: no collision / no HP / no AI", HORIZONTAL_ALIGNMENT_CENTER, 360, 8, Color(0.30, 0.20, 0.16, 0.76))
+
+func _draw_density_group(canvas: CanvasItem, center: Vector2, count: int, radius: float, color: Color, label: String) -> void:
+	for i in range(count):
+		var angle := fmod(float(i) * 2.399963, TAU)
+		var ring := sqrt(float(i) / maxf(1.0, float(count))) * 80.0
+		var p := center + Vector2(cos(angle), sin(angle)) * ring + Vector2(float(i % 7) - 3.0, float((i * 3) % 5) - 2.0)
+		if radius <= 3.0:
+			canvas.draw_rect(Rect2(p - Vector2(radius, radius), Vector2(radius * 2.0, radius * 2.0)), color)
+		else:
+			canvas.draw_circle(p, radius, color)
+	canvas.draw_string(UIFont.get_font(), center + Vector2(-96, -94), label, HORIZONTAL_ALIGNMENT_CENTER, 192, 8, Color(0.30, 0.20, 0.16, 0.70))
+
+func _draw_world_bounds(canvas: CanvasItem, show_debug_labels: bool) -> void:
+	canvas.draw_rect(WORLD_BOUNDS, Color(0.34, 0.20, 0.16, 0.65), false, 4.0)
+	if show_debug_labels:
+		canvas.draw_string(UIFont.get_font(), WORLD_BOUNDS.position + Vector2(12, 20), "R01 blockout world %.0fx%.0f, viewport remains 480x270" % [WORLD_BOUNDS.size.x, WORLD_BOUNDS.size.y], HORIZONTAL_ALIGNMENT_LEFT, 520, 10, Color(0.24, 0.16, 0.13, 0.78))
