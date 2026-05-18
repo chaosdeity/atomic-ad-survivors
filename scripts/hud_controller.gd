@@ -35,6 +35,11 @@ var supply_footer_divider: ColorRect
 var debug_panel: Panel
 var debug_label: Label
 
+const FONT_TINY := 9
+const FONT_SMALL := 10
+const FONT_BODY := 11
+const FONT_TITLE := 13
+
 func _panel_style(fill_color: Color = C.AD_PAPER, border_color: Color = C.COCOA, border_width: int = 2, corner_radius: int = 4) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill_color
@@ -104,7 +109,7 @@ func build(parent: Node) -> void:
 	charge_weapon_label.size = Vector2(112, 14)
 	charge_weapon_label.clip_text = true
 	charge_weapon_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	charge_weapon_label.add_theme_font_size_override("font_size", 8)
+	charge_weapon_label.add_theme_font_size_override("font_size", FONT_TINY)
 	charge_weapon_label.add_theme_color_override("font_color", C.INK)
 	charge_weapon_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	charge_weapon_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -118,7 +123,7 @@ func build(parent: Node) -> void:
 	charge_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	charge_button.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	charge_button.text = "차징\n대기중"
-	charge_button.add_theme_font_size_override("font_size", 10)
+	charge_button.add_theme_font_size_override("font_size", FONT_SMALL)
 	charge_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(charge_button)
 	root.add_child(charge_button)
@@ -126,7 +131,7 @@ func build(parent: Node) -> void:
 	stat_label = Label.new()
 	stat_label.position = Vector2(130, 7)
 	stat_label.size = Vector2(336, 13)
-	stat_label.add_theme_font_size_override("font_size", 9)
+	stat_label.add_theme_font_size_override("font_size", FONT_SMALL)
 	stat_label.add_theme_color_override("font_color", C.INK)
 	stat_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	stat_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -136,10 +141,10 @@ func build(parent: Node) -> void:
 
 	route_goal_label = Label.new()
 	route_goal_label.position = Vector2(128, 20)
-	route_goal_label.size = Vector2(338, 22)
+	route_goal_label.size = Vector2(338, 24)
 	route_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	route_goal_label.clip_text = true
-	route_goal_label.add_theme_font_size_override("font_size", 7)
+	route_goal_label.add_theme_font_size_override("font_size", FONT_TINY)
 	route_goal_label.add_theme_color_override("font_color", Color("#433227"))
 	route_goal_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	route_goal_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -160,7 +165,7 @@ func build(parent: Node) -> void:
 	boss_name_label.position = Vector2(8, 2)
 	boss_name_label.size = Vector2(100, 11)
 	boss_name_label.text = "스마일 홈 시어머니"
-	boss_name_label.add_theme_font_size_override("font_size", 8)
+	boss_name_label.add_theme_font_size_override("font_size", FONT_TINY)
 	boss_name_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(boss_name_label)
 	boss_panel.add_child(boss_name_label)
@@ -181,7 +186,7 @@ func build(parent: Node) -> void:
 	boss_status_label.position = Vector2(112, 2)
 	boss_status_label.size = Vector2(104, 20)
 	boss_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	boss_status_label.add_theme_font_size_override("font_size", 8)
+	boss_status_label.add_theme_font_size_override("font_size", FONT_TINY)
 	boss_status_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(boss_status_label)
 	boss_panel.add_child(boss_status_label)
@@ -190,7 +195,7 @@ func build(parent: Node) -> void:
 	prompt_label.position = Vector2(96, 230)
 	prompt_label.size = Vector2(288, 16)
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	prompt_label.add_theme_font_size_override("font_size", 10)
+	prompt_label.add_theme_font_size_override("font_size", FONT_BODY)
 	prompt_label.add_theme_color_override("font_color", C.INK)
 	prompt_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	prompt_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -211,7 +216,7 @@ func build(parent: Node) -> void:
 	title.size = Vector2(412, 18)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.text = "레벨 업 보너스"
-	title.add_theme_font_size_override("font_size", 12)
+	title.add_theme_font_size_override("font_size", FONT_TITLE)
 	title.add_theme_color_override("font_color", C.INK)
 	_apply_font(title)
 	card_panel.add_child(title)
@@ -223,7 +228,7 @@ func build(parent: Node) -> void:
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.add_theme_font_size_override("font_size", 9)
+		button.add_theme_font_size_override("font_size", FONT_SMALL)
 		button.add_theme_color_override("font_color", C.INK)
 		_apply_font(button)
 		button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
@@ -246,7 +251,7 @@ func build(parent: Node) -> void:
 	result_label.size = Vector2(268, 132)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	result_label.add_theme_font_size_override("font_size", 10)
+	result_label.add_theme_font_size_override("font_size", FONT_BODY)
 	result_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(result_label)
 	result_panel.add_child(result_label)
@@ -255,7 +260,7 @@ func build(parent: Node) -> void:
 	restart_button.position = Vector2(34, 154)
 	restart_button.size = Vector2(232, 30)
 	restart_button.text = "스페이스 / 클릭으로 다시 시작"
-	restart_button.add_theme_font_size_override("font_size", 10)
+	restart_button.add_theme_font_size_override("font_size", FONT_BODY)
 	restart_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(restart_button)
 	restart_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
@@ -276,7 +281,7 @@ func build(parent: Node) -> void:
 	supply_label.size = Vector2(436, 80)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
-	supply_label.add_theme_font_size_override("font_size", 8)
+	supply_label.add_theme_font_size_override("font_size", FONT_TINY)
 	supply_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_label)
 	supply_panel.add_child(supply_label)
@@ -287,7 +292,7 @@ func build(parent: Node) -> void:
 	supply_scroll_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_scroll_hint_label.clip_text = true
 	supply_scroll_hint_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	supply_scroll_hint_label.add_theme_font_size_override("font_size", 8)
+	supply_scroll_hint_label.add_theme_font_size_override("font_size", FONT_TINY)
 	supply_scroll_hint_label.add_theme_color_override("font_color", Color("#433227"))
 	supply_scroll_hint_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
 	supply_scroll_hint_label.add_theme_constant_override("shadow_offset_x", 1)
@@ -313,7 +318,7 @@ func build(parent: Node) -> void:
 	supply_feedback_label.size = Vector2(432, 18)
 	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	supply_feedback_label.add_theme_font_size_override("font_size", 9)
+	supply_feedback_label.add_theme_font_size_override("font_size", FONT_SMALL)
 	supply_feedback_label.add_theme_color_override("font_color", C.NEON_RED)
 	supply_feedback_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_feedback_label.clip_text = true
@@ -330,7 +335,7 @@ func build(parent: Node) -> void:
 	supply_restart_button = Button.new()
 	supply_restart_button.position = Vector2(98, 218)
 	supply_restart_button.size = Vector2(268, 20)
-	supply_restart_button.add_theme_font_size_override("font_size", 9)
+	supply_restart_button.add_theme_font_size_override("font_size", FONT_SMALL)
 	supply_restart_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_restart_button)
 	supply_restart_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
@@ -348,7 +353,7 @@ func build(parent: Node) -> void:
 	debug_label = Label.new()
 	debug_label.position = Vector2(8, 6)
 	debug_label.size = Vector2(166, 208)
-	debug_label.add_theme_font_size_override("font_size", 8)
+	debug_label.add_theme_font_size_override("font_size", FONT_TINY)
 	debug_label.add_theme_color_override("font_color", C.INK)
 	debug_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_apply_font(debug_label)
@@ -385,10 +390,10 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 			charge_button.add_theme_color_override("font_color", C.INK)
 	charge_weapon_label.text = "무기 %s" % charge_weapon_name
 	charge_weapon_label.visible = charge_weapon_name != "" and not _blocking_panel_visible()
-	stat_label.text = "시간 %03d / %03d   레벨 %d   처치 %d   적 %d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
+	stat_label.text = "%03d/%03d  Lv%d  K%d  E%d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
 	var route_text := route_stage_text
 	if route_goal_text != "":
-		route_text = "%s  |  %s" % [route_stage_text, route_goal_text] if route_stage_text != "" else route_goal_text
+		route_text = route_goal_text
 	route_goal_label.visible = route_text != "" and not paused_for_card and not game_over and not _blocking_panel_visible()
 	route_goal_label.text = route_text
 	if notice_text != "" and not paused_for_card and not game_over and not _blocking_panel_visible():
@@ -438,11 +443,11 @@ func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> vo
 			button.visible = true
 			button.disabled = false
 			var weapon_hint := String(card.get("weapon_hint", ""))
-			button.add_theme_font_size_override("font_size", 8 if weapon_hint != "" else 9)
+			button.add_theme_font_size_override("font_size", FONT_TINY if weapon_hint != "" else FONT_SMALL)
 			var effect_text := String(card["effect_text"])
 			if weapon_hint != "":
-				effect_text = "%s\n\n%s" % [effect_text, weapon_hint]
-			button.text = "%d\n%s\n\n%s" % [i + 1, card["name"], effect_text]
+				effect_text = "%s\n%s" % [effect_text, weapon_hint]
+			button.text = "%d\n%s\n%s" % [i + 1, card["name"], effect_text]
 		else:
 			button.visible = false
 			button.disabled = true
@@ -463,13 +468,13 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	_set_supply_buttons_visible(false)
 	supply_feedback_label.visible = false
 	supply_upgrade_callback = Callable()
-	result_panel.position = Vector2(90, 36)
-	result_panel.size = Vector2(300, 198)
+	result_panel.position = Vector2(58, 28)
+	result_panel.size = Vector2(364, 214)
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
 	result_label.position = Vector2(16, 12)
-	result_label.size = Vector2(268, 132)
-	restart_button.position = Vector2(34, 154)
-	restart_button.size = Vector2(232, 30)
+	result_label.size = Vector2(332, 150)
+	restart_button.position = Vector2(50, 172)
+	restart_button.size = Vector2(264, 28)
 	result_panel.visible = true
 	prompt_label.visible = false
 	var description := str(result_data.get("description", ""))
@@ -484,7 +489,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
 	var result_title := str(result_data.get("result", ""))
-	result_label.add_theme_font_size_override("font_size", 9 if result_title == "긴급 회수" or result_title == "신호 과부하 회수" or result_title == "신호 과부하 강제 회수" else 10)
+	result_label.add_theme_font_size_override("font_size", FONT_SMALL if result_title == "긴급 회수" or result_title == "신호 과부하 회수" or result_title == "신호 과부하 강제 회수" else FONT_BODY)
 	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
@@ -546,8 +551,8 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var max_level := int(upgrade.get("max_level", 1))
 		button.visible = true
 		button.disabled = not can_buy
-		button.custom_minimum_size = Vector2(416, 34)
-		button.add_theme_font_size_override("font_size", 8)
+		button.custom_minimum_size = Vector2(416, 42)
+		button.add_theme_font_size_override("font_size", FONT_TINY)
 		button.add_theme_color_override("font_color", C.INK if can_buy else Color("#6b5b4a"))
 		var normal_style := _button_style(Color("#fff7df"))
 		var hover_style := _button_style(Color("#ffe7a8"))
@@ -571,7 +576,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		var trace_label := str(upgrade.get("trace_label", "전단"))
 		var input_hint := "키%d/클릭" % [i + 1] if i < 4 else "클릭"
 		var buy_marker := ">> " if can_buy else ""
-		button.text = "%s%s. %s  [%s]  Lv %d/%d%s\n   %s | 비용 %d %s | %s%s" % [
+		button.text = "%s%s. %s  [%s] Lv%d/%d%s\n%s  비용 %d %s  %s%s" % [
 			buy_marker,
 			i + 1,
 			upgrade["name"],
@@ -623,8 +628,8 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		supply_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		supply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		supply_button.custom_minimum_size = Vector2(416, 24)
-		supply_button.add_theme_font_size_override("font_size", 8)
+		supply_button.custom_minimum_size = Vector2(416, 42)
+		supply_button.add_theme_font_size_override("font_size", FONT_TINY)
 		supply_button.add_theme_color_override("font_color", C.INK)
 		_apply_font(supply_button)
 		supply_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
