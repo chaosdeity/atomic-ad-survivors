@@ -112,6 +112,7 @@ var sfx_last_played := {}
 var sfx_cooldowns := {}
 var music_players := {}
 var current_music := ""
+var audio_cleaned_up := false
 var hud := HudController.new()
 var effects := EffectsController.new()
 var enemies := EnemyController.new()
@@ -135,7 +136,8 @@ func _ready() -> void:
 		player_pos = r01_blockout.anchor_position("silence_edge_start")
 		r01_blockout.print_probe()
 	_build_audio()
-	_set_music("amb_r01_suburb_loop")
+	if _audio_runtime_enabled():
+		_set_music("amb_r01_suburb_loop")
 	sprite_assets.load_all()
 	hud.build(self)
 	r01_map.reset(elapsed, true)
@@ -229,13 +231,42 @@ func _input(event: InputEvent) -> void:
 			_fire_charge()
 
 func _exit_tree() -> void:
+	_cleanup_audio_players()
+
+func _cleanup_audio_players() -> void:
+	if audio_cleaned_up:
+		return
+	audio_cleaned_up = true
+	var players: Array[AudioStreamPlayer] = []
+	var seen := {}
 	for player in sfx_players.values():
-		if player is AudioStreamPlayer:
-			player.stop()
+		if player is AudioStreamPlayer and is_instance_valid(player):
+			var id: int = player.get_instance_id()
+			if not seen.has(id):
+				seen[id] = true
+				players.append(player)
 	for player in music_players.values():
-		if player is AudioStreamPlayer:
-			player.stop()
+		if player is AudioStreamPlayer and is_instance_valid(player):
+			var id: int = player.get_instance_id()
+			if not seen.has(id):
+				seen[id] = true
+				players.append(player)
+	for player in players:
+		player.stop()
+		player.stream = null
+		if player.get_parent() == self:
+			remove_child(player)
+		player.free()
+	sfx_players.clear()
+	sfx_last_played.clear()
+	sfx_cooldowns.clear()
+	music_players.clear()
 	current_music = ""
+	charge_warning_audio = null
+	charge_audio = null
+	fire_audio = null
+	hit_audio = null
+	miss_audio = null
 
 func _charge_weapon_id() -> String:
 	return CHARGE_WEAPON_RETURN_STAMP
@@ -309,6 +340,8 @@ func _register_music_player(name: String, stream: AudioStream, volume_db: float)
 	return player
 
 func _set_music(name: String) -> void:
+	if not _audio_runtime_enabled():
+		return
 	if current_music == name:
 		return
 	for music_name in music_players:
@@ -319,6 +352,9 @@ func _set_music(name: String) -> void:
 		else:
 			player.stop()
 	current_music = name
+
+func _audio_runtime_enabled() -> bool:
+	return DisplayServer.get_name() != "headless"
 
 func _play_sfx(name: String, pitch_scale: float = 1.0, cooldown_override: float = -1.0) -> void:
 	if not sfx_players.has(name):
