@@ -10,6 +10,7 @@ For a browser build, see `EXPORT_WEB.md`. The prepared Web preset exports to `ex
 
 Balance simulation: `python tools/balance_sim.py`.
 Logic invariant check: `python tools/logic_invariant_check.py`.
+Local QA check: `.\tools\qa_check.ps1`.
 
 ## Controls
 
