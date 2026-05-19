@@ -2,6 +2,7 @@ extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
+const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
 
 const ENABLED := true
 const WORLD_BOUNDS := Rect2(Vector2(-720, -405), Vector2(1920, 810))
@@ -177,10 +178,12 @@ var _collision_records_cache_variant := ""
 var _collision_records_cache: Array[Dictionary] = []
 var _pathing_probe_cache_variant := ""
 var _pathing_probe_cache := {}
+var map_assembly := R01MapAssembly.new()
 
 func reset() -> void:
 	state_variant = STATE_FIRST_VISIT
 	_clear_collision_cache()
+	map_assembly.reset_cache()
 
 func set_state_variant(next_variant: String) -> bool:
 	if not STATE_VARIANTS.has(next_variant):
@@ -279,14 +282,7 @@ func world_screen_count() -> float:
 	return (WORLD_BOUNDS.size.x / C.VIEWPORT_SIZE.x) * (WORLD_BOUNDS.size.y / C.VIEWPORT_SIZE.y)
 
 func prop_counts_for_state(variant: String = state_variant) -> Dictionary:
-	var counts := {}
-	for zone_id in ZONE_PROPS.keys():
-		var count := 0
-		for prop in ZONE_PROPS[zone_id]:
-			if _prop_visible_for_variant(prop, variant):
-				count += 1
-		counts[zone_id] = count
-	return counts
+	return map_assembly.prop_counts_for_state(variant)
 
 func density_counts() -> Dictionary:
 	return {
@@ -298,22 +294,7 @@ func density_counts() -> Dictionary:
 func active_collision_records(variant: String = state_variant) -> Array[Dictionary]:
 	if variant == state_variant and _collision_records_cache_variant == variant:
 		return _collision_records_cache
-	var records: Array[Dictionary] = []
-	for zone_id in ZONE_PROPS.keys():
-		var anchor := anchor_position(zone_id)
-		for prop in ZONE_PROPS[zone_id]:
-			if not _prop_visible_for_variant(prop, variant):
-				continue
-			var kind := String(prop.get("kind", ""))
-			var meta := _collision_meta_for_kind(kind)
-			var record := meta.duplicate(true)
-			var offset: Vector2 = prop.get("offset", Vector2.ZERO)
-			record["asset_id"] = String(prop.get("id", kind))
-			record["zone_id"] = zone_id
-			record["kind"] = kind
-			record["pos"] = anchor + offset
-			record["debug_label"] = "%s/%s" % [zone_id, String(prop.get("id", kind))]
-			records.append(record)
+	var records := map_assembly.collision_records(variant)
 	if variant == state_variant:
 		_collision_records_cache_variant = variant
 		_collision_records_cache = records
@@ -324,19 +305,19 @@ func _clear_collision_cache() -> void:
 	_collision_records_cache.clear()
 	_pathing_probe_cache_variant = ""
 	_pathing_probe_cache.clear()
+	map_assembly.reset_cache()
 
 func collision_summary(variant: String = state_variant) -> Dictionary:
-	var summary := {
-		COLLISION_HARD: 0,
-		COLLISION_SOFT: 0,
-		COLLISION_HAZARD: 0,
-		COLLISION_TRIGGER: 0,
-		COLLISION_NONE: 0,
-	}
-	for record in active_collision_records(variant):
-		var collision_class := String(record.get("collision_class", COLLISION_NONE))
-		summary[collision_class] = int(summary.get(collision_class, 0)) + 1
-	return summary
+	return map_assembly.collision_summary(variant)
+
+func layer_summary(variant: String = state_variant) -> Dictionary:
+	return map_assembly.layer_summary(variant)
+
+func asset_key_sample(variant: String = state_variant) -> Array[String]:
+	return map_assembly.asset_key_sample(variant)
+
+func object_count(variant: String = state_variant) -> int:
+	return map_assembly.object_count(variant)
 
 func nav_preview_rules() -> Dictionary:
 	return NAV_RULES.duplicate(true)
@@ -390,6 +371,9 @@ func pathing_probe_label() -> String:
 
 func print_probe() -> void:
 	print("R01_BLOCKOUT_PROBE world_bounds=", WORLD_BOUNDS, " viewport=", C.VIEWPORT_SIZE, " camera_screens=", world_screen_count())
+	print("R01_MAP_ASSEMBLY object_count=", object_count(), " fields=", map_assembly.object_field_names())
+	print("R01_MAP_ASSEMBLY_LAYER_SUMMARY ", layer_summary())
+	print("R01_MAP_ASSEMBLY_ASSET_KEYS ", asset_key_sample())
 	for zone_id in ZONES.keys():
 		var zone: Dictionary = ZONES[zone_id]
 		print("R01_BLOCKOUT_ANCHOR ", zone_id, " pos=", zone["pos"], " name=", zone["display_name"], " role=", zone["role"])
@@ -402,13 +386,7 @@ func print_probe() -> void:
 	print("R01_COLLISION_NAV_PREVIEW ", pathing_probe_results())
 
 func _collision_meta_for_kind(kind: String) -> Dictionary:
-	return KIND_COLLISION_META.get(kind, {
-		"collision_class": COLLISION_NONE,
-		"nav_behavior": NAV_IGNORE,
-		"risk_role": "unknown",
-		"shape": "circle",
-		"radius": 12.0,
-	})
+	return map_assembly.collision_meta_for_kind(kind)
 
 func _point_overlaps_record(point: Vector2, record: Dictionary, radius: float) -> bool:
 	var shape := String(record.get("shape", "circle"))
@@ -776,17 +754,18 @@ func _draw_marker_label(canvas: CanvasItem, zone_id: String, zone: Dictionary, p
 	return
 
 func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
-	var props: Array[Dictionary] = []
-	for zone_id in ZONE_PROPS.keys():
-		var anchor := anchor_position(zone_id)
-		for prop in ZONE_PROPS[zone_id]:
-			if not _prop_visible_for_variant(prop, state_variant):
-				continue
-			var pos := anchor + Vector2(prop["offset"])
-			props.append({"pos": pos, "kind": String(prop["kind"]), "id": String(prop["id"])})
-	props.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return Vector2(a["pos"]).y < Vector2(b["pos"]).y)
-	for prop in props:
-		_draw_prop(canvas, Vector2(prop["pos"]), String(prop["kind"]), String(prop["id"]), elapsed, show_debug_labels)
+	var objects := map_assembly.objects_for_state(state_variant)
+	objects.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var layer_a := map_assembly.layer_rank(String(a.get("layer", "")))
+		var layer_b := map_assembly.layer_rank(String(b.get("layer", "")))
+		if layer_a == layer_b:
+			return Vector2(a.get("pos", Vector2.ZERO)).y < Vector2(b.get("pos", Vector2.ZERO)).y
+		return layer_a < layer_b
+	)
+	for object in objects:
+		if _object_drawn_by_ground_pass(object):
+			continue
+		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels)
 
 func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 	var state := String(prop.get("state", "all"))
@@ -794,7 +773,19 @@ func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 		return true
 	return state == variant
 
-func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, elapsed: float, show_debug_labels: bool) -> void:
+func _object_drawn_by_ground_pass(object: Dictionary) -> bool:
+	var kind := String(object.get("kind", ""))
+	var object_id := String(object.get("id", ""))
+	return kind == "subdivision_road" or kind == "model_axis" or kind == "drain_ground" or kind == "fake_ad_walkway" or kind == "travel_path" or object_id == "silence_edge_ground_band"
+
+func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool) -> void:
+	var pos := Vector2(object.get("pos", Vector2.ZERO))
+	var kind := String(object.get("kind", ""))
+	var prop_id := String(object.get("id", kind))
+	var asset_key := String(object.get("asset_key", prop_id))
+	_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
+
+func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, asset_key: String, elapsed: float, show_debug_labels: bool) -> void:
 	match kind:
 		"floor":
 			canvas.draw_rect(Rect2(pos - Vector2(58, 28), Vector2(116, 56)), Color(0.74, 0.82, 0.78, 0.16))
@@ -815,7 +806,7 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			if kind == "flyer":
 				canvas.draw_arc(pos, 28.0, -0.4, 1.8, 20, Color(1.0, 0.30, 0.36, 0.28), 1.8)
 		"route":
-			_draw_route_decal(canvas, pos, prop_id.find("return") != -1)
+			_draw_route_decal(canvas, pos, prop_id.find("return") != -1 or asset_key.find("fake_return") != -1)
 		"tag":
 			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(1.0, 0.90, 0.56, 0.62))
 			canvas.draw_rect(Rect2(pos - Vector2(20, 9), Vector2(40, 18)), Color(0.44, 0.25, 0.20, 0.62), false, 1.0)
@@ -865,7 +856,7 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 		_:
 			canvas.draw_circle(pos, 10.0, Color(1.0, 0.91, 0.25, 0.55))
 	if show_debug_labels:
-		_draw_prop_label(canvas, pos, prop_id)
+		_draw_prop_label(canvas, pos, "%s\n%s" % [prop_id, asset_key])
 
 func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
 	_draw_blocker_shadow(canvas, pos, Vector2(126, 44))

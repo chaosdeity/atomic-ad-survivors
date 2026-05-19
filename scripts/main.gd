@@ -1784,6 +1784,7 @@ func _debug_info() -> Dictionary:
 	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
 	var r01_summary := _r01_phrase_state()
 	var r01_collision_summary := r01_blockout.collision_summary() if R01LayoutBlockout.ENABLED else {}
+	var r01_layer_summary := r01_blockout.layer_summary() if R01LayoutBlockout.ENABLED else {}
 	var outpost_state := outpost_blockout.state_from_progress(_session_progress_data(), meta_progression)
 	var outpost_collision_summary := outpost_blockout.collision_summary(outpost_state)
 	return {
@@ -1805,6 +1806,14 @@ func _debug_info() -> Dictionary:
 		"r01_collision_trigger": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_TRIGGER, 0)),
 		"r01_collision_none": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_NONE, 0)),
 		"r01_pathing_probe": r01_blockout.pathing_probe_label() if R01LayoutBlockout.ENABLED else "",
+		"r01_object_count": r01_blockout.object_count() if R01LayoutBlockout.ENABLED else 0,
+		"r01_layer_ground_patch": int(r01_layer_summary.get("ground_patch", 0)),
+		"r01_layer_ground_decal": int(r01_layer_summary.get("ground_decal", 0)),
+		"r01_layer_travel_corridor": int(r01_layer_summary.get("travel_corridor", 0)),
+		"r01_layer_hazard_decal": int(r01_layer_summary.get("hazard_decal", 0)),
+		"r01_layer_blocker_back": int(r01_layer_summary.get("blocker_back", 0)),
+		"r01_layer_prop_mid": int(r01_layer_summary.get("prop_mid", 0)),
+		"r01_asset_key_sample": ", ".join(r01_blockout.asset_key_sample()) if R01LayoutBlockout.ENABLED else "",
 		"outpost_variant": str(outpost_state.get("variant", "")),
 		"outpost_facility_count": outpost_blockout.facility_count(),
 		"outpost_world_bounds": "%.0fx%.0f" % [OutpostLayoutBlockout.WORLD_BOUNDS.size.x, OutpostLayoutBlockout.WORLD_BOUNDS.size.y],

@@ -147,6 +147,16 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("r01_collision_hazard", 0)),
 			int(info.get("r01_collision_trigger", 0)),
 		],
+		"r01 assembly: objects=%d ground=%d decal=%d travel=%d hazard=%d blocker=%d prop=%d" % [
+			int(info.get("r01_object_count", 0)),
+			int(info.get("r01_layer_ground_patch", 0)),
+			int(info.get("r01_layer_ground_decal", 0)),
+			int(info.get("r01_layer_travel_corridor", 0)),
+			int(info.get("r01_layer_hazard_decal", 0)),
+			int(info.get("r01_layer_blocker_back", 0)),
+			int(info.get("r01_layer_prop_mid", 0)),
+		],
+		"r01 asset keys: %s" % str(info.get("r01_asset_key_sample", "")),
 		"outpost: %s %s facilities=%d" % [
 			str(info.get("outpost_variant", "")),
 			str(info.get("outpost_world_bounds", "")),
