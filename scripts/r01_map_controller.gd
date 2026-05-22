@@ -17,9 +17,9 @@ func reset(elapsed: float = 0.0, show_entry_notice: bool = true) -> void:
 	if show_entry_notice:
 		_show_entry_notice()
 
-func update(delta: float, elapsed: float, allow_entry_notice: bool = true) -> bool:
+func update(delta: float, elapsed: float, allow_entry_notice: bool = true, world_zone_id: String = "") -> bool:
 	_notice_timer = maxf(0.0, _notice_timer - delta)
-	var next_zone := R01ZoneLayout.zone_id_for_elapsed(elapsed)
+	var next_zone := world_zone_id if world_zone_id != "" else R01ZoneLayout.zone_id_for_elapsed(elapsed)
 	if next_zone == _zone_id:
 		return false
 	_zone_id = next_zone
@@ -41,6 +41,12 @@ func current_zone_name() -> String:
 func current_debug_label() -> String:
 	return R01ZoneLayout.debug_label(_zone_id)
 
+func current_zone_is_open_house() -> bool:
+	return R01ZoneLayout.is_open_house_zone(_zone_id)
+
+func current_zone_is_model_house() -> bool:
+	return R01ZoneLayout.is_model_house_zone(_zone_id)
+
 func active_notice_text() -> String:
 	return _notice_text if _notice_timer > 0.0 else ""
 
@@ -49,9 +55,9 @@ func active_notice_timer() -> float:
 
 func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, boss_route_ready: bool, boss_active: bool) -> void:
 	match _zone_id:
-		R01ZoneLayout.ZONE_HOUSING_LOOP:
+		R01ZoneLayout.ZONE_HOUSING_LOOP, R01ZoneLayout.ZONE_BLOCKOUT_HOUSING_LOOP, R01ZoneLayout.ZONE_BLOCKOUT_OPEN_HOUSE:
 			_draw_housing_loop(canvas, elapsed, player_pos)
-		R01ZoneLayout.ZONE_MODEL_HOUSE_NEXUS:
+		R01ZoneLayout.ZONE_MODEL_HOUSE_NEXUS, R01ZoneLayout.ZONE_BLOCKOUT_MODEL_HOUSE:
 			_draw_model_house_nexus(canvas, elapsed, player_pos, boss_route_ready or boss_active)
 		_:
 			_draw_silent_edge(canvas, elapsed, player_pos)

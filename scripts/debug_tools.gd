@@ -176,6 +176,14 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("enemy_cap", 0)),
 			str(info.get("charge_state", "")),
 		],
+		"audit %.0f ratio=%.2f pass=%d fail=%d pressure=%d" % [
+			float(info.get("audit_processing", 0.0)),
+			float(info.get("audit_progress_ratio", 0.0)),
+			int(info.get("audit_pass_count", 0)),
+			int(info.get("audit_fail_count", 0)),
+			int(info.get("audit_pressure_level", 0)),
+		],
+		"playtest %s" % str(info.get("playtest_live_summary", "")),
 		"sortie %d  recall=%s stage=%d" % [
 			int(info.get("sortie_index", 1)),
 			str(info.get("first_recall_done", false)),

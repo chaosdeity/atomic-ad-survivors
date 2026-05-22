@@ -5,7 +5,7 @@ const UIFont := preload("res://scripts/ui_font.gd")
 const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
 
 const ENABLED := true
-const WORLD_BOUNDS := Rect2(Vector2(-720, -405), Vector2(1920, 810))
+const WORLD_BOUNDS := Rect2(Vector2(-2640, -1485), Vector2(5280, 2970))
 const PLAYER_MARGIN := 28.0
 const STATE_FIRST_VISIT := "first_visit"
 const STATE_BROADCAST_RECORD_3 := "broadcast_record_3"
@@ -19,7 +19,7 @@ const COLLISION_NONE := "no_collision"
 const NAV_BLOCK := "block"
 const NAV_SOFT_AVOID := "soft_avoid"
 const NAV_IGNORE := "ignore"
-const MODEL_HOUSE_CLEAR_RADIUS := 128.0
+const MODEL_HOUSE_CLEAR_RADIUS := 180.0
 const STATE_VARIANTS := [
 	STATE_FIRST_VISIT,
 	STATE_BROADCAST_RECORD_3,
@@ -31,48 +31,66 @@ const ZONES := {
 	"silence_edge_start": {
 		"display_name": "침묵 가장자리",
 		"role": "low density entry / supply edge",
-		"pos": Vector2(-600, 170),
+		"pos": Vector2(-2380, 1260),
 		"color": Color(0.64, 0.78, 0.90, 0.34),
 		"marker": Color(0.72, 0.84, 0.92, 0.92),
-		"radius": 138.0,
+		"radius": 220.0,
+	},
+	"outer_recovery_lane_anchor": {
+		"display_name": "외곽 회수 차선",
+		"role": "wide recovery lane / early return judgment",
+		"pos": Vector2(-1540, 1110),
+		"color": Color(0.58, 0.78, 0.70, 0.26),
+		"marker": Color(0.68, 0.92, 0.76, 0.92),
+		"radius": 260.0,
 	},
 	"subdivision_loop_center": {
 		"display_name": "분양 주택 루프",
 		"role": "primary combat loop / repeated houses",
-		"pos": Vector2(-105, 28),
+		"pos": Vector2(-640, 365),
 		"color": Color(1.0, 0.75, 0.63, 0.28),
 		"marker": Color(1.0, 0.83, 0.66, 0.95),
-		"radius": 176.0,
+		"radius": 340.0,
+	},
+	"open_house_street_anchor": {
+		"display_name": "오픈하우스 거리",
+		"role": "risk reward street / signal ticket pressure",
+		"pos": Vector2(800, -210),
+		"color": Color(1.0, 0.62, 0.48, 0.26),
+		"marker": Color(1.0, 0.54, 0.46, 0.94),
+		"radius": 300.0,
 	},
 	"model_house_node_anchor": {
 		"display_name": "모델하우스 결절",
 		"role": "broadcast record / node approach",
-		"pos": Vector2(510, -238),
+		"pos": Vector2(2320, -1220),
 		"color": Color(1.0, 0.86, 0.42, 0.30),
 		"marker": Color(1.0, 0.82, 0.42, 0.96),
-		"radius": 152.0,
+		"radius": 280.0,
 	},
 	"drain_pocket_anchor": {
 		"display_name": "배수로 침묵 주머니",
 		"role": "side pocket / trace candidate",
-		"pos": Vector2(260, 270),
+		"pos": Vector2(180, 1280),
 		"color": Color(0.18, 0.38, 0.27, 0.28),
 		"marker": Color(0.25, 0.52, 0.34, 0.94),
-		"radius": 128.0,
+		"radius": 250.0,
 	},
 	"fake_return_route_anchor": {
 		"display_name": "끊긴 광고 산책로",
 		"role": "false recovery mimic / route risk",
-		"pos": Vector2(-500, -205),
+		"pos": Vector2(-1680, -520),
 		"color": Color(0.96, 0.68, 0.96, 0.25),
 		"marker": Color(0.98, 0.72, 1.0, 0.92),
-		"radius": 122.0,
+		"radius": 250.0,
 	},
 }
 
 const ADJACENCY := [
-	["silence_edge_start", "subdivision_loop_center"],
-	["subdivision_loop_center", "model_house_node_anchor"],
+	["silence_edge_start", "outer_recovery_lane_anchor"],
+	["outer_recovery_lane_anchor", "subdivision_loop_center"],
+	["subdivision_loop_center", "open_house_street_anchor"],
+	["open_house_street_anchor", "model_house_node_anchor"],
 	["subdivision_loop_center", "drain_pocket_anchor"],
 	["subdivision_loop_center", "fake_return_route_anchor"],
 ]
@@ -127,6 +145,12 @@ const ZONE_PROPS := {
 		{"id": "quiet_nameplate_marker", "offset": Vector2(-114, -48), "kind": "tag", "state": STATE_DESTROY_NODE},
 		{"id": "blank_customer_photo_hint", "offset": Vector2(-28, -104), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
+	"outer_recovery_lane_anchor": [
+		{"id": "outer_recovery_lane_ground", "offset": Vector2(0, 0), "kind": "floor", "state": "all"},
+		{"id": "quiet_lane_marker", "offset": Vector2(-130, -60), "kind": "route", "state": "all"},
+		{"id": "outpost_signal_scraps", "offset": Vector2(122, 54), "kind": "scraps", "state": "all"},
+		{"id": "wide_return_barrier", "offset": Vector2(220, -86), "kind": "road_barrier", "state": "all"},
+	],
 	"subdivision_loop_center": [
 		{"id": "house_front_placeholder", "offset": Vector2(-166, -116), "kind": "house", "state": "all"},
 		{"id": "mirror_house_left", "offset": Vector2(-322, 132), "kind": "house", "state": "all"},
@@ -140,6 +164,15 @@ const ZONE_PROPS := {
 		{"id": "same_house_repeat_marker", "offset": Vector2(136, -146), "kind": "house", "state": STATE_BROADCAST_RECORD_3},
 		{"id": "exposed_nameplate_marker", "offset": Vector2(78, 112), "kind": "tag", "state": STATE_DESTROY_NODE},
 		{"id": "family_window_photo_marker", "offset": Vector2(-18, -132), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
+	],
+	"open_house_street_anchor": [
+		{"id": "open_house_street_banner", "offset": Vector2(-210, -82), "kind": "sign", "state": "all"},
+		{"id": "open_house_checkin_kiosk", "offset": Vector2(48, -36), "kind": "kiosk", "state": "all"},
+		{"id": "family_discount_projector", "offset": Vector2(226, 70), "kind": "projector", "state": "all"},
+		{"id": "guided_visit_floor_plan", "offset": Vector2(-44, 130), "kind": "floor_plan", "state": "all"},
+		{"id": "open_house_flyer_spill", "offset": Vector2(-260, 110), "kind": "flyer", "state": "all"},
+		{"id": "signal_residue_preview", "offset": Vector2(280, -98), "kind": "residue", "state": STATE_BROADCAST_RECORD_3},
+		{"id": "smile_home_photo_loop", "offset": Vector2(116, -144), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 	],
 	"model_house_node_anchor": [
 		{"id": "model_house_mass_placeholder", "offset": Vector2(208, -118), "kind": "model_house", "state": "all"},
@@ -218,9 +251,12 @@ func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radiu
 	var view_half := C.VIEWPORT_SIZE * 0.5
 	var near_rect := Rect2(player_pos - view_half - Vector2(42, 42), C.VIEWPORT_SIZE + Vector2(84, 84))
 	var preferred_center := player_pos
-	if elapsed > 72.0 and rng.randf() < 0.38:
-		preferred_center = anchor_position("subdivision_loop_center")
-	if elapsed > 210.0 and rng.randf() < 0.36:
+	var nearest_anchor := nearest_zone_id(player_pos)
+	if elapsed > 72.0 and rng.randf() < 0.28:
+		preferred_center = anchor_position(nearest_anchor)
+	if elapsed > 135.0 and player_pos.distance_to(anchor_position("open_house_street_anchor")) < 980.0 and rng.randf() < 0.28:
+		preferred_center = anchor_position("open_house_street_anchor")
+	if elapsed > 240.0 and player_pos.distance_to(anchor_position("model_house_node_anchor")) < 1180.0 and rng.randf() < 0.24:
 		preferred_center = anchor_position("model_house_node_anchor")
 	for i in range(28):
 		var side := rng.randi_range(0, 3)
@@ -353,6 +389,7 @@ func pathing_probe_results() -> Dictionary:
 		"30": _run_pathing_probe(30),
 		"100": _run_pathing_probe(100),
 		"300": _run_pathing_probe(300),
+		"open_house_route": _anchor_distance_probe("subdivision_loop_center", "open_house_street_anchor", 900.0, 1700.0),
 		"model_house_node": _model_house_anchor_probe(),
 		"fake_return_route": _fake_return_route_probe(),
 	}
@@ -366,6 +403,7 @@ func pathing_probe_label() -> String:
 		var result: Dictionary = results[key]
 		parts.append("%s=%s stuck=%d" % [key, String(result["status"]), int(result["stuck_count"])])
 	parts.append("node=%s" % String(results["model_house_node"].get("status", "")))
+	parts.append("open=%s" % String(results["open_house_route"].get("status", "")))
 	parts.append("fake=%s" % String(results["fake_return_route"].get("status", "")))
 	return " ".join(parts)
 
@@ -559,6 +597,19 @@ func _probe_start_position(index: int, count: int) -> Vector2:
 		clampf(p.y, WORLD_BOUNDS.position.y + 32.0, WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y - 32.0)
 	)
 
+func _anchor_distance_probe(from_id: String, to_id: String, min_distance: float, max_distance: float) -> Dictionary:
+	var distance := anchor_position(from_id).distance_to(anchor_position(to_id))
+	var status := "pass" if distance >= min_distance and distance <= max_distance else "warning"
+	return {
+		"status": status,
+		"from": from_id,
+		"to": to_id,
+		"distance": distance,
+		"min_distance": min_distance,
+		"max_distance": max_distance,
+		"note": "route distance supports wide-region pressure" if status == "pass" else "route distance outside target",
+	}
+
 func _model_house_anchor_probe() -> Dictionary:
 	var anchor := anchor_position("model_house_node_anchor")
 	var blocked_samples := 0
@@ -621,9 +672,9 @@ func draw_foreground_hints(canvas: CanvasItem, _elapsed: float, show_debug_label
 
 func _draw_ground(canvas: CanvasItem, elapsed: float) -> void:
 	canvas.draw_rect(WORLD_BOUNDS, Color("#e7d8b7"))
-	_draw_rect_band(canvas, Rect2(Vector2(WORLD_BOUNDS.position.x, WORLD_BOUNDS.position.y), Vector2(460, WORLD_BOUNDS.size.y)), Color(0.56, 0.68, 0.70, 0.18), Color(0.34, 0.44, 0.46, 0.13))
-	_draw_rect_band(canvas, Rect2(Vector2(82, 178), Vector2(600, 208)), Color(0.15, 0.26, 0.22, 0.18), Color(0.08, 0.13, 0.11, 0.18))
-	_draw_rect_band(canvas, Rect2(Vector2(-620, -318), Vector2(360, 118)), Color(0.96, 0.72, 0.88, 0.12), Color(0.42, 0.25, 0.38, 0.12))
+	_draw_rect_band(canvas, Rect2(Vector2(WORLD_BOUNDS.position.x, WORLD_BOUNDS.position.y), Vector2(880, WORLD_BOUNDS.size.y)), Color(0.56, 0.68, 0.70, 0.18), Color(0.34, 0.44, 0.46, 0.13))
+	_draw_rect_band(canvas, Rect2(anchor_position("drain_pocket_anchor") + Vector2(-360, -122), Vector2(760, 260)), Color(0.15, 0.26, 0.22, 0.18), Color(0.08, 0.13, 0.11, 0.18))
+	_draw_rect_band(canvas, Rect2(anchor_position("fake_return_route_anchor") + Vector2(-240, -104), Vector2(460, 160)), Color(0.96, 0.72, 0.88, 0.12), Color(0.42, 0.25, 0.38, 0.12))
 	_draw_model_house_axis(canvas)
 	var tile := 64
 	for x in range(int(WORLD_BOUNDS.position.x), int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x) + tile, tile):
@@ -635,6 +686,7 @@ func _draw_ground(canvas: CanvasItem, elapsed: float) -> void:
 	var pulse := 0.03 + 0.02 * sin(elapsed * 0.7)
 	canvas.draw_rect(Rect2(WORLD_BOUNDS.position + Vector2(0, WORLD_BOUNDS.size.y - 128), Vector2(WORLD_BOUNDS.size.x, 128)), Color(0.62, 0.78, 0.68, pulse))
 	_draw_subdivision_loop(canvas)
+	_draw_open_house_street(canvas, elapsed)
 	_draw_drain_pocket(canvas, elapsed)
 	_draw_fake_ad_walkway(canvas)
 
@@ -644,29 +696,51 @@ func _draw_rect_band(canvas: CanvasItem, rect: Rect2, fill: Color, border: Color
 
 func _draw_model_house_axis(canvas: CanvasItem) -> void:
 	var a := anchor_position("subdivision_loop_center") + Vector2(110, -48)
-	var b := anchor_position("model_house_node_anchor") + Vector2(80, -32)
-	canvas.draw_line(a, b, Color(0.60, 0.44, 0.34, 0.28), 64.0)
-	canvas.draw_line(a, b, Color(0.86, 0.74, 0.58, 0.28), 48.0)
-	canvas.draw_line(a, b, Color(0.28, 0.22, 0.19, 0.22), 4.0)
-	var dir := (b - a).normalized()
-	var side := dir.rotated(PI * 0.5)
-	for i in range(8):
-		var p := a.lerp(b, float(i) / 7.0)
-		canvas.draw_line(p - side * 24.0, p - side * 16.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
-		canvas.draw_line(p + side * 16.0, p + side * 24.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
+	var b := anchor_position("open_house_street_anchor") + Vector2(20, -22)
+	var c := anchor_position("model_house_node_anchor") + Vector2(80, -32)
+	for segment in [[a, b], [b, c]]:
+		var from_pos: Vector2 = segment[0]
+		var to_pos: Vector2 = segment[1]
+		canvas.draw_line(from_pos, to_pos, Color(0.60, 0.44, 0.34, 0.28), 64.0)
+		canvas.draw_line(from_pos, to_pos, Color(0.86, 0.74, 0.58, 0.28), 48.0)
+		canvas.draw_line(from_pos, to_pos, Color(0.28, 0.22, 0.19, 0.22), 4.0)
+		var dir := (to_pos - from_pos).normalized()
+		var side := dir.rotated(PI * 0.5)
+		for i in range(7):
+			var p := from_pos.lerp(to_pos, float(i) / 6.0)
+			canvas.draw_line(p - side * 24.0, p - side * 16.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
+			canvas.draw_line(p + side * 16.0, p + side * 24.0, Color(1.0, 0.90, 0.56, 0.26), 2.0)
 
 func _draw_subdivision_loop(canvas: CanvasItem) -> void:
 	var center := anchor_position("subdivision_loop_center")
-	var outer := _ellipse_points(center, Vector2(420, 238), 48)
-	var inner := _ellipse_points(center, Vector2(292, 150), 48)
+	var outer := _ellipse_points(center, Vector2(520, 300), 48)
+	var inner := _ellipse_points(center, Vector2(360, 190), 48)
 	canvas.draw_polyline(outer, Color(0.48, 0.41, 0.34, 0.36), 54.0)
 	canvas.draw_polyline(outer, Color(0.75, 0.67, 0.55, 0.42), 38.0)
 	canvas.draw_polyline(inner, Color(0.70, 0.83, 0.66, 0.18), 48.0)
 	canvas.draw_polyline(outer, Color(0.24, 0.20, 0.18, 0.18), 2.0)
 	canvas.draw_polyline(inner, Color(0.24, 0.20, 0.18, 0.16), 2.0)
 	for i in range(16):
-		var p := center + Vector2(cos(float(i) / 16.0 * TAU) * 356.0, sin(float(i) / 16.0 * TAU) * 194.0)
+		var p := center + Vector2(cos(float(i) / 16.0 * TAU) * 448.0, sin(float(i) / 16.0 * TAU) * 246.0)
 		canvas.draw_rect(Rect2(p - Vector2(12, 1.5), Vector2(24, 3)), Color(1.0, 0.94, 0.62, 0.22))
+
+func _draw_open_house_street(canvas: CanvasItem, elapsed: float) -> void:
+	var anchor := anchor_position("open_house_street_anchor")
+	var street := PackedVector2Array([
+		anchor + Vector2(-520, 120),
+		anchor + Vector2(-260, 18),
+		anchor + Vector2(40, -18),
+		anchor + Vector2(340, -96),
+		anchor + Vector2(620, -184),
+	])
+	canvas.draw_polyline(street, Color(0.62, 0.36, 0.30, 0.34), 76.0)
+	canvas.draw_polyline(street, Color(1.0, 0.76, 0.54, 0.30), 56.0)
+	canvas.draw_polyline(street, Color(0.26, 0.18, 0.16, 0.26), 3.0)
+	var pulse := 0.18 + 0.07 * sin(elapsed * 1.4)
+	for i in range(8):
+		var p := anchor + Vector2(-390 + i * 118, -70 + float((i * 61) % 210))
+		canvas.draw_rect(Rect2(p - Vector2(38, 12), Vector2(76, 24)), Color(1.0, 0.91, 0.25, pulse))
+		canvas.draw_rect(Rect2(p - Vector2(38, 12), Vector2(76, 24)), Color(0.44, 0.24, 0.18, 0.26), false, 1.2)
 
 func _draw_drain_pocket(canvas: CanvasItem, elapsed: float) -> void:
 	var anchor := anchor_position("drain_pocket_anchor")
@@ -711,6 +785,8 @@ func _draw_travel_corridors(canvas: CanvasItem) -> void:
 			corridor_color = Color(0.95, 0.54, 0.78, 0.08)
 		elif edge[1] == "drain_pocket_anchor":
 			corridor_color = Color(0.22, 0.36, 0.27, 0.20)
+		elif edge[1] == "open_house_street_anchor" or edge[0] == "open_house_street_anchor":
+			corridor_color = Color(1.0, 0.46, 0.34, 0.16)
 		canvas.draw_line(a, b, corridor_color, 30.0)
 		canvas.draw_line(a, b, Color(0.42, 0.31, 0.26, 0.26), 2.0)
 		var dir := (b - a).normalized()
@@ -776,7 +852,7 @@ func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 func _object_drawn_by_ground_pass(object: Dictionary) -> bool:
 	var kind := String(object.get("kind", ""))
 	var object_id := String(object.get("id", ""))
-	return kind == "subdivision_road" or kind == "model_axis" or kind == "drain_ground" or kind == "fake_ad_walkway" or kind == "travel_path" or object_id == "silence_edge_ground_band"
+	return kind == "subdivision_road" or kind == "open_house_street" or kind == "model_axis" or kind == "drain_ground" or kind == "fake_ad_walkway" or kind == "travel_path" or object_id == "silence_edge_ground_band"
 
 func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool) -> void:
 	var pos := Vector2(object.get("pos", Vector2.ZERO))
@@ -966,9 +1042,9 @@ func _draw_prop_label(canvas: CanvasItem, pos: Vector2, prop_id: String) -> void
 func _draw_density_tests(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
 	if not show_debug_labels:
 		return
-	_draw_density_group(canvas, Vector2(90, -30), 30, 7.0, Color(1.0, 0.91, 0.25, 0.42), "30 density combat read")
-	_draw_density_group(canvas, Vector2(155, 76), 100, 4.8, Color(1.0, 0.72, 0.50, 0.34), "100 density tier mix")
-	_draw_density_group(canvas, Vector2(350, 82), 300, 2.2, Color(0.96, 0.84, 0.52, 0.22), "300 tiny LOD no AI")
+	_draw_density_group(canvas, anchor_position("subdivision_loop_center") + Vector2(180, -60), 30, 7.0, Color(1.0, 0.91, 0.25, 0.42), "30 density combat read")
+	_draw_density_group(canvas, anchor_position("open_house_street_anchor") + Vector2(-80, 90), 100, 4.8, Color(1.0, 0.72, 0.50, 0.34), "100 open house pressure")
+	_draw_density_group(canvas, anchor_position("model_house_node_anchor") + Vector2(-220, 140), 300, 2.2, Color(0.96, 0.84, 0.52, 0.22), "300 tiny LOD no AI")
 
 func _draw_density_group(canvas: CanvasItem, center: Vector2, count: int, radius: float, color: Color, label: String) -> void:
 	for i in range(count):

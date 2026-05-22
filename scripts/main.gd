@@ -40,6 +40,8 @@ const RETURN_STAMP_RANGE := 248.0
 const RETURN_STAMP_DURATION := 5.0
 const RETURN_STAMP_WIDTH := 10.0
 const RETURN_STAMP_AUTO_PRIORITY_RANGE_BONUS := 48.0
+const CONTAMINATION_MARK_LABEL_DISTANCE := 150.0
+const CONTAMINATION_MARK_LABEL_ENEMY_LIMIT := 7
 const MAX_PENDING_KILL_CONTEXTS := 32
 const BOSS_SIGNAL_LABELS := {
 	"none": "없음",
@@ -49,6 +51,16 @@ const BOSS_SIGNAL_LABELS := {
 	"silent": "침묵",
 }
 const TERMINAL_STATES := ["game_over", "victory", "recalled", "boss_victory"]
+const AUDIT_SEGMENTS := [
+	{"time": 30.0, "name": "정상 고객 예비 감사", "threshold": 120.0, "pass": "첫 기준 통과", "fail": "검문 로봇 증원"},
+	{"time": 60.0, "name": "전단 확산 감사", "threshold": 260.0, "pass": "태그 후보 판정 안정", "fail": "적 밀도 상승"},
+	{"time": 90.0, "name": "오픈하우스 방문 감사", "threshold": 520.0, "pass": "수신태그 후보 노출", "fail": "오픈하우스 압력 상승"},
+	{"time": 120.0, "name": "가족 적합성 감사", "threshold": 1000.0, "pass": "카드 시너지 안정", "fail": "빠른 검수 로봇 등장"},
+	{"time": 150.0, "name": "정산 예비 감사", "threshold": 1800.0, "pass": "후보 승인률 보정", "fail": "후보 보류율 상승"},
+	{"time": 180.0, "name": "모델하우스 신호 감사", "threshold": 3200.0, "pass": "신호 위치 표시", "fail": "회수선 안정도 감소"},
+	{"time": 240.0, "name": "재심사 절차", "threshold": 6000.0, "pass": "심층 귀환 보정", "fail": "포위형 웨이브"},
+	{"time": 300.0, "name": "결절 예비 감사", "threshold": 10000.0, "pass": "모델하우스 접근 암시", "fail": "강제 인양 위험"},
+]
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -78,7 +90,21 @@ var boss_result_reason := ""
 var last_boss_recall_report := {}
 var last_boss_victory_report := {}
 var last_run_result := {}
+var current_supply_actions: Array[Dictionary] = []
+var last_supply_reaction_line := ""
 var r01_visit_recorded_sortie_index := 0
+var r01_zone_times := {}
+var open_house_signal_stage := 0
+var audit_segment_index := 0
+var audit_processing := 0.0
+var audit_total_processing := 0.0
+var audit_pass_count := 0
+var audit_fail_count := 0
+var audit_pressure_level := 0
+var audit_last_result := "대기"
+var audit_segment_results: Array[Dictionary] = []
+var card_contribution_log := {}
+var playtest_metrics := {}
 
 var auto_timer := 0.0
 var charge_timer := 0.0
@@ -145,6 +171,9 @@ func _ready() -> void:
 	sprite_assets.load_all()
 	hud.build(self)
 	r01_map.reset(elapsed, true)
+	_reset_r01_run_tracking()
+	_reset_audit_run_tracking()
+	_reset_playtest_metrics()
 	_record_r01_visit_for_current_sortie()
 	set_process(true)
 
@@ -168,6 +197,8 @@ func _process(delta: float) -> void:
 
 	elapsed += delta
 	_update_r01_zone(delta)
+	_update_audit_director(delta)
+	_update_playtest_runtime_metrics()
 	_update_first_recall_event(delta)
 	_update_preboss_signal_events()
 	_try_start_boss_encounter()
@@ -182,7 +213,7 @@ func _process(delta: float) -> void:
 	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	_update_player(delta)
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
+	var wave_params := _wave_params_for_elapsed(elapsed)
 	if not boss.active:
 		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 		_update_wave_events(wave_params)
@@ -219,7 +250,7 @@ func _input(event: InputEvent) -> void:
 	if match_state == "supply":
 		var upgrade_choice := _supply_choice_from_event(event)
 		if upgrade_choice != -1:
-			_apply_supply_upgrade_choice(upgrade_choice)
+			_apply_supply_choice(upgrade_choice)
 			return
 		if event is InputEventKey and event.is_action_pressed("charge"):
 			_handle_terminal_action()
@@ -468,7 +499,7 @@ func _schedule_pressure_ring(delta: float) -> void:
 	if pressure_ring_timer > 0.0 or _active_threat_count(THREAT_PRESSURE_RING) >= 1:
 		return
 	var interval := 8.8
-	if r01_map.current_zone_id() == "model_house_nexus":
+	if r01_map.current_zone_is_model_house():
 		interval = 7.0
 	if WaveDirector.is_finale(elapsed):
 		interval = 5.8
@@ -482,7 +513,7 @@ func _schedule_flyer_drop(delta: float) -> void:
 	if flyer_drop_timer > 0.0 or _active_threat_count(THREAT_FLYER_DROP) >= 2:
 		return
 	var interval := 6.2
-	if r01_map.current_zone_id() == "model_house_nexus":
+	if r01_map.current_zone_is_model_house():
 		interval = 4.9
 	if WaveDirector.is_finale(elapsed):
 		interval = 3.8
@@ -554,7 +585,7 @@ func _active_threat_count(threat_type: String) -> int:
 	return count
 
 func _has_threat_caller() -> bool:
-	if r01_map.current_zone_id() == "model_house_nexus" or WaveDirector.is_finale(elapsed):
+	if r01_map.current_zone_is_model_house() or WaveDirector.is_finale(elapsed):
 		return true
 	for enemy in enemies.enemies:
 		var role := String(enemy.get("role", "basic"))
@@ -617,6 +648,7 @@ func _update_auto_fire(delta: float) -> void:
 	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_add_audit_processing(float(hit["damage"]) * 1.4, "auto_hit", target_pos)
 		_register_attack_pose(target_pos - player_pos, 0.14)
 		_apply_hit_knockback(target_idx, player_pos, 5.5)
 		_play_sfx("enemy_hit")
@@ -668,6 +700,11 @@ func _update_charge_puddles(delta: float) -> void:
 		var center: Vector2 = puddle["pos"]
 		var damage := float(puddle["dps"]) * tick_delta
 		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage, -1, "puddle")
+		var puddle_processing := 0.0
+		for hit in hit_enemies:
+			puddle_processing += float(hit.get("damage", 0.0)) * 1.15
+		if puddle_processing > 0.0:
+			_add_audit_processing(puddle_processing, "puddle", center)
 		var boss_hit := {}
 		if boss.active and boss.contains_point(center, float(puddle["radius"])):
 			boss_hit = _apply_boss_damage(damage, "puddle", false)
@@ -700,6 +737,7 @@ func _fire_charge() -> void:
 
 	charge_effect_anchor_active = false
 	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
+	_record_playtest_charge(hit_count, perfect)
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	charge_effect_anchor_active = false
@@ -744,6 +782,7 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 		_apply_return_stamp(idx, perfect)
 		effects.spawn_hit_spark(hit_pos, true, rng)
 		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
+		_add_audit_processing(28.0 + float(hit["damage"]) * 2.2, "charge_hit", hit_pos)
 		var heavy_target := bool(enemies.enemies[idx].get("elite", false)) or String(enemies.enemies[idx].get("role", "basic")) in ["tank", "signal", "speaker", "charger"]
 		effects.add_impact_line(line_start, hit_pos, C.NEON_RED, 3.5 if heavy_target else 2.5, 0.16)
 		effects.add_return_stamp_hit(hit_pos, aim_dir, perfect, heavy_target)
@@ -784,6 +823,7 @@ func _apply_return_stamp(index: int, perfect: bool = false) -> void:
 	if index < 0 or index >= enemies.enemies.size():
 		return
 	var duration := RETURN_STAMP_DURATION
+	duration += 0.45 * float(player_stats.get("return_label_level", 0))
 	if perfect and int(player_stats["perfect_charge_level"]) > 0:
 		duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
@@ -835,11 +875,36 @@ func _cleanup_dead_positions(allow_burst_context: bool = true) -> Array[Vector2]
 			dead_events.append({
 				"pos": Vector2(enemy["pos"]),
 				"return_stamp": _enemy_has_return_stamp(enemy),
+				"role": String(enemy.get("role", "basic")),
+				"sprite_kind": String(enemy.get("sprite_kind", "")),
+				"elite": bool(enemy.get("elite", false)),
 			})
+	_add_audit_processing_for_dead_events(dead_events)
 	var dead_positions := enemies.cleanup_dead()
 	if allow_burst_context and int(player_stats.get("kill_burst_level", 0)) > 0:
 		_queue_kill_burst_contexts(dead_events)
 	return dead_positions
+
+func _add_audit_processing_for_dead_events(dead_events: Array[Dictionary]) -> void:
+	for event in dead_events:
+		var role := String(event.get("role", "basic"))
+		var sprite_kind := String(event.get("sprite_kind", ""))
+		var pos: Vector2 = event.get("pos", player_pos)
+		var base := 22.0
+		var reason := "kill"
+		if bool(event.get("elite", false)):
+			base += 45.0
+		if bool(event.get("return_stamp", false)):
+			base += 24.0 + 8.0 * float(player_stats.get("return_label_level", 0))
+			reason = "return_stamp_kill"
+		if role in ["signal", "speaker", "charger"]:
+			base += 14.0
+		if role == "robot" or sprite_kind == "appliance":
+			base += 18.0 + 10.0 * float(player_stats.get("battery_receipt_level", 0))
+			reason = "robot_kill"
+		if r01_map.current_zone_is_open_house() and _card_count("earn_open_house_checkin") > 0:
+			base += 10.0 * float(_card_count("earn_open_house_checkin"))
+		_add_audit_processing(base, reason, pos)
 
 func _queue_kill_burst_contexts(dead_events: Array[Dictionary]) -> void:
 	for event in dead_events:
@@ -937,6 +1002,7 @@ func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bo
 	if hit.is_empty():
 		return {}
 	_play_sfx("boss_hit")
+	_add_audit_processing(36.0 + float(hit.get("damage", 0.0)) * 1.6, "terms_boss_hit", Vector2(hit["pos"]))
 	if show_number:
 		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 	if float(hit.get("shield_damage", 0.0)) > 0.0:
@@ -973,6 +1039,7 @@ func _try_split_shot(primary_idx: int) -> void:
 	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
 		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_add_audit_processing(float(hit["damage"]) * 1.25, "auto_hit", target_pos)
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
 		_play_sfx("enemy_hit")
 		if priority_target:
@@ -1010,9 +1077,12 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	if boss.active and boss.contains_point(pos, radius):
 		boss_hit = _apply_boss_damage(damage, "burst")
 	if hit_enemies.size() > 0:
+		var burst_processing := 0.0
 		for hit in hit_enemies:
 			effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
+			burst_processing += float(hit.get("damage", 0.0)) * 1.35
 			_apply_hit_knockback(int(hit["index"]), pos, 13.0)
+		_add_audit_processing(burst_processing, "burst", pos)
 	if hit_enemies.size() > 0 or not boss_hit.is_empty():
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, burst_color, radius, 0.34)
@@ -1173,9 +1243,521 @@ func _update_wave_events(wave_params: Dictionary) -> void:
 		_show_wave_notice("피날레: 마지막 광고 공세")
 
 func _update_r01_zone(delta: float) -> void:
-	var changed := r01_map.update(delta, elapsed, match_state == "playing")
+	var world_zone_id := r01_blockout.nearest_zone_id(player_pos) if R01LayoutBlockout.ENABLED else ""
+	var changed := r01_map.update(delta, elapsed, match_state == "playing", world_zone_id)
+	if match_state == "playing":
+		_record_r01_zone_time(delta)
+		_update_open_house_signal_candidate()
 	if changed and not _first_recall_active():
-		effects.show_combat_banner(r01_map.active_notice_text(), C.VITAMIN_YELLOW)
+		if match_state == "playing":
+			_record_playtest_zone_entry(r01_map.current_zone_id())
+		var notice := r01_map.active_notice_text()
+		var clause_notice := _zone_clause_entry_notice(r01_map.current_zone_id())
+		if clause_notice != "":
+			notice = "%s / %s" % [notice, clause_notice]
+		_show_wave_notice(notice)
+
+func _reset_r01_run_tracking() -> void:
+	r01_zone_times = {}
+	open_house_signal_stage = 0
+
+func _record_r01_zone_time(delta: float) -> void:
+	var zone_id := r01_map.current_zone_id()
+	r01_zone_times[zone_id] = float(r01_zone_times.get(zone_id, 0.0)) + delta
+
+func _r01_zone_time(zone_id: String) -> float:
+	return float(r01_zone_times.get(zone_id, 0.0))
+
+func _open_house_time() -> float:
+	return _r01_zone_time("open_house_street_anchor")
+
+func _drain_pocket_time() -> float:
+	return _r01_zone_time("drain_pocket_anchor")
+
+func _fake_return_time() -> float:
+	return _r01_zone_time("fake_return_route_anchor")
+
+func _zone_clause_entry_notice(zone_id: String) -> String:
+	match zone_id:
+		"open_house_street_anchor":
+			return "지역 약관: 25초 체류=수신태그 후보, 밀도 상승"
+		"drain_pocket_anchor":
+			return "지역 약관: 20초 체류=수신태그 후보, 조용한 보정"
+		"fake_return_route_anchor":
+			return "지역 약관: 20초 체류=식량태그 후보, 오염 위험"
+		"model_house_node_anchor":
+			return "지역 약관: 결절 신호 감사 강화"
+		_:
+			return ""
+
+func _update_open_house_signal_candidate() -> void:
+	var open_time := _open_house_time()
+	if open_house_signal_stage < 1 and open_time >= _open_house_signal_threshold(1):
+		open_house_signal_stage = 1
+		_set_boss_signal_state("faint")
+		_show_wave_notice("오픈하우스 체류: 수신태그 후보가 감지됩니다")
+	elif open_house_signal_stage < 2 and open_time >= _open_house_signal_threshold(2):
+		open_house_signal_stage = 2
+		_set_boss_signal_state("detected")
+		_show_wave_notice("오픈하우스 체류: 수신태그 승인 가능성이 상승합니다")
+	elif open_house_signal_stage < 3 and open_time >= _open_house_signal_threshold(3):
+		open_house_signal_stage = 3
+		_set_boss_signal_state("near")
+		_show_wave_notice("오픈하우스 체류: 모델하우스 신호가 선명해집니다")
+
+func _open_house_signal_threshold(stage: int) -> float:
+	var reduction := float(player_stats.get("open_house_signal_threshold_reduction", 0.0))
+	match stage:
+		1:
+			return maxf(12.0, 25.0 - reduction)
+		2:
+			return maxf(30.0, 50.0 - reduction * 1.25)
+		3:
+			return maxf(48.0, 75.0 - reduction * 1.50)
+		_:
+			return 9999.0
+
+func _reset_audit_run_tracking() -> void:
+	audit_segment_index = 0
+	audit_processing = 0.0
+	audit_total_processing = 0.0
+	audit_pass_count = 0
+	audit_fail_count = 0
+	audit_pressure_level = 0
+	audit_last_result = "대기"
+	audit_segment_results = []
+	card_contribution_log = {}
+
+func _update_audit_director(delta: float) -> void:
+	if int(player_stats.get("low_hp_allowance_level", 0)) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
+		_add_audit_processing(14.0 * delta * float(player_stats.get("low_hp_allowance_level", 0)), "low_hp")
+	while audit_segment_index < AUDIT_SEGMENTS.size() and elapsed >= float(AUDIT_SEGMENTS[audit_segment_index]["time"]):
+		_resolve_audit_segment(AUDIT_SEGMENTS[audit_segment_index])
+		audit_segment_index += 1
+
+func _resolve_audit_segment(segment: Dictionary) -> void:
+	var threshold := _audit_threshold(segment)
+	_record_threshold_card_contributions(segment, threshold)
+	var passed := audit_processing >= threshold
+	var result := "pass" if passed else "fail"
+	var ratio := audit_processing / maxf(1.0, threshold)
+	audit_segment_results.append({
+		"name": String(segment["name"]),
+		"result": result,
+		"processing": audit_processing,
+		"threshold": threshold,
+		"ratio": ratio,
+	})
+	if passed:
+		audit_pass_count += 1
+		audit_pressure_level = maxi(0, audit_pressure_level - 1)
+		audit_last_result = "%s 통과 %.0f/%.0f" % [String(segment["name"]), audit_processing, threshold]
+		_mark_playtest_time_once("first_audit_pass_time")
+		_show_wave_notice("광고 감사 통과: %s" % String(segment["pass"]))
+	else:
+		audit_fail_count += 1
+		audit_pressure_level += 1
+		audit_last_result = "%s 미달 %.0f/%.0f" % [String(segment["name"]), audit_processing, threshold]
+		_show_wave_notice("광고 감사 미달: %s" % String(segment["fail"]))
+		_trigger_audit_failure_pressure(segment)
+	audit_processing = 0.0
+
+func _audit_threshold(segment: Dictionary) -> float:
+	var sortie_mult := 1.0 + maxf(0.0, float(sortie_index - 1)) * 0.08
+	var threshold_mult := 1.0 + float(player_stats.get("audit_threshold_mult", 0.0))
+	var zone_id := r01_map.current_zone_id()
+	if _open_house_time() >= 25.0 and _card_count("earn_open_house_checkin") > 0:
+		threshold_mult -= 0.04 * float(_card_count("earn_open_house_checkin"))
+	if player_hp <= float(player_stats["max_hp"]) * 0.35 and _card_count("earn_low_hp_allowance") > 0:
+		threshold_mult -= 0.03 * float(_card_count("earn_low_hp_allowance"))
+	if zone_id == "drain_pocket_anchor":
+		threshold_mult -= 0.05
+	elif zone_id == "fake_return_route_anchor":
+		threshold_mult += 0.08
+	threshold_mult = clampf(threshold_mult, 0.58, 1.75)
+	return float(segment["threshold"]) * sortie_mult * threshold_mult
+
+func _trigger_audit_failure_pressure(segment: Dictionary) -> void:
+	if boss.active or paused_for_card:
+		return
+	var wave_params := _wave_params_for_elapsed(maxf(elapsed, float(segment["time"])))
+	var count := mini(3, 1 + int(audit_pressure_level / 2))
+	enemies.spawn_elite_group(count, elapsed, player_pos, rng, wave_params)
+	effects.add_status_ring(player_pos, C.NEON_RED, 78.0 + 12.0 * float(audit_pressure_level), 0.42)
+
+func _wave_params_for_elapsed(value: float) -> Dictionary:
+	var params := WaveDirector.params_for_time(value, sortie_index, r01_map.current_zone_id())
+	params = _apply_r01_contamination_spawn_pressure(params)
+	return _apply_audit_spawn_pressure(params)
+
+func _apply_r01_contamination_spawn_pressure(params: Dictionary) -> Dictionary:
+	var r01_state := _r01_phrase_state()
+	var contamination := clampi(int(r01_state.get("r01_contamination_total", 0)), 0, 5)
+	if contamination <= 0:
+		return params
+	var result := params.duplicate(true)
+	result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * (1.0 + 0.045 * float(contamination))
+	result["speed_mult"] = float(result.get("speed_mult", 1.0)) * (1.0 + 0.012 * float(contamination))
+	result["elite_chance"] = minf(0.70, float(result.get("elite_chance", 0.0)) + 0.012 * float(contamination))
+	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
+	weights["basic"] = maxf(0.12, float(weights.get("basic", 0.0)) - 0.018 * float(contamination))
+	weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.010 * float(contamination)
+	weights["charger"] = float(weights.get("charger", 0.0)) + 0.006 * float(int(r01_state.get("r01_contaminated_food_count", 0)))
+	weights["tank"] = float(weights.get("tank", 0.0)) + 0.008 * float(int(r01_state.get("r01_contaminated_power_count", 0)))
+	weights["signal"] = float(weights.get("signal", 0.0)) + 0.012 * float(int(r01_state.get("r01_contaminated_signal_count", 0)))
+	result["role_weights"] = weights
+	return result
+
+func _apply_audit_spawn_pressure(params: Dictionary) -> Dictionary:
+	var result := params.duplicate(true)
+	var pressure := audit_pressure_level
+	if pressure <= 0:
+		return result
+	result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * (1.0 + 0.10 * float(pressure))
+	result["speed_mult"] = float(result.get("speed_mult", 1.0)) * (1.0 + 0.035 * float(pressure))
+	result["elite_chance"] = minf(0.70, float(result.get("elite_chance", 0.0)) + 0.025 * float(pressure))
+	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
+	weights["basic"] = maxf(0.12, float(weights.get("basic", 0.0)) - 0.04 * float(pressure))
+	weights["fast"] = float(weights.get("fast", 0.0)) + 0.018 * float(pressure)
+	weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.014 * float(pressure)
+	weights["charger"] = float(weights.get("charger", 0.0)) + 0.014 * float(pressure)
+	weights["signal"] = float(weights.get("signal", 0.0)) + 0.012 * float(pressure)
+	result["role_weights"] = weights
+	return result
+
+func _add_audit_processing(base_value: float, reason: String, pos: Vector2 = Vector2(-999999.0, -999999.0)) -> void:
+	if match_state != "playing" or base_value <= 0.0:
+		return
+	var amount := base_value * _audit_processing_mult(reason)
+	audit_processing += amount
+	audit_total_processing += amount
+	_record_audit_card_contributions(base_value, reason, amount)
+	if amount >= 80.0 and pos.x > -900000.0:
+		effects.add_floater(pos + Vector2(0, -12), "처리량 +%d" % int(round(amount)), C.VITAMIN_YELLOW, 11)
+
+func _record_audit_card_contributions(base_value: float, reason: String, amount: float) -> void:
+	var zone_id := r01_map.current_zone_id()
+	if _card_count("tool_return_label") > 0 and reason in ["charge_hit", "return_stamp_kill"]:
+		var share := 0.18 if reason == "charge_hit" else 0.34
+		_record_card_contribution("tool_return_label", amount * share, "반품 표식")
+	if _card_count("tool_flyer_pop") > 0 and reason in ["burst", "return_stamp_kill"]:
+		var share := 0.82 if reason == "burst" else 0.14
+		_record_card_contribution("tool_flyer_pop", amount * share, "전단 연쇄")
+	if _card_count("tool_broadcast_residue") > 0 and reason in ["puddle", "charge_hit"]:
+		var share := 0.80 if reason == "puddle" else 0.08
+		_record_card_contribution("tool_broadcast_residue", amount * share, "송출 잔류")
+	if _card_count("tool_robot_command_flip") > 0 and reason == "robot_kill":
+		_record_card_contribution("tool_robot_command_flip", amount * 0.24, "명령 오류 로봇")
+	if _card_count("earn_battery_receipt") > 0:
+		var share := 0.22 if reason == "robot_kill" else 0.04
+		_record_card_contribution("earn_battery_receipt", amount * share, "충전태그 처리")
+	if _card_count("earn_open_house_checkin") > 0 and r01_map.current_zone_is_open_house():
+		_record_card_contribution("earn_open_house_checkin", amount * 0.20, "오픈하우스 체류")
+	if _card_count("earn_low_hp_allowance") > 0 and (reason == "low_hp" or player_hp <= float(player_stats["max_hp"]) * 0.35):
+		var share := 0.85 if reason == "low_hp" else 0.14
+		_record_card_contribution("earn_low_hp_allowance", amount * share, "저체력 근무")
+	if _card_count("terms_family_discount") > 0 and (r01_map.current_zone_is_open_house() or zone_id == "model_house_node_anchor"):
+		_record_card_contribution("terms_family_discount", amount * 0.18, "가족 약관")
+	if _card_count("terms_no_return_agreement") > 0 and reason == "charge_hit":
+		_record_card_contribution("terms_no_return_agreement", amount * 0.30, "차징 약관")
+	if _card_count("terms_auto_renewal") > 0 and (String(reason).begins_with("terms") or int(player_stats.get("terms_pressure_level", 0)) > 0):
+		_record_card_contribution("terms_auto_renewal", amount * 0.10, "약관 증폭")
+
+func _record_threshold_card_contributions(segment: Dictionary, threshold: float) -> void:
+	var sortie_mult := 1.0 + maxf(0.0, float(sortie_index - 1)) * 0.08
+	var base_threshold := float(segment["threshold"]) * sortie_mult
+	var saved := maxf(0.0, base_threshold - threshold)
+	if saved <= 0.0:
+		return
+	if _card_count("earn_overtime_sheet") > 0:
+		_record_card_contribution("earn_overtime_sheet", base_threshold * 0.04 * float(_card_count("earn_overtime_sheet")), "감사 기준 완화")
+	if _card_count("terms_normal_customer_sticker") > 0:
+		_record_card_contribution("terms_normal_customer_sticker", base_threshold * 0.08 * float(_card_count("terms_normal_customer_sticker")), "정상 고객 판정")
+	if _card_count("earn_low_hp_allowance") > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
+		_record_card_contribution("earn_low_hp_allowance", base_threshold * 0.03 * float(_card_count("earn_low_hp_allowance")), "위기 기준 완화")
+
+func _record_card_contribution(card_id: String, processing_amount: float, note: String) -> void:
+	if processing_amount <= 0.0 or _card_count(card_id) <= 0:
+		return
+	var entry: Dictionary = card_contribution_log.get(card_id, {})
+	if entry.is_empty():
+		entry = {
+			"card_id": card_id,
+			"name": _card_name(card_id),
+			"processing": 0.0,
+			"events": 0,
+			"notes": [],
+		}
+	entry["processing"] = float(entry.get("processing", 0.0)) + processing_amount
+	entry["events"] = int(entry.get("events", 0)) + 1
+	var notes: Array = Array(entry.get("notes", []))
+	if note != "" and not notes.has(note) and notes.size() < 4:
+		notes.append(note)
+	entry["notes"] = notes
+	card_contribution_log[card_id] = entry
+
+func _card_name(card_id: String) -> String:
+	for card in LevelUpCards.CARDS:
+		if String(card.get("id", "")) == card_id:
+			return String(card.get("name", card_id))
+	return card_id
+
+func _card_contribution_snapshot() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for card_id in card_contribution_log.keys():
+		var entry: Dictionary = Dictionary(card_contribution_log[card_id]).duplicate(true)
+		result.append(entry)
+	return result
+
+func _audit_processing_mult(reason: String) -> float:
+	var mult := 1.0 + float(player_stats.get("audit_processing_mult", 0.0))
+	var zone_id := r01_map.current_zone_id()
+	if r01_map.current_zone_is_open_house():
+		mult *= 1.0 + float(player_stats.get("open_house_processing_bonus", 0.0))
+	elif zone_id == "drain_pocket_anchor" and reason in ["charge_hit", "puddle", "robot_kill"]:
+		mult *= 1.08
+	elif zone_id == "fake_return_route_anchor" and reason in ["charge_hit", "return_stamp_kill"]:
+		mult *= 1.12
+	if reason == "charge_hit":
+		mult *= 1.0 + 0.10 * float(player_stats.get("return_label_level", 0))
+		mult *= 1.0 + 0.12 * float(player_stats.get("no_return_agreement_level", 0))
+	elif reason == "return_stamp_kill":
+		mult *= 1.0 + 0.16 * float(player_stats.get("return_label_level", 0))
+		mult *= 1.0 + 0.10 * float(player_stats.get("flyer_pop_level", 0))
+	elif reason == "burst":
+		mult *= 1.0 + 0.12 * float(player_stats.get("flyer_pop_level", 0))
+	elif reason == "puddle":
+		mult *= 1.0 + 0.12 * float(player_stats.get("broadcast_residue_level", 0))
+	elif reason == "robot_kill":
+		mult *= 1.0 + 0.18 * float(player_stats.get("battery_receipt_level", 0))
+		mult *= 1.0 + 0.12 * float(player_stats.get("robot_command_flip_level", 0))
+	if player_hp <= float(player_stats["max_hp"]) * 0.35:
+		mult *= 1.0 + 0.14 * float(player_stats.get("low_hp_allowance_level", 0))
+	var terms_level := float(player_stats.get("terms_auto_renewal_level", 0))
+	if terms_level > 0.0 and String(reason).begins_with("terms"):
+		mult *= 1.0 + 0.10 * terms_level
+	return mult
+
+func _audit_progress_ratio() -> float:
+	if audit_segment_index >= AUDIT_SEGMENTS.size():
+		return 1.0
+	return audit_processing / maxf(1.0, _audit_threshold(AUDIT_SEGMENTS[audit_segment_index]))
+
+func _audit_hud_data() -> Dictionary:
+	if audit_segment_index >= AUDIT_SEGMENTS.size():
+		return {
+			"name": "결절 예비 감사",
+			"processing": audit_processing,
+			"threshold": 1.0,
+			"ratio": 1.0,
+			"time_left": 0.0,
+			"pressure": audit_pressure_level,
+		}
+	var segment: Dictionary = AUDIT_SEGMENTS[audit_segment_index]
+	var threshold := _audit_threshold(segment)
+	return {
+		"name": String(segment["name"]),
+		"processing": audit_processing,
+		"threshold": threshold,
+		"ratio": audit_processing / maxf(1.0, threshold),
+		"time_left": maxf(0.0, float(segment["time"]) - elapsed),
+		"pressure": audit_pressure_level,
+	}
+
+func _ration_hud_data() -> Dictionary:
+	if match_state != "playing":
+		return {}
+	var confirmed := {
+		"food": 0,
+		"power": 0,
+		"signal": 0,
+	}
+	var candidates := {
+		"food": 0,
+		"power": 0,
+		"signal": 0,
+	}
+	if elapsed >= 90.0:
+		confirmed["food"] = 1
+	if elapsed >= 120.0 or _card_count("earn_overtime_sheet") > 0:
+		candidates["food"] = int(candidates["food"]) + 1
+	if _card_count("earn_overtime_sheet") > 0 and audit_pass_count >= 2:
+		candidates["food"] = int(candidates["food"]) + 1
+	if _card_count("earn_low_hp_allowance") > 0 and (audit_fail_count > 0 or audit_total_processing >= 900.0):
+		candidates["food"] = int(candidates["food"]) + 1
+	if _fake_return_time() >= 20.0:
+		candidates["food"] = int(candidates["food"]) + 1
+	var effective_kills := int(round(float(kills) * _live_open_house_processing_mult()))
+	if effective_kills >= 55 or _card_count("earn_battery_receipt") > 0:
+		candidates["power"] = int(candidates["power"]) + 1
+	if _card_count("earn_battery_receipt") > 0 and effective_kills >= 90:
+		candidates["power"] = int(candidates["power"]) + 1
+	if _card_count("tool_robot_command_flip") > 0 and audit_pass_count >= 2:
+		candidates["power"] = int(candidates["power"]) + 1
+	if open_house_signal_stage >= 1:
+		candidates["signal"] = int(candidates["signal"]) + 1
+	if open_house_signal_stage >= 2:
+		candidates["signal"] = int(candidates["signal"]) + 1
+	if _card_count("earn_open_house_checkin") > 0 and open_house_signal_stage >= 1:
+		candidates["signal"] = int(candidates["signal"]) + 1
+	if level >= 6 and audit_pass_count >= 3:
+		candidates["signal"] = int(candidates["signal"]) + 1
+	if _drain_pocket_time() >= 20.0:
+		candidates["signal"] = int(candidates["signal"]) + 1
+	var risk := ""
+	if audit_pressure_level >= 3:
+		risk = "오염"
+	elif int(player_stats.get("terms_failure_risk", 0)) > 0:
+		risk = "약관"
+	elif _fake_return_time() >= 20.0:
+		risk = "주의"
+	return {
+		"confirmed": confirmed,
+		"candidates": candidates,
+		"risk": risk,
+		"clause": _current_region_clause_hud_label(),
+	}
+
+func _live_open_house_processing_mult() -> float:
+	if open_house_signal_stage >= 3 or _open_house_time() >= 75.0:
+		return 1.25
+	if open_house_signal_stage >= 2 or _open_house_time() >= 50.0:
+		return 1.16
+	if open_house_signal_stage >= 1 or _open_house_time() >= 25.0:
+		return 1.08
+	return 1.0
+
+func _reset_playtest_metrics() -> void:
+	playtest_metrics = {
+		"charge_uses": 0,
+		"charge_hits": 0,
+		"charge_whiffs": 0,
+		"charge_hit_targets": 0,
+		"charge_multihit_uses": 0,
+		"perfect_charges": 0,
+		"first_charge_time": -1.0,
+		"first_card_time": -1.0,
+		"first_open_house_time": -1.0,
+		"first_ration_candidate_time": -1.0,
+		"first_audit_pass_time": -1.0,
+		"first_low_hp_time": -1.0,
+		"danger_zone_entries": 0,
+		"level_up_choices": 0,
+		"max_audit_ratio": 0.0,
+		"max_open_house_signal_stage": 0,
+		"ration_candidate_peak": 0,
+	}
+
+func _record_playtest_charge(hit_count: int, perfect: bool) -> void:
+	playtest_metrics["charge_uses"] = int(playtest_metrics.get("charge_uses", 0)) + 1
+	_mark_playtest_time_once("first_charge_time")
+	if hit_count > 0:
+		playtest_metrics["charge_hits"] = int(playtest_metrics.get("charge_hits", 0)) + 1
+		playtest_metrics["charge_hit_targets"] = int(playtest_metrics.get("charge_hit_targets", 0)) + hit_count
+		if hit_count >= 3:
+			playtest_metrics["charge_multihit_uses"] = int(playtest_metrics.get("charge_multihit_uses", 0)) + 1
+	else:
+		playtest_metrics["charge_whiffs"] = int(playtest_metrics.get("charge_whiffs", 0)) + 1
+	if perfect:
+		playtest_metrics["perfect_charges"] = int(playtest_metrics.get("perfect_charges", 0)) + 1
+
+func _record_playtest_zone_entry(zone_id: String) -> void:
+	if not _playtest_is_danger_zone(zone_id):
+		return
+	playtest_metrics["danger_zone_entries"] = int(playtest_metrics.get("danger_zone_entries", 0)) + 1
+	if zone_id == "open_house_street_anchor":
+		_mark_playtest_time_once("first_open_house_time")
+
+func _playtest_is_danger_zone(zone_id: String) -> bool:
+	return zone_id in [
+		"open_house_street_anchor",
+		"drain_pocket_anchor",
+		"fake_return_route_anchor",
+		"model_house_node_anchor",
+	]
+
+func _mark_playtest_time_once(key: String) -> void:
+	if float(playtest_metrics.get(key, -1.0)) < 0.0:
+		playtest_metrics[key] = elapsed
+
+func _record_playtest_card_choice() -> void:
+	playtest_metrics["level_up_choices"] = int(playtest_metrics.get("level_up_choices", 0)) + 1
+	_mark_playtest_time_once("first_card_time")
+
+func _update_playtest_runtime_metrics() -> void:
+	if playtest_metrics.is_empty():
+		_reset_playtest_metrics()
+	playtest_metrics["max_audit_ratio"] = maxf(float(playtest_metrics.get("max_audit_ratio", 0.0)), _audit_progress_ratio())
+	playtest_metrics["max_open_house_signal_stage"] = maxi(int(playtest_metrics.get("max_open_house_signal_stage", 0)), open_house_signal_stage)
+	var candidate_count := _ration_candidate_count_snapshot()
+	playtest_metrics["ration_candidate_peak"] = maxi(int(playtest_metrics.get("ration_candidate_peak", 0)), candidate_count)
+	if candidate_count > 0:
+		_mark_playtest_time_once("first_ration_candidate_time")
+	if _open_house_time() > 0.1:
+		_mark_playtest_time_once("first_open_house_time")
+	if player_hp <= float(player_stats["max_hp"]) * 0.35:
+		_mark_playtest_time_once("first_low_hp_time")
+
+func _ration_candidate_count_snapshot() -> int:
+	var ration_data := _ration_hud_data()
+	var candidates: Dictionary = ration_data.get("candidates", {})
+	return int(candidates.get("food", 0)) + int(candidates.get("power", 0)) + int(candidates.get("signal", 0))
+
+func _playtest_metrics_snapshot() -> Dictionary:
+	var snapshot := playtest_metrics.duplicate(true)
+	var charge_uses := int(snapshot.get("charge_uses", 0))
+	var charge_hits := int(snapshot.get("charge_hits", 0))
+	var charge_hit_targets := int(snapshot.get("charge_hit_targets", 0))
+	snapshot["charge_hit_rate"] = float(charge_hits) / maxf(1.0, float(charge_uses))
+	snapshot["charge_avg_targets"] = float(charge_hit_targets) / maxf(1.0, float(charge_hits))
+	var flags := _playtest_core_flags(snapshot)
+	snapshot["core_flags"] = flags
+	snapshot["first_5_score"] = _playtest_true_count(flags)
+	snapshot["first_5_target_count"] = flags.size()
+	snapshot["summary"] = _playtest_metrics_summary(snapshot)
+	return snapshot
+
+func _playtest_core_flags(metrics: Dictionary) -> Dictionary:
+	return {
+		"charge_hit": int(metrics.get("charge_hits", 0)) > 0,
+		"card_choice": float(metrics.get("first_card_time", -1.0)) >= 0.0,
+		"card_chain": int(metrics.get("level_up_choices", 0)) >= 2 or selected_card_count >= 2,
+		"danger_zone": float(metrics.get("first_open_house_time", -1.0)) >= 0.0 or int(metrics.get("danger_zone_entries", 0)) > 0,
+		"ration_candidate": float(metrics.get("first_ration_candidate_time", -1.0)) >= 0.0 or int(metrics.get("ration_candidate_peak", 0)) > 0,
+		"audit_pass": float(metrics.get("first_audit_pass_time", -1.0)) >= 0.0 or audit_pass_count > 0,
+		"pressure_visible": float(metrics.get("max_audit_ratio", 0.0)) >= 0.70 or audit_fail_count > 0 or int(metrics.get("max_open_house_signal_stage", 0)) > 0,
+	}
+
+func _playtest_true_count(flags: Dictionary) -> int:
+	var count := 0
+	for value in flags.values():
+		if bool(value):
+			count += 1
+	return count
+
+func _playtest_metrics_summary(metrics: Dictionary = {}) -> String:
+	var data := metrics if not metrics.is_empty() else _playtest_metrics_snapshot()
+	var score := int(data.get("first_5_score", 0))
+	var target_count := int(data.get("first_5_target_count", 7))
+	var hit_rate := float(data.get("charge_hit_rate", 0.0)) * 100.0
+	var first_card := float(data.get("first_card_time", -1.0))
+	var first_candidate := float(data.get("first_ration_candidate_time", -1.0))
+	var card_text := "%.0fs" % first_card if first_card >= 0.0 else "--"
+	var candidate_text := "%.0fs" % first_candidate if first_candidate >= 0.0 else "--"
+	return "핵심 %d/%d | 차징 %.0f%%(%d/%d) | 카드 %s | 후보 %s | 위험 %.0fs" % [
+		score,
+		target_count,
+		hit_rate,
+		int(data.get("charge_hits", 0)),
+		int(data.get("charge_uses", 0)),
+		card_text,
+		candidate_text,
+		_open_house_time(),
+	]
+
+func _last_playtest_metrics_summary() -> String:
+	var metrics: Dictionary = last_run_result.get("playtest_metrics", {})
+	return str(metrics.get("summary", "")) if not metrics.is_empty() else ""
 
 func _update_preboss_signal_events() -> void:
 	if _first_recall_active():
@@ -1300,6 +1882,95 @@ func _next_objective_short_label() -> String:
 		return "108초 회수까지 생존"
 	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
 
+func _regional_clause_preview_line() -> String:
+	var contamination := _r01_contamination_preview_line()
+	if contamination != "":
+		return contamination
+	if _route_display_sortie_index() <= 1:
+		return "30초마다 광고 감사 / 108초 회수 임계"
+	if _boss_route_ready():
+		return "모델하우스 240초 이후 결절 접근 / 신호 적 증가"
+	var signal_level := meta_progression.signal_board_level()
+	var clue_count := meta_progression.signal_clue_count()
+	if signal_level >= 2 or clue_count >= 2:
+		return "오픈하우스 25초=수신태그 / 모델하우스 경로 압력"
+	if signal_level >= 1 or clue_count >= 1:
+		return "오픈하우스 25초=수신태그 / 배수로 20초=수신태그"
+	return "오픈하우스 25초=수신태그 / 산책로 20초=식량태그+오염"
+
+func _regional_clause_short_line() -> String:
+	var contamination := _r01_contamination_short_line()
+	if contamination != "":
+		return contamination
+	if _route_display_sortie_index() <= 1:
+		return "30초 감사, 108초 회수"
+	if _boss_route_ready():
+		return "모델하우스 결절 감사"
+	if meta_progression.signal_board_level() >= 2 or meta_progression.signal_clue_count() >= 2:
+		return "오픈25=신호, 경로압력"
+	if meta_progression.signal_board_level() >= 1 or meta_progression.signal_clue_count() >= 1:
+		return "오픈25/배수20=신호"
+	return "오픈25=신호, 산책20=오염"
+
+func _current_region_clause_hud_label() -> String:
+	var r01_state := _r01_phrase_state()
+	var contamination_total := int(r01_state.get("r01_contamination_total", 0))
+	var last_contamination := str(r01_state.get("r01_last_contamination_ticket", ""))
+	match r01_map.current_zone_id():
+		"open_house_street_anchor":
+			if contamination_total > 0 and last_contamination == MetaProgression.TICKET_SIGNAL:
+				return "약관 오염신호 감사+"
+			return "약관 오픈25=신호"
+		"drain_pocket_anchor":
+			return "약관 배수20=신호"
+		"fake_return_route_anchor":
+			if contamination_total > 0 and last_contamination == MetaProgression.TICKET_FOOD:
+				return "약관 오염 식량태그 감사+"
+			return "약관 산책20=오염"
+		"model_house_node_anchor":
+			if contamination_total > 0:
+				return "약관 오염결절 감사+"
+			return "약관 결절감사"
+		_:
+			if audit_segment_index < AUDIT_SEGMENTS.size():
+				return "약관 %.0f초감사" % float(AUDIT_SEGMENTS[audit_segment_index]["time"])
+			return "약관 정산대기"
+
+func _r01_contamination_preview_line() -> String:
+	var r01_state := _r01_phrase_state()
+	if int(r01_state.get("r01_contamination_total", 0)) <= 0:
+		return ""
+	match str(r01_state.get("r01_last_contamination_ticket", "")):
+		MetaProgression.TICKET_SIGNAL:
+			return "오염 수신태그 꼬리표: 오픈하우스/모델하우스 감사 강화"
+		MetaProgression.TICKET_POWER:
+			return "오염 충전태그 꼬리표: 로봇 검수와 장갑 광고 증가"
+		MetaProgression.TICKET_FOOD:
+			return "오염 식량태그 꼬리표: 끊긴 산책로 감사와 오염 위험 증가"
+		_:
+			return "오염 꼬리표: 지역 감사 압력 증가"
+
+func _r01_contamination_short_line() -> String:
+	var r01_state := _r01_phrase_state()
+	if int(r01_state.get("r01_contamination_total", 0)) <= 0:
+		return ""
+	match str(r01_state.get("r01_last_contamination_ticket", "")):
+		MetaProgression.TICKET_SIGNAL:
+			return "오염 신호: 신호 감사+"
+		MetaProgression.TICKET_POWER:
+			return "오염 전원: 로봇 검수+"
+		MetaProgression.TICKET_FOOD:
+			return "오염 식량태그: 산책로 감사+"
+		_:
+			return "오염 꼬리표 감사+"
+
+func _sortie_start_notice() -> String:
+	var parts: Array[String] = []
+	if meta_progression.signal_board_level() > 0:
+		parts.append(meta_progression.signal_board_guidance_line())
+	parts.append("지역 약관: %s" % _regional_clause_preview_line())
+	return " / ".join(parts)
+
 func _route_display_sortie_index() -> int:
 	if match_state == "supply" or match_state == "recalled" or match_state == "boss_victory":
 		return sortie_index + 1
@@ -1359,6 +2030,25 @@ func _session_progress_data() -> Dictionary:
 		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
 		"r01_finale_recovery_description": RoutePhraseResolver.r01_finale_recovery_description(r01_state),
 		"r01_finale_recovery_progress_phrase": RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
+		"ration_ticket_summary": meta_progression.ration_ticket_summary(),
+		"allocation_summary": meta_progression.allocation_summary_short(),
+		"allocation_human_count": meta_progression.allocation_count(MetaProgression.ALLOCATION_HUMAN_ZONE),
+		"allocation_robot_count": meta_progression.allocation_count(MetaProgression.ALLOCATION_ROBOT_MAINTENANCE),
+		"allocation_signal_count": meta_progression.allocation_count(MetaProgression.ALLOCATION_SIGNAL_BOARD),
+		"allocation_reaction_summary": meta_progression.allocation_reaction_summary(),
+		"outpost_event_log": meta_progression.outpost_event_log_lines(3),
+		"outpost_event_log_summary": meta_progression.outpost_event_log_summary(2),
+		"last_outpost_event": meta_progression.last_outpost_event_line(),
+		"last_outpost_npc_id": meta_progression.last_outpost_focus_npc_id(),
+		"last_supply_reaction": last_supply_reaction_line,
+		"last_playtest_summary": _last_playtest_metrics_summary(),
+		"next_run_change_summary": meta_progression.next_run_change_summary(),
+		"signal_board_level": meta_progression.signal_board_level(),
+		"signal_board_guidance": meta_progression.signal_board_guidance_line(),
+		"regional_clause_preview": _regional_clause_preview_line(),
+		"regional_clause_short": _regional_clause_short_line(),
+		"r01_contamination_summary": str(r01_state.get("r01_contamination_summary", meta_progression.r01_contamination_summary())),
+		"r01_contamination_total": int(r01_state.get("r01_contamination_total", 0)),
 	}
 
 func _r01_phrase_state() -> Dictionary:
@@ -1398,7 +2088,7 @@ func _apply_first_recall_collapse(delta: float) -> void:
 		_finish_match("recalled")
 
 func _spawn_recall_pressure(count: int) -> void:
-	var wave_params := WaveDirector.params_for_time(maxf(elapsed, 150.0), sortie_index, r01_map.current_zone_id())
+	var wave_params := _wave_params_for_elapsed(maxf(elapsed, 150.0))
 	wave_params["spawn_count_min"] = 7
 	wave_params["spawn_count_max"] = 10
 	wave_params["elite_chance"] = 0.48
@@ -1551,6 +2241,20 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"boss_hp_ratio": boss.hp_ratio(),
 		"boss_result_reason": boss_result_reason,
 		"first_sortie": first_sortie,
+		"card_counts": Dictionary(player_stats.get("card_counts", {})).duplicate(true),
+		"terms_failure_risk": int(player_stats.get("terms_failure_risk", 0)),
+		"r01_zone_times": r01_zone_times.duplicate(true),
+		"open_house_time": _open_house_time(),
+		"open_house_signal_stage": open_house_signal_stage,
+		"audit_pass_count": audit_pass_count,
+		"audit_fail_count": audit_fail_count,
+		"audit_pressure_level": audit_pressure_level,
+		"audit_total_processing": audit_total_processing,
+		"audit_last_result": audit_last_result,
+		"audit_segment_results": audit_segment_results.duplicate(true),
+		"audit_progress_ratio": _audit_progress_ratio(),
+		"card_contributions": _card_contribution_snapshot(),
+		"playtest_metrics": _playtest_metrics_snapshot(),
 	}
 
 func _run_reward_lines() -> Array[String]:
@@ -1562,13 +2266,36 @@ func _run_reward_lines() -> Array[String]:
 func _apply_run_result_progression() -> void:
 	var signal_report := meta_progression.grant_signal_clue_candidates(Array(last_run_result.get("signal_clue_candidates", [])))
 	var run_flyer_bonus := meta_progression.grant_run_flyer_bonus(int(last_run_result.get("torn_ad_flyer_reward", 0)))
+	var ration_report := meta_progression.grant_ration_ticket_settlement(Dictionary(last_run_result.get("ration_ticket_settlement", {})))
+	var contamination_report := Dictionary(ration_report.get("contamination_report", {}))
 	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
 	for line in _signal_clue_reward_lines(signal_report):
 		reward_lines.append(line)
 	if run_flyer_bonus > 0:
 		reward_lines.append("전단 회수 동선 보정: 찢어진 광고 전단 +%d" % run_flyer_bonus)
+	var ration_summary := String(ration_report.get("summary", ""))
+	if ration_summary != "":
+		reward_lines.append("보급소 보관: %s" % ration_summary)
+	for line in _contamination_progression_lines(contamination_report):
+		reward_lines.append(line)
 	last_run_result["reward_lines"] = reward_lines
 	_sync_boss_signal_from_clues()
+
+func _contamination_progression_lines(contamination_report: Dictionary) -> Array[String]:
+	var lines: Array[String] = []
+	if not bool(contamination_report.get("changed", false)):
+		return lines
+	lines.append("지역 오염 기록: %s" % str(contamination_report.get("summary", "오염 꼬리표")))
+	match str(contamination_report.get("last_ticket", "")):
+		MetaProgression.TICKET_SIGNAL:
+			lines.append("다음 출격 변화: 오픈하우스/모델하우스 신호 감사가 더 민감해집니다.")
+		MetaProgression.TICKET_POWER:
+			lines.append("다음 출격 변화: 로봇 검수와 장갑 광고 비중이 오릅니다.")
+		MetaProgression.TICKET_FOOD:
+			lines.append("다음 출격 변화: 끊긴 광고 산책로의 식량태그 감사가 더 까다로워집니다.")
+		_:
+			lines.append("다음 출격 변화: R01 지역 감사 압력이 오릅니다.")
+	return lines
 
 func _signal_clue_reward_lines(signal_report: Dictionary) -> Array[String]:
 	var lines: Array[String] = []
@@ -1609,7 +2336,9 @@ func _show_supply_depot() -> void:
 	paused_for_card = false
 	if is_inside_tree():
 		get_tree().paused = false
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
+	last_supply_reaction_line = ""
+	current_supply_actions = _build_supply_actions()
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions)
 	_set_music("amb_outpost_loop")
 	_play_sfx("outpost_return")
 
@@ -1627,22 +2356,111 @@ func _handle_terminal_action() -> void:
 		_:
 			_restart()
 
-func _apply_supply_upgrade_choice(index: int) -> void:
-	var upgrades: Array = meta_progression.upgrade_defs()
-	if index < 0 or index >= upgrades.size():
+func _apply_supply_choice(index: int) -> void:
+	if index < 0 or index >= current_supply_actions.size():
 		return
-	var upgrade: Dictionary = upgrades[index]
-	var upgrade_name := String(upgrade["name"])
-	if meta_progression.buy(String(upgrade["id"])):
+	var action := current_supply_actions[index]
+	var action_name := String(action.get("name", ""))
+	var applied := false
+	match String(action.get("kind", "")):
+		"allocation":
+			var allocation_id := String(action.get("allocation_id", ""))
+			applied = meta_progression.allocate_ticket(allocation_id)
+			if applied:
+				last_supply_reaction_line = meta_progression.last_allocation_reaction()
+		"upgrade":
+			applied = meta_progression.buy(String(action.get("upgrade_id", "")))
+			if applied:
+				last_supply_reaction_line = "정비대가 %s 항목을 출격 전 점검표에 올렸습니다." % action_name
+	if applied:
 		boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
-		effects.show_combat_banner("영구 강화 적용: %s" % upgrade_name, C.TOXIC_GREEN)
+		effects.show_combat_banner("보급소 적용: %s" % action_name, C.TOXIC_GREEN)
 		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
 		effects.add_impact_shake(0.14, 2.2)
 		_play_sfx("upgrade_buy")
 	else:
-		effects.add_floater(player_pos, "흔적 부족", C.NEON_RED, 13)
-		upgrade_name = ""
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), upgrade_name, _session_progress_data())
+		effects.add_floater(player_pos, "배분/흔적 부족", C.NEON_RED, 13)
+		action_name = ""
+		last_supply_reaction_line = ""
+	current_supply_actions = _build_supply_actions()
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), action_name, _session_progress_data(), current_supply_actions)
+
+func _build_supply_actions() -> Array[Dictionary]:
+	var actions: Array[Dictionary] = []
+	actions.append(_allocation_action(
+		MetaProgression.ALLOCATION_HUMAN_ZONE,
+		"식량태그 -> 인간 구역",
+		"다음 출격 최대 HP +8 / 인간 구역 안정 +1",
+		MetaProgression.TICKET_FOOD,
+		"식량태그 1",
+		1
+	))
+	actions.append(_allocation_action(
+		MetaProgression.ALLOCATION_ROBOT_MAINTENANCE,
+		"충전태그 -> 정비대",
+		"다음 출격 차징 피해 +1, 쿨다운 -0.15초",
+		MetaProgression.TICKET_POWER,
+		"충전태그 1",
+		2
+	))
+	actions.append(_allocation_action(
+		MetaProgression.ALLOCATION_SIGNAL_BOARD,
+		"수신태그 -> 출격 게시판",
+		"오픈하우스 신호 기준 완화 / 목표 표시 강화",
+		MetaProgression.TICKET_SIGNAL,
+		"수신태그 1",
+		3
+	))
+	var upgrades: Array = meta_progression.upgrade_defs()
+	for i in range(upgrades.size()):
+		var upgrade: Dictionary = upgrades[i]
+		var upgrade_id := String(upgrade["id"])
+		var can_buy := meta_progression.can_buy(upgrade_id)
+		var unlocked := meta_progression.is_unlocked(upgrade_id)
+		var level := meta_progression.upgrade_level(upgrade_id)
+		var max_level := int(upgrade.get("max_level", 1))
+		var state_text := "최대" if level >= max_level else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족"))
+		var unlock_text := ""
+		if not unlocked:
+			unlock_text = " | 해금: %s" % meta_progression.unlock_condition_label(str(upgrade.get("unlock_condition", "")))
+		actions.append({
+			"kind": "upgrade",
+			"upgrade_id": upgrade_id,
+			"name": String(upgrade["name"]),
+			"state": state_text,
+			"level": level,
+			"max_level": max_level,
+			"effect_text": String(upgrade["effect_text"]),
+			"cost_text": "%d %s" % [int(upgrade["cost"]), str(upgrade.get("trace_label", "전단"))],
+			"input_hint": "키%d/클릭" % [i + 4] if i < 1 else "클릭",
+			"can_use": can_buy,
+			"locked": not unlocked,
+			"applied": level >= max_level,
+			"prefix": "정비",
+			"extra": unlock_text,
+		})
+	return actions
+
+func _allocation_action(allocation_id: String, name: String, effect_text: String, ticket_id: String, cost_text: String, input_number: int) -> Dictionary:
+	var count := meta_progression.ticket_count(ticket_id)
+	var can_use := count > 0
+	var reaction_preview := meta_progression.allocation_preview_line(allocation_id)
+	return {
+		"kind": "allocation",
+		"allocation_id": allocation_id,
+		"name": name,
+		"state": "배분 가능" if can_use else "태그 없음",
+		"level": meta_progression.allocation_count(allocation_id),
+		"max_level": 99,
+		"effect_text": effect_text,
+		"cost_text": "%s / 보유 %d" % [cost_text, count],
+		"input_hint": "키%d/클릭" % input_number,
+		"can_use": can_use,
+		"locked": false,
+		"applied": false,
+		"prefix": "배분",
+		"extra": "  %s" % reaction_preview if reaction_preview != "" else "",
+	}
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -1651,6 +2469,7 @@ func _show_level_card() -> void:
 	paused_for_card = true
 	if is_inside_tree():
 		get_tree().paused = true
+	player_stats["selected_card_count"] = selected_card_count
 	offered_cards = LevelUpCards.pick_three(rng, player_stats)
 	_apply_charge_weapon_card_hints(offered_cards)
 	hud.show_level_cards(offered_cards, Callable(self, "_apply_card_choice"))
@@ -1660,6 +2479,7 @@ func _apply_card_choice(index: int) -> void:
 		return
 	var card := offered_cards[index]
 	_record_card_choice(card)
+	_record_playtest_card_choice()
 	_apply_card_effect(card)
 	selected_card_count += 1
 	offered_cards.clear()
@@ -1694,6 +2514,62 @@ func _apply_card_effect(card: Dictionary) -> void:
 			player_stats[effect] = int(player_stats[effect]) + int(value)
 		"split_shot_level", "kill_burst_level", "charge_puddle_level", "perfect_charge_level", "emergency_charge_level", "charge_slow_level", "charge_heal_level", "charge_knockback_level":
 			player_stats[effect] = int(player_stats[effect]) + int(value)
+		"return_label_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["charge_damage_mult"] = float(player_stats["charge_damage_mult"]) + 0.08
+			effects.add_floater(player_pos, "반품 표식 강화!", C.NEON_RED, 13)
+		"flyer_pop_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["kill_burst_level"] = int(player_stats["kill_burst_level"]) + int(value)
+			effects.add_floater(player_pos, "전단 연쇄 승인!", C.CORAL_PINK, 13)
+		"broadcast_residue_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["charge_puddle_level"] = int(player_stats["charge_puddle_level"]) + int(value)
+			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.08
+			effects.add_floater(player_pos, "송출 잔류!", C.VITAMIN_YELLOW, 13)
+		"robot_command_flip_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["charge_slow_level"] = int(player_stats["charge_slow_level"]) + int(value)
+			effects.add_floater(player_pos, "명령 오류!", C.TOXIC_GREEN, 13)
+		"overtime_sheet_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["audit_threshold_mult"] = float(player_stats["audit_threshold_mult"]) - 0.04
+			effects.add_floater(player_pos, "야근 정산 등록", C.VITAMIN_YELLOW, 13)
+		"battery_receipt_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["audit_processing_mult"] = float(player_stats["audit_processing_mult"]) + 0.04
+			effects.add_floater(player_pos, "충전태그 판정 준비", C.TOXIC_GREEN, 13)
+		"open_house_checkin_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.18
+			effects.add_floater(player_pos, "방문 확인!", C.VITAMIN_YELLOW, 13)
+		"low_hp_allowance_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["low_hp_damage_reduction"] = float(player_stats["low_hp_damage_reduction"]) + 0.05
+			effects.add_floater(player_pos, "위험수당 계약", C.CORAL_PINK, 13)
+		"normal_customer_sticker_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["audit_threshold_mult"] = float(player_stats["audit_threshold_mult"]) - 0.08
+			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			audit_pressure_level += 1
+			effects.add_floater(player_pos, "정상 고객?", C.VITAMIN_YELLOW, 13)
+		"family_discount_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.22
+			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			audit_pressure_level += 1
+			effects.add_floater(player_pos, "가족 할인 적용", C.NEON_RED, 13)
+		"no_return_agreement_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["charge_damage_mult"] = float(player_stats["charge_damage_mult"]) + 0.40
+			player_stats["terms_failure_risk"] = int(player_stats["terms_failure_risk"]) + 1
+			effects.add_floater(player_pos, "반품 불가!", C.NEON_RED, 13)
+		"terms_auto_renewal_level":
+			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player_stats["audit_processing_mult"] = float(player_stats["audit_processing_mult"]) + 0.08
+			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			audit_pressure_level += 1
+			effects.add_floater(player_pos, "자동 갱신됨", C.NEON_RED, 13)
 		"max_hp_bonus":
 			player_stats["max_hp"] = float(player_stats["max_hp"]) + value
 			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
@@ -1726,16 +2602,16 @@ func _apply_charge_weapon_card_hints(cards: Array[Dictionary]) -> void:
 
 func _charge_weapon_card_hint(card_id: String) -> String:
 	match card_id:
-		"split_ad_round":
-			return "?? ?? ???? ???? ?? ???."
-		"toxic_ad_puddle":
-			return "?? ?? ??? ?? ??? ????."
-		"coupon_chain_pop":
-			return "?? ?? ??? ?? ??? ???."
-		"perfect_airtime":
-			return "?? ????? ? ??? ? ?? ????."
-		"resync_error":
-			return "?? ?? ? ??? ? ??????."
+		"tool_return_label":
+			return "표식 처치가 감사 처리량을 더 만듭니다."
+		"tool_flyer_pop":
+			return "표식 처치와 전단 폭발이 이어집니다."
+		"tool_broadcast_residue":
+			return "차징 흔적이 바닥에 남아 구역을 장악합니다."
+		"tool_robot_command_flip":
+			return "로봇형 적을 오류 상태로 묶습니다."
+		"terms_no_return_agreement":
+			return "차징 피해가 크게 오르지만 실패 정산이 위험해집니다."
 	return ""
 
 func _card_choice_from_event(event: InputEvent) -> int:
@@ -1762,7 +2638,7 @@ func _active_notice_text() -> String:
 
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name())
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name(), _audit_hud_data(), _ration_hud_data())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -1781,7 +2657,7 @@ func _debug_overlay_text() -> String:
 
 func _debug_info() -> Dictionary:
 	_sync_boss_signal_from_clues()
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
+	var wave_params := _wave_params_for_elapsed(elapsed)
 	var r01_summary := _r01_phrase_state()
 	var r01_collision_summary := r01_blockout.collision_summary() if R01LayoutBlockout.ENABLED else {}
 	var r01_layer_summary := r01_blockout.layer_summary() if R01LayoutBlockout.ENABLED else {}
@@ -1800,6 +2676,9 @@ func _debug_info() -> Dictionary:
 		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
 		"r01_blockout_world": "%.0fx%.0f" % [R01LayoutBlockout.WORLD_BOUNDS.size.x, R01LayoutBlockout.WORLD_BOUNDS.size.y],
 		"r01_blockout_screens": r01_blockout.world_screen_count(),
+		"r01_open_house_time": _open_house_time(),
+		"r01_open_house_signal_stage": open_house_signal_stage,
+		"r01_zone_times": r01_zone_times,
 		"r01_collision_hard": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_HARD, 0)),
 		"r01_collision_soft": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_SOFT, 0)),
 		"r01_collision_hazard": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_HAZARD, 0)),
@@ -1838,6 +2717,18 @@ func _debug_info() -> Dictionary:
 		"charge_period": _charge_period(),
 		"charge_window_left": charge_window_left,
 		"selected_card_count": selected_card_count,
+		"audit_segment_index": audit_segment_index,
+		"audit_processing": audit_processing,
+		"audit_total_processing": audit_total_processing,
+		"audit_progress_ratio": _audit_progress_ratio(),
+		"audit_pass_count": audit_pass_count,
+		"audit_fail_count": audit_fail_count,
+		"audit_pressure_level": audit_pressure_level,
+		"audit_last_result": audit_last_result,
+		"audit_processing_mult": float(player_stats.get("audit_processing_mult", 0.0)),
+		"audit_threshold_mult": float(player_stats.get("audit_threshold_mult", 0.0)),
+		"playtest_live_summary": _playtest_metrics_summary(),
+		"last_playtest_summary": _last_playtest_metrics_summary(),
 		"mid_event_triggered": mid_event_triggered,
 		"sortie_index": sortie_index,
 		"session_depth": sortie_index,
@@ -2006,7 +2897,8 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 	if match_state == "boss_victory":
 		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_handle_terminal_action"))
 	elif match_state == "supply":
-		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_upgrade_choice"), Callable(self, "_restart"), "", _session_progress_data())
+		current_supply_actions = _build_supply_actions()
+		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions)
 
 func _debug_r01_blockout_variant(variant: String) -> void:
 	if not C.DEBUG_TOOLS_ENABLED or not R01LayoutBlockout.ENABLED:
@@ -2033,7 +2925,7 @@ func _debug_clear_enemies() -> void:
 func _debug_spawn_swarm() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
 		return
-	var wave_params := WaveDirector.params_for_time(elapsed, sortie_index, r01_map.current_zone_id())
+	var wave_params := _wave_params_for_elapsed(elapsed)
 	var count := mini(24, C.ENEMY_CAP - enemies.enemies.size())
 	for i in range(count):
 		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
@@ -2041,6 +2933,8 @@ func _debug_spawn_swarm() -> void:
 
 func _draw() -> void:
 	_draw_arena()
+	_draw_signal_board_route_hints()
+	_draw_r01_contamination_marks()
 	_draw_charge_puddles()
 	_draw_threats()
 	effects.draw_behind(self)
@@ -2056,6 +2950,228 @@ func _draw_arena() -> void:
 		r01_blockout.draw(self, elapsed, player_pos, debug_tools.blockout_debug_labels_visible())
 		return
 	r01_map.draw(self, elapsed, player_pos, _boss_route_ready(), boss.active)
+
+func _draw_signal_board_route_hints() -> void:
+	if not R01LayoutBlockout.ENABLED:
+		return
+	if not (match_state == "playing" or match_state == "level_up"):
+		return
+	var signal_level := meta_progression.signal_board_level()
+	if signal_level <= 0:
+		return
+	var open_pos := r01_blockout.anchor_position("open_house_street_anchor")
+	var model_pos := r01_blockout.anchor_position("model_house_node_anchor")
+	_draw_signal_board_corridor(open_pos, model_pos, signal_level)
+	var target_pos := open_pos
+	var target_label := "오픈하우스"
+	if signal_level >= 2 and (r01_map.current_zone_is_open_house() or open_house_signal_stage >= 1 or player_pos.distance_to(open_pos) < 560.0):
+		target_pos = model_pos
+		target_label = "모델하우스"
+	if _boss_route_ready():
+		target_pos = model_pos
+		target_label = "결절"
+	_draw_signal_board_target_pin(open_pos, "수신태그 후보", signal_level, target_pos == open_pos)
+	if signal_level >= 2 or _boss_route_ready():
+		_draw_signal_board_target_pin(model_pos, "모델하우스 신호", signal_level + (1 if _boss_route_ready() else 0), target_pos == model_pos)
+	_draw_signal_board_compass(target_pos, target_label, signal_level)
+
+func _draw_signal_board_corridor(open_pos: Vector2, model_pos: Vector2, signal_level: int) -> void:
+	var loop_pos := r01_blockout.anchor_position("subdivision_loop_center")
+	var base_alpha := 0.12 + 0.04 * float(mini(signal_level, 3))
+	var pulse := 0.5 + 0.5 * sin(elapsed * 3.0)
+	var route_color := Color(0.35, 0.70, 0.95, base_alpha + 0.05 * pulse)
+	var hot_color := Color(1.0, 0.91, 0.25, 0.24 + 0.06 * pulse)
+	_draw_signal_board_path_segment(loop_pos + Vector2(220, -94), open_pos + Vector2(-120, 8), route_color, hot_color)
+	if signal_level >= 2 or _boss_route_ready():
+		_draw_signal_board_path_segment(open_pos + Vector2(130, -72), model_pos + Vector2(-170, 54), route_color, hot_color)
+
+func _draw_signal_board_path_segment(from_pos: Vector2, to_pos: Vector2, route_color: Color, hot_color: Color) -> void:
+	draw_line(from_pos, to_pos, route_color, 18.0)
+	draw_line(from_pos, to_pos, hot_color, 3.0)
+	var dir := (to_pos - from_pos).normalized()
+	var side := dir.rotated(PI * 0.5)
+	for i in range(5):
+		var p := from_pos.lerp(to_pos, (float(i) + 0.5) / 5.0)
+		draw_line(p - dir * 18.0 - side * 8.0, p + dir * 18.0, hot_color, 2.0)
+
+func _draw_signal_board_target_pin(pos: Vector2, label: String, signal_level: int, active: bool) -> void:
+	var pulse := 0.5 + 0.5 * sin(elapsed * 3.4 + pos.x * 0.01)
+	var radius := 38.0 + 6.0 * pulse + 4.0 * float(mini(signal_level, 3))
+	var fill := Color(0.35, 0.70, 0.95, 0.10 + 0.05 * float(active))
+	var edge := Color(1.0, 0.91, 0.25, 0.42 + 0.18 * float(active))
+	draw_circle(pos, radius, fill)
+	draw_arc(pos, radius, 0.0, TAU, 48, edge, 3.0 if active else 2.0)
+	draw_line(pos + Vector2(-20, 0), pos + Vector2(20, 0), edge, 2.0)
+	draw_line(pos + Vector2(0, -20), pos + Vector2(0, 20), edge, 2.0)
+	if active:
+		draw_string(UIFont.get_font(), pos + Vector2(-64, -54), label, HORIZONTAL_ALIGNMENT_CENTER, 128, 10, Color(0.18, 0.13, 0.11, 0.82))
+
+func _draw_signal_board_compass(target_pos: Vector2, label: String, signal_level: int) -> void:
+	var delta := target_pos - player_pos
+	if delta.length_squared() <= 100.0:
+		return
+	var dir := delta.normalized()
+	var side := dir.rotated(PI * 0.5)
+	var compass_pos := player_pos + dir * 78.0
+	var pulse := 0.5 + 0.5 * sin(elapsed * 4.2)
+	var fill := Color(0.35, 0.70, 0.95, 0.18 + 0.05 * pulse)
+	var edge := Color(1.0, 0.91, 0.25, 0.62 + 0.12 * pulse)
+	draw_circle(compass_pos, 22.0 + 2.0 * pulse, fill)
+	draw_arc(compass_pos, 26.0 + 3.0 * pulse, 0.0, TAU, 32, edge, 2.4)
+	var tip := compass_pos + dir * 18.0
+	var left := compass_pos - dir * 8.0 + side * 12.0
+	var right := compass_pos - dir * 8.0 - side * 12.0
+	draw_colored_polygon(PackedVector2Array([tip, left, right]), Color(1.0, 0.91, 0.25, 0.58))
+	draw_polyline(PackedVector2Array([tip, left, right, tip]), Color(0.25, 0.18, 0.15, 0.72), 1.6)
+	var distance := int(round(player_pos.distance_to(target_pos) / 10.0) * 10.0)
+	var text := "%s %dm" % [label, distance]
+	if signal_level >= 3:
+		text = "%s 고정 %dm" % [label, distance]
+	draw_string(UIFont.get_font(), compass_pos + Vector2(-58, 38), text, HORIZONTAL_ALIGNMENT_CENTER, 116, 9, Color(0.18, 0.13, 0.11, 0.80))
+
+func _draw_r01_contamination_marks() -> void:
+	if not _r01_contamination_marks_should_draw():
+		return
+	for spec in _r01_contamination_mark_specs():
+		_draw_r01_contamination_mark(
+			spec["pos"],
+			str(spec["label"]),
+			int(spec["count"]),
+			spec["fill"],
+			spec["edge"]
+		)
+
+func _r01_contamination_marks_should_draw() -> bool:
+	if not R01LayoutBlockout.ENABLED:
+		return false
+	if not (match_state == "playing" or match_state == "level_up"):
+		return false
+	if boss.active:
+		return false
+	var r01_state := _r01_phrase_state()
+	return int(r01_state.get("r01_contamination_total", 0)) > 0
+
+func _r01_contamination_mark_specs() -> Array[Dictionary]:
+	var specs: Array[Dictionary] = []
+	var r01_state := _r01_phrase_state()
+	var food_count := int(r01_state.get("r01_contaminated_food_count", 0))
+	var power_count := int(r01_state.get("r01_contaminated_power_count", 0))
+	var signal_count := int(r01_state.get("r01_contaminated_signal_count", 0))
+	if food_count > 0:
+		specs.append({
+			"pos": r01_blockout.anchor_position("fake_return_route_anchor") + Vector2(20, -20),
+			"label": "오염 식량태그",
+			"count": food_count,
+			"fill": Color(0.46, 0.28, 0.20, 0.07),
+			"edge": Color(0.44, 0.24, 0.18, 0.30),
+		})
+	if power_count > 0:
+		specs.append({
+			"pos": r01_blockout.anchor_position("subdivision_loop_center") + Vector2(110, 50),
+			"label": "오염 전원",
+			"count": power_count,
+			"fill": Color(0.32, 0.28, 0.44, 0.07),
+			"edge": Color(0.30, 0.25, 0.44, 0.30),
+		})
+	if signal_count > 0:
+		specs.append({
+			"pos": r01_blockout.anchor_position("open_house_street_anchor") + Vector2(72, -92),
+			"label": "오염 신호",
+			"count": signal_count,
+			"fill": Color(0.18, 0.32, 0.40, 0.07),
+			"edge": Color(0.16, 0.34, 0.42, 0.32),
+		})
+		if signal_count >= 2 or _boss_route_ready():
+			specs.append({
+				"pos": r01_blockout.anchor_position("model_house_node_anchor") + Vector2(-104, 86),
+				"label": "신호 감사",
+				"count": signal_count,
+				"fill": Color(0.34, 0.30, 0.20, 0.06),
+				"edge": Color(0.46, 0.38, 0.22, 0.28),
+			})
+	return specs
+
+func _draw_r01_contamination_mark(pos: Vector2, label: String, count: int, fill: Color, edge: Color) -> void:
+	var style := _r01_contamination_visual_style(pos, count, fill, edge)
+	var clamped_count := int(style["clamped_count"])
+	var radius := float(style["radius"])
+	var pulse := float(style["pulse"])
+	var fill_color: Color = style["fill"]
+	var edge_color: Color = style["edge"]
+	draw_circle(pos, radius, fill_color)
+	draw_arc(pos, radius, -PI * 0.12, PI * 1.12, 30, edge_color, 1.25)
+	draw_arc(pos, radius + 5.0 + pulse * 1.5, PI * 0.30, PI * 1.55, 24, Color(edge_color.r, edge_color.g, edge_color.b, edge_color.a * 0.42), 0.9)
+	for i in range(clamped_count):
+		var angle := (TAU / float(clamped_count)) * float(i) + elapsed * 0.18
+		var dot := pos + Vector2(cos(angle), sin(angle)) * (radius + 4.0)
+		draw_circle(dot, 1.45, Color(edge_color.r, edge_color.g, edge_color.b, minf(0.42, edge_color.a + 0.08)))
+	if _r01_contamination_label_visible(pos):
+		var text := "%s x%d" % [label, count]
+		var label_color := Color(0.20, 0.12, 0.12, 0.50)
+		draw_string(UIFont.get_font(), pos + Vector2(-48, radius + 10.0), text, HORIZONTAL_ALIGNMENT_CENTER, 96, 7, label_color)
+
+func _r01_contamination_visual_style(pos: Vector2, count: int, fill: Color, edge: Color) -> Dictionary:
+	var clamped_count := clampi(count, 1, 3)
+	var pulse := 0.5 + 0.5 * sin(elapsed * 1.8 + pos.x * 0.004)
+	var radius := 20.0 + 2.2 * float(clamped_count) + pulse * 1.6
+	return {
+		"clamped_count": clamped_count,
+		"pulse": pulse,
+		"radius": radius,
+		"fill": fill,
+		"edge": edge,
+	}
+
+func _r01_contamination_label_visible(pos: Vector2) -> bool:
+	if boss.active:
+		return false
+	if debug_tools.blockout_debug_labels_visible():
+		return true
+	if player_pos.distance_squared_to(pos) > CONTAMINATION_MARK_LABEL_DISTANCE * CONTAMINATION_MARK_LABEL_DISTANCE:
+		return false
+	return _enemy_count_near(pos, CONTAMINATION_MARK_LABEL_DISTANCE) <= CONTAMINATION_MARK_LABEL_ENEMY_LIMIT
+
+func _enemy_count_near(pos: Vector2, radius: float) -> int:
+	var radius_sq := radius * radius
+	var count := 0
+	for enemy in enemies.enemies:
+		var enemy_pos: Vector2 = enemy.get("pos", Vector2.ZERO)
+		if enemy_pos.distance_squared_to(pos) <= radius_sq:
+			count += 1
+	return count
+
+func _r01_contamination_readability_snapshot() -> Dictionary:
+	if not _r01_contamination_marks_should_draw():
+		return {
+			"visible": false,
+			"mark_count": 0,
+			"label_count": 0,
+			"max_radius": 0.0,
+			"max_fill_alpha": 0.0,
+			"max_edge_alpha": 0.0,
+		}
+	var specs := _r01_contamination_mark_specs()
+	var label_count := 0
+	var max_radius := 0.0
+	var max_fill_alpha := 0.0
+	var max_edge_alpha := 0.0
+	for spec in specs:
+		var style := _r01_contamination_visual_style(spec["pos"], int(spec["count"]), spec["fill"], spec["edge"])
+		var fill_color: Color = style["fill"]
+		var edge_color: Color = style["edge"]
+		max_radius = maxf(max_radius, float(style["radius"]))
+		max_fill_alpha = maxf(max_fill_alpha, fill_color.a)
+		max_edge_alpha = maxf(max_edge_alpha, edge_color.a)
+		if _r01_contamination_label_visible(spec["pos"]):
+			label_count += 1
+	return {
+		"visible": true,
+		"mark_count": specs.size(),
+		"label_count": label_count,
+		"max_radius": max_radius,
+		"max_fill_alpha": max_fill_alpha,
+		"max_edge_alpha": max_edge_alpha,
+	}
 
 func _draw_charge_puddles() -> void:
 	for puddle in charge_puddles:
@@ -2371,6 +3487,8 @@ func _restart() -> void:
 	last_boss_recall_report = {}
 	last_boss_victory_report = {}
 	last_run_result = {}
+	current_supply_actions.clear()
+	last_supply_reaction_line = ""
 	_reset_player_stats()
 	player_pos = r01_blockout.anchor_position("silence_edge_start") if R01LayoutBlockout.ENABLED else Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
@@ -2413,7 +3531,11 @@ func _restart() -> void:
 	last_threat_label = ""
 	hud.reset()
 	r01_map.reset(elapsed, true)
+	_reset_r01_run_tracking()
+	_reset_audit_run_tracking()
+	_reset_playtest_metrics()
 	_set_music("amb_r01_suburb_loop")
+	_show_wave_notice(_sortie_start_notice())
 
 func _record_r01_visit_for_current_sortie() -> void:
 	if r01_visit_recorded_sortie_index == sortie_index:
@@ -2446,8 +3568,27 @@ func _reset_player_stats() -> void:
 		"charge_slow_level": 0,
 		"charge_heal_level": 0,
 		"charge_knockback_level": 0,
+		"return_label_level": 0,
+		"flyer_pop_level": 0,
+		"broadcast_residue_level": 0,
+		"robot_command_flip_level": 0,
+		"overtime_sheet_level": 0,
+		"battery_receipt_level": 0,
+		"open_house_checkin_level": 0,
+		"low_hp_allowance_level": 0,
+		"normal_customer_sticker_level": 0,
+		"family_discount_level": 0,
+		"no_return_agreement_level": 0,
+		"terms_auto_renewal_level": 0,
+		"audit_processing_mult": 0.0,
+		"audit_threshold_mult": 0.0,
+		"open_house_processing_bonus": 0.0,
+		"terms_pressure_level": 0,
+		"terms_failure_risk": 0,
+		"open_house_signal_threshold_reduction": float(meta_bonuses.get("open_house_signal_threshold_reduction", 0.0)),
 		"build_counts": {},
 		"card_counts": {},
+		"selected_card_count": selected_card_count,
 	}
 
 func _move_speed() -> float:

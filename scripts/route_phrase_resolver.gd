@@ -2,6 +2,9 @@ extends RefCounted
 
 const OUTCOME_DESTROY_NODE := "destroy_node"
 const OUTCOME_EXTRACT_MEMORY := "extract_memory"
+const TICKET_FOOD := "food"
+const TICKET_POWER := "power"
+const TICKET_SIGNAL := "signal"
 
 static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 	var outcome := String(state.get("r01_boss_outcome", ""))
@@ -22,6 +25,8 @@ static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 			"가족사진 뒤편의 송출관 접근 절차를 대조한다.",
 			"윤서의 이름을 부르는 광고 문구의 출처를 확인한다.",
 		], visit_index)
+	if int(state.get("r01_contamination_total", 0)) > 0:
+		return _contamination_goal_phrase(state, visit_index)
 	match records:
 		0:
 			return _pick([
@@ -63,6 +68,8 @@ static func r01_sortie_goal_short_phrase(state: Dictionary) -> String:
 			"송출관 접근 절차 대조",
 			"윤서를 부르는 광고 출처 확인",
 		], visit_index)
+	if int(state.get("r01_contamination_total", 0)) > 0:
+		return _contamination_goal_short_phrase(state, visit_index)
 	match records:
 		0:
 			return _pick([
@@ -93,6 +100,8 @@ static func r01_outpost_phrase(state: Dictionary) -> String:
 		OUTCOME_EXTRACT_MEMORY:
 			return "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다. 출격 게시판에 송출관 접근 절차가 더 선명해졌다."
 		_:
+			if int(state.get("r01_contamination_total", 0)) > 0:
+				return _contamination_outpost_phrase(state)
 			return "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다. 출격 게시판이 모델하우스 방향을 제대로 붙잡지 못한다."
 
 static func r01_finale_recovery_description(state: Dictionary) -> String:
@@ -131,6 +140,49 @@ static func r01_finale_recovery_progress_phrase(state: Dictionary) -> String:
 			return "다음 출격: 모델하우스 접근 신호 확인"
 		_:
 			return "다음 출격: 모델하우스 결절 접근 준비"
+
+static func _contamination_goal_phrase(state: Dictionary, visit_index: int) -> String:
+	match String(state.get("r01_last_contamination_ticket", "")):
+		TICKET_SIGNAL:
+			return _pick([
+				"오염된 수신태그 꼬리표가 오픈하우스 광고판에 남았다. 같은 신호를 더 조심스럽게 추적한다.",
+				"출격 게시판의 핀이 흔들린다. 오염된 신호가 모델하우스 방향을 과하게 밝힌다.",
+			], visit_index)
+		TICKET_POWER:
+			return _pick([
+				"오염된 충전태그 때문에 로봇 검수가 예민해졌다. 정비대가 광고 로봇 명령 흔적을 확인한다.",
+				"충전태그 꼬리표가 장갑 광고를 불렀다. 로봇 명령권의 틈을 다시 찾는다.",
+			], visit_index)
+		TICKET_FOOD:
+			return _pick([
+				"오염된 식량태그 꼬리표가 끊긴 광고 산책로에 남았다. 배급 약관의 뒤끝을 확인한다.",
+				"식량태그가 승인됐지만 냄새가 남았다. 산책로의 친절한 화살표를 다시 의심한다.",
+			], visit_index)
+		_:
+			return "오염 꼬리표가 R01 약관에 남았다. 다음 출격에서 감사 압력을 확인한다."
+
+static func _contamination_goal_short_phrase(state: Dictionary, visit_index: int) -> String:
+	match String(state.get("r01_last_contamination_ticket", "")):
+		TICKET_SIGNAL:
+			return _pick(["오염 수신태그 추적", "흔들리는 게시판 핀 확인"], visit_index)
+		TICKET_POWER:
+			return _pick(["오염 충전태그 검수", "로봇 명령 흔적 확인"], visit_index)
+		TICKET_FOOD:
+			return _pick(["오염 식량태그 꼬리표 확인", "끊긴 산책로 재확인"], visit_index)
+		_:
+			return "오염 꼬리표 확인"
+
+static func _contamination_outpost_phrase(state: Dictionary) -> String:
+	var summary := String(state.get("r01_contamination_summary", "오염 꼬리표"))
+	match String(state.get("r01_last_contamination_ticket", "")):
+		TICKET_SIGNAL:
+			return "%s. 세븐이 게시판 핀을 한 번 더 누르지만, 핀 끝이 광고음에 떨린다." % summary
+		TICKET_POWER:
+			return "%s. 정비대가 충전태그 접점을 닦아도 검수음이 낮게 남는다." % summary
+		TICKET_FOOD:
+			return "%s. 인간 구역은 먹었지만, 배급표 모서리에 작은 약관 번호가 남았다." % summary
+		_:
+			return "%s. 보급소 기록판이 같은 표를 두 번 확인한다." % summary
 
 static func _pick(phrases: Array[String], index: int) -> String:
 	return phrases[abs(index) % phrases.size()]

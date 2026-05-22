@@ -12,6 +12,11 @@ var charge_button: Label
 var prompt_label: Label
 var stat_label: Label
 var route_goal_label: Label
+var audit_panel: Panel
+var audit_bar: ColorRect
+var audit_label: Label
+var ration_panel: Panel
+var ration_label: Label
 var boss_panel: Panel
 var boss_name_label: Label
 var boss_bar: ColorRect
@@ -26,6 +31,7 @@ var restart_callback := Callable()
 var supply_panel: Panel
 var outpost_visual_layer: Control
 var supply_label: Label
+var supply_event_log_label: Label
 var supply_scroll_hint_label: Label
 var supply_restart_button: Button
 var supply_list_scroll: ScrollContainer
@@ -166,6 +172,52 @@ func build(parent: Node) -> void:
 	_apply_font(route_goal_label)
 	root.add_child(route_goal_label)
 
+	audit_panel = Panel.new()
+	audit_panel.position = Vector2(304, 48)
+	audit_panel.size = Vector2(164, 37)
+	audit_panel.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.96, 0.84, 0.80), Color("#433227"), 1, 4))
+	audit_panel.visible = false
+	root.add_child(audit_panel)
+
+	var audit_back := ColorRect.new()
+	audit_back.color = Color("#433227")
+	audit_back.position = Vector2(8, 22)
+	audit_back.size = Vector2(148, 5)
+	audit_panel.add_child(audit_back)
+
+	audit_bar = ColorRect.new()
+	audit_bar.color = C.VITAMIN_YELLOW
+	audit_bar.position = Vector2(9, 23)
+	audit_bar.size = Vector2(0, 3)
+	audit_panel.add_child(audit_bar)
+
+	audit_label = Label.new()
+	audit_label.position = Vector2(8, 3)
+	audit_label.size = Vector2(148, 18)
+	audit_label.add_theme_font_size_override("font_size", FONT_TINY)
+	audit_label.add_theme_color_override("font_color", C.INK)
+	audit_label.clip_text = true
+	audit_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_apply_font(audit_label)
+	audit_panel.add_child(audit_label)
+
+	ration_panel = Panel.new()
+	ration_panel.position = Vector2(304, 88)
+	ration_panel.size = Vector2(164, 30)
+	ration_panel.add_theme_stylebox_override("panel", _panel_style(Color(1.0, 0.97, 0.88, 0.82), Color("#433227"), 1, 4))
+	ration_panel.visible = false
+	root.add_child(ration_panel)
+
+	ration_label = Label.new()
+	ration_label.position = Vector2(8, 4)
+	ration_label.size = Vector2(148, 21)
+	ration_label.add_theme_font_size_override("font_size", FONT_TINY)
+	ration_label.add_theme_color_override("font_color", C.INK)
+	ration_label.clip_text = true
+	ration_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_apply_font(ration_label)
+	ration_panel.add_child(ration_label)
+
 	boss_panel = Panel.new()
 	boss_panel.position = Vector2(128, 22)
 	boss_panel.size = Vector2(224, 29)
@@ -263,6 +315,8 @@ func build(parent: Node) -> void:
 	result_label.size = Vector2(268, 132)
 	result_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	result_label.clip_text = true
+	result_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	result_label.add_theme_font_size_override("font_size", FONT_BODY)
 	result_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(result_label)
@@ -296,20 +350,35 @@ func build(parent: Node) -> void:
 	outpost_blockout.build_preview_layer(outpost_visual_layer, {}, null, false)
 
 	_add_flat_backing(supply_panel, Vector2(10, 8), Vector2(300, 148), Color(1.0, 0.96, 0.84, 0.14))
-	_add_flat_backing(supply_panel, Vector2(318, 8), Vector2(138, 102), Color(1.0, 0.96, 0.84, 0.88))
+	_add_flat_backing(supply_panel, Vector2(318, 8), Vector2(138, 148), Color(1.0, 0.96, 0.84, 0.88))
+	_add_flat_backing(supply_panel, Vector2(14, 126), Vector2(292, 28), Color(1.0, 0.97, 0.88, 0.82))
 	_add_flat_backing(supply_panel, Vector2(12, 160), Vector2(444, 14), Color(1.0, 0.96, 0.84, 0.88))
 	_add_flat_backing(supply_panel, Vector2(12, 174), Vector2(444, 48), Color(1.0, 0.97, 0.88, 0.92))
 	_add_flat_backing(supply_panel, Vector2(12, 224), Vector2(444, 18), Color(1.0, 0.96, 0.84, 0.82))
 
 	supply_label = Label.new()
 	supply_label.position = Vector2(322, 12)
-	supply_label.size = Vector2(130, 94)
+	supply_label.size = Vector2(130, 138)
 	supply_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	supply_label.clip_text = true
 	supply_label.add_theme_font_size_override("font_size", FONT_TINY)
 	supply_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_label)
 	supply_panel.add_child(supply_label)
+
+	supply_event_log_label = Label.new()
+	supply_event_log_label.position = Vector2(18, 129)
+	supply_event_log_label.size = Vector2(284, 22)
+	supply_event_log_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	supply_event_log_label.clip_text = true
+	supply_event_log_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	supply_event_log_label.add_theme_font_size_override("font_size", FONT_TINY)
+	supply_event_log_label.add_theme_color_override("font_color", Color("#433227"))
+	supply_event_log_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
+	supply_event_log_label.add_theme_constant_override("shadow_offset_x", 1)
+	supply_event_log_label.add_theme_constant_override("shadow_offset_y", 1)
+	_apply_font(supply_event_log_label)
+	supply_panel.add_child(supply_event_log_label)
 
 	supply_scroll_hint_label = Label.new()
 	supply_scroll_hint_label.position = Vector2(14, 162)
@@ -335,7 +404,7 @@ func build(parent: Node) -> void:
 
 	supply_button_list = VBoxContainer.new()
 	supply_button_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	supply_button_list.add_theme_constant_override("separation", 3)
+	supply_button_list.add_theme_constant_override("separation", 2)
 	supply_list_scroll.add_child(supply_button_list)
 
 	supply_feedback_label = Label.new()
@@ -385,7 +454,7 @@ func build(parent: Node) -> void:
 	_apply_font(debug_label)
 	debug_panel.add_child(debug_label)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "", charge_weapon_name: String = "") -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "", charge_weapon_name: String = "", audit_data: Dictionary = {}, ration_data: Dictionary = {}) -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / charge_window_duration if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
@@ -422,6 +491,8 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 		route_text = route_goal_text
 	route_goal_label.visible = route_text != "" and not paused_for_card and not game_over and not _blocking_panel_visible()
 	route_goal_label.text = route_text
+	_update_audit_panel(audit_data, paused_for_card, game_over)
+	_update_ration_panel(ration_data, paused_for_card, game_over)
 	if notice_text != "" and not paused_for_card and not game_over and not _blocking_panel_visible():
 		prompt_label.visible = true
 		prompt_label.text = notice_text
@@ -469,11 +540,17 @@ func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> vo
 			button.visible = true
 			button.disabled = false
 			var weapon_hint := String(card.get("weapon_hint", ""))
-			button.add_theme_font_size_override("font_size", FONT_TINY if weapon_hint != "" else FONT_SMALL)
-			var effect_text := String(card["effect_text"])
+			var risk_text := String(card.get("risk_text", ""))
+			var combo_text := String(card.get("combo_text", ""))
+			button.add_theme_font_size_override("font_size", FONT_TINY)
+			var detail_lines: Array[String] = [String(card["effect_text"])]
+			if combo_text != "":
+				detail_lines.append("조합: %s" % combo_text)
+			if risk_text != "":
+				detail_lines.append("대가: %s" % risk_text)
 			if weapon_hint != "":
-				effect_text = "%s\n%s" % [effect_text, weapon_hint]
-			button.text = "%d\n%s\n%s" % [i + 1, card["name"], effect_text]
+				detail_lines.append(weapon_hint)
+			button.text = "%d\n%s\n%s" % [i + 1, card["name"], "\n".join(detail_lines)]
 		else:
 			button.visible = false
 			button.disabled = true
@@ -507,16 +584,15 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	var trace := str(result_data.get("trace", ""))
 	var extra_lines := ""
 	if description != "":
-		extra_lines += "\n%s" % description
+		extra_lines += "\n%s" % _compact_ui_text(description, 78)
 	if trace != "":
-		extra_lines += "\n획득한 흔적  %s" % trace
-	for line in Array(result_data.get("progress_lines", [])):
-		extra_lines += "\n%s" % str(line)
+		extra_lines += "\n획득한 흔적  %s" % _compact_ui_text(trace, 34)
+	for line in _compact_result_progress_lines(Array(result_data.get("progress_lines", []))):
+		extra_lines += "\n%s" % line
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
-	var result_title := str(result_data.get("result", ""))
-	result_label.add_theme_font_size_override("font_size", FONT_SMALL if result_title == "긴급 회수" or result_title == "신호 과부하 회수" or result_title == "신호 과부하 강제 회수" else FONT_BODY)
-	result_label.text = "%s\n생존 시간  %03d / %03d\n레벨  %d\n처치  %d\n선택 카드  %d\n최고 적 수  %d\n최종 적 수  %d%s" % [
+	result_label.add_theme_font_size_override("font_size", FONT_TINY)
+	result_label.text = "%s\n생존 %03d/%03d | Lv%d | 처치 %d\n카드 %d | 적 최고/최종 %d/%d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
 		int(C.MATCH_DURATION),
@@ -528,7 +604,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines,
 	]
 
-func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "", session_progress: Dictionary = {}) -> void:
+func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "", session_progress: Dictionary = {}, supply_actions: Array[Dictionary] = []) -> void:
 	restart_callback = sortie_callback
 	supply_upgrade_callback = upgrade_callback
 	card_panel.visible = false
@@ -538,61 +614,89 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var outpost_state := outpost_blockout.build_preview_layer(outpost_visual_layer, session_progress, meta_progression, false)
 	prompt_label.visible = false
 	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
-	supply_restart_button.text = "재출격 - 강화 적용 후 출격" if meta_progression.has_any_upgrade() else "재출격 - 선택 없이 출격"
+	var next_change := str(session_progress.get("next_run_change_summary", "배분 효과 없음"))
+	supply_restart_button.text = "재출격 - 배분 반영" if next_change != "배분 효과 없음" else "재출격 - 선택 없이 출격"
 	var board_text := "%s / 보스 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
 	]
+	var signal_guidance := str(session_progress.get("signal_board_guidance", ""))
+	if signal_guidance != "":
+		board_text = "%s / %s" % [board_text, signal_guidance.replace("게시판: ", "")]
+	var clause_preview := str(session_progress.get("regional_clause_preview", ""))
+	var clause_short := str(session_progress.get("regional_clause_short", clause_preview))
 	var route_ready_text := "스마일 홈 중심 결절 노출\n송출관 접근 절차가 열리고 있습니다" if bool(session_progress.get("boss_route_ready", false)) else ""
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
 	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
-	supply_label.text = "침묵 보급소\n%s\n게시판: %s\n목표: %s\n%s" % [
+	var reaction_summary := str(session_progress.get("allocation_reaction_summary", ""))
+	if reaction_summary == "":
+		reaction_summary = str(outpost_lines[1])
+	var allocation_summary := _compact_ui_text(str(session_progress.get("allocation_summary", "")), 28)
+	reaction_summary = _compact_ui_text(reaction_summary, 24)
+	board_text = _compact_ui_text(board_text, 30)
+	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
+	clause_short = _compact_ui_text(clause_short, 22)
+	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n목표: %s\n약관: %s" % [
 		_supply_currency_text(meta_progression),
+		allocation_summary,
+		reaction_summary,
 		board_text,
-		str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))),
-		str(outpost_lines[1]),
+		objective_short,
+		clause_short,
 	]
-	var upgrades: Array = meta_progression.upgrade_defs()
-	supply_scroll_hint_label.text = "정비대/조율대 강화 %d개 - 정산 카운터 결과 반영 - %s" % [upgrades.size(), boss_hint]
+	var event_lines := Array(session_progress.get("outpost_event_log", []))
+	var event_text := str(session_progress.get("r01_outpost_phrase", "보급소 기록 대기"))
+	if not event_lines.is_empty():
+		var compact_events: Array[String] = []
+		for i in range(mini(1, event_lines.size())):
+			compact_events.append(_compact_ui_text(str(event_lines[i]), 45))
+		event_text = " / ".join(compact_events)
+	supply_event_log_label.text = "보급소 로그: %s" % _compact_ui_text(event_text, 48)
+	var actions: Array[Dictionary] = supply_actions
+	if actions.is_empty():
+		actions = _fallback_supply_upgrade_actions(meta_progression)
+	supply_scroll_hint_label.text = _compact_supply_hint(clause_preview, next_change, boss_hint)
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
-		supply_feedback_label.text = "강화 적용: %s" % applied_upgrade_name
-	elif meta_progression.trace_count() > 0 or meta_progression.trace_count("campaign_core_fragment") > 0:
+		var last_reaction := str(session_progress.get("last_supply_reaction", ""))
+		supply_feedback_label.text = _compact_ui_text("적용 완료: %s" % applied_upgrade_name if last_reaction == "" else "적용 완료: %s - %s" % [applied_upgrade_name, last_reaction], 44)
+	elif _has_usable_supply_action(actions):
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
-		supply_feedback_label.text = "[선택 가능] 항목을 구매하거나 아래 재출격 버튼을 누르세요."
+		supply_feedback_label.text = "선택 가능: 보급태그 배분 또는 정비대 강화"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
-		supply_feedback_label.text = "남은 흔적이 없습니다. 아래 재출격 버튼으로 다시 나갑니다."
-	_ensure_supply_button_count(upgrades.size())
+		supply_feedback_label.text = "배분할 표/흔적 없음. 재출격 가능"
+	_ensure_supply_button_count(actions.size())
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
-		if i >= upgrades.size():
+		if i >= actions.size():
 			button.visible = false
 			continue
-		var upgrade: Dictionary = upgrades[i]
-		var can_buy: bool = meta_progression.can_buy(String(upgrade["id"]))
-		var unlocked: bool = meta_progression.is_unlocked(String(upgrade["id"]))
-		var level: int = meta_progression.upgrade_level(String(upgrade["id"]))
-		var max_level := int(upgrade.get("max_level", 1))
+		var action: Dictionary = actions[i]
+		var can_use := bool(action.get("can_use", false))
+		var locked := bool(action.get("locked", false))
+		var applied := bool(action.get("applied", false))
+		var level := int(action.get("level", 0))
+		var max_level := int(action.get("max_level", 1))
 		button.visible = true
-		button.disabled = not can_buy
-		button.custom_minimum_size = Vector2(420, 38)
+		button.disabled = not can_use
+		button.custom_minimum_size = Vector2(420, 20)
 		button.add_theme_font_size_override("font_size", FONT_TINY)
-		var button_text_color := C.INK if can_buy else Color("#4f4135")
+		var button_text_color := C.INK if can_use else Color("#4f4135")
 		var normal_style := _button_style(Color("#fff7df"))
 		var hover_style := _button_style(Color("#ffe7a8"))
 		var disabled_style := _supply_disabled_style()
-		if can_buy:
+		if can_use:
 			normal_style = _supply_buyable_style()
 			hover_style = _button_style(C.LEMON_YELLOW, 3)
-		elif level >= max_level:
+		elif applied:
 			normal_style = _supply_applied_style()
 			disabled_style = _supply_applied_style()
 			button_text_color = Color("#24421f")
-		elif not unlocked:
+		elif locked:
 			disabled_style = _supply_locked_style()
 			button_text_color = Color("#5a4d3f")
 		button.add_theme_color_override("font_color", button_text_color)
@@ -600,28 +704,12 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		button.add_theme_stylebox_override("normal", normal_style)
 		button.add_theme_stylebox_override("hover", hover_style)
 		button.add_theme_stylebox_override("disabled", disabled_style)
-		var state_text := "최대" if level >= max_level else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족"))
-		var applied_text := " 적용됨" if level > 0 else ""
-		var unlock_text := ""
-		if not unlocked:
-			unlock_text = " | 해금: %s" % meta_progression.unlock_condition_label(str(upgrade.get("unlock_condition", "")))
-		var trace_label := str(upgrade.get("trace_label", "전단"))
-		var input_hint := "키%d/클릭" % [i + 1] if i < 4 else "클릭"
-		var buy_marker := ">> " if can_buy else ""
-		button.text = "%s%s. %s  [%s] Lv%d/%d%s\n%s  비용 %d %s  %s%s" % [
-			buy_marker,
-			i + 1,
-			upgrade["name"],
-			state_text,
-			level,
-			max_level,
-			applied_text,
-			input_hint,
-			int(upgrade["cost"]),
-			trace_label,
-			upgrade["effect_text"],
-			unlock_text,
-		]
+		var state_text := str(action.get("state", "선택 가능" if can_use else "불가"))
+		var level_text := "배분 %d회" % level if String(action.get("kind", "")) == "allocation" else "Lv%d/%d" % [level, max_level]
+		var input_hint := str(action.get("input_hint", "클릭"))
+		var buy_marker := ">> " if can_use else ""
+		var extra := str(action.get("extra", ""))
+		button.text = _compact_supply_action_text(action, i, buy_marker, state_text, level_text, input_hint, extra)
 
 func hide_result_screen() -> void:
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
@@ -640,6 +728,52 @@ func set_debug_text(text: String) -> void:
 	debug_label.text = text
 	debug_panel.visible = true
 
+func _update_audit_panel(audit_data: Dictionary, paused_for_card: bool, game_over: bool) -> void:
+	var visible := not audit_data.is_empty() and not paused_for_card and not game_over and not _blocking_panel_visible()
+	audit_panel.visible = visible
+	if not visible:
+		return
+	var ratio := clampf(float(audit_data.get("ratio", 0.0)), 0.0, 1.25)
+	var pressure := int(audit_data.get("pressure", 0))
+	var processing := float(audit_data.get("processing", 0.0))
+	var threshold := float(audit_data.get("threshold", 1.0))
+	var time_left := float(audit_data.get("time_left", 0.0))
+	audit_bar.size.x = 146.0 * clampf(ratio, 0.0, 1.0)
+	if ratio >= 1.0:
+		audit_bar.color = C.TOXIC_GREEN
+	elif pressure >= 2:
+		audit_bar.color = C.NEON_RED
+	else:
+		audit_bar.color = C.VITAMIN_YELLOW
+	audit_label.text = "%s %.0f/%.0f  %.0fs  압%d" % [
+		str(audit_data.get("name", "광고 감사")),
+		processing,
+		threshold,
+		time_left,
+		pressure,
+	]
+
+func _update_ration_panel(ration_data: Dictionary, paused_for_card: bool, game_over: bool) -> void:
+	var visible := not ration_data.is_empty() and not paused_for_card and not game_over and not _blocking_panel_visible()
+	ration_panel.visible = visible
+	if not visible:
+		return
+	var confirmed: Dictionary = ration_data.get("confirmed", {})
+	var candidates: Dictionary = ration_data.get("candidates", {})
+	var risk := str(ration_data.get("risk", ""))
+	var text := "정산 밥%d+%d 전%d 신%d" % [
+		int(confirmed.get("food", 0)),
+		int(candidates.get("food", 0)),
+		int(candidates.get("power", 0)),
+		int(candidates.get("signal", 0)),
+	]
+	if risk != "":
+		text += "  %s" % risk
+	var clause := str(ration_data.get("clause", ""))
+	if clause != "":
+		text += "  %s" % clause
+	ration_label.text = text
+
 func _on_card_button_pressed(index: int) -> void:
 	if card_chosen_callback.is_valid():
 		card_chosen_callback.call(index)
@@ -652,6 +786,84 @@ func _on_supply_upgrade_button_pressed(index: int) -> void:
 	if supply_upgrade_callback.is_valid():
 		supply_upgrade_callback.call(index)
 
+func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
+	var max_lines := 6
+	var priority_prefixes := [
+		"플레이테스트 계측:",
+		"확정 태그:",
+		"태그 후보:",
+		"후보 정산:",
+		"보급소 보관:",
+		"지역 오염 기록:",
+		"다음 출격 변화:",
+		"신호 단서 판정:",
+		"신호 추적 진행도:",
+	]
+	var chosen: Array[String] = []
+	for prefix in priority_prefixes:
+		if chosen.size() >= max_lines - 1:
+			break
+		for raw_line in progress_lines:
+			var line := str(raw_line)
+			if line.begins_with(prefix):
+				_append_unique_compact_line(chosen, line, 48)
+				break
+	for raw_line in progress_lines:
+		if chosen.size() >= max_lines - 1:
+			break
+		var line := str(raw_line)
+		if line.begins_with("정산 사유:") or line.begins_with("카드 기여:") or line.begins_with("광고 감사 결과:"):
+			_append_unique_compact_line(chosen, line, 48)
+	var hidden_count := progress_lines.size() - chosen.size()
+	if hidden_count > 0 and chosen.size() < max_lines:
+		chosen.append("정산 기록 %d개 더 있음" % hidden_count)
+	return chosen
+
+func _append_unique_compact_line(lines: Array[String], line: String, max_chars: int) -> void:
+	var compact := _compact_ui_text(line, max_chars)
+	if compact == "" or lines.has(compact):
+		return
+	lines.append(compact)
+
+func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint: String) -> String:
+	var parts: Array[String] = []
+	if clause_preview != "":
+		parts.append("약관 %s" % clause_preview)
+	if next_change != "" and next_change != "배분 효과 없음":
+		parts.append("변화 %s" % next_change)
+	elif boss_hint != "":
+		parts.append(boss_hint)
+	return _compact_ui_text(" / ".join(parts), 62)
+
+func _compact_supply_action_text(action: Dictionary, index: int, buy_marker: String, state_text: String, level_text: String, input_hint: String, extra: String) -> String:
+	var name := _compact_ui_text(str(action.get("name", "")), 14)
+	var cost := _compact_ui_text(str(action.get("cost_text", "")), 12)
+	var effect := _compact_ui_text(str(action.get("effect_text", "")), 24)
+	var extra_text := _compact_ui_text(extra.strip_edges(), 18)
+	var text := "%s%d [%s] %s | %s | %s | %s | %s" % [
+		buy_marker,
+		index + 1,
+		str(action.get("prefix", "보급")),
+		name,
+		state_text,
+		level_text,
+		cost,
+		effect,
+	]
+	if extra_text != "":
+		text = "%s | %s" % [text, extra_text]
+	return _compact_ui_text("%s | %s" % [input_hint, text], 86)
+
+func _compact_ui_text(text: String, max_chars: int) -> String:
+	var compact := text.strip_edges().replace("\n", " / ").replace(" - ", " / ")
+	while compact.find("  ") != -1:
+		compact = compact.replace("  ", " ")
+	if compact.length() <= max_chars:
+		return compact
+	if max_chars <= 1:
+		return "..."
+	return "%s..." % compact.substr(0, maxi(0, max_chars - 3))
+
 func _ensure_supply_button_count(count: int) -> void:
 	while supply_upgrade_buttons.size() < count:
 		var index := supply_upgrade_buttons.size()
@@ -660,7 +872,7 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		supply_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		supply_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		supply_button.custom_minimum_size = Vector2(420, 38)
+		supply_button.custom_minimum_size = Vector2(420, 20)
 		supply_button.add_theme_font_size_override("font_size", FONT_TINY)
 		supply_button.add_theme_color_override("font_color", C.INK)
 		_apply_font(supply_button)
@@ -674,11 +886,45 @@ func _ensure_supply_button_count(count: int) -> void:
 		supply_upgrade_buttons.append(supply_button)
 
 func _supply_currency_text(meta_progression) -> String:
-	return "전단 %d / 코어 %d\n%s" % [
+	return "전단 %d / 코어 %d\n%s\n%s" % [
 		meta_progression.trace_count(),
 		meta_progression.trace_count("campaign_core_fragment"),
 		meta_progression.signal_clue_summary(),
+		meta_progression.ration_ticket_summary(),
 	]
+
+func _fallback_supply_upgrade_actions(meta_progression) -> Array[Dictionary]:
+	var actions: Array[Dictionary] = []
+	var upgrades: Array = meta_progression.upgrade_defs()
+	for upgrade in upgrades:
+		var upgrade_id := String(upgrade["id"])
+		var can_buy: bool = meta_progression.can_buy(upgrade_id)
+		var unlocked: bool = meta_progression.is_unlocked(upgrade_id)
+		var level: int = meta_progression.upgrade_level(upgrade_id)
+		var max_level := int(upgrade.get("max_level", 1))
+		actions.append({
+			"kind": "upgrade",
+			"upgrade_id": upgrade_id,
+			"name": String(upgrade["name"]),
+			"state": "최대" if level >= max_level else ("선택 가능" if can_buy else ("잠김" if not unlocked else "흔적 부족")),
+			"level": level,
+			"max_level": max_level,
+			"effect_text": String(upgrade["effect_text"]),
+			"cost_text": "%d %s" % [int(upgrade["cost"]), str(upgrade.get("trace_label", "전단"))],
+			"input_hint": "클릭",
+			"can_use": can_buy,
+			"locked": not unlocked,
+			"applied": level >= max_level,
+			"prefix": "정비",
+			"extra": "",
+		})
+	return actions
+
+func _has_usable_supply_action(actions: Array[Dictionary]) -> bool:
+	for action in actions:
+		if bool(action.get("can_use", false)):
+			return true
+	return false
 
 func _set_supply_buttons_visible(visible: bool) -> void:
 	for button in supply_upgrade_buttons:
@@ -692,6 +938,8 @@ func _blocking_panel_visible() -> bool:
 func reset() -> void:
 	prompt_label.visible = false
 	boss_panel.visible = false
+	audit_panel.visible = false
+	ration_panel.visible = false
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	hide_result_screen()
