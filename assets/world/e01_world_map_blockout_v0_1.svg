@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" role="img" aria-labelledby="title desc">
+  <title id="title">Atomic Ad Survivors E01 World Map Blockout v0.1</title>
+  <desc id="desc">Normalized 0-100 blockout map for E01 local nodes. This is not real GPS data.</desc>
+  <defs>
+    <filter id="softGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style><![CDATA[
+      .label { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 10px; fill: #dbe7ec; }
+      .small { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 9px; fill: #9fb2bd; }
+      .title { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 18px; font-weight: 700; fill: #eef7f8; }
+      .subtitle { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 11px; fill: #a9bbc3; }
+      .legend { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 11px; fill: #d8e4e8; }
+      .grid { stroke: #263540; stroke-width: 1; opacity: 0.42; }
+    ]]></style>
+  </defs>
+  <rect width="960" height="640" fill="#10161a"/>
+  <g id="grid">
+    <line class="grid" x1="70" y1="58" x2="70" y2="578"/>
+    <line class="grid" x1="70" y1="58" x2="830" y2="58"/>
+    <line class="grid" x1="146" y1="58" x2="146" y2="578"/>
+    <line class="grid" x1="70" y1="110" x2="830" y2="110"/>
+    <line class="grid" x1="222" y1="58" x2="222" y2="578"/>
+    <line class="grid" x1="70" y1="162" x2="830" y2="162"/>
+    <line class="grid" x1="298" y1="58" x2="298" y2="578"/>
+    <line class="grid" x1="70" y1="214" x2="830" y2="214"/>
+    <line class="grid" x1="374" y1="58" x2="374" y2="578"/>
+    <line class="grid" x1="70" y1="266" x2="830" y2="266"/>
+    <line class="grid" x1="450" y1="58" x2="450" y2="578"/>
+    <line class="grid" x1="70" y1="318" x2="830" y2="318"/>
+    <line class="grid" x1="526" y1="58" x2="526" y2="578"/>
+    <line class="grid" x1="70" y1="370" x2="830" y2="370"/>
+    <line class="grid" x1="602" y1="58" x2="602" y2="578"/>
+    <line class="grid" x1="70" y1="422" x2="830" y2="422"/>
+    <line class="grid" x1="678" y1="58" x2="678" y2="578"/>
+    <line class="grid" x1="70" y1="474" x2="830" y2="474"/>
+    <line class="grid" x1="754" y1="58" x2="754" y2="578"/>
+    <line class="grid" x1="70" y1="526" x2="830" y2="526"/>
+    <line class="grid" x1="830" y1="58" x2="830" y2="578"/>
+    <line class="grid" x1="70" y1="578" x2="830" y2="578"/>
+  </g>
+  <g id="rough-silhouette" opacity="0.95">
+    <path d="M128 268 C94 340 111 438 91 542 C175 580 287 562 352 508 C421 451 468 430 540 390 C602 356 595 294 548 250 C515 219 520 172 482 133 C426 78 349 105 315 164 C285 217 245 226 199 238 C169 247 150 248 128 268 Z" fill="#17252d" stroke="#3a5661" stroke-width="2"/>
+    <ellipse cx="255" cy="430" rx="145" ry="154" fill="#1b4250" opacity="0.34"/>
+    <ellipse cx="497" cy="276" rx="150" ry="96" fill="#263a52" opacity="0.35"/>
+    <ellipse cx="610" cy="410" rx="155" ry="110" fill="#244c44" opacity="0.27"/>
+    <ellipse cx="520" cy="503" rx="150" ry="100" fill="#57383a" opacity="0.26"/>
+    <ellipse cx="496" cy="342" rx="108" ry="80" fill="#203c35" opacity="0.42"/>
+    <ellipse cx="472" cy="188" rx="106" ry="72" fill="#33295c" opacity="0.26"/>
+  </g>
+  <g id="region-labels">
+    <text class="small" x="124" y="604">west coast / harbor shadow</text>
+    <text class="small" x="448" y="174">broadcast high signal</text>
+    <text class="small" x="610" y="428">outer housing belt</text>
+    <text class="small" x="500" y="542">industrial gray zone</text>
+  </g>
+  <g id="links" fill="none">
+    <line x1="488" y1="338.8" x2="518.4" y2="349.2" style="stroke:#edf8ff;stroke-width:3.2;opacity:0.86"/>
+    <line x1="518.4" y1="349.2" x2="548.8" y2="364.8" style="stroke:#edf8ff;stroke-width:3.2;opacity:0.86"/>
+    <line x1="548.8" y1="364.8" x2="602" y2="385.6" style="stroke:#edf8ff;stroke-width:3.2;opacity:0.86"/>
+    <line x1="602" y1="385.6" x2="655.2" y2="406.4" style="stroke:#edf8ff;stroke-width:3.2;opacity:0.86"/>
+    <line x1="602" y1="385.6" x2="586.8" y2="422" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="655.2" y1="406.4" x2="632.4" y2="359.6" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="518.4" y1="349.2" x2="556.4" y2="302.4" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="556.4" y1="302.4" x2="465.2" y2="318" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="632.4" y1="359.6" x2="396.8" y2="401.2" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="396.8" y1="401.2" x2="358.8" y2="432.4" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="358.8" y1="432.4" x2="412" y2="453.2" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="655.2" y1="406.4" x2="548.8" y2="281.6" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="548.8" y1="281.6" x2="586.8" y2="260.8" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="586.8" y1="260.8" x2="533.6" y2="245.2" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="412" y1="453.2" x2="472.8" y2="448" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="472.8" y1="448" x2="510.8" y2="494.8" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="510.8" y1="494.8" x2="556.4" y2="474" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="465.2" y1="307.6" x2="434.8" y2="333.6" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="434.8" y1="333.6" x2="495.6" y2="328.4" style="stroke:#70d6ff;stroke-width:2.2;opacity:0.62;stroke-dasharray:7 6"/>
+    <line x1="412" y1="453.2" x2="328.4" y2="463.6" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="328.4" y1="463.6" x2="305.6" y2="422" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="533.6" y1="245.2" x2="617.2" y2="281.6" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="617.2" y1="281.6" x2="594.4" y2="219.2" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="556.4" y1="474" x2="480.4" y2="526" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="480.4" y1="526" x2="571.6" y2="520.8" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="495.6" y1="328.4" x2="457.6" y2="286.8" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="457.6" y1="286.8" x2="510.8" y2="302.4" style="stroke:#ff8f5a;stroke-width:2.2;opacity:0.68;stroke-dasharray:4 5"/>
+    <line x1="556.4" y1="302.4" x2="450" y2="208.8" style="stroke:#b49cff;stroke-width:1.9;opacity:0.55;stroke-dasharray:2 7"/>
+    <line x1="450" y1="208.8" x2="488" y2="188" style="stroke:#b49cff;stroke-width:1.9;opacity:0.55;stroke-dasharray:2 7"/>
+    <line x1="488" y1="188" x2="442.4" y2="167.2" style="stroke:#b49cff;stroke-width:1.9;opacity:0.55;stroke-dasharray:2 7"/>
+    <line x1="442.4" y1="167.2" x2="510.8" y2="162" style="stroke:#b49cff;stroke-width:1.9;opacity:0.55;stroke-dasharray:2 7"/>
+    <line x1="510.8" y1="162" x2="472.8" y2="141.2" style="stroke:#b49cff;stroke-width:1.9;opacity:0.55;stroke-dasharray:2 7"/>
+    <line x1="260" y1="380.4" x2="214.4" y2="432.4" style="stroke:#ff5a66;stroke-width:2.1;opacity:0.55;stroke-dasharray:9 5 2 5"/>
+    <line x1="214.4" y1="432.4" x2="275.2" y2="453.2" style="stroke:#ff5a66;stroke-width:2.1;opacity:0.55;stroke-dasharray:9 5 2 5"/>
+    <line x1="275.2" y1="453.2" x2="176.4" y2="411.6" style="stroke:#ff5a66;stroke-width:2.1;opacity:0.55;stroke-dasharray:9 5 2 5"/>
+    <line x1="176.4" y1="411.6" x2="199.2" y2="484.4" style="stroke:#ff5a66;stroke-width:2.1;opacity:0.55;stroke-dasharray:9 5 2 5"/>
+    <line x1="465.2" y1="318" x2="427.2" y2="276.4" style="stroke:#ffd166;stroke-width:2.0;opacity:0.7;stroke-dasharray:3 3"/>
+  </g>
+  <g id="nodes">
+    <circle cx="488" cy="338.8" r="8" fill="#f3f7ef" stroke="#74f2c5" stroke-width="2.4" opacity="0.98"/>
+    <circle cx="488" cy="338.8" r="16" fill="none" stroke="#74f2c5" stroke-width="2" opacity="0.9"/>
+    <text class="label" x="497" y="331.8">R08-L01</text>
+    <text class="small" x="497" y="343.8">침묵 보급소</text>
+    <circle cx="518.4" cy="349.2" r="8" fill="#f3f7ef" stroke="#74f2c5" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="527.4" y="342.2">R08-L02</text>
+    <text class="small" x="527.4" y="354.2">역송출 주유소</text>
+    <circle cx="556.4" cy="302.4" r="6" fill="#58d7f6" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="565.4" y="295.4">R08-L03</text>
+    <circle cx="465.2" cy="318" r="6" fill="#58d7f6" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="474.2" y="311">R08-L04</text>
+    <circle cx="427.2" cy="276.4" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="427.2" cy="276.4" r="8" fill="#7f8b96" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="436.2" y="269.4">R08-L05</text>
+    <text class="small" x="436.2" y="281.4">가짜 구조 신호탑</text>
+    <circle cx="548.8" cy="364.8" r="8" fill="#f3f7ef" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="557.8" y="357.8">R01-L01</text>
+    <text class="small" x="557.8" y="369.8">침묵 가장자리</text>
+    <circle cx="602" cy="385.6" r="8" fill="#f3f7ef" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="611" y="378.6">R01-L02</text>
+    <text class="small" x="611" y="390.6">분양 주택 루프</text>
+    <circle cx="655.2" cy="406.4" r="15" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="655.2" cy="406.4" r="10" fill="#f3f7ef" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="664.2" y="399.4">R01-L03</text>
+    <text class="small" x="664.2" y="411.4">모델하우스 결절</text>
+    <circle cx="586.8" cy="422" r="6" fill="#58d7f6" stroke="#b9f27c" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="595.8" y="415">R01-L04</text>
+    <circle cx="632.4" cy="359.6" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="641.4" y="352.6">R01-L05</text>
+    <circle cx="548.8" cy="281.6" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="557.8" y="274.6">R02-L01</text>
+    <circle cx="586.8" cy="260.8" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="595.8" y="253.8">R02-L02</text>
+    <circle cx="533.6" cy="245.2" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="542.6" y="238.2">R02-L03</text>
+    <circle cx="617.2" cy="281.6" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="626.2" y="274.6">R02-L04</text>
+    <circle cx="594.4" cy="219.2" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="594.4" cy="219.2" r="8" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="603.4" y="212.2">R02-L05</text>
+    <text class="small" x="603.4" y="224.2">퇴원 불가 병동</text>
+    <circle cx="396.8" cy="401.2" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="405.8" y="394.2">R03-L01</text>
+    <circle cx="358.8" cy="432.4" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="367.8" y="425.4">R03-L02</text>
+    <circle cx="412" cy="453.2" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="421" y="446.2">R03-L03</text>
+    <circle cx="328.4" cy="463.6" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="337.4" y="456.6">R03-L04</text>
+    <circle cx="305.6" cy="422" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="305.6" cy="422" r="8" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="314.6" y="415">R03-L05</text>
+    <text class="small" x="314.6" y="427">최종 반품 심사실</text>
+    <circle cx="472.8" cy="448" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="481.8" y="441">R04-L01</text>
+    <circle cx="510.8" cy="494.8" r="6" fill="#58d7f6" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="519.8" y="487.8">R04-L02</text>
+    <circle cx="556.4" cy="474" r="6" fill="#58d7f6" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="565.4" y="467">R04-L03</text>
+    <circle cx="480.4" cy="526" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="489.4" y="519">R04-L04</text>
+    <circle cx="571.6" cy="520.8" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="571.6" cy="520.8" r="8" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="580.6" y="513.8">R04-L05</text>
+    <text class="small" x="580.6" y="525.8">재동기화 코어</text>
+    <circle cx="450" cy="208.8" r="6" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="459" y="201.8">R05-L01</text>
+    <circle cx="488" cy="188" r="6" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="497" y="181">R05-L02</text>
+    <circle cx="442.4" cy="167.2" r="6" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="451.4" y="160.2">R05-L03</text>
+    <circle cx="510.8" cy="162" r="6" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="519.8" y="155">R05-L04</text>
+    <circle cx="472.8" cy="141.2" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="472.8" cy="141.2" r="8" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="481.8" y="134.2">R05-L05</text>
+    <text class="small" x="481.8" y="146.2">마지막 앵커 송출실</text>
+    <circle cx="465.2" cy="307.6" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="474.2" y="300.6">R06-L01</text>
+    <circle cx="434.8" cy="333.6" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="443.8" y="326.6">R06-L02</text>
+    <circle cx="495.6" cy="328.4" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="504.6" y="321.4">R06-L03</text>
+    <circle cx="457.6" cy="286.8" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="466.6" y="279.8">R06-L04</text>
+    <circle cx="510.8" cy="302.4" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="510.8" cy="302.4" r="8" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="519.8" y="295.4">R06-L05</text>
+    <text class="small" x="519.8" y="307.4">블랙프라이데이 홀</text>
+    <circle cx="260" cy="380.4" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="269" y="373.4">R07-L01</text>
+    <circle cx="214.4" cy="432.4" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="223.4" y="425.4">R07-L02</text>
+    <circle cx="275.2" cy="453.2" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="284.2" y="446.2">R07-L03</text>
+    <circle cx="176.4" cy="411.6" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2.4" opacity="0.98"/>
+    <text class="label" x="185.4" y="404.6">R07-L04</text>
+    <circle cx="199.2" cy="484.4" r="13" fill="none" stroke="#ff5a66" stroke-width="2.2" opacity="0.85" filter="url(#softGlow)"/>
+    <circle cx="199.2" cy="484.4" r="8" fill="#7f8b96" stroke="#b49cff" stroke-width="2.4" opacity="0.62"/>
+    <text class="label" x="208.2" y="477.4">R07-L05</text>
+    <text class="small" x="208.2" y="489.4">마지막 출항 관리탑</text>
+  </g>
+  <g id="frame-and-legend">
+    <rect x="24" y="18" width="912" height="604" rx="8" fill="none" stroke="#30424d" stroke-width="1.2"/>
+    <text class="title" x="36" y="45">E01 World Map Blockout v0.1</text>
+    <text class="subtitle" x="36" y="64">normalized 0-100 layout, not GPS / silhouette + alias exposure target</text>
+    <rect x="740" y="34" width="174" height="154" rx="7" fill="#111c21" stroke="#344853" opacity="0.92"/>
+    <text class="legend" x="756" y="58">Priority</text>
+    <circle cx="762" cy="80" r="6" fill="#f3f7ef" stroke="#74f2c5" stroke-width="2"/>
+    <text class="legend" x="776" y="84">P0 visible start</text>
+    <circle cx="762" cy="105" r="6" fill="#58d7f6" stroke="#ffd166" stroke-width="2"/>
+    <text class="legend" x="776" y="109">P1 expansion</text>
+    <circle cx="762" cy="130" r="6" fill="#7f8b96" stroke="#ff8f5a" stroke-width="2"/>
+    <text class="legend" x="776" y="134">P2 late/branch</text>
+    <circle cx="762" cy="156" r="10" fill="none" stroke="#ff5a66" stroke-width="2"/>
+    <text class="legend" x="776" y="160">boss slot</text>
+    <text class="small" x="756" y="178">origin: R08-L02</text>
+  </g>
+</svg>

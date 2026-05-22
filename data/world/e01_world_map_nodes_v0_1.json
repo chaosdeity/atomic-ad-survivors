@@ -1,0 +1,811 @@
+{
+  "schemaVersion": 1,
+  "id": "e01_world_map_nodes_v0_1",
+  "title": "Atomic Ad Survivors E01 World Map Nodes v0.1",
+  "sourceDocument": "docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md",
+  "region": {
+    "id": "E01",
+    "nameKo": "한반도 서부 수도권-항만-산업 벨트",
+    "displayAliasKo": "서부권",
+    "coordinateMode": "normalized_0_100",
+    "isRealGps": false
+  },
+  "coordinateSystem": {
+    "minX": 0,
+    "maxX": 100,
+    "minY": 0,
+    "maxY": 100,
+    "x0MeaningKo": "서쪽 해안/항만 방향",
+    "x100MeaningKo": "동쪽 내륙/외곽 방향",
+    "y0MeaningKo": "북쪽/고지대/방송 축",
+    "y100MeaningKo": "남쪽/산업/항만 하부 축"
+  },
+  "visibilityPriorities": {
+    "P0": {
+      "nameKo": "첫 빌드 핵심",
+      "descriptionKo": "튜토리얼, 첫 출격, 첫 보스까지 필요한 최소 동선"
+    },
+    "P1": {
+      "nameKo": "1장 확장",
+      "descriptionKo": "윤서 과거, 해방 로봇, 의료/브로커 서사 진입"
+    },
+    "P2": {
+      "nameKo": "후반/분기 후보",
+      "descriptionKo": "후반 미스터리, 권역 보스, 항만/방송/세계 진실 확장"
+    }
+  },
+  "extractionTiers": {
+    "A0": {
+      "nameKo": "내부 침묵권",
+      "uiLabelKo": "귀환 안정",
+      "descriptionKo": "정산, 수리, 귀환이 가능한 안정권"
+    },
+    "A1": {
+      "nameKo": "근거리 출격권",
+      "uiLabelKo": "인양 가능",
+      "descriptionKo": "초반 반복 출격권. 인양 가능하지만 캠페인 간섭이 시작된다."
+    },
+    "A2": {
+      "nameKo": "중거리 회수권",
+      "uiLabelKo": "인양 불안정",
+      "descriptionKo": "비콘 소모와 회수선 노출이 증가하는 불안정권"
+    },
+    "A3": {
+      "nameKo": "고위험 외곽권",
+      "uiLabelKo": "고위험 인양",
+      "descriptionKo": "실패 시 태그와 전리품 손실이 큰 고위험권"
+    },
+    "A4": {
+      "nameKo": "원격 감지권",
+      "uiLabelKo": "신호만 감지",
+      "descriptionKo": "중계기나 침묵권 확장 전에는 인양이 불가능하거나 조건부인 구역"
+    }
+  },
+  "extractionOriginNodeId": "R08-L02",
+  "nodes": [
+    {
+      "id": "R08-L01",
+      "nameKo": "침묵 보급소",
+      "campaignId": "E01_C08",
+      "districtId": "R08",
+      "x": 55,
+      "y": 54,
+      "extractionTier": "A0",
+      "priority": "P0",
+      "mapConnectionKo": "시작 허브",
+      "isStartNode": true,
+      "isBossNode": false
+    },
+    {
+      "id": "R08-L02",
+      "nameKo": "역송출 주유소",
+      "campaignId": "E01_C08",
+      "districtId": "R08",
+      "x": 59,
+      "y": 56,
+      "extractionTier": "A0",
+      "priority": "P0",
+      "mapConnectionKo": "인양 기준점",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R08-L03",
+      "nameKo": "폐역 무음 플랫폼",
+      "campaignId": "E01_C08",
+      "districtId": "R08",
+      "x": 64,
+      "y": 47,
+      "extractionTier": "A1",
+      "priority": "P1",
+      "mapConnectionKo": "침묵권 확장",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R08-L04",
+      "nameKo": "민방위 저장고",
+      "campaignId": "E01_C08",
+      "districtId": "R08",
+      "x": 52,
+      "y": 50,
+      "extractionTier": "A1",
+      "priority": "P1",
+      "mapConnectionKo": "보급 압박",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R08-L05",
+      "nameKo": "가짜 구조 신호탑",
+      "campaignId": "E01_C08",
+      "districtId": "R08",
+      "x": 47,
+      "y": 42,
+      "extractionTier": "A2",
+      "priority": "P2",
+      "mapConnectionKo": "내부 위기",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R01-L01",
+      "nameKo": "침묵 가장자리",
+      "campaignId": "E01_C01",
+      "districtId": "R01",
+      "x": 63,
+      "y": 59,
+      "extractionTier": "A1",
+      "priority": "P0",
+      "mapConnectionKo": "첫 출격",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R01-L02",
+      "nameKo": "분양 주택 루프",
+      "campaignId": "E01_C01",
+      "districtId": "R01",
+      "x": 70,
+      "y": 63,
+      "extractionTier": "A1",
+      "priority": "P0",
+      "mapConnectionKo": "기본 런",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R01-L03",
+      "nameKo": "모델하우스 결절",
+      "campaignId": "E01_C01",
+      "districtId": "R01",
+      "x": 77,
+      "y": 67,
+      "extractionTier": "A1",
+      "priority": "P0",
+      "mapConnectionKo": "첫 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R01-L04",
+      "nameKo": "배수로 침묵 주머니",
+      "campaignId": "E01_C01",
+      "districtId": "R01",
+      "x": 68,
+      "y": 70,
+      "extractionTier": "A1",
+      "priority": "P1",
+      "mapConnectionKo": "숨은 회수",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R01-L05",
+      "nameKo": "가짜 귀환로",
+      "campaignId": "E01_C01",
+      "districtId": "R01",
+      "x": 74,
+      "y": 58,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "재방문 변형",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R02-L01",
+      "nameKo": "응급 접수 홀",
+      "campaignId": "E01_C02",
+      "districtId": "R02",
+      "x": 63,
+      "y": 43,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "의료 진입",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R02-L02",
+      "nameKo": "장기 입원동",
+      "campaignId": "E01_C02",
+      "districtId": "R02",
+      "x": 68,
+      "y": 39,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "등록 인간",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R02-L03",
+      "nameKo": "보험 심사 약국",
+      "campaignId": "E01_C02",
+      "districtId": "R02",
+      "x": 61,
+      "y": 36,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "진료태그",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R02-L04",
+      "nameKo": "격리문 복도",
+      "campaignId": "E01_C02",
+      "districtId": "R02",
+      "x": 72,
+      "y": 43,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "의료 오염",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R02-L05",
+      "nameKo": "퇴원 불가 병동",
+      "campaignId": "E01_C02",
+      "districtId": "R02",
+      "x": 69,
+      "y": 31,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "의료 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R03-L01",
+      "nameKo": "반품 접수 야드",
+      "campaignId": "E01_C03",
+      "districtId": "R03",
+      "x": 43,
+      "y": 66,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "윤서 진입",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R03-L02",
+      "nameKo": "자동 분류장",
+      "campaignId": "E01_C03",
+      "districtId": "R03",
+      "x": 38,
+      "y": 72,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "벨트 기믹",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R03-L03",
+      "nameKo": "보증 심사 창고",
+      "campaignId": "E01_C03",
+      "districtId": "R03",
+      "x": 45,
+      "y": 76,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "로봇 부품",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R03-L04",
+      "nameKo": "파쇄 전 대기라인",
+      "campaignId": "E01_C03",
+      "districtId": "R03",
+      "x": 34,
+      "y": 78,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "시간 제한",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R03-L05",
+      "nameKo": "최종 반품 심사실",
+      "campaignId": "E01_C03",
+      "districtId": "R03",
+      "x": 31,
+      "y": 70,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "윤서 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R04-L01",
+      "nameKo": "폐충전소",
+      "campaignId": "E01_C04",
+      "districtId": "R04",
+      "x": 53,
+      "y": 75,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "충전태그",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R04-L02",
+      "nameKo": "배터리 침전 공장",
+      "campaignId": "E01_C04",
+      "districtId": "R04",
+      "x": 58,
+      "y": 84,
+      "extractionTier": "A3",
+      "priority": "P1",
+      "mapConnectionKo": "산업 오염",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R04-L03",
+      "nameKo": "리콜 펌웨어실",
+      "campaignId": "E01_C04",
+      "districtId": "R04",
+      "x": 64,
+      "y": 80,
+      "extractionTier": "A3",
+      "priority": "P1",
+      "mapConnectionKo": "해방 로봇",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R04-L04",
+      "nameKo": "폐기 프레스 라인",
+      "campaignId": "E01_C04",
+      "districtId": "R04",
+      "x": 54,
+      "y": 90,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "로봇 구조",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R04-L05",
+      "nameKo": "재동기화 코어",
+      "campaignId": "E01_C04",
+      "districtId": "R04",
+      "x": 66,
+      "y": 89,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "로봇 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R05-L01",
+      "nameKo": "수신탑 외곽",
+      "campaignId": "E01_C05",
+      "districtId": "R05",
+      "x": 50,
+      "y": 29,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "수신태그",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R05-L02",
+      "nameKo": "반복 뉴스 스튜디오",
+      "campaignId": "E01_C05",
+      "districtId": "R05",
+      "x": 55,
+      "y": 25,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "편집 기록",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R05-L03",
+      "nameKo": "추천 서버실",
+      "campaignId": "E01_C05",
+      "districtId": "R05",
+      "x": 49,
+      "y": 21,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "세계 원인 단서",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R05-L04",
+      "nameKo": "빈 관객석 공개홀",
+      "campaignId": "E01_C05",
+      "districtId": "R05",
+      "x": 58,
+      "y": 20,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "빈 메가 캠페인",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R05-L05",
+      "nameKo": "마지막 앵커 송출실",
+      "campaignId": "E01_C05",
+      "districtId": "R05",
+      "x": 53,
+      "y": 16,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "세계 진실",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R06-L01",
+      "nameKo": "회원 게이트 거리",
+      "campaignId": "E01_C06",
+      "districtId": "R06",
+      "x": 52,
+      "y": 48,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "멤버십 진입",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R06-L02",
+      "nameKo": "포인트 거래 골목",
+      "campaignId": "E01_C06",
+      "districtId": "R06",
+      "x": 48,
+      "y": 53,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "브로커",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R06-L03",
+      "nameKo": "리뷰 키오스크 광장",
+      "campaignId": "E01_C06",
+      "districtId": "R06",
+      "x": 56,
+      "y": 52,
+      "extractionTier": "A2",
+      "priority": "P1",
+      "mapConnectionKo": "평판 조작",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R06-L04",
+      "nameKo": "VIP 라운지",
+      "campaignId": "E01_C06",
+      "districtId": "R06",
+      "x": 51,
+      "y": 44,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "협력자",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R06-L05",
+      "nameKo": "블랙프라이데이 홀",
+      "campaignId": "E01_C06",
+      "districtId": "R06",
+      "x": 58,
+      "y": 47,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "인간 악역 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    },
+    {
+      "id": "R07-L01",
+      "nameKo": "검역 게이트",
+      "campaignId": "E01_C07",
+      "districtId": "R07",
+      "x": 25,
+      "y": 62,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "통행태그",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R07-L02",
+      "nameKo": "냉동 컨테이너 야드",
+      "campaignId": "E01_C07",
+      "districtId": "R07",
+      "x": 19,
+      "y": 72,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "냉동 물류",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R07-L03",
+      "nameKo": "수하물 오분류 터미널",
+      "campaignId": "E01_C07",
+      "districtId": "R07",
+      "x": 27,
+      "y": 76,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "오분류",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R07-L04",
+      "nameKo": "밀수 통행로",
+      "campaignId": "E01_C07",
+      "districtId": "R07",
+      "x": 14,
+      "y": 68,
+      "extractionTier": "A3",
+      "priority": "P2",
+      "mapConnectionKo": "바깥 소문",
+      "isStartNode": false,
+      "isBossNode": false
+    },
+    {
+      "id": "R07-L05",
+      "nameKo": "마지막 출항 관리탑",
+      "campaignId": "E01_C07",
+      "districtId": "R07",
+      "x": 17,
+      "y": 82,
+      "extractionTier": "A4",
+      "priority": "P2",
+      "mapConnectionKo": "탈출 보스",
+      "isStartNode": false,
+      "isBossNode": true
+    }
+  ],
+  "links": [
+    {
+      "from": "R08-L01",
+      "to": "R08-L02",
+      "phase": "P0",
+      "type": "main"
+    },
+    {
+      "from": "R08-L02",
+      "to": "R01-L01",
+      "phase": "P0",
+      "type": "main"
+    },
+    {
+      "from": "R01-L01",
+      "to": "R01-L02",
+      "phase": "P0",
+      "type": "main"
+    },
+    {
+      "from": "R01-L02",
+      "to": "R01-L03",
+      "phase": "P0",
+      "type": "main"
+    },
+    {
+      "from": "R01-L02",
+      "to": "R01-L04",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R01-L03",
+      "to": "R01-L05",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R08-L02",
+      "to": "R08-L03",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R08-L03",
+      "to": "R08-L04",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R01-L05",
+      "to": "R03-L01",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R03-L01",
+      "to": "R03-L02",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R03-L02",
+      "to": "R03-L03",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R01-L03",
+      "to": "R02-L01",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R02-L01",
+      "to": "R02-L02",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R02-L02",
+      "to": "R02-L03",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R03-L03",
+      "to": "R04-L01",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R04-L01",
+      "to": "R04-L02",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R04-L02",
+      "to": "R04-L03",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R06-L01",
+      "to": "R06-L02",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R06-L02",
+      "to": "R06-L03",
+      "phase": "P1",
+      "type": "branch"
+    },
+    {
+      "from": "R03-L03",
+      "to": "R03-L04",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R03-L04",
+      "to": "R03-L05",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R02-L03",
+      "to": "R02-L04",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R02-L04",
+      "to": "R02-L05",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R04-L03",
+      "to": "R04-L04",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R04-L04",
+      "to": "R04-L05",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R06-L03",
+      "to": "R06-L04",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R06-L04",
+      "to": "R06-L05",
+      "phase": "P2",
+      "type": "boss_branch"
+    },
+    {
+      "from": "R08-L03",
+      "to": "R05-L01",
+      "phase": "P2",
+      "type": "remote_signal"
+    },
+    {
+      "from": "R05-L01",
+      "to": "R05-L02",
+      "phase": "P2",
+      "type": "remote_signal"
+    },
+    {
+      "from": "R05-L02",
+      "to": "R05-L03",
+      "phase": "P2",
+      "type": "remote_signal"
+    },
+    {
+      "from": "R05-L03",
+      "to": "R05-L04",
+      "phase": "P2",
+      "type": "remote_signal"
+    },
+    {
+      "from": "R05-L04",
+      "to": "R05-L05",
+      "phase": "P2",
+      "type": "remote_signal"
+    },
+    {
+      "from": "R07-L01",
+      "to": "R07-L02",
+      "phase": "P2",
+      "type": "blockade"
+    },
+    {
+      "from": "R07-L02",
+      "to": "R07-L03",
+      "phase": "P2",
+      "type": "blockade"
+    },
+    {
+      "from": "R07-L03",
+      "to": "R07-L04",
+      "phase": "P2",
+      "type": "blockade"
+    },
+    {
+      "from": "R07-L04",
+      "to": "R07-L05",
+      "phase": "P2",
+      "type": "blockade"
+    },
+    {
+      "from": "R08-L04",
+      "to": "R08-L05",
+      "phase": "P2",
+      "type": "internal_crisis"
+    }
+  ]
+}

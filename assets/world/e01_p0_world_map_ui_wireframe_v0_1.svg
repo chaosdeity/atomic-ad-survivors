@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Atomic Ad Survivors E01 P0 World Map UI Wireframe v0.1</title>
+  <desc id="desc">Mobile and desktop wireframe for the first P0 world map screen: R08 outpost, extraction gear, R01 first sortie, locked housing loop, and weak boss signal.</desc>
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style><![CDATA[
+      .bg { fill: #10161a; }
+      .frame { fill: #172026; stroke: #40525c; stroke-width: 2; }
+      .panel { fill: #1e2a30; stroke: #4a5f69; stroke-width: 1.5; }
+      .map { fill: #122028; stroke: #2c444e; stroke-width: 1.2; }
+      .land { fill: #20313a; stroke: #46606a; stroke-width: 1.2; opacity: 0.9; }
+      .silence { fill: #7ee7d0; stroke: #d9fff7; }
+      .available { fill: #c8fff1; stroke: #74ddcb; }
+      .locked { fill: #54666d; stroke: #98aab0; opacity: 0.72; }
+      .boss { fill: #ff6d72; stroke: #ffd1c8; }
+      .hint { fill: #7d8e96; stroke: #aab8bd; opacity: 0.38; }
+      .line { stroke: #8ce7d7; stroke-width: 3; fill: none; }
+      .dash { stroke: #9fb2ba; stroke-width: 2.2; fill: none; stroke-dasharray: 7 6; opacity: 0.8; }
+      .faint { stroke: #6f8790; stroke-width: 2; fill: none; stroke-dasharray: 4 7; opacity: 0.42; }
+      .warn { stroke: #ff787d; stroke-width: 2.5; fill: none; opacity: 0.82; }
+      .title { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #eff8f6; }
+      .subtitle { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 12px; fill: #aabcc3; }
+      .label { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 11px; fill: #e4f1f0; }
+      .small { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 9px; fill: #aebdc2; }
+      .tiny { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 8px; fill: #91a3aa; }
+      .button { fill: #2d776f; stroke: #8ff7e2; stroke-width: 1.5; }
+      .disabled { fill: #2b353a; stroke: #677981; stroke-width: 1.2; }
+      .badge { fill: #20343a; stroke: #75dcca; stroke-width: 1; }
+    ]]></style>
+  </defs>
+
+  <rect class="bg" width="1280" height="720"/>
+  <text class="title" x="34" y="34">E01 P0 월드맵 UI 와이어프레임 v0.1</text>
+  <text class="subtitle" x="34" y="54">첫 화면은 전 지구 설명이 아니라 R08 보급소에서 R01 첫 출격까지 이어지는 조작 화면이다.</text>
+
+  <!-- Mobile artboard -->
+  <g id="mobile" transform="translate(34 70)">
+    <text class="label" x="0" y="-14">모바일 360x640 기준</text>
+    <rect class="frame" x="0" y="0" width="360" height="640" rx="18"/>
+    <rect class="panel" x="14" y="14" width="332" height="42" rx="8"/>
+    <text class="label" x="28" y="40">침묵 보급소</text>
+    <rect class="badge" x="139" y="23" width="68" height="20" rx="10"/>
+    <text class="tiny" x="151" y="37">보급태그 0</text>
+    <rect class="badge" x="222" y="23" width="92" height="20" rx="10"/>
+    <text class="tiny" x="238" y="37">회수선 안정</text>
+
+    <rect class="map" x="14" y="68" width="332" height="378" rx="10"/>
+    <path class="land" d="M57 170 C38 228 52 309 43 362 C91 385 157 374 198 334 C234 299 268 285 303 252 C332 225 320 185 287 164 C256 143 262 106 226 83 C183 55 141 83 126 123 C112 159 82 157 57 170 Z"/>
+    <ellipse cx="150" cy="266" rx="86" ry="104" fill="#1b3e46" opacity="0.28"/>
+    <ellipse cx="260" cy="224" rx="82" ry="64" fill="#493640" opacity="0.22"/>
+    <ellipse cx="236" cy="330" rx="92" ry="70" fill="#3b4f48" opacity="0.22"/>
+
+    <path class="faint" d="M176 250 C135 281 107 316 84 354"/>
+    <text class="tiny" x="48" y="370">라벨 잡음</text>
+    <path class="faint" d="M224 202 C258 174 292 150 320 128"/>
+    <text class="tiny" x="270" y="127">백색 잡음</text>
+    <path class="faint" d="M236 314 C270 346 295 368 322 388"/>
+    <text class="tiny" x="269" y="399">회색 얼룩</text>
+
+    <path class="line" d="M140 242 L176 258 L211 284"/>
+    <path class="dash" d="M211 284 L267 315"/>
+    <path class="dash" d="M267 315 L318 348"/>
+    <circle class="silence" cx="140" cy="242" r="11" filter="url(#glow)"/>
+    <circle class="silence" cx="176" cy="258" r="8"/>
+    <circle class="available" cx="211" cy="284" r="9" filter="url(#glow)"/>
+    <circle class="locked" cx="267" cy="315" r="8"/>
+    <circle class="boss" cx="318" cy="348" r="8"/>
+    <circle class="warn" cx="318" cy="348" r="17"/>
+    <text class="small" x="94" y="229">R08-L01</text>
+    <text class="tiny" x="158" y="245">R08-L02</text>
+    <text class="small" x="181" y="275">R01-L01</text>
+    <text class="tiny" x="239" y="305">경로 미확인</text>
+    <text class="tiny" x="281" y="374">심사 신호</text>
+
+    <rect class="panel" x="14" y="458" width="332" height="168" rx="12"/>
+    <text class="label" x="30" y="484">침묵 가장자리</text>
+    <rect class="badge" x="129" y="469" width="74" height="20" rx="10"/>
+    <text class="tiny" x="145" y="483">인양 가능</text>
+    <text class="small" x="30" y="510">주택가 입구의 캠페인 신호를 확인한다</text>
+    <text class="small" x="30" y="532">예상 회수물: 식량태그 조각, 낡은 보급품</text>
+    <text class="tiny" x="30" y="555">R08-L02 비콘 범위 안쪽 / A1</text>
+    <rect class="button" x="30" y="574" width="300" height="36" rx="8"/>
+    <text class="label" x="167" y="597" text-anchor="middle">출격</text>
+  </g>
+
+  <!-- Desktop artboard -->
+  <g id="desktop" transform="translate(430 70)">
+    <text class="label" x="0" y="-14">데스크톱 1280x720 기준</text>
+    <rect class="frame" x="0" y="0" width="810" height="456" rx="12"/>
+    <rect class="panel" x="14" y="14" width="782" height="40" rx="8"/>
+    <text class="label" x="30" y="39">침묵 보급소 / E01 서부 스마일홈</text>
+    <rect class="badge" x="360" y="23" width="86" height="20" rx="10"/>
+    <text class="tiny" x="377" y="37">보급태그 0</text>
+    <rect class="badge" x="462" y="23" width="86" height="20" rx="10"/>
+    <text class="tiny" x="480" y="37">신호 낮음</text>
+    <rect class="badge" x="564" y="23" width="92" height="20" rx="10"/>
+    <text class="tiny" x="580" y="37">회수선 안정</text>
+
+    <rect class="map" x="14" y="66" width="520" height="372" rx="10"/>
+    <path class="land" d="M82 164 C55 219 68 303 53 352 C127 397 210 374 257 330 C310 281 352 273 406 236 C454 202 435 153 393 132 C352 111 365 76 314 52 C257 26 198 62 176 113 C154 160 114 151 82 164 Z"/>
+    <ellipse cx="210" cy="268" rx="120" ry="118" fill="#1b3e46" opacity="0.28"/>
+    <ellipse cx="383" cy="197" rx="98" ry="72" fill="#493640" opacity="0.22"/>
+    <ellipse cx="360" cy="330" rx="112" ry="78" fill="#3b4f48" opacity="0.22"/>
+    <path class="faint" d="M237 246 C178 286 139 321 97 360"/>
+    <path class="faint" d="M297 202 C347 158 398 119 460 91"/>
+    <path class="faint" d="M330 315 C384 350 435 371 490 392"/>
+    <text class="tiny" x="82" y="378">R03 라벨 신호</text>
+    <text class="tiny" x="400" y="91">R02 백색 신호</text>
+    <text class="tiny" x="420" y="410">R04 충전 잡음</text>
+
+    <path class="line" d="M206 236 L257 256 L307 284"/>
+    <path class="dash" d="M307 284 L385 318"/>
+    <path class="dash" d="M385 318 L462 354"/>
+    <circle class="silence" cx="206" cy="236" r="13" filter="url(#glow)"/>
+    <circle class="silence" cx="257" cy="256" r="10"/>
+    <circle class="available" cx="307" cy="284" r="11" filter="url(#glow)"/>
+    <circle class="locked" cx="385" cy="318" r="10"/>
+    <circle class="boss" cx="462" cy="354" r="10"/>
+    <circle class="warn" cx="462" cy="354" r="22"/>
+    <text class="small" x="164" y="220">침묵 보급소</text>
+    <text class="small" x="232" y="245">역송출 주유소</text>
+    <text class="small" x="285" y="273">침묵 가장자리</text>
+    <text class="tiny" x="358" y="306">분양 주택 루프</text>
+    <text class="tiny" x="420" y="383">모델하우스 결절</text>
+
+    <rect class="panel" x="552" y="66" width="244" height="372" rx="10"/>
+    <text class="label" x="570" y="95">선택 노드</text>
+    <text class="title" x="570" y="128" style="font-size:18px">침묵 가장자리</text>
+    <rect class="badge" x="570" y="143" width="78" height="22" rx="11"/>
+    <text class="tiny" x="587" y="158">인양 가능</text>
+    <rect class="badge" x="658" y="143" width="48" height="22" rx="11"/>
+    <text class="tiny" x="674" y="158">A1</text>
+    <line x1="570" y1="181" x2="778" y2="181" stroke="#40525c" stroke-width="1"/>
+    <text class="small" x="570" y="207">목표</text>
+    <text class="label" x="570" y="229">주택가 입구의</text>
+    <text class="label" x="570" y="249">캠페인 신호를 확인한다</text>
+    <text class="small" x="570" y="284">예상 회수물</text>
+    <text class="label" x="570" y="306">식량태그 조각</text>
+    <text class="label" x="570" y="326">낡은 보급품</text>
+    <text class="tiny" x="570" y="357">R01-L02: 경로 미확인</text>
+    <text class="tiny" x="570" y="374">R01-L03: 심사 신호 감지</text>
+    <rect class="button" x="570" y="392" width="208" height="34" rx="8"/>
+    <text class="label" x="674" y="414" text-anchor="middle">출격</text>
+  </g>
+
+  <g id="legend" transform="translate(430 550)">
+    <text class="label" x="0" y="0">상태 범례</text>
+    <circle class="silence" cx="14" cy="26" r="7"/>
+    <text class="small" x="28" y="30">현재/침묵권</text>
+    <circle class="available" cx="130" cy="26" r="7"/>
+    <text class="small" x="144" y="30">출격 가능</text>
+    <circle class="locked" cx="246" cy="26" r="7"/>
+    <text class="small" x="260" y="30">잠김</text>
+    <circle class="boss" cx="340" cy="26" r="7"/>
+    <text class="small" x="354" y="30">보스 신호</text>
+    <line class="faint" x1="454" y1="26" x2="504" y2="26"/>
+    <text class="small" x="514" y="30">P1 흐린 신호</text>
+    <text class="subtitle" x="0" y="62">노란색/황혼 톤은 최종 팔레트가 아니다. 보스 신호와 경고만 작은 강조로 사용한다.</text>
+  </g>
+</svg>

@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Atomic Ad Survivors E01 World Map Art Color Direction v0.1</title>
+  <desc id="desc">Palette and visual language board for the E01 P0 world map. Teal extraction, dark receiver map surface, coral ad pressure, limited yellow warning accents.</desc>
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style><![CDATA[
+      .bg { fill: #0D1417; }
+      .panel { fill: #182329; stroke: #40525C; stroke-width: 1.5; }
+      .map { fill: #122028; stroke: #40525C; stroke-width: 1.4; }
+      .title { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 24px; font-weight: 700; fill: #E8F2F0; }
+      .h2 { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #E8F2F0; }
+      .label { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 11px; fill: #E8F2F0; }
+      .small { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 9px; fill: #9CAFB5; }
+      .tiny { font-family: "Noto Sans KR", "Malgun Gothic", Arial, sans-serif; font-size: 8px; fill: #9CAFB5; }
+      .swatch { stroke: #40525C; stroke-width: 1; }
+      .solid-route { stroke: #9FF5E7; stroke-width: 4; fill: none; }
+      .locked-route { stroke: #5B6A70; stroke-width: 3; stroke-dasharray: 8 7; fill: none; }
+      .faint-route { stroke: #9CAFB5; stroke-width: 2; stroke-dasharray: 3 8; fill: none; opacity: 0.42; }
+      .boss-route { stroke: #FF6D72; stroke-width: 3; fill: none; opacity: 0.82; }
+    ]]></style>
+  </defs>
+
+  <rect class="bg" width="1280" height="720"/>
+  <text class="title" x="34" y="40">E01 월드맵 아트/색채 방향 v0.1</text>
+  <text class="small" x="34" y="62">수신 지도 팔레트: 청흑 표면, 청록 인양선, 코랄 광고 압력, 노랑은 작은 주의점만.</text>
+
+  <g id="core-palette" transform="translate(34 92)">
+    <rect class="panel" width="384" height="300" rx="12"/>
+    <text class="h2" x="18" y="28">기본 지도 팔레트</text>
+    <g transform="translate(18 48)">
+      <rect class="swatch" x="0" y="0" width="50" height="34" rx="6" fill="#0D1417"/>
+      <text class="label" x="62" y="14">WM_BG_DEEP</text>
+      <text class="tiny" x="62" y="29">#0D1417 / 전체 배경</text>
+      <rect class="swatch" x="0" y="44" width="50" height="34" rx="6" fill="#182329"/>
+      <text class="label" x="62" y="58">WM_PANEL</text>
+      <text class="tiny" x="62" y="73">#182329 / 패널</text>
+      <rect class="swatch" x="0" y="88" width="50" height="34" rx="6" fill="#122028"/>
+      <text class="label" x="62" y="102">WM_MAP_SURFACE</text>
+      <text class="tiny" x="62" y="117">#122028 / 지도 표면</text>
+      <rect class="swatch" x="0" y="132" width="50" height="34" rx="6" fill="#20313A"/>
+      <text class="label" x="62" y="146">WM_LAND</text>
+      <text class="tiny" x="62" y="161">#20313A / 지형 실루엣</text>
+      <rect class="swatch" x="0" y="176" width="50" height="34" rx="6" fill="#2A3D44"/>
+      <text class="label" x="62" y="190">WM_GRID</text>
+      <text class="tiny" x="62" y="205">#2A3D44 / 도로/스캔선</text>
+      <rect class="swatch" x="0" y="220" width="50" height="34" rx="6" fill="#E8F2F0"/>
+      <text class="label" x="62" y="234">WM_TEXT</text>
+      <text class="tiny" x="62" y="249">#E8F2F0 / 주요 텍스트</text>
+    </g>
+  </g>
+
+  <g id="function-palette" transform="translate(448 92)">
+    <rect class="panel" width="384" height="300" rx="12"/>
+    <text class="h2" x="18" y="28">기능 색상</text>
+    <g transform="translate(18 48)">
+      <rect class="swatch" x="0" y="0" width="50" height="34" rx="6" fill="#69D6C8"/>
+      <text class="label" x="62" y="14">침묵권 / 귀환 안정</text>
+      <text class="tiny" x="62" y="29">#69D6C8 / R08, A0</text>
+      <rect class="swatch" x="0" y="44" width="50" height="34" rx="6" fill="#9FF5E7"/>
+      <text class="label" x="62" y="58">인양 가능</text>
+      <text class="tiny" x="62" y="73">#9FF5E7 / A1, 출격선</text>
+      <rect class="swatch" x="0" y="88" width="50" height="34" rx="6" fill="#76B7FF"/>
+      <text class="label" x="62" y="102">장비 / 비콘</text>
+      <text class="tiny" x="62" y="117">#76B7FF / R08-L02</text>
+      <rect class="swatch" x="0" y="132" width="50" height="34" rx="6" fill="#FF6D72"/>
+      <text class="label" x="62" y="146">광고 압력</text>
+      <text class="tiny" x="62" y="161">#FF6D72 / 보스 링</text>
+      <rect class="swatch" x="0" y="176" width="50" height="34" rx="6" fill="#9FFF5C"/>
+      <text class="label" x="62" y="190">해석 성공 / 코어</text>
+      <text class="tiny" x="62" y="205">#9FFF5C / 소량</text>
+      <rect class="swatch" x="0" y="220" width="50" height="34" rx="6" fill="#FFE93F"/>
+      <text class="label" x="62" y="234">주의 점멸</text>
+      <text class="tiny" x="62" y="249">#FFE93F / 화면 3~5% 이하</text>
+    </g>
+  </g>
+
+  <g id="region-palette" transform="translate(862 92)">
+    <rect class="panel" width="384" height="300" rx="12"/>
+    <text class="h2" x="18" y="28">권역 신호 색</text>
+    <g transform="translate(18 50)">
+      <circle cx="12" cy="9" r="8" fill="#69D6C8"/><text class="label" x="30" y="13">R08 침묵권</text>
+      <circle cx="12" cy="40" r="8" fill="#9FF5E7"/><text class="label" x="30" y="44">R01 주택가</text>
+      <circle cx="12" cy="71" r="8" fill="#DDE8EA"/><text class="label" x="30" y="75">R02 의료 백색 잡음</text>
+      <circle cx="12" cy="102" r="8" fill="#B88CFF"/><text class="label" x="30" y="106">R03 물류 라벨</text>
+      <circle cx="12" cy="133" r="8" fill="#8FA49A"/><text class="label" x="30" y="137">R04 산업 회녹</text>
+      <circle cx="12" cy="164" r="8" fill="#76B7FF"/><text class="label" x="30" y="168">R05 방송 원격</text>
+      <circle cx="12" cy="195" r="8" fill="#BFA6A0"/><text class="label" x="30" y="199">R06 상업 저채도</text>
+      <circle cx="12" cy="226" r="8" fill="#6EA6B2"/><text class="label" x="30" y="230">R07 항만 검역</text>
+    </g>
+  </g>
+
+  <g id="map-demo" transform="translate(34 424)">
+    <rect class="panel" width="798" height="250" rx="12"/>
+    <text class="h2" x="18" y="30">P0/P1 지도 적용 예시</text>
+    <rect class="map" x="18" y="48" width="470" height="178" rx="10"/>
+    <path d="M72 124 C55 156 66 195 57 216 C115 232 171 214 206 190 C245 163 276 158 314 134 C351 111 337 82 304 70 C272 57 278 38 240 26 C196 13 157 37 141 68 C126 100 96 95 72 124 Z" fill="#20313A" stroke="#40525C" stroke-width="1.2"/>
+    <ellipse cx="176" cy="157" rx="82" ry="57" fill="#69D6C8" opacity="0.12"/>
+    <ellipse cx="343" cy="136" rx="76" ry="45" fill="#FF6D72" opacity="0.10"/>
+    <path class="faint-route" d="M195 138 C151 160 113 185 80 210"/>
+    <path class="faint-route" d="M257 114 C309 91 358 75 426 52"/>
+    <path class="solid-route" d="M166 127 L207 139 L254 154"/>
+    <path class="locked-route" d="M254 154 L326 171"/>
+    <path class="boss-route" d="M326 171 C350 176 374 185 404 198"/>
+    <circle cx="166" cy="127" r="14" fill="#69D6C8" stroke="#E8F2F0" stroke-width="2" filter="url(#glow)"/>
+    <circle cx="207" cy="139" r="10" fill="#76B7FF" stroke="#9FF5E7" stroke-width="2"/>
+    <circle cx="254" cy="154" r="11" fill="#9FF5E7" stroke="#E8F2F0" stroke-width="1.5"/>
+    <circle cx="326" cy="171" r="10" fill="#5B6A70" stroke="#9CAFB5" stroke-width="1.5"/>
+    <circle cx="404" cy="198" r="10" fill="#FF6D72" stroke="#E8F2F0" stroke-width="1.5"/>
+    <circle cx="404" cy="198" r="24" fill="none" stroke="#FF6D72" stroke-width="2.5"/>
+    <circle cx="422" cy="182" r="3.5" fill="#FFE93F"/>
+    <text class="tiny" x="132" y="113">R08-L01</text>
+    <text class="tiny" x="226" y="144">R01-L01</text>
+    <text class="tiny" x="303" y="159">잠김</text>
+    <text class="tiny" x="369" y="224">심사 신호</text>
+
+    <g transform="translate(520 56)">
+      <text class="label" x="0" y="0">읽는 순서</text>
+      <line class="solid-route" x1="0" y1="24" x2="64" y2="24"/>
+      <text class="small" x="80" y="28">P0 확정 경로 / 출격 가능</text>
+      <line class="locked-route" x1="0" y1="58" x2="64" y2="58"/>
+      <text class="small" x="80" y="62">잠긴 경로 / 경로 미확인</text>
+      <line class="faint-route" x1="0" y1="92" x2="64" y2="92"/>
+      <text class="small" x="80" y="96">P1 흐린 신호 / 해석 전</text>
+      <circle cx="32" cy="128" r="14" fill="#FF6D72" stroke="#E8F2F0"/>
+      <circle cx="49" cy="115" r="3.5" fill="#FFE93F"/>
+      <text class="small" x="80" y="132">보스 신호 / 노랑은 점 하나만</text>
+    </g>
+  </g>
+
+  <g id="do-not" transform="translate(862 424)">
+    <rect class="panel" width="384" height="250" rx="12"/>
+    <text class="h2" x="18" y="30">금지 팔레트</text>
+    <rect x="20" y="54" width="52" height="40" rx="6" fill="#F3A23A"/>
+    <rect x="78" y="54" width="52" height="40" rx="6" fill="#C46B24"/>
+    <rect x="136" y="54" width="52" height="40" rx="6" fill="#6E3A1E"/>
+    <text class="small" x="206" y="70">노랑+주황+갈색 지배 금지</text>
+    <text class="tiny" x="206" y="86">황혼/불탄 도시처럼 보임</text>
+    <rect x="20" y="112" width="52" height="40" rx="6" fill="#FFF0CF"/>
+    <rect x="78" y="112" width="52" height="40" rx="6" fill="#FFE7A8"/>
+    <rect x="136" y="112" width="52" height="40" rx="6" fill="#FAD89C"/>
+    <text class="small" x="206" y="128">베이지 패널 과다 금지</text>
+    <text class="tiny" x="206" y="144">지도 장비감이 약해짐</text>
+    <rect x="20" y="170" width="52" height="40" rx="6" fill="#FF4D5C"/>
+    <rect x="78" y="170" width="52" height="40" rx="6" fill="#E33944"/>
+    <rect x="136" y="170" width="52" height="40" rx="6" fill="#A51F2C"/>
+    <text class="small" x="206" y="186">빨강 면적 과다 금지</text>
+    <text class="tiny" x="206" y="202">모든 정보가 위험으로 보임</text>
+    <text class="label" x="20" y="232">판정: 노랑은 세계 분위기가 아니라 작은 주의 신호.</text>
+  </g>
+</svg>
