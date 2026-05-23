@@ -80,6 +80,8 @@ story/03_regions/room_12_npc_drama_draft_v0_1.md
 story/03_regions/room_12_npc_profile_v1_0.md
 story/03_regions/porch_line_npc_drama_draft_v0_1.md
 story/03_regions/porch_line_npc_profile_v1_0.md
+story/03_regions/name_painter_npc_drama_draft_v0_1.md
+story/03_regions/name_painter_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -425,6 +427,35 @@ PORCH-LINE의 핵심:
 줄이 없으면 주먹이 순서가 됩니다.
 ```
 
+### R01 핵심 NPC: NAME-PAINTER
+
+NAME-PAINTER는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 NPC다.
+
+```text
+첫 역할명:
+문패 덧칠꾼
+
+핵심:
+빈 문패가 무서워서,
+틀렸을지도 모르는 이름을 계속 덧칠하는 사람.
+```
+
+NAME-PAINTER 잠금:
+
+```text
+단순 이름 수집가, 낙서꾼, 감성 NPC로 만들지 않는다.
+윤서의 잘못 붙은 이름 상처와 직접 충돌해야 한다.
+복희와 연결하되 복희의 하위 NPC가 되면 안 된다.
+틀린 이름이 사람을 살릴 수도 있고 묶을 수도 있다는 양면성을 보여준다.
+최종 변화는 모든 문패를 채우는 것이 아니라, 이름을 칠하지 않고도 남기는 법을 배우는 쪽이다.
+```
+
+NAME-PAINTER의 핵심:
+
+```text
+틀린 이름이라도 빈칸보단 덜 무서워요.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -612,7 +643,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 NAME-PAINTER다.
+9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 MAIL-LOOP다.
 ```
 
 한 번에 하면 안 되는 것:
