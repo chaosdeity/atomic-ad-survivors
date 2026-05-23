@@ -1,5 +1,8 @@
 # Yunseo
 
+> 최신 결재 기준은 `story/06_characters/yunseo_profile_v1_0.md`다.
+> 이 문서는 0.001 심층 초안으로 보존하며, v0.3 이후 윤서의 공식 캐릭터 기준은 v1.0 문서를 우선한다.
+
 상태: 0.001 심층 초안  
 원전: `story/00_source/story_0.001.md`  
 연결 문서: `story/06_characters/player_characters.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_0_2_playable_spec.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/02_hub/npcs.md`, `story/01_bible/world_overview.md`

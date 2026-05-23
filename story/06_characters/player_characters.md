@@ -2,7 +2,7 @@
 
 상태: 0.001 논의 초안  
 원전: `story/00_source/story_0.001.md`  
-연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo.md`
+연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/yunseo.md`
 
 ## 목적
 
@@ -147,7 +147,7 @@ PlayerCharacter
 - 광고 전단 조각으로 역송출 탄, 차징 피해, 회수선 안정화를 강화.
 - 송출 기록 1 해석 후 캠페인 신호 이벤트를 감지하는 대사 추가.
 
-세부 배경, 외형, 대사, 장기 서사는 `story/06_characters/yunseo.md`를 기준으로 한다.
+윤서의 최신 세부 배경, 외형, 대사, 장기 서사는 `story/06_characters/yunseo_profile_v1_0.md`를 기준으로 한다. `story/06_characters/yunseo.md`는 0.001 심층 초안으로 보존한다.
 
 ## 해금 후보 1: 팝시-제로
 
