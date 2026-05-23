@@ -94,6 +94,8 @@ story/03_regions/key_ring_npc_drama_draft_v0_1.md
 story/03_regions/key_ring_npc_profile_v1_0.md
 story/03_regions/dining_4_npc_drama_draft_v0_1.md
 story/03_regions/dining_4_npc_profile_v1_0.md
+story/03_regions/welcome_desk_npc_drama_draft_v0_1.md
+story/03_regions/welcome_desk_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -653,6 +655,37 @@ DINING-4의 핵심:
 여긴 빈자리를 그냥 두지 않아요.
 ```
 
+### R01 핵심 보조 NPC: WELCOME-DESK
+
+WELCOME-DESK는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 보조 NPC다.
+
+```text
+첫 역할명:
+상담 데스크 잔류자
+
+핵심:
+OPEN-HOST가 길과 방을 안내한 사람이라면,
+WELCOME-DESK는 상담 데스크 안에 남아 절차를 조금 덜 위험하게 비틀던 사람.
+```
+
+WELCOME-DESK 잠금:
+
+```text
+OPEN-HOST 복제 캐릭터로 만들지 않는다.
+친절한 접수원, 상담 튜토리얼 NPC, 캠페인 하수인, 불쌍한 내부 직원으로 만들지 않는다.
+WELCOME-DESK는 "어디로 가야 덜 나쁜가"가 아니라 "어떻게 답해야 덜 깊이 들어가는가"를 안다.
+ROOM-12 가족대표 절차와 DINING-4 식탁 심사 전 단계를 연결한다.
+PORCH-LINE의 대기열, NAME-PAINTER의 빈칸, MAIL-LOOP의 주소, KEY-RING의 권한과 연결한다.
+최종 변화는 덜 위험한 창구 추천이 아니라 질문 보류다.
+```
+
+WELCOME-DESK의 핵심:
+
+```text
+제가 여기 앉아 있으면,
+저쪽 데스크로 가는 사람이 줄어요.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -840,7 +873,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 WELCOME-DESK다.
+9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 FRAME-LEFT다.
 ```
 
 한 번에 하면 안 되는 것:
