@@ -2,7 +2,7 @@
 
 상태: 0.001 논의 초안  
 원전: `story/00_source/story_0.001.md`  
-연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/patch_profile_v1_0.md`, `story/06_characters/patch_character_drama_draft_v0_1.md`, `story/06_characters/rio_profile_v1_0.md`, `story/06_characters/yunseo.md`
+연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/patch_profile_v1_0.md`, `story/06_characters/patch_character_drama_draft_v0_1.md`, `story/06_characters/open_host_profile_v1_0.md`, `story/06_characters/open_host_character_drama_draft_v0_1.md`, `story/06_characters/rio_profile_v1_0.md`, `story/06_characters/yunseo.md`
 
 ## 목적
 
@@ -191,6 +191,53 @@ PATCH:
 ```text
 PATCH는 파괴되는 것이 아니라 부품 묶음으로 회수되기 직전에 인양된다.
 인양 결과는 부품 유실, 정품 추적 신호 잔류, 충전 손실로 표현한다.
+```
+
+## R01 NPC 선등장 후 플레이어블 전환 후보: OPEN-HOST
+
+OPEN-HOST는 R01을 깊게 만드는 핵심 캐릭터다.
+
+처음부터 플레이어블로 열지 않는다.
+먼저 R01 내부를 아는 불편한 NPC로 등장하고, 유저가 도움과 의심을 함께 경험한 뒤 후속 단계에서 플레이어블 전환 후보로 둔다.
+
+최신 기준:
+
+```text
+story/06_characters/open_host_profile_v1_0.md
+story/06_characters/open_host_character_drama_draft_v0_1.md
+```
+
+핵심:
+
+```text
+OPEN-HOST는 집을 팔던 사람이 아니다.
+사람을 집에 맞추던 사람이다.
+```
+
+출시 판단:
+
+```text
+OPEN-HOST는 초반 R01 내부자/캠페인화 인간 출신 축의 강한 후보로 둔다.
+PATCH가 2번째 후보를 통과하지 못하면 2번째 후보로 재검토할 수 있고,
+PATCH가 통과하더라도 3~7번째 R01 핵심 후보 또는 NPC 선등장 후보로 유지한다.
+```
+
+차별점:
+
+```text
+윤서:
+잘못 붙은 이름과 분류를 읽고 보류한다.
+
+OPEN-HOST:
+문, 방, 길, 안내선, 가족사진 프레임을 조작해
+들어가는 길을 나가는 길로 바꾼다.
+```
+
+긴급 인양:
+
+```text
+OPEN-HOST는 전투 불능으로 끝나는 것이 아니라 R01 오픈하우스 호스트로 다시 고정되기 직전에 인양된다.
+인양 결과는 안내 배지 파손, 동선 지도 일부 유실, R01 호명 신호 잔류로 표현한다.
 ```
 
 ## 해금 후보 1: 팝시-제로
