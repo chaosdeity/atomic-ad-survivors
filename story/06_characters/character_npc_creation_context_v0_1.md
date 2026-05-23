@@ -99,6 +99,8 @@ story/03_regions/welcome_desk_npc_profile_v1_0.md
 story/03_regions/frame_left_npc_drama_draft_v0_1.md
 story/03_regions/frame_left_npc_profile_v1_0.md
 story/03_regions/r01_npc_name_registry_v0_1.md
+story/03_regions/r01_npc_name_registry_v1_0.md
+story/03_regions/r01_npc_name_reveal_matrix_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
@@ -746,6 +748,31 @@ MAIL-LOOP, VAC-0처럼 사람이 아닌 NPC는 본명을 억지로 붙이지 않
 FRAME-LEFT는 완전 본명보다 사진 밖에 맡길 이름 조각으로 먼저 관리한다.
 ```
 
+v1.0 확정안:
+
+```text
+OPEN-HOST: 서이겸
+ROOM-12: 강연우
+PORCH-LINE: 백지호
+NAME-PAINTER: 임하온
+MAIL-LOOP: 없음
+VAC-0: 없음
+DRAIN-MARK: 문채율
+SIGN-BACK: 권태오
+KEY-RING: 노기준
+DINING-4: 류가람
+WELCOME-DESK: 정해원
+FRAME-LEFT: 아린 조각 우선 / 채아린 후반 해금 후보
+```
+
+이름 해금 기준:
+
+```text
+이름을 아는 것은 해방 완료가 아니다.
+역할명으로 불리던 사람이 사람 이름으로 돌아오는 조건 하나다.
+복희 이름 보관, 세븐 수신 분석, 윤서의 보류 표시와 연결해 해금한다.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -933,7 +960,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 NPC 본명/호칭 최종 확정부터 진행한다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화와 본명/호칭 확정은 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 NPC 선택 분기별 후폭풍 정리부터 진행한다.
 ```
 
 한 번에 하면 안 되는 것:
