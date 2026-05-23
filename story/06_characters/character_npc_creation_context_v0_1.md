@@ -73,6 +73,9 @@ docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md
 docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md
 docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md
 story/03_regions/r01_suburb.md
+story/03_regions/r01_npc_story_team_transfer_note_v0_1.md
+story/03_regions/r01_campaign1_npc_roster_v0_1.md
+story/03_regions/room_12_npc_detail_decision_v0_1.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -310,6 +313,9 @@ OPEN-HOST는 처음부터 플레이어블로 공개하지 않는다.
 ```text
 첫 운영 위치:
 R01 내부를 아는 불편한 NPC
+
+현재 판정:
+R01 핵심 NPC 기준 통과
 
 후속 운영 위치:
 R01 핵심 결절 이후 플레이어블 전환 후보
