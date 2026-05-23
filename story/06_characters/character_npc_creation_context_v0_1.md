@@ -90,6 +90,8 @@ story/03_regions/drain_mark_npc_drama_draft_v0_1.md
 story/03_regions/drain_mark_npc_profile_v1_0.md
 story/03_regions/sign_back_npc_drama_draft_v0_1.md
 story/03_regions/sign_back_npc_profile_v1_0.md
+story/03_regions/key_ring_npc_drama_draft_v0_1.md
+story/03_regions/key_ring_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -585,6 +587,37 @@ SIGN-BACK의 핵심:
 ```text
 표지판이 또 친절해졌네요.
 친절해지면 틀린 겁니다.
+```
+
+### R01 핵심 보조 NPC: KEY-RING
+
+KEY-RING은 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 보조 NPC다.
+
+```text
+첫 역할명:
+물리 열쇠 보관자
+
+핵심:
+스마트 도어와 태그 권한이 닫힌 뒤에도,
+물리 열쇠가 주인의 증거라고 믿는 사람.
+```
+
+KEY-RING 잠금:
+
+```text
+열쇠 상인, 보상방 편의 NPC, 잠긴 문 튜토리얼 NPC로 만들지 않는다.
+낡은 세계 찬양 캐릭터나 관리실 노인 현자로 만들지 않는다.
+열쇠는 흔적이면서 잘못된 귀속 위험이라는 양면성을 가져야 한다.
+통행태그/거주태그와 자연스럽게 충돌해야 한다.
+NAME-PAINTER의 문패, MAIL-LOOP의 주소, ROOM-12의 방, OPEN-HOST의 빈집 안내와 연결한다.
+최종 변화는 문 열기가 아니라 열어도 되는지 확인하기다.
+```
+
+KEY-RING의 핵심:
+
+```text
+열쇠가 있으면 문은 언젠가 다시 문이 돼요.
+지금은 심사기지만.
 ```
 
 ### 8번 후보: 리오
