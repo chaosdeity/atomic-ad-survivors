@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 두 부분으로 나눈다.
+이번 전달은 네 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -50,6 +50,12 @@ OPEN-HOST의 핵심:
 2. ROOM_12_NPC_DETAIL_DECISION_V0_1.md
    - 다음 상세화 1순위 NPC
    - R01의 감정 핵심인 "떠나고 싶지만 자리를 비울 수 없는 사람" 설계
+
+3. ROOM_12_NPC_DRAMA_DRAFT_V0_1.md
+   - ROOM-12의 감정 축, 과거, 욕망, 공포, 유저 선택 분기 정리
+
+4. ROOM_12_NPC_PROFILE_V1_0.md
+   - ROOM-12의 NPC 기준, 첫 등장 장면, 상태값 반응, 관계선, 대사 방향 고정
 ```
 
 ---

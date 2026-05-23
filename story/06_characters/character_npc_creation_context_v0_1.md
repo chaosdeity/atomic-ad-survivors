@@ -76,6 +76,8 @@ story/03_regions/r01_suburb.md
 story/03_regions/r01_npc_story_team_transfer_note_v0_1.md
 story/03_regions/r01_campaign1_npc_roster_v0_1.md
 story/03_regions/room_12_npc_detail_decision_v0_1.md
+story/03_regions/room_12_npc_drama_draft_v0_1.md
+story/03_regions/room_12_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
