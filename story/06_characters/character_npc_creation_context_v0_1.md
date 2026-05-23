@@ -96,6 +96,9 @@ story/03_regions/dining_4_npc_drama_draft_v0_1.md
 story/03_regions/dining_4_npc_profile_v1_0.md
 story/03_regions/welcome_desk_npc_drama_draft_v0_1.md
 story/03_regions/welcome_desk_npc_profile_v1_0.md
+story/03_regions/frame_left_npc_drama_draft_v0_1.md
+story/03_regions/frame_left_npc_profile_v1_0.md
+story/03_regions/r01_npc_name_registry_v0_1.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -686,6 +689,62 @@ WELCOME-DESK의 핵심:
 저쪽 데스크로 가는 사람이 줄어요.
 ```
 
+### R01 후반/P1 핵심 잔향 NPC: FRAME-LEFT
+
+FRAME-LEFT는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 후반/P1 핵심 잔향 NPC다.
+
+```text
+첫 역할명:
+가족사진 속 남은 사람
+
+핵심:
+가족사진 프레임에 얼굴보다 역할이 먼저 남아버린 프로필 잔향.
+```
+
+FRAME-LEFT 잠금:
+
+```text
+사진 속 유령, 감성 회상 NPC, 보스 후 떡밥 장치로 만들지 않는다.
+FRAME-LEFT는 사람으로 남은 것과 역할로 붙은 것을 구분하지 못하는 잔향이다.
+DINING-4의 빈 가족 칸, ROOM-12의 가족대표, OPEN-HOST의 안내 후폭풍과 연결한다.
+복희 이름 보관함과 세븐 수신 분석을 연결하되, 둘의 하위 장치로 만들지 않는다.
+최종 변화는 사진에서 구출이 아니라 역할과 이름 분리 / 빈칸 보류다.
+```
+
+FRAME-LEFT의 핵심:
+
+```text
+저는 여기 남은 건가요,
+여기에 붙은 건가요?
+```
+
+### R01 NPC 이름 레지스트리
+
+R01 핵심 NPC 12명은 코드명만으로 끝내지 않는다.
+
+다만 첫 등장부터 본명을 전부 노출하지 않는다.
+
+```text
+코드명:
+개발/로스터/초기 유저 인식용.
+
+역할명:
+유저가 처음 이해하는 기능적 이름.
+
+내부 본명/원본 이름:
+스토리팀이 중복 없이 관리하는 사람 이름.
+신뢰도, 흔적 보존, 복희 이름 보관, 보스 후 기억 추출 이후 해금한다.
+```
+
+이름 잠금:
+
+```text
+R01 핵심 NPC 12명 사이에서는 같은 본명 금지.
+첫 시즌 주요 인물과 같은 이름 금지.
+MAIL-LOOP, VAC-0처럼 사람이 아닌 NPC는 본명을 억지로 붙이지 않는다.
+FRAME-LEFT는 완전 본명보다 사진 밖에 맡길 이름 조각으로 먼저 관리한다.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -873,7 +932,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 FRAME-LEFT다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화는 한 바퀴 완료되었고, 다음은 R01 NPC 본명/호칭 최종 확정이다.
 ```
 
 한 번에 하면 안 되는 것:
