@@ -1,6 +1,8 @@
 # Godot local/editor state
 .godot/
 .import/
+*.import
+*.uid
 
 # Godot export output
 export/
@@ -23,3 +25,5 @@ exports/
 Thumbs.db
 desktop.ini
 
+# IDE local state
+.idea/
