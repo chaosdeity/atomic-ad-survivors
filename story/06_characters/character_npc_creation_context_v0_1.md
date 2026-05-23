@@ -99,6 +99,7 @@ story/03_regions/welcome_desk_npc_profile_v1_0.md
 story/03_regions/frame_left_npc_drama_draft_v0_1.md
 story/03_regions/frame_left_npc_profile_v1_0.md
 story/03_regions/r01_npc_name_registry_v0_1.md
+story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -932,7 +933,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화는 한 바퀴 완료되었고, 다음은 R01 NPC 본명/호칭 최종 확정이다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 NPC 본명/호칭 최종 확정부터 진행한다.
 ```
 
 한 번에 하면 안 되는 것:
