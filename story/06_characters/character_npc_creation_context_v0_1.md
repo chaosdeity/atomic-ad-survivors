@@ -84,6 +84,8 @@ story/03_regions/name_painter_npc_drama_draft_v0_1.md
 story/03_regions/name_painter_npc_profile_v1_0.md
 story/03_regions/mail_loop_npc_drama_draft_v0_1.md
 story/03_regions/mail_loop_npc_profile_v1_0.md
+story/03_regions/vac_0_npc_drama_draft_v0_1.md
+story/03_regions/vac_0_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -489,6 +491,36 @@ MAIL-LOOP의 핵심:
 사람은 확인되지 않았습니다.
 ```
 
+### R01 핵심 보조 NPC: VAC-0
+
+VAC-0는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 보조 NPC다.
+
+```text
+첫 역할명:
+작은 홈케어 청소기
+
+핵심:
+집을 안전하게 만들려고,
+사람의 흔적까지 치워버리는 작은 홈케어 장치.
+```
+
+VAC-0 잠금:
+
+```text
+귀여운 청소 로봇, 마스코트, 단순 동행 펫으로 만들지 않는다.
+PATCH의 하위 로봇이나 리오의 축소판으로 만들지 않는다.
+R01 내부 홈케어 장치 / 흔적 삭제 / 로봇 자율성 씨앗으로 분리한다.
+청소가 위험 제거이면서 흔적 삭제라는 양면성을 반드시 보여준다.
+NAME-PAINTER의 문패 조각, MAIL-LOOP의 우편물, ROOM-12의 식탁 흔적을 삭제할 수 있는 위험과 연결한다.
+최종 변화는 청소 중단이 아니라 위험물과 흔적 구분이다.
+```
+
+VAC-0의 핵심:
+
+```text
+안전한 집을 위해 흔적을 정리합니다.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -676,7 +708,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 VAC-0다.
+9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 DRAIN-MARK다.
 ```
 
 한 번에 하면 안 되는 것:
