@@ -82,6 +82,8 @@ story/03_regions/porch_line_npc_drama_draft_v0_1.md
 story/03_regions/porch_line_npc_profile_v1_0.md
 story/03_regions/name_painter_npc_drama_draft_v0_1.md
 story/03_regions/name_painter_npc_profile_v1_0.md
+story/03_regions/mail_loop_npc_drama_draft_v0_1.md
+story/03_regions/mail_loop_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -456,6 +458,37 @@ NAME-PAINTER의 핵심:
 틀린 이름이라도 빈칸보단 덜 무서워요.
 ```
 
+### R01 핵심 보조 NPC: MAIL-LOOP
+
+MAIL-LOOP는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 보조 NPC다.
+
+```text
+첫 역할명:
+우편함 목소리 잔향
+
+핵심:
+사람은 사라졌는데 주소만 남아,
+계속 수령인을 부르는 우편함 목소리.
+```
+
+MAIL-LOOP 잠금:
+
+```text
+단순 말하는 우편함, 힌트 장치, 감성 우편함으로 만들지 않는다.
+MAIL-LOOP는 사람이 아니라 프로필 잔향형 NPC다.
+이름이 아니라 주소/배송/수신태그 축을 담당한다.
+주소가 흔적이면서 미끼라는 양면성을 반드시 보여준다.
+NAME-PAINTER의 이름 축, ROOM-12의 배송 보류, OPEN-HOST의 가짜 동선, PORCH-LINE의 호출 대기열과 연결한다.
+최종 변화는 우편함 파괴가 아니라 주소 보관/호출 보류다.
+```
+
+MAIL-LOOP의 핵심:
+
+```text
+주소가 남아 있습니다.
+사람은 확인되지 않았습니다.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -643,7 +676,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 MAIL-LOOP다.
+9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 VAC-0다.
 ```
 
 한 번에 하면 안 되는 것:
