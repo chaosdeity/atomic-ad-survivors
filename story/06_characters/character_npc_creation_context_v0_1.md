@@ -94,6 +94,8 @@ story/06_characters/character_npc_review.md
 ```text
 story/02_hub/silence_outpost.md
 story/02_hub/npcs.md
+story/02_hub/mina_npc_profile_v1_0.md
+story/02_hub/mina_npc_drama_draft_v0_1.md
 story/05_progression/run_story_hooks.md
 story/05_progression/story_trigger_schema.md
 ```
@@ -417,7 +419,7 @@ NPC는 플레이어가 회수한 흔적, 보스 선택, 인간 안정도, 로봇
 
 | 이름 | 구분 | 담당 시설 | 기능 | 위험/결함 |
 |---|---|---|---|---|
-| 미나 | 인간 | 카운터 | 정산, 상점, 회수물 선택 | 안전을 위해 문을 닫는 선택에 기운다 |
+| 미나 | 인간 | 정산 카운터 | 회수물 정산, 태그 배분, 보관/소모 선택 | 정산표가 맞으면 보급소가 버틴다고 믿는다 |
 | 장도윤 | 인간 | 정비 벤치 | 무기/역송출 강화 | 위험한 신호도 통제할 수 있다고 믿는다 |
 | 팝시 | 해방 로봇 | 충전 스탠드 | 카드 리롤, 로봇 이벤트 | 귀여우면 버려지지 않을 것이라 믿는다 |
 | 세븐 | 해방 로봇 | 출격 게시판/카탈로그 벽 | 지역 정보, 도감 | 기록이 충분하면 의도도 판정할 수 있다고 믿는다 |
