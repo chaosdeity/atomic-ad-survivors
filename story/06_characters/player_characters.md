@@ -2,7 +2,7 @@
 
 상태: 0.001 논의 초안  
 원전: `story/00_source/story_0.001.md`  
-연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/yunseo.md`
+연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/rio_profile_v1_0.md`, `story/06_characters/yunseo.md`
 
 ## 목적
 
@@ -205,6 +205,28 @@ PlayerCharacter
 - `robot_autonomy` 일정 이상.
 - 고장 난 마스코트 배지 보관.
 - 보스 코어 해방 계열 선택 또는 로봇 구조 이벤트 완료.
+
+## 중반부 출시 후보: 리오
+
+리오는 초반 두 번째 주인공이 아니다.
+
+리오는 다른 캠페인권이 열린 뒤, 세계가 R01 하나의 문제가 아니라는 감각을 주는 8번째 플레이어블 후보로 보류한다.
+
+최신 기준:
+
+```text
+story/06_characters/rio_profile_v1_0.md
+story/06_characters/rio_character_drama_draft_v0_2.md
+```
+
+핵심:
+
+```text
+윤서가 잘못 붙은 이름을 떼어내는 사람이라면,
+리오는 비어 있지 않은 방을 비어 있다고 정리하지 않기로 한 로봇이다.
+```
+
+로스터 재정렬 시 리오는 R01/침묵 보급소 초기 후보가 아니라, E08_C01 관광숙박 거주권 또는 체류/숙박 캠페인권 확장 시점의 메인 로봇 캐릭터로 둔다.
 
 ## 해금 후보 2: 나리
 

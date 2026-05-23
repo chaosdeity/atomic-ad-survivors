@@ -23,7 +23,9 @@
 2. `docs/world/LEGACY_TERM_MIGRATION_V0_1.md`
 3. `docs/world/PLAYABLE_CHARACTER_20_ROSTER_PROMPT_V0_1.md`
 4. `story/06_characters/yunseo_profile_v1_0.md`
-5. `story/06_characters/yunseo.md` legacy 참고
+5. `story/06_characters/rio_profile_v1_0.md`
+6. `story/06_characters/rio_character_drama_draft_v0_2.md`
+7. `story/06_characters/yunseo.md` legacy 참고
 
 주의:
 
@@ -50,10 +52,11 @@
 ## 4. 내일 우선순위
 
 1. 윤서 재검토는 v0.3 기준과 `story/06_characters/yunseo_profile_v1_0.md`를 우선 참조한다.
-2. 20명 로스터 초안은 `PLAYABLE_CHARACTER_20_ROSTER_PROMPT_V0_1.md`를 그대로 사용한다.
-3. 루트의 오래된 0.2 문서는 캐릭터 생성의 상위 기준으로 쓰지 않는다.
-4. 캐릭터 작업이 안정된 뒤, 루트 다이어그램/README/아키텍처 문서를 v0.3 용어로 별도 마이그레이션한다.
-5. 에셋은 캐릭터 설정이 확정된 뒤 윤서부터 다시 승인한다.
+2. 리오는 `story/06_characters/rio_profile_v1_0.md` 기준으로 8번째 플레이어블 후보에 보류한다.
+3. 20명 로스터 초안은 `PLAYABLE_CHARACTER_20_ROSTER_PROMPT_V0_1.md`를 그대로 사용한다.
+4. 루트의 오래된 0.2 문서는 캐릭터 생성의 상위 기준으로 쓰지 않는다.
+5. 캐릭터 작업이 안정된 뒤, 루트 다이어그램/README/아키텍처 문서를 v0.3 용어로 별도 마이그레이션한다.
+6. 에셋은 캐릭터 설정이 확정된 뒤 윤서부터 다시 승인한다.
 
 ## 5. 현재 판단
 
