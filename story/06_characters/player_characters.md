@@ -2,7 +2,7 @@
 
 상태: 0.001 논의 초안  
 원전: `story/00_source/story_0.001.md`  
-연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/rio_profile_v1_0.md`, `story/06_characters/yunseo.md`
+연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/factions.md`, `story/01_bible/player_experience_philosophy.md`, `story/05_progression/long_term_story_architecture.md`, `story/05_progression/broadcast_records_and_recovery.md`, `story/04_content/run_cards.md`, `story/02_hub/npcs.md`, `story/06_characters/character_long_term_model.md`, `story/06_characters/character_affection_monetization.md`, `story/06_characters/yunseo_profile_v1_0.md`, `story/06_characters/patch_profile_v1_0.md`, `story/06_characters/patch_character_drama_draft_v0_1.md`, `story/06_characters/rio_profile_v1_0.md`, `story/06_characters/yunseo.md`
 
 ## 목적
 
@@ -86,7 +86,8 @@ PlayerCharacter
   인간 주인공 1명
 
 문서상 해금 후보:
-  해방 로봇 1명
+  PATCH 1명
+  해방 로봇/로봇 자율성 NPC 축 1명
   흔적 보존형 인간 1명
   고위험 역송출형 인간 또는 반동기화 개체 1명
 ```
@@ -148,6 +149,49 @@ PlayerCharacter
 - 송출 기록 1 해석 후 캠페인 신호 이벤트를 감지하는 대사 추가.
 
 윤서의 최신 세부 배경, 외형, 대사, 장기 서사는 `story/06_characters/yunseo_profile_v1_0.md`를 기준으로 한다. `story/06_characters/yunseo.md`는 0.001 심층 초안으로 보존한다.
+
+## 초반 2번째 플레이어블 후보: PATCH
+
+PATCH는 윤서 다음에 로봇 축을 열 수 있는 조건부 통과 후보로 둔다.
+
+최신 기준:
+
+```text
+story/06_characters/patch_profile_v1_0.md
+story/06_characters/patch_character_drama_draft_v0_1.md
+```
+
+핵심:
+
+```text
+윤서가 사람을 물건처럼 보지 않으려는 캐릭터라면,
+PATCH는 로봇도 부품만은 아니라는 걸 초반에 보여주는 캐릭터다.
+```
+
+출시 판단:
+
+```text
+PATCH는 윤서 다음 2번째 플레이어블 후보로 진행할 가치가 있다.
+단, 마스코트화/단순 힐러화/윤서의 장비화가 보이면 보류한다.
+```
+
+차별점:
+
+```text
+윤서:
+잘못 붙은 이름과 분류를 읽고 보류한다.
+
+PATCH:
+고장난 장비를 임시로 붙잡고, 광고 장치의 결합부를 헐겁게 만들며,
+자기 몸을 부품처럼 쓰지 않는 법을 배운다.
+```
+
+긴급 인양:
+
+```text
+PATCH는 파괴되는 것이 아니라 부품 묶음으로 회수되기 직전에 인양된다.
+인양 결과는 부품 유실, 정품 추적 신호 잔류, 충전 손실로 표현한다.
+```
 
 ## 해금 후보 1: 팝시-제로
 
