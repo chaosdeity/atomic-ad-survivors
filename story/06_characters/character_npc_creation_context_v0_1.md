@@ -92,6 +92,8 @@ story/03_regions/sign_back_npc_drama_draft_v0_1.md
 story/03_regions/sign_back_npc_profile_v1_0.md
 story/03_regions/key_ring_npc_drama_draft_v0_1.md
 story/03_regions/key_ring_npc_profile_v1_0.md
+story/03_regions/dining_4_npc_drama_draft_v0_1.md
+story/03_regions/dining_4_npc_profile_v1_0.md
 ```
 
 ### 3순위: 확정/준확정 캐릭터 기준
@@ -620,6 +622,37 @@ KEY-RING의 핵심:
 지금은 심사기지만.
 ```
 
+### R01 핵심 NPC: DINING-4
+
+DINING-4는 상세 드라마 초안과 v1.0 프로필 작성이 완료된 R01 핵심 NPC다.
+
+```text
+첫 역할명:
+네 번째 식탁 자리
+
+핵심:
+빈 가족 칸이 생기지 않게,
+모델하우스 식탁의 네 번째 자리를 몸으로 막고 있는 사람.
+```
+
+DINING-4 잠금:
+
+```text
+ROOM-12 반복 캐릭터로 만들지 않는다.
+불쌍한 구출 대상, 세뇌된 마네킹, 보스 전 설명 NPC로 만들지 않는다.
+DINING-4는 "자리를 비우지 못하는 사람"이 아니라 "빈 가족 칸이 생기지 않게 자기 몸으로 막고 있는 사람"이다.
+첫 보스 전 가족 심사 감정 압박을 담당한다.
+가족사진 프레임, 거주태그, 식량태그, 모델하우스 결절과 연결한다.
+최종 변화는 즉시 탈출이 아니라 빈칸 보류다.
+```
+
+DINING-4의 핵심:
+
+```text
+제가 일어나면 빈자리가 생겨요.
+여긴 빈자리를 그냥 두지 않아요.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -807,7 +840,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 DINING-4다.
+9. NPC도 한 명씩 결재한다. R01 다음 상세 대상은 WELCOME-DESK다.
 ```
 
 한 번에 하면 안 되는 것:
