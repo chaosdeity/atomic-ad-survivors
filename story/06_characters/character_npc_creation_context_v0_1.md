@@ -101,6 +101,7 @@ story/03_regions/frame_left_npc_profile_v1_0.md
 story/03_regions/r01_npc_name_registry_v0_1.md
 story/03_regions/r01_npc_name_registry_v1_0.md
 story/03_regions/r01_npc_name_reveal_matrix_v0_1.md
+story/03_regions/r01_npc_choice_consequence_matrix_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
@@ -773,6 +774,26 @@ FRAME-LEFT: 아린 조각 우선 / 채아린 후반 해금 후보
 복희 이름 보관, 세븐 수신 분석, 윤서의 보류 표시와 연결해 해금한다.
 ```
 
+### R01 NPC 선택 분기별 후폭풍
+
+R01 NPC 선택은 정답 버튼이 아니다.
+
+```text
+확정 대신 보류.
+파괴 대신 분리.
+구출 대신 조건 만들기.
+안내 대신 검증.
+흔적 대신 역할로 굳지 않게 하기.
+```
+
+선택 분기 후폭풍 기준:
+
+```text
+각 선택은 인간 안정도, 캠페인 농도, 흔적 보존, 인양 안정도 중 최소 하나를 흔들어야 한다.
+본명/이름 조각 해금은 보상만이 아니라 캠페인 오염 위험도 함께 가져야 한다.
+다음 작업은 이 선택 결과를 R01 보스 전후 시간표에 배치하는 것이다.
+```
+
 ### 8번 후보: 리오
 
 리오는 초반 두 번째 주인공이 아니다.
@@ -960,7 +981,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화와 본명/호칭 확정은 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 NPC 선택 분기별 후폭풍 정리부터 진행한다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화, 본명/호칭 확정, 선택 분기별 후폭풍 정리는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 보스 전후 NPC 상태 변화 정리부터 진행한다.
 ```
 
 한 번에 하면 안 되는 것:
