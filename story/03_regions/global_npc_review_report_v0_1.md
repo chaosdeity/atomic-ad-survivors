@@ -294,7 +294,7 @@ L3 이하는 전부 은행형 산출물로 넘긴다.
 
 ## 10. 다음 작업 포인터
 
-전역 NPC L3 이하 은행 세부 문구 샘플링 기준 작성
+전역 NPC L3 이하 1차 샘플 문구 작성
 
 최종 판정:
 
@@ -309,4 +309,5 @@ E02 이후 한국어 이름은 기본값으로 쓰지 않는다.
 후속 산출물 `story/03_regions/global_npc_passed_slot_registry_v0_1.md`에서 통과/조건부 통과/보류 묶음을 별도 슬롯 정리표로 고정했다.
 후속 산출물 `story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md`에서 L3 이하 1,856개를 은행형 산출물로 나눴다.
 후속 산출물 `story/03_regions/global_npc_l3_below_bank_review_v0_1.md`에서 직접 대면화 위험과 이름 과잉이 없음을 검수했다.
+후속 산출물 `story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md`에서 1차 표본을 240개로 제한했다.
 ```
