@@ -29,6 +29,7 @@ R01 지역 NPC 12명
 
 추가 완료:
 E01 R02/R03/R04/R08 보조 NPC 최소안 12명 후보
+E01 NPC 대량 후보 풀 120개 후보
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -41,6 +42,7 @@ E01 R02/R03/R04/R08 보조 NPC 최소안 12명 후보
 docs/world/NPC_PRODUCTION_ROADMAP_V0_1.md
 docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md
 story/03_regions/e01_support_npc_minimum_plan_v0_1.md
+story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -497,9 +499,9 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 ## 8. 다음 작업
 
 ```text
-1. 이 프롬프트를 NPC 제작팀에 넘긴다.
-2. 우선 E01 전체 NPC 대량 후보 풀 120~170개를 작성한다.
-3. 결과 문서는 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md로 만든다.
-4. 그다음 L5/L4 승격 후보만 상세 결재한다.
-5. L2/L1/L0는 대사/잔향/배경 은행으로 넘긴다.
+1. E01 전체 NPC 대량 후보 풀 120개 작성 완료.
+2. 결과 문서는 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md를 기준으로 사용한다.
+3. 다음은 L5/L4 승격 후보만 상세 결재한다.
+4. L2/L1/L0는 대사/잔향/배경 은행으로 넘긴다.
+5. 다음 권장 산출물은 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md다.
 ```
