@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 서른 부분으로 나눈다.
+이번 전달은 서른한 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -134,6 +134,9 @@ OPEN-HOST의 핵심:
 
 30. R01_BOSS_BEFORE_AFTER_NPC_STATE_V0_1.md
    - 첫 보스 전, 보스 직전, 보스 직후, P1 재방문 시점별 NPC 상태/대사/상태값/선택 후폭풍 정리
+
+31. R01_PORCH_LINE_ROOM_12_REVISIT_BRANCH_V0_1.md
+   - ROOM-12 우회 배급 이후 PORCH-LINE의 줄 변화, 인간 안정도별 재방문 대사, 복희/WELCOME-DESK/DINING-4/MAIL-LOOP 후속 반응 정리
 ```
 
 ---
@@ -163,25 +166,26 @@ OPEN-HOST의 핵심:
 18. 윤서가 왜 사람을 바로 데려오지 못하거나 강제로 데려올 수 없는지 유저가 이해할 수 있는가?
 19. R01 NPC들이 캠페인화 인간을 "껍데기"가 아니라 "선택한 사람들"로 보이게 하는가?
 20. 보스 전후 상태 변화가 구원 완료가 아니라 보류/분리/검증의 후폭풍으로 이어지는가?
-21. 다음 작업이 PORCH-LINE / ROOM-12 재방문 분기로 명확히 넘어가는가?
+21. PORCH-LINE / ROOM-12 재방문 분기에서 "자리"와 "줄"이 서로 겹치지 않게 분리되는가?
+22. 다음 작업이 R01 P1 NPC 선택 분기 정리로 명확히 넘어가는가?
 ```
 
 ---
 
 ## 다음 작업 기준
 
+PORCH-LINE / ROOM-12 재방문 분기는 완료되었다.
+
 바로 다음 작업은 아래 문서로 넘긴다.
 
 ```text
-R01_PORCH_LINE_ROOM_12_REVISIT_BRANCH_V0_1.md
+R01_P1_NPC_BRANCH_MAP_V0_1.md
 ```
 
 목표:
 
 ```text
-ROOM-12 우회 배급 이후,
-PORCH-LINE의 줄이 어떻게 바뀌는지 정리한다.
-
-핵심은 줄을 없애는 것이 아니라,
-사람이 밀리지 않으면서 캠페인이 정확히 읽지 못하는 재방문 분기를 만드는 것이다.
+P1 재방문 시 어떤 NPC가 먼저 열리는지 정리한다.
+DRAIN-MARK, SIGN-BACK, KEY-RING, VAC-0, WELCOME-DESK, FRAME-LEFT의 선택 분기를
+통행태그/수신태그/인양 안정도/흔적 보존 상태값과 연결한다.
 ```

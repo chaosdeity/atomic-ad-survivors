@@ -103,6 +103,7 @@ story/03_regions/r01_npc_name_registry_v1_0.md
 story/03_regions/r01_npc_name_reveal_matrix_v0_1.md
 story/03_regions/r01_npc_choice_consequence_matrix_v0_1.md
 story/03_regions/r01_boss_before_after_npc_state_v0_1.md
+story/03_regions/r01_porch_line_room_12_revisit_branch_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
@@ -793,7 +794,8 @@ R01 NPC 선택은 정답 버튼이 아니다.
 각 선택은 인간 안정도, 캠페인 농도, 흔적 보존, 인양 안정도 중 최소 하나를 흔들어야 한다.
 본명/이름 조각 해금은 보상만이 아니라 캠페인 오염 위험도 함께 가져야 한다.
 선택 결과를 R01 보스 전후 시간표에 배치하는 작업은 완료되었다.
-다음 작업은 ROOM-12의 자리와 PORCH-LINE의 줄이 P1 재방문에서 어떻게 서로를 흔드는지 분기화하는 것이다.
+ROOM-12의 자리와 PORCH-LINE의 줄이 P1 재방문에서 어떻게 서로를 흔드는지 분기화하는 작업도 완료되었다.
+다음 작업은 P1 재방문에서 NPC 선택 분기를 한 장의 실행 맵으로 묶는 것이다.
 ```
 
 ### R01 보스 전후 NPC 상태 변화
@@ -830,12 +832,30 @@ FRAME-LEFT는 사진 속 유령이 아니라 프로필 잔향이다.
 보스 후 작업은 구원 완료가 아니라 역할/이름/주소/사진을 분리하고 빈칸을 보류하는 일이다.
 ```
 
+후속 완료 작업:
+
+```text
+PORCH-LINE / ROOM-12 재방문 분기 정리 완료.
+완료 문서:
+story/03_regions/r01_porch_line_room_12_revisit_branch_v0_1.md
+```
+
+### PORCH-LINE / ROOM-12 재방문 분기
+
+PORCH-LINE / ROOM-12 재방문 분기는 완료되었다.
+
+```text
+ROOM-12는 식량태그/거주태그/가족대표 접근권의 문제다.
+PORCH-LINE은 현관 앞 줄과 순번, 사람들이 서로를 밀지 않게 하는 질서의 문제다.
+재방문 분기는 둘을 구했다/못 구했다가 아니라 줄과 자리가 각각 어떤 방식으로 덜 위험해졌는지를 보여준다.
+```
+
 다음 R01 NPC 작업:
 
 ```text
-PORCH-LINE / ROOM-12 재방문 분기.
+R01 P1 NPC 선택 분기 정리.
 산출물 후보:
-story/03_regions/r01_porch_line_room_12_revisit_branch_v0_1.md
+story/03_regions/r01_p1_npc_branch_map_v0_1.md
 ```
 
 ### 8번 후보: 리오
@@ -1025,7 +1045,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화, 본명/호칭 확정, 선택 분기별 후폭풍, 보스 전후 NPC 상태 변화 정리는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 PORCH-LINE / ROOM-12 재방문 분기부터 진행한다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화, 본명/호칭 확정, 선택 분기별 후폭풍, 보스 전후 NPC 상태 변화, PORCH-LINE / ROOM-12 재방문 분기는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 P1 NPC 선택 분기 정리부터 진행한다.
 ```
 
 한 번에 하면 안 되는 것:
