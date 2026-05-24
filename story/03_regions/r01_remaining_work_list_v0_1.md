@@ -19,6 +19,7 @@ R01 P1 NPC 선택 분기 맵 v0.1도 작성 완료.
 R01 상태값 NPC 반응 통합 매트릭스 v0.1도 작성 완료.
 R01 NPC 대사 은행 v0.1도 작성 완료.
 R01 NPC 데이터 스키마 초안 v0.1도 작성 완료.
+R01 Vertical Slice NPC 구현 범위 재정리 v0.1도 작성 완료.
 ```
 
 ---
@@ -48,6 +49,7 @@ R01 NPC 데이터 스키마 초안 v0.1도 작성 완료.
 20. R01 상태값 NPC 반응 통합 매트릭스 v0.1 작성 완료.
 21. R01 NPC 대사 은행 v0.1 작성 완료.
 22. R01 NPC 데이터 스키마 초안 v0.1 작성 완료.
+23. R01 Vertical Slice NPC 구현 범위 재정리 v0.1 작성 완료.
 ```
 
 결론:
@@ -402,13 +404,14 @@ R01_NPC_DATA_SCHEMA_DRAFT_V0_1.md
 
 ---
 
-### 3.2 Vertical Slice 구현 우선순위 재정리
+### 3.2 Vertical Slice NPC 구현 범위 재정리
 
 상태:
 
 ```text
-다음 작업.
-R01 NPC 데이터 스키마 초안까지 완료되었으므로, Vertical Slice에 실제로 넣을 NPC, 플래그, 상태값, 대사 참조 범위를 추린다.
+완료.
+R01_VERTICAL_SLICE_NPC_SCOPE_V0_1.md 작성 완료.
+Vertical Slice에 실제로 넣을 NPC, 흔적, 플래그, 상태값, 대사 참조의 최소 범위를 추렸다.
 ```
 
 현재 추천:
@@ -445,12 +448,20 @@ FRAME-LEFT
 산출물 후보:
 
 ```text
-R01_VERTICAL_SLICE_NPC_IMPLEMENTATION_PRIORITY_V0_1.md
+R01_VERTICAL_SLICE_NPC_SCOPE_V0_1.md
 ```
 
 ---
 
 ### 3.3 R01 보스 문서와 NPC 연결
+
+상태:
+
+```text
+다음 작업.
+R01 Vertical Slice NPC 구현 범위까지 완료되었으므로,
+첫 보스 전/후 장면에 필요한 NPC 연결을 보스 문서와 맞춘다.
+```
 
 해야 할 일:
 
@@ -498,14 +509,14 @@ R01 NPC는 지금부터 분기/상태/구현 스코프로 정리하고,
 가장 먼저 할 작업:
 
 ```text
-1. Vertical Slice 구현 우선순위 재정리
+1. R01 보스 문서와 NPC 연결
 ```
 
 이유:
 
 ```text
-R01 보스 전후 NPC 상태 변화 정리, PORCH-LINE / ROOM-12 재방문 분기, R01 P1 NPC 선택 분기 맵, R01 상태값 NPC 반응 통합 매트릭스, R01 NPC 대사 은행, R01 NPC 데이터 스키마 초안은 완료되었다.
-이제 Vertical Slice에서 실제로 구현할 NPC, 상태값, 선택 플래그, 대사 참조 범위를 추려야 한다.
+R01 보스 전후 NPC 상태 변화 정리, PORCH-LINE / ROOM-12 재방문 분기, R01 P1 NPC 선택 분기 맵, R01 상태값 NPC 반응 통합 매트릭스, R01 NPC 대사 은행, R01 NPC 데이터 스키마 초안, R01 Vertical Slice NPC 구현 범위 재정리는 완료되었다.
+이제 Vertical Slice에 들어갈 OPEN-HOST, ROOM-12, MAIL-LOOP, PORCH-LINE, DINING-4, FRAME-LEFT의 최소 구현 단위를 첫 보스 문서의 장면/플래그/대사 출력 지점에 연결해야 한다.
 ```
 
 그 다음:
@@ -539,5 +550,6 @@ P1 NPC 선택 분기도 통행태그/수신태그/거주태그/인양 안정도/
 R01 상태값도 NPC 12명 반응과 한 표로 묶였다.
 R01 NPC 대사 은행도 조건 플래그에 붙는 한 줄 반응으로 정리되었다.
 R01 NPC 데이터 스키마 초안도 공통 필드와 12명 샘플 데이터 블록으로 정리되었다.
-이제 Vertical Slice 구현 우선순위를 추릴 단계다.
+R01 Vertical Slice NPC 구현 범위도 필수 직접 대면, 음성/잔향, 오브젝트 흔적, 보스 후 잔향, P1 보류 기준으로 정리되었다.
+이제 R01 보스 문서와 NPC 연결을 맞출 단계다.
 ```

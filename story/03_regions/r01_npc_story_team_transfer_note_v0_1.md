@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 서른다섯 부분으로 나눈다.
+이번 전달은 서른여섯 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -149,6 +149,9 @@ OPEN-HOST의 핵심:
 
 35. R01_NPC_DATA_SCHEMA_DRAFT_V0_1.md
    - NPC 12명의 구현 공통 필드, npc_type, 선택 플래그, 대사 참조, 이름 해금 조건, 금지 방향을 샘플 데이터 블록으로 정리
+
+36. R01_VERTICAL_SLICE_NPC_SCOPE_V0_1.md
+   - R01 Vertical Slice에서 직접 대면, 음성/잔향, 오브젝트 흔적, 보스 후 잔향, P1 보류로 나눌 NPC 구현 범위 정리
 ```
 
 ---
@@ -183,28 +186,28 @@ OPEN-HOST의 핵심:
 23. R01 상태값 통합 매트릭스가 RPG 능력치가 아니라 윤리/생활/절차 압력으로 읽히는가?
 24. R01 NPC 대사 은행이 멋진 문장보다 재사용 가능한 조건 대사로 정리되었는가?
 25. R01 NPC 데이터 스키마 초안이 문학 설정을 잃지 않으면서 구현 필드로 읽히는가?
-26. 다음 작업이 Vertical Slice 구현 우선순위 재정리로 명확히 넘어가는가?
+26. R01 Vertical Slice NPC 구현 범위가 12명 전원 직접 등장 욕심을 줄이고, 필수 체감 축과 P1 보류 축을 분리하는가?
+27. 다음 작업이 R01 보스 문서와 NPC 연결로 명확히 넘어가는가?
 ```
 
 ---
 
 ## 다음 작업 기준
 
-R01 NPC 데이터 스키마 초안은 완료되었다.
+R01 Vertical Slice NPC 구현 범위 재정리는 완료되었다.
 
 바로 다음 작업은 아래 문서로 넘긴다.
 
 ```text
-R01_VERTICAL_SLICE_NPC_IMPLEMENTATION_PRIORITY_V0_1.md
+R01_BOSS_NPC_LINKS_V0_1.md
 ```
 
 목표:
 
 ```text
-R01 NPC 12명 중 Vertical Slice에 실제로 넣을 NPC와 흔적,
-상태값, 선택 플래그, 대사 참조, 이름 해금 조건의 최소 범위를 정한다.
+R01 첫 보스 전/후 장면에 필요한 NPC 연결을 보스 문서와 맞춘다.
 
-핵심은 전부 구현하려는 욕심을 줄이고,
-OPEN-HOST, ROOM-12, MAIL-LOOP, PORCH-LINE을 필수 축으로 둔 뒤
-NAME-PAINTER, DINING-4, VAC-0와 P1 NPC를 어느 범위까지 선노출할지 정하는 것이다.
+핵심은 OPEN-HOST 안내 검증, ROOM-12 배급/자리 보류,
+MAIL-LOOP 주소 호출, PORCH-LINE 순번표, DINING-4 네 번째 자리,
+FRAME-LEFT 보스 후 잔향이 각각 보스 절차의 어느 장면과 플래그에 붙는지 정하는 것이다.
 ```
