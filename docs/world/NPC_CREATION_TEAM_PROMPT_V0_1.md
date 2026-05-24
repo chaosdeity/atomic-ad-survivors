@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-E02 실제 JSON 파일 생성 조건 해소
+E02 실제 JSON 파일 생성
 
 현재 NPC 트랙 다음 작업:
-E02 실제 JSON 파일 생성 프롬프트 작성 또는 CLAUSE-11 상세 결재
+E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -138,6 +138,17 @@ docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_CONDITION_PATCH_TEAM_PROMPT_V0_1.m
 
 E02 실제 JSON 파일 생성 조건 해소:
 story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md
+
+E02 실제 JSON 파일 생성 프롬프트:
+docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md
+
+E02 실제 JSON 파일:
+data/e02/first_slice_applications.json
+data/e02/first_slice_object_texts.json
+data/e02/first_slice_reactions.json
+data/e02/first_slice_flags.json
+data/e02/first_slice_state_keys.json
+data/e02/first_slice_validation.json
 ```
 
 ---
@@ -659,6 +670,8 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 31. E02 실제 JSON 파일 생성 여부 결정도 작성 완료되었다.
 32. 판정은 조건부 생성 가능이며 실제 data/e02/*.json 파일은 만들지 않았다.
 33. E02 실제 JSON 파일 생성 조건 해소도 작성 완료되었다.
-34. 판정은 조건 해소이며 실제 data/e02/ 디렉터리와 JSON 파일은 만들지 않았다.
-35. 다음 산출물은 E02 실제 JSON 파일 생성 프롬프트 작성 또는 CLAUSE-11 상세 결재를 권장한다.
+34. 판정은 조건 해소이며 해당 문서 시점에서는 실제 data/e02/ 디렉터리와 JSON 파일을 만들지 않았다.
+35. E02 실제 JSON 파일 생성 프롬프트도 작성 완료되었다.
+36. 실제 data/e02/ 디렉터리와 허용된 6개 JSON 파일을 생성했고 validation.actual_files_created는 true다.
+37. 다음 산출물은 E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재를 권장한다.
 ```

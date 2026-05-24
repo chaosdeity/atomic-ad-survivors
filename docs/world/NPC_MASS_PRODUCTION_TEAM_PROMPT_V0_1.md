@@ -49,6 +49,8 @@ E02 실제 엔진 데이터 작성 프롬프트
 E02 엔진 데이터 패키지
 E02 실제 JSON 파일 생성 여부 결정
 E02 실제 JSON 파일 생성 조건 해소
+E02 실제 JSON 파일 생성 프롬프트
+E02 실제 JSON 파일 6개
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -101,6 +103,13 @@ docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md
 story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md
 docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_CONDITION_PATCH_TEAM_PROMPT_V0_1.md
 story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md
+docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md
+data/e02/first_slice_applications.json
+data/e02/first_slice_object_texts.json
+data/e02/first_slice_reactions.json
+data/e02/first_slice_flags.json
+data/e02/first_slice_state_keys.json
+data/e02/first_slice_validation.json
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -587,6 +596,8 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 26. E02 실제 JSON 파일 생성 여부 결정도 작성 완료되었다.
 27. 판정은 조건부 생성 가능이며 실제 data/e02/*.json 파일은 만들지 않았다.
 28. E02 실제 JSON 파일 생성 조건 해소도 작성 완료되었다.
-29. 판정은 조건 해소이며 실제 data/e02/ 디렉터리와 JSON 파일은 만들지 않았다.
-30. 다음은 E02 실제 JSON 파일 생성 프롬프트 작성 또는 CLAUSE-11 상세 결재로 넘긴다.
+29. 판정은 조건 해소이며 해당 문서 시점에서는 실제 data/e02/ 디렉터리와 JSON 파일을 만들지 않았다.
+30. E02 실제 JSON 파일 생성 프롬프트도 작성 완료되었다.
+31. 실제 data/e02/ 디렉터리와 허용된 6개 JSON 파일을 생성했고 validation.actual_files_created는 true다.
+32. 다음은 E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재로 넘긴다.
 ```

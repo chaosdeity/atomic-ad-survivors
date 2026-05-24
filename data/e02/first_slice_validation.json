@@ -1,0 +1,89 @@
+{
+    "actual_files_created":  true,
+    "checks":  [
+                   {
+                       "check_id":  "targets_count",
+                       "expected":  9,
+                       "actual":  9,
+                       "result":  "pass",
+                       "evidence":  "manifest counts.targets"
+                   },
+                   {
+                       "check_id":  "applications_count",
+                       "expected":  36,
+                       "actual":  36,
+                       "result":  "pass",
+                       "evidence":  "applications JSON length"
+                   },
+                   {
+                       "check_id":  "reactions_count",
+                       "expected":  36,
+                       "actual":  36,
+                       "result":  "pass",
+                       "evidence":  "reactions JSON length"
+                   },
+                   {
+                       "check_id":  "object_texts_count",
+                       "expected":  18,
+                       "actual":  18,
+                       "result":  "pass",
+                       "evidence":  "object_texts JSON length"
+                   },
+                   {
+                       "check_id":  "reaction_only_count",
+                       "expected":  8,
+                       "actual":  8,
+                       "result":  "pass",
+                       "evidence":  "applications with is_reaction_only true and object_text_id null"
+                   },
+                   {
+                       "check_id":  "direct_encounter_count",
+                       "expected":  2,
+                       "actual":  2,
+                       "result":  "pass",
+                       "evidence":  "e02_app_003 and e02_app_011 only"
+                   },
+                   {
+                       "check_id":  "flags_count",
+                       "expected":  11,
+                       "actual":  11,
+                       "result":  "pass",
+                       "evidence":  "flags JSON length"
+                   },
+                   {
+                       "check_id":  "state_keys_count",
+                       "expected":  12,
+                       "actual":  12,
+                       "result":  "pass",
+                       "evidence":  "state_keys JSON length"
+                   },
+                   {
+                       "check_id":  "protected_playable_count",
+                       "expected":  12,
+                       "actual":  12,
+                       "result":  "pass",
+                       "evidence":  "GATE-09, BROAD-10, RETURN-05, QUIET-07, OPEN-HOST, PATCH, METER, RIO, 미나, 복희, 세븐, RATION-16"
+                   },
+                   {
+                       "check_id":  "forbidden_unlock_count",
+                       "expected":  16,
+                       "actual":  16,
+                       "result":  "pass",
+                       "evidence":  "schema handoff forbidden_unlock enum retained"
+                   },
+                   {
+                       "check_id":  "no_overflow_ids",
+                       "expected":  true,
+                       "actual":  true,
+                       "result":  "pass",
+                       "evidence":  "no e02_app_037, e02_sr_037, e02_obj_019 or higher"
+                   },
+                   {
+                       "check_id":  "actual_files_created",
+                       "expected":  true,
+                       "actual":  true,
+                       "result":  "pass",
+                       "evidence":  "data/e02 JSON files created as neutral source data"
+                   }
+               ]
+}

@@ -1,0 +1,14 @@
+[
+  {"state_key":"delivery_state","used_by_applications":["e02_app_001","e02_app_004","e02_app_016"],"read_only_or_mutating":"mutating candidate","allowed_effect":"보관 만료, 연장 거부, 회수 기록 변화","forbidden_effect":"배송 전투, 상점 보상"},
+  {"state_key":"passage_tag","used_by_applications":["e02_app_002","e02_app_011","e02_app_012","e02_app_024","e02_app_035"],"read_only_or_mutating":"read mostly","allowed_effect":"막차/개찰/가족권 판정 지연","forbidden_effect":"빠른 이동, 무료 통과"},
+  {"state_key":"signal_tag","used_by_applications":["e02_app_005","e02_app_010","e02_app_015","e02_app_017","e02_app_023","e02_app_027"],"read_only_or_mutating":"read mostly","allowed_effect":"보급소 비콘 흔들림, 알림/방송 신호 어긋남","forbidden_effect":"수신태그 보상, 정답 공개"},
+  {"state_key":"signal_stability","used_by_applications":["e02_app_006","e02_app_020","e02_app_031"],"read_only_or_mutating":"read mostly","allowed_effect":"전광판/자막/대피소 안내 변화","forbidden_effect":"방송 장악, 안전지대"},
+  {"state_key":"campaign_density","used_by_applications":["e02_app_007","e02_app_014","e02_app_019","e02_app_021","e02_app_026"],"read_only_or_mutating":"mutating candidate","allowed_effect":"캠페인 압력 상승, 잔향 선명화","forbidden_effect":"보스 해금, 정답 설명"},
+  {"state_key":"human_stability","used_by_applications":["e02_app_008","e02_app_013","e02_app_022","e02_app_025","e02_app_036"],"read_only_or_mutating":"read mostly","allowed_effect":"불안정 문구, 재판독, 안정도 회복 없는 후폭풍","forbidden_effect":"회복소, 안정도 보상"},
+  {"state_key":"trace_preservation","used_by_applications":["e02_app_003","e02_app_009","e02_app_018","e02_app_030"],"read_only_or_mutating":"mutating candidate","allowed_effect":"흔적 보존, 자막/라벨/보관 흔적 유지","forbidden_effect":"본명 해금, 구출 확정"},
+  {"state_key":"robot_autonomy","used_by_applications":["e02_app_028"],"read_only_or_mutating":"read mostly","allowed_effect":"자율 판단 흔적을 리콜 사유로 표시","forbidden_effect":"로봇 동료 추가, PATCH 대체"},
+  {"state_key":"charge_tag","used_by_applications":["e02_app_029"],"read_only_or_mutating":"read only","allowed_effect":"충전 부족을 검수 압력으로 표시","forbidden_effect":"충전/강화 UI"},
+  {"state_key":"extraction_stability","used_by_applications":["e02_app_033"],"read_only_or_mutating":"read mostly","allowed_effect":"인양 단서 약화, 보급소 비콘 불안","forbidden_effect":"긴급 인양 안정화"},
+  {"state_key":"residence_tag","used_by_applications":["e02_app_034"],"read_only_or_mutating":"read mostly","allowed_effect":"세대 갱신/가족권 재판독 노출","forbidden_effect":"OPEN-HOST 주거 안내 대체"},
+  {"state_key":"supply_pressure","used_by_applications":["e02_app_032"],"read_only_or_mutating":"read mostly","allowed_effect":"대피소 보급 압력과 사람 상태 지연 표시","forbidden_effect":"보급 상점, 회복소"}
+]
