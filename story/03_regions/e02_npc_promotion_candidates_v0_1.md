@@ -169,6 +169,9 @@ GATE-09 전투/해금 기능 대체
 | `story/03_regions/e02_last_train_transfer_hold_profile_v0_1.md` | 완료. E02_C07 v0.1 핵심 후보 상세 |
 | `story/03_regions/e02_first_slice_dialogue_bank_v0_1.md` | E02 대사 은행 3명 |
 | `story/03_regions/e02_trace_object_bank_v0_1.md` | E02 잔향/오브젝트 후보 3개 |
+| `story/03_regions/e02_first_slice_npc_implementation_scope_v0_1.md` | 완료. E02 직접 대면/음성/오브젝트/보류 수량 컷 |
+| `story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md` | 완료. E02 기존 9개 대상의 상태 반응 36행 |
+| `story/03_regions/e02_first_slice_object_text_bank_v0_1.md` | 완료. E02 오브젝트 문구 36개 |
 
 최종 판정:
 

@@ -40,6 +40,7 @@ E02 승격 후보 v0.1 검토
 E02 핵심 후보 v0.1 프로필 3종
 E02 첫 외부 슬라이스 대사/잔향 은행
 E02 Vertical Slice NPC 구현 컷
+E02 상태 반응/오브젝트 문구 확장
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -75,6 +76,9 @@ story/03_regions/e02_last_train_transfer_hold_profile_v0_1.md
 story/03_regions/e02_first_slice_dialogue_bank_v0_1.md
 story/03_regions/e02_trace_object_bank_v0_1.md
 story/03_regions/e02_first_slice_npc_implementation_scope_v0_1.md
+docs/world/E02_FIRST_SLICE_STATE_OBJECT_EXPANSION_TEAM_PROMPT_V0_1.md
+story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md
+story/03_regions/e02_first_slice_object_text_bank_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -546,5 +550,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 11. E02 핵심 후보 v0.1 프로필 3종 작성 완료.
 12. E02 첫 외부 슬라이스 대사/잔향 은행 작성 완료.
 13. E02 Vertical Slice NPC 구현 컷 작성 완료.
-14. 다음은 E02 상태 반응/오브젝트 문구 확장 또는 CLAUSE-11 상세 결재로 넘긴다.
+14. E02 상태 반응/오브젝트 문구 확장도 작성 완료되었다.
+15. 완료 산출물은 e02_first_slice_state_reaction_matrix_v0_1.md, e02_first_slice_object_text_bank_v0_1.md다.
+16. 다음은 E02 상태/오브젝트 데이터 적용표 또는 CLAUSE-11 상세 결재로 넘긴다.
 ```

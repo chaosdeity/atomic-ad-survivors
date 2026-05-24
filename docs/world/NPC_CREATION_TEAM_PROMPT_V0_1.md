@@ -59,8 +59,11 @@ story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
 story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
+현재 NPC 트랙 최신 완료:
+E02 상태 반응/오브젝트 문구 확장
+
 현재 NPC 트랙 다음 작업:
-E02 상태 반응/오브젝트 문구 확장 또는 CLAUSE-11 상세 결재
+E02 상태/오브젝트 데이터 적용표 또는 CLAUSE-11 상세 결재
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -86,6 +89,13 @@ story/03_regions/e02_trace_object_bank_v0_1.md
 
 E02 Vertical Slice NPC 구현 컷:
 story/03_regions/e02_first_slice_npc_implementation_scope_v0_1.md
+
+E02 상태 반응/오브젝트 문구 확장 프롬프트:
+docs/world/E02_FIRST_SLICE_STATE_OBJECT_EXPANSION_TEAM_PROMPT_V0_1.md
+
+E02 상태 반응/오브젝트 문구 확장:
+story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md
+story/03_regions/e02_first_slice_object_text_bank_v0_1.md
 ```
 
 ---
@@ -592,5 +602,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 16. E02 핵심 후보 v0.1 프로필 3종도 작성 완료되었다.
 17. E02 첫 외부 슬라이스 대사/잔향 은행도 작성 완료되었다.
 18. E02 Vertical Slice NPC 구현 컷도 작성 완료되었다.
-19. 다음 산출물은 E02 상태 반응/오브젝트 문구 확장 또는 CLAUSE-11 상세 결재를 권장한다.
+19. E02 상태 반응/오브젝트 문구 확장도 작성 완료되었다.
+20. 완료 산출물은 e02_first_slice_state_reaction_matrix_v0_1.md, e02_first_slice_object_text_bank_v0_1.md다.
+21. 다음 산출물은 E02 상태/오브젝트 데이터 적용표 또는 CLAUSE-11 상세 결재를 권장한다.
 ```
