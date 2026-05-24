@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-전역 NPC 확장 슬롯 레지스트리
+전역 NPC 검수팀 프롬프트
 
 현재 NPC 트랙 다음 작업:
-전역 NPC 이름/원점 검수
+전역 NPC 검수 보고서 작성
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -80,6 +80,12 @@ story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
 
 전역 NPC 확장 슬롯 레지스트리:
 story/03_regions/global_npc_expansion_slot_registry_v0_1.md
+
+전역 NPC 검수 전 추가 확장 매트릭스:
+story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
+
+전역 NPC 검수팀 프롬프트:
+docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 
 R08/R07 v1.0 보류 해제 게이트:
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
@@ -688,5 +694,8 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 40. 420개 1차 게이트를 768개 제작 슬롯 만족 기준으로 확장했고, 증분 +348개는 E02~E12와 cross_region에만 배정했다.
 41. 전역 NPC 확장 슬롯 레지스트리도 작성 완료되었다.
 42. 증분 +348개를 E02 +24, E03~E12 +300, cross_region +24 슬롯으로 등록했다.
-43. 다음 산출물은 전역 NPC 이름/원점 검수를 권장한다.
+43. 전역 NPC 검수 전 추가 확장 매트릭스도 작성 완료되었다.
+44. 검수 전 기준을 1,024개 제작 슬롯으로 올렸고, 증분 +256개는 E02~E12와 cross_region에만 배정했다.
+45. 전역 NPC 검수팀 프롬프트도 작성 완료되었다.
+46. 다음 산출물은 전역 NPC 검수 보고서 작성을 권장한다.
 ```

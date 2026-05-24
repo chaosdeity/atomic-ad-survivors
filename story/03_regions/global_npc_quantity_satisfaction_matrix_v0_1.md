@@ -230,5 +230,6 @@ C03/C05/C07은 +5.
 E01 한국권 NPC를 더 늘리지 않고, E02~E12와 전역 교차 축에 +348개를 배정했다.
 이 숫자는 직접 NPC 768명이 아니라, L5~L0을 모두 포함한 전역 제작 밀도다.
 후속 산출물 `story/03_regions/global_npc_expansion_slot_registry_v0_1.md`에서 이 수량 매트릭스를 실제 슬롯 등록 기준으로 풀어 썼다.
-다음 작업은 확장 슬롯의 이름/원점 검수다.
+후속 검수 전 산출물 `story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md`에서 기준을 1,024개 제작 슬롯으로 한 단계 더 올렸다.
+다음 작업은 검수팀이 1,024개 기준을 잘라내는 것이다.
 ```

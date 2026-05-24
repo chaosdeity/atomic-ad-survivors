@@ -54,12 +54,14 @@ E02 실제 JSON 파일 6개
 전역 NPC 이름/원점 검수
 전역 NPC 수량 충족 매트릭스
 전역 NPC 확장 슬롯 레지스트리
+전역 NPC 검수 전 추가 확장 매트릭스
+전역 NPC 검수팀 프롬프트
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
 이 숫자는 상세 기준이 존재하는 첫 기준점일 뿐이다.
-전역 NPC는 420개 씨앗 기준의 1차 실제 산출물에서 출발했고, 현재 만족 기준은 768개 제작 슬롯이다.
-다만 768개 전부가 완성급 NPC는 아니다.
+전역 NPC는 420개 씨앗 기준의 1차 실제 산출물에서 출발했고, 현재 검수 전 기준은 1,024개 제작 슬롯이다.
+다만 1,024개 전부가 완성급 NPC는 아니다.
 ```
 
 사용할 기준 문서:
@@ -85,6 +87,8 @@ story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
 story/03_regions/global_npc_name_origin_review_v0_1.md
 story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
 story/03_regions/global_npc_expansion_slot_registry_v0_1.md
+story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
+docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 story/03_regions/e02_npc_promotion_candidates_v0_1.md
 story/03_regions/e02_locker_recipient_profile_v0_1.md
@@ -612,5 +616,8 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 35. 420개 1차 게이트를 768개 제작 슬롯 만족 기준으로 확장했고, 증분 +348개는 E02~E12와 cross_region에만 배정했다.
 36. 전역 NPC 확장 슬롯 레지스트리도 작성 완료되었다.
 37. 증분 +348개를 E02 +24, E03~E12 +300, cross_region +24 슬롯으로 등록했다.
-38. 다음은 전역 NPC 이름/원점 검수로 넘긴다.
+38. 전역 NPC 검수 전 추가 확장 매트릭스도 작성 완료되었다.
+39. 검수 전 기준을 1,024개 제작 슬롯으로 올렸고, 증분 +256개는 E02~E12와 cross_region에만 배정했다.
+40. 전역 NPC 검수팀 프롬프트도 작성 완료되었다.
+41. 다음은 전역 NPC 검수 보고서 작성으로 넘긴다.
 ```

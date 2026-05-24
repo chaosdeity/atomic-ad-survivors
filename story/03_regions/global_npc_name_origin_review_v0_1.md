@@ -23,9 +23,11 @@ E01 한국권 NPC 추가 생산 아님.
 ```text
 story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
 story/03_regions/global_npc_expansion_slot_registry_v0_1.md
+story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
+docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 ```
 
-위 두 문서의 768개 제작 슬롯 기준에도 이 검수 원칙을 그대로 적용한다.
+위 문서들의 768개 제작 슬롯 기준과 1,024개 검수 전 기준에도 이 검수 원칙을 그대로 적용한다.
 
 핵심 판정:
 
@@ -252,7 +254,7 @@ NPC를 플레이어블 후보의 설명자/서포터로 만들기.
 
 ## 7. 다음 작업 포인터
 
-전역 NPC 이름/원점 검수
+전역 NPC 검수 보고서 작성
 
 최종 판정:
 
@@ -260,5 +262,6 @@ NPC를 플레이어블 후보의 설명자/서포터로 만들기.
 통과.
 전역 NPC는 캠페인 ID, 현실권/언어권, 계층, 이름 필요 여부를 먼저 통과해야 한다.
 E02 이후 한국어 임시명으로 빈 NPC 슬롯을 채우지 않는다.
-후속 수량 충족 단계에서 768개 제작 슬롯으로 확장했으므로, 다음 작업 포인터는 "전역 NPC 이름/원점 검수" 하나로 제한한다.
+후속 수량 충족 단계에서 768개 제작 슬롯으로 확장했고, 검수팀 전달 전 기준은 1,024개 제작 슬롯으로 확장했다.
+다만 E02 이후 한국어 임시명 금지와 L3 이하 본명 금지는 유지한다.
 ```

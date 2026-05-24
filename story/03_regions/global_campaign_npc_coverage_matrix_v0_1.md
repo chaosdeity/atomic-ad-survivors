@@ -37,6 +37,7 @@ E03~E12는 캠페인당 3개 씨앗으로 최소 커버한다.
 96개 정식 캠페인 중 빈 캠페인은 없다.
 다만 E03~E12는 최소 커버리지 단계이므로, 실제 시즌 오픈 시 각 권역별 G4/G5 승격 후보를 추가 검토한다.
 후속 수량 충족 단계에서는 420개 1차 게이트를 768개 제작 슬롯으로 확장했다.
+검수팀 전달 전 기준은 1,024개 제작 슬롯으로 확장했다.
 ```
 
 후속 수량 산출물:
@@ -44,6 +45,8 @@ E03~E12는 캠페인당 3개 씨앗으로 최소 커버한다.
 ```text
 story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
 story/03_regions/global_npc_expansion_slot_registry_v0_1.md
+story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
+docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 ```
 
 ---
@@ -135,4 +138,5 @@ G1/G0 배경: g_[campaign_id]_g1_001
 통과.
 96개 정식 캠페인은 모두 최소 NPC/잔향/배경 씨앗을 가진다.
 후속 확장 슬롯 레지스트리에서 E01 추가 생산 없이 전역 수량을 768개 제작 슬롯까지 보강했다.
+검수 전 추가 확장 매트릭스에서 1,024개 제작 슬롯까지 올렸고, 검수팀이 하향/폐기해도 768개 충족 기준을 유지하도록 했다.
 ```
