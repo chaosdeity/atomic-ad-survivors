@@ -23,8 +23,14 @@ story/06_characters/quiet_07_playable_condition_patch_v0_1.md
 후속 보완 판정:
 통과로 승격 가능
 
+후속 프로필:
+story/06_characters/quiet_07_profile_v1_0.md
+
+프로필 판정:
+통과 / 7번 플레이어블 후보 프로필 v1.0 고정
+
 다음 작업 포인터:
-7번 백여울 / QUIET-07 / 침묵권 피난자 프로필 v1.0 작성
+8번 리오 플레이어블 잠금 재검토
 ```
 
 ---
@@ -433,5 +439,12 @@ story/06_characters/quiet_07_playable_condition_patch_v0_1.md
 다음 작업 추천:
 
 ```text
-7번 백여울 / QUIET-07 / 침묵권 피난자 프로필 v1.0 작성
+8번 리오 플레이어블 잠금 재검토
+```
+
+후속 프로필 결과:
+
+```text
+story/06_characters/quiet_07_profile_v1_0.md
+통과 / 7번 플레이어블 후보 프로필 v1.0 고정
 ```
