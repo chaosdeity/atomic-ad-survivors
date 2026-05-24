@@ -133,6 +133,7 @@ story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/global_npc_review_report_v0_1.md
 story/03_regions/global_npc_passed_slot_registry_v0_1.md
+story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
 ```
 
 다음 작업 포인터:
@@ -153,4 +154,5 @@ story/03_regions/global_npc_passed_slot_registry_v0_1.md
 2,048 1차 검수 배치와 10,240 장기 목표에도 같은 이름/노출 원칙을 적용한다.
 검수 보고서에서 E02 이후 한국어 이름 기본값 금지와 L3 이하 이름 제거를 확정했다.
 통과 슬롯 레지스트리에서 L5/L4 외 이름 유지 가능성을 제거했다.
+L3 이하 잔향/오브젝트 은행에서 1,856개 모두 본명 없이 표현 방식 은행으로 처리했다.
 ```

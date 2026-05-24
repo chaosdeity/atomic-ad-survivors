@@ -60,6 +60,7 @@ E02 실제 JSON 파일 6개
 전역 NPC 검수팀 프롬프트
 전역 NPC 검수 보고서
 전역 NPC 통과 슬롯 레지스트리
+전역 NPC L3 이하 잔향/오브젝트 은행
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -98,6 +99,7 @@ story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/global_npc_review_report_v0_1.md
 story/03_regions/global_npc_passed_slot_registry_v0_1.md
+story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 story/03_regions/e02_npc_promotion_candidates_v0_1.md
 story/03_regions/e02_locker_recipient_profile_v0_1.md
@@ -636,5 +638,6 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 46. 2,048 슬롯 조건부 통과, L5/L4 192개만 이름/직접 대면 검토, L3 이하 1,856개 하향으로 판정했다.
 47. 전역 NPC 통과 슬롯 레지스트리도 작성 완료되었다.
 48. 통과 슬롯 2,048개를 L5/L4 192개 후보와 L3 이하 1,856개 은행형 슬롯으로 정리했다.
-49. 다음은 전역 NPC L3 이하 잔향/오브젝트 은행 작성으로 넘긴다.
+49. 전역 NPC L3 이하 잔향/오브젝트 은행도 작성 완료되었다.
+50. 다음은 전역 NPC L3 이하 은행 검수로 넘긴다.
 ```

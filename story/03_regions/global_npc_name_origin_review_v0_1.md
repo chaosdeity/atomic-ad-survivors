@@ -29,6 +29,7 @@ story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/global_npc_review_report_v0_1.md
 story/03_regions/global_npc_passed_slot_registry_v0_1.md
+story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
 ```
 
 위 문서들의 768개 제작 슬롯 기준, 1,024개 검수 전 기준, 2,048개 1차 검수 배치, 10,240개 장기 목표에도 이 검수 원칙을 그대로 적용한다.
@@ -258,7 +259,7 @@ NPC를 플레이어블 후보의 설명자/서포터로 만들기.
 
 ## 7. 다음 작업 포인터
 
-전역 NPC 검수 보고서 작성
+전역 NPC L3 이하 은행 검수
 
 최종 판정:
 
@@ -270,5 +271,6 @@ E02 이후 한국어 임시명으로 빈 NPC 슬롯을 채우지 않는다.
 장기 풀스케일 목표는 10,240개 제작 슬롯으로 설정했다.
 전역 NPC 검수 보고서에서 L5/L4만 이름 후보를 검토하고 L3 이하 이름 제거를 확정했다.
 전역 NPC 통과 슬롯 레지스트리에서 E02 이후 한국어 이름 기본값 금지를 다시 잠갔다.
+전역 NPC L3 이하 잔향/오브젝트 은행에서 L3 이하 1,856개를 본명 없이 은행화했다.
 다만 E02 이후 한국어 임시명 금지와 L3 이하 본명 금지는 유지한다.
 ```
