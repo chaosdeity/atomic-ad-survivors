@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 서른한 부분으로 나눈다.
+이번 전달은 서른두 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -137,6 +137,9 @@ OPEN-HOST의 핵심:
 
 31. R01_PORCH_LINE_ROOM_12_REVISIT_BRANCH_V0_1.md
    - ROOM-12 우회 배급 이후 PORCH-LINE의 줄 변화, 인간 안정도별 재방문 대사, 복희/WELCOME-DESK/DINING-4/MAIL-LOOP 후속 반응 정리
+
+32. R01_P1_NPC_BRANCH_MAP_V0_1.md
+   - DRAIN-MARK / SIGN-BACK / KEY-RING / VAC-0 / WELCOME-DESK / FRAME-LEFT의 P1 개방 순서, 선택 플래그, 상태값 루트 개폐 정리
 ```
 
 ---
@@ -167,25 +170,30 @@ OPEN-HOST의 핵심:
 19. R01 NPC들이 캠페인화 인간을 "껍데기"가 아니라 "선택한 사람들"로 보이게 하는가?
 20. 보스 전후 상태 변화가 구원 완료가 아니라 보류/분리/검증의 후폭풍으로 이어지는가?
 21. PORCH-LINE / ROOM-12 재방문 분기에서 "자리"와 "줄"이 서로 겹치지 않게 분리되는가?
-22. 다음 작업이 R01 P1 NPC 선택 분기 정리로 명확히 넘어가는가?
+22. R01 P1 NPC 선택 분기에서 침묵권/가짜 귀환로/낡은 관리실/빈 집 내부/상담 데스크/가족사진 프레임의 개방 순서가 명확한가?
+23. 다음 작업이 R01 상태값 통합 매트릭스로 명확히 넘어가는가?
 ```
 
 ---
 
 ## 다음 작업 기준
 
-PORCH-LINE / ROOM-12 재방문 분기는 완료되었다.
+R01 P1 NPC 선택 분기 맵은 완료되었다.
 
 바로 다음 작업은 아래 문서로 넘긴다.
 
 ```text
-R01_P1_NPC_BRANCH_MAP_V0_1.md
+R01_STATE_VALUE_NPC_REACTION_MATRIX_V0_1.md
 ```
 
 목표:
 
 ```text
-P1 재방문 시 어떤 NPC가 먼저 열리는지 정리한다.
-DRAIN-MARK, SIGN-BACK, KEY-RING, VAC-0, WELCOME-DESK, FRAME-LEFT의 선택 분기를
-통행태그/수신태그/인양 안정도/흔적 보존 상태값과 연결한다.
+인간 안정도, 캠페인 농도, 흔적 보존, 로봇 자율성, 보급 압력,
+수신태그, 통행태그, 거주태그, 인양 안정도를
+R01 NPC 12명과 P1 루트 반응에 연결한다.
+
+핵심은 개별 선택 플래그를 다시 나열하는 것이 아니라,
+각 상태값이 낮음/중간/높음일 때 NPC 대사, 루트 개폐, 이름 조각,
+캠페인 재결합 위험이 어떻게 달라지는지 한 표로 묶는 것이다.
 ```
