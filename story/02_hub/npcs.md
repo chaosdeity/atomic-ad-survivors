@@ -3,6 +3,7 @@
 상태: 0.001 기준 작성
 원전: `story/00_source/story_0.001.md`
 최신 미나 기준: `story/02_hub/mina_npc_profile_v1_0.md`, `story/02_hub/mina_npc_drama_draft_v0_1.md`
+최신 보급소 5명 통합 기준: `story/02_hub/outpost_core_npc_profiles_v1_0.md`
 
 ## 설계 원칙
 
@@ -11,6 +12,9 @@
 NPC는 퀘스트 배포기가 아니다. 플레이어가 회수한 흔적, 보스 선택, 인간 안정도, 로봇 자율성, 캠페인 농도에 반응하는 거점의 얼굴이다.
 
 ## 초기 NPC 구성
+
+최신 v1.0 통합 운용 기준은 `story/02_hub/outpost_core_npc_profiles_v1_0.md`를 우선한다.
+아래 내용은 0.001 기준의 초기 상세 메모로 보존한다.
 
 | 이름 | 구분 | 담당 시설 | 주 기능 | 진영 축 |
 | --- | --- | --- | --- | --- |
