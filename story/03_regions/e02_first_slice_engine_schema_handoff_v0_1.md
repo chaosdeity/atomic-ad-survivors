@@ -350,16 +350,18 @@ QA 통과 산출물을 새 ID 없이 엔진팀 전달 문서로 정리했다.
 
 완료된 후속 문서:
 `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md`
+`docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md`
+`story/03_regions/e02_first_slice_engine_data_package_v0_1.md`
 
 | 판정 | 다음 작업 |
 |---|---|
-| 스키마 전달 가능 | E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 |
+| 스키마 전달 가능 | 완료. E02 첫 외부 슬라이스 엔진 데이터 패키지 |
 | 조건부 전달 | `story/03_regions/e02_first_slice_engine_schema_handoff_patch_v0_1.md` |
 | 보류 | `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` 또는 `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` 수정 지시 |
 
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 작성.
+E02 첫 외부 슬라이스 엔진 데이터 패키지 검산 통과 시 실제 JSON 파일 생성 여부를 결정한다.
 실제 엔진 데이터 파일 생성은 별도 지시와 엔진 포맷 확정 후 진행한다.
 ```

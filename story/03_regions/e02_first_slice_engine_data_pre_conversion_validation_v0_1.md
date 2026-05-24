@@ -306,8 +306,8 @@ reaction-only는 object_text_id 범위에 포함하지 않는다.
 ## 16. 최종 판정
 
 ```text
-변환 프롬프트 작성 가능:
-스키마 전달 문서가 실제 엔진 데이터 작성 프롬프트로 넘어갈 수 있다.
+엔진 데이터 패키지 작성 완료:
+스키마 전달 문서와 변환 전 검증 기준을 Markdown 내부 parseable JSON 패키지로 이전했다.
 새 ID, 누락/중복, reaction-only 승격, 직접 대면 초과, 금지 해금, 실제 엔진 파일 생성은 발견되지 않았다.
 ```
 
@@ -315,15 +315,19 @@ reaction-only는 object_text_id 범위에 포함하지 않는다.
 
 ## 17. 다음 작업 포인터
 
+완료된 후속 문서:
+`docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md`
+`story/03_regions/e02_first_slice_engine_data_package_v0_1.md`
+
 | 판정 | 다음 작업 |
 |---|---|
-| 변환 프롬프트 작성 가능 | E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 |
+| 변환 프롬프트 작성 가능 | 완료. E02 첫 외부 슬라이스 엔진 데이터 패키지 |
 | 조건부 보완 | `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_patch_v0_1.md` |
 | 보류 | `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md` 또는 `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` 수정 지시 |
 
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 작성.
+E02 첫 외부 슬라이스 엔진 데이터 패키지 검산 통과 시 실제 JSON 파일 생성 여부를 결정한다.
 실제 엔진 데이터 파일 생성은 별도 지시와 엔진 포맷 확정 후 진행한다.
 ```

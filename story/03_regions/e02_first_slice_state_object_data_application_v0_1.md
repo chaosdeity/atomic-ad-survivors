@@ -218,12 +218,15 @@ story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md
 후속 변환 전 검증:
 story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md
 
+후속 엔진 데이터 패키지:
+story/03_regions/e02_first_slice_engine_data_package_v0_1.md
+
 다음 작업:
-E02 실제 엔진 데이터 작성 프롬프트
+E02 실제 JSON 파일 생성 여부 결정
 
 최종 판정:
 
 ```text
 통과.
-E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결했고, QA 체크리스트와 엔진 스키마화 전달 문서 및 변환 전 검증에서 통과 판정을 유지한다.
+E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결했고, QA 체크리스트, 엔진 스키마화 전달 문서, 변환 전 검증, 엔진 데이터 패키지에서 통과 판정을 유지한다.
 ```
