@@ -43,14 +43,17 @@ story/03_regions/r01_npc_data_schema_application_v0_1.md
 E01 R02/R03/R04/R08 보조 NPC 최소안:
 story/03_regions/e01_support_npc_minimum_plan_v0_1.md
 
-현재 NPC 트랙 다음 작업:
-E01 L5/L4 승격 후보 검토
-
 대량 제작 전용 프롬프트:
 docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md
 
 E01 NPC 대량 후보 풀:
 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
+
+E01 L5/L4 승격 후보 검토:
+story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
+
+현재 NPC 트랙 다음 작업:
+E01 프로필 v1.0 1차 상세화
 ```
 
 ---
@@ -544,5 +547,8 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 3. NPC 대량 후보 풀 제작도 완료되었다.
 4. 대량 제작 전용 프롬프트는 docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md를 사용한다.
 5. E01 대량 후보 풀은 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md를 기준으로 사용한다.
-6. 다음 산출물은 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 권장한다.
+6. E01 L5/L4 승격 후보 검토도 완료되었다.
+7. 승격 검토 결과는 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
+8. 다음 산출물은 프로필 v1.0 우선 후보 중 상위 3~5명 상세화를 권장한다.
+9. 가장 추천하는 1차 묶음은 r06_mass_001, r02_mass_001, r03_mass_001이다.
 ```

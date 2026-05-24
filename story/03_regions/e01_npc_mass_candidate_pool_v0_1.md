@@ -320,16 +320,25 @@ L5/L4 후보는 총 28개다.
 추천 순서:
 
 ```text
-1. L5/L4 승격 후보 28개 중 직접 대면 우선 16개를 다시 자른다.
-2. story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 작성한다.
-3. L2/L1/L0는 story/03_regions/e01_npc_trace_background_bank_v0_1.md로 넘긴다.
-4. 이후 E02 첫 외부 슬라이스 NPC 후보 풀 40~60개를 작성한다.
+1. L5/L4 승격 후보 28개 재분류 완료.
+2. story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
+3. 프로필 v1.0 우선 후보 중 상위 3~5명만 먼저 상세화한다.
+4. L2/L1/L0와 하향 후보는 story/03_regions/e01_npc_trace_background_bank_v0_1.md로 넘긴다.
+5. 이후 E02 첫 외부 슬라이스 NPC 후보 풀 40~60개를 작성한다.
+```
+
+완료 산출물:
+
+```text
+story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
 ```
 
 바로 다음 산출물:
 
 ```text
-story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
+story/03_regions/r06_member_rank_broker_profile_v1_0.md
+story/03_regions/r02_discharge_review_face_profile_v1_0.md
+story/03_regions/r03_final_return_review_officer_profile_v1_0.md
 ```
 
 완료 기준:
