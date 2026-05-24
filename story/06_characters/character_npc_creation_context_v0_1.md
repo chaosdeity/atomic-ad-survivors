@@ -110,6 +110,7 @@ story/03_regions/r01_p1_npc_branch_map_v0_1.md
 story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md
 story/03_regions/r01_npc_dialogue_bank_v0_1.md
 story/03_regions/r01_npc_data_schema_draft_v0_1.md
+story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
@@ -1192,6 +1193,33 @@ R01 최신 기준 문서 목록
 더 이상 추가하지 말아야 할 것
 R01 잠금 상태
 다음 큰 작업 포인터
+```
+
+다음 R01 NPC/지역 작업:
+
+```text
+R01 NPC 데이터 스키마 적용표 완료.
+완료 문서:
+story/03_regions/r01_npc_data_schema_application_v0_1.md
+```
+
+### R01 NPC 데이터 스키마 적용표
+
+R01 NPC 데이터 스키마 적용표는 완료되었다.
+
+```text
+반영 내용:
+R01 NPC 12명 npc_id 잠금
+npc_type / 구현 묶음 / Vertical Slice 우선순위 정리
+직접 대면 / 음성 잔향 / 오브젝트 흔적 / 보스 후 잔향 / P1 보류 분리
+최소 choice_flags / dialogue_refs / name_policy 적용
+R01 안에서 새 NPC 추가 금지 재확인
+```
+
+다음 NPC 작업:
+
+```text
+E01 R02/R03/R04/R08 보조 NPC 최소안.
 ```
 
 다음 캐릭터 작업:

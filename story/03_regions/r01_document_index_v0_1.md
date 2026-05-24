@@ -16,7 +16,7 @@ R01 확장 아님.
 문서 체계 잠금.
 
 다음 작업 포인터:
-R01 NPC 데이터 스키마 적용
+E01 R02/R03/R04/R08 보조 NPC 최소안
 이후 큰 작업:
 시즌 1 큰 줄거리 잠금
 ```
@@ -64,6 +64,7 @@ NPC:
 | 상태값 | 통합 매트릭스 완료 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` |
 | 대사 | 조건 대사 은행 완료 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` |
 | 데이터 구조 | 구현 스키마 초안 완료 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` |
+| 데이터 적용 | 구현 스키마 적용표 완료 | `story/03_regions/r01_npc_data_schema_application_v0_1.md` |
 | Vertical Slice | 구현 범위 정리 완료 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
 | Vertical Slice 구현 목록 | 씬/오브젝트/대사 수/플래그 컷 완료 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
 | 작업 포인터 | 다음 작업 정리 완료 | `story/03_regions/r01_remaining_work_list_v0_1.md` |
@@ -135,7 +136,8 @@ NPC 로스터 단계에서 확정할 것:
 | ---: | --- | --- |
 | 1 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` | NPC / 조건 / 대사 / 용도 구조의 조건 대사를 본다. |
 | 2 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` | npc_id, npc_type, choice_flags, dialogue_refs 등 구현 필드로 옮긴다. |
-| 3 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` | 대사 조건과 상태값 키가 맞는지 다시 대조한다. |
+| 3 | `story/03_regions/r01_npc_data_schema_application_v0_1.md` | 스키마 초안과 Vertical Slice 구현 목록을 합친 적용표를 본다. |
+| 4 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` | 대사 조건과 상태값 키가 맞는지 다시 대조한다. |
 
 대사/데이터 단계에서 확정할 것:
 
@@ -196,12 +198,13 @@ Vertical Slice 단계에서 확정할 것:
 | 순서 | 문서 |
 | ---: | --- |
 | 1 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` |
-| 2 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` |
-| 3 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` |
-| 4 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
-| 5 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
-| 6 | `story/03_regions/r01_boss.md` |
-| 7 | `story/03_regions/r01_suburb.md` |
+| 2 | `story/03_regions/r01_npc_data_schema_application_v0_1.md` |
+| 3 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` |
+| 4 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` |
+| 5 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
+| 6 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
+| 7 | `story/03_regions/r01_boss.md` |
+| 8 | `story/03_regions/r01_suburb.md` |
 
 구현팀은 스키마와 대사 조건을 먼저 보고, 지역/보스 문서로 연출 의도를 확인한다.
 
@@ -225,6 +228,7 @@ Vertical Slice 단계에서 확정할 것:
 | 상태값 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` | 상태값 정의와 NPC 반응 |
 | 대사 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` | 조건 대사 은행 |
 | 데이터 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` | 구현 스키마 초안 |
+| 데이터 적용 | `story/03_regions/r01_npc_data_schema_application_v0_1.md` | 스키마 초안과 Vertical Slice 구현 목록을 합친 적용표 |
 | 구현 범위 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` | Vertical Slice 범위 |
 | 구현 목록 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` | NPC별 씬/오브젝트/플래그 컷 |
 | 작업 관리 | `story/03_regions/r01_remaining_work_list_v0_1.md` | 남은 작업과 다음 포인터 |
@@ -255,12 +259,13 @@ Vertical Slice 단계에서 확정할 것:
 | 2 | `r01_suburb.md`, `r01_boss.md` | 지역/보스 본문 최신 기준 |
 | 3 | `r01_campaign1_npc_roster_v0_1.md`, `r01_npc_name_registry_v1_0.md` | NPC 12명과 이름 기준 |
 | 4 | 상태값/선택/보스 전후/P1 매트릭스 문서 | 분기와 조건 해석 |
-| 5 | `r01_npc_dialogue_bank_v0_1.md`, `r01_npc_data_schema_draft_v0_1.md` | 구현 전달용 대사/필드 |
+| 5 | `r01_npc_dialogue_bank_v0_1.md`, `r01_npc_data_schema_draft_v0_1.md`, `r01_npc_data_schema_application_v0_1.md` | 구현 전달용 대사/필드/적용표 |
 | 6 | NPC별 드라마 초안/프로필 | 감정 원전과 말투 참고 |
 
 예외:
 
 - 데이터 필드명은 `r01_npc_data_schema_draft_v0_1.md`를 우선한다.
+- Vertical Slice 실제 구현 묶음과 최소 플래그는 `r01_npc_data_schema_application_v0_1.md`를 우선한다.
 - 실제 출력 대사는 `r01_npc_dialogue_bank_v0_1.md`를 우선한다.
 - 지역 구역명과 보스 명칭은 `r01_suburb.md`, `r01_boss.md`를 우선한다.
 
@@ -307,17 +312,18 @@ R01 문서 체계는 잠긴 것으로 본다.
 다음 큰 작업:
 
 ```text
-1. R01 NPC 데이터 스키마 적용
+1. E01 R02/R03/R04/R08 보조 NPC 최소안
 2. 시즌 1 큰 줄거리 잠금
 ```
 
-바로 다음 작업 포인터는 **R01 NPC 데이터 스키마 적용**으로 넘긴다.
+바로 다음 작업 포인터는 **E01 R02/R03/R04/R08 보조 NPC 최소안**으로 넘긴다.
 
 이유:
 
 - R01 NPC 12명은 이미 상세화되었다.
 - R01 지역/보스/상태값/대사/Vertical Slice 범위와 구현 목록도 정리되었다.
-- 이제 개별 지역 NPC를 더 늘리기보다, 구현 목록의 씬/오브젝트/플래그를 데이터 스키마 적용표로 접어야 한다.
+- R01 NPC 데이터 스키마 적용표도 작성되었다.
+- 이제 R01 안에서 새 NPC를 더 늘리지 않고, E01의 다른 지역 보조 NPC를 최소 수량으로 자른다.
 
 ---
 
@@ -330,5 +336,5 @@ R01은 이제 새 설정을 더 얹는 단계가 아니다.
 r01_suburb.md와 r01_boss.md를 본문 기준으로 삼고,
 NPC 로스터/상태값/선택/대사/스키마/Vertical Slice 문서를 목적별로 읽는다.
 
-다음 작업은 R01 NPC 데이터 스키마 적용이다.
+다음 작업은 E01 R02/R03/R04/R08 보조 NPC 최소안이다.
 ```

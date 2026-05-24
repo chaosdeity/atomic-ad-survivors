@@ -19,7 +19,7 @@ story/03_regions/r01_boss_npc_links_v0_1.md
 story/03_regions/r01_suburb.md
 
 다음 작업 포인터:
-R01 NPC 데이터 스키마 적용
+E01 R02/R03/R04/R08 보조 NPC 최소안
 ```
 
 ---

@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 마흔 부분으로 나눈다.
+이번 전달은 마흔한 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -150,19 +150,22 @@ OPEN-HOST의 핵심:
 35. R01_NPC_DATA_SCHEMA_DRAFT_V0_1.md
    - NPC 12명의 구현 공통 필드, npc_type, 선택 플래그, 대사 참조, 이름 해금 조건, 금지 방향을 샘플 데이터 블록으로 정리
 
-36. R01_VERTICAL_SLICE_NPC_SCOPE_V0_1.md
+36. R01_NPC_DATA_SCHEMA_APPLICATION_V0_1.md
+   - 스키마 초안을 Vertical Slice 구현 목록에 적용해 npc_id, 구현 묶음, 최소 플래그, 대사 참조, 이름 노출 정책을 정리
+
+37. R01_VERTICAL_SLICE_NPC_SCOPE_V0_1.md
    - R01 Vertical Slice에서 직접 대면, 음성/잔향, 오브젝트 흔적, 보스 후 잔향, P1 보류로 나눌 NPC 구현 범위 정리
 
-37. R01_BOSS_NPC_LINKS_V0_1.md
+38. R01_BOSS_NPC_LINKS_V0_1.md
    - R01 첫 보스와 OPEN-HOST, ROOM-12, PORCH-LINE, MAIL-LOOP, DINING-4, WELCOME-DESK, FRAME-LEFT의 장면/플래그/대사 연결 정리
 
-38. R01_BOSS.md
+39. R01_BOSS.md
    - 스마일 홈 가족심사 관리자 기준, 보스 패턴별 NPC 연결, 결절 처리 후 선택, FRAME-LEFT 보스 후 잔향, Vertical Slice 구현 범위 정리
 
-39. R01_SUBURB.md
+40. R01_SUBURB.md
    - R01 / 서부 스마일홈 지역 본문, 9개 구역, 상태값/태그, P0/보스/P1 시간축, Vertical Slice 구현 범위 정리
 
-40. R01_DOCUMENT_INDEX_V0_1.md
+41. R01_DOCUMENT_INDEX_V0_1.md
    - R01 최신 기준 문서 목록, 읽는 순서, 보조/이전 참고 문서, 금지 확장, 다음 작업 포인터 정리
 ```
 
@@ -204,7 +207,8 @@ OPEN-HOST의 핵심:
 29. R01 보스 문서 본문이 NPC 연결/상태값/Vertical Slice 범위를 보존한 채 정리되었는가?
 30. R01 지역 문서 본문이 최신 NPC/보스/Vertical Slice 기준과 충돌하지 않게 정리되었는가?
 31. R01 전체 문서 인덱스/정리가 최신 기준 문서와 보조/이전 참고 문서를 분리하는가?
-32. 다음 작업이 플레이어블 20인 로스터 설계도로 명확히 넘어가는가?
+32. R01 NPC 데이터 스키마 적용표가 Vertical Slice 구현 목록과 스키마 초안을 연결하는가?
+33. 다음 작업이 E01 R02/R03/R04/R08 보조 NPC 최소안으로 명확히 넘어가는가?
 ```
 
 ---
@@ -216,15 +220,15 @@ R01 전체 문서 인덱스/정리는 완료되었다.
 바로 다음 작업은 아래 문서로 넘긴다.
 
 ```text
-플레이어블 20인 로스터 설계도
+E01 R02/R03/R04/R08 보조 NPC 최소안
 ```
 
 목표:
 
 ```text
 R01 문서 체계를 더 확장하지 않고,
-윤서/PATCH/OPEN-HOST/리오와 신규 후보가 서로의 기능을 빼앗지 않는지 보며
-플레이어블 20인 로스터의 큰 틀을 설계한다.
+플레이어블 4~7번의 출신 지역과 충돌하지 않는 선에서
+R02/R03/R04/R08의 보조 NPC를 각 2~4명 이하로 최소 후보화한다.
 
-그 다음 큰 작업은 시즌 1 큰 줄거리 잠금이다.
+그 다음 큰 작업은 E02 첫 외부 슬라이스 NPC 예산 또는 시즌 1 큰 줄거리 잠금이다.
 ```

@@ -911,30 +911,31 @@ name_unlock/name_blocked는 1회성으로 처리한다.
 
 ---
 
-## 6. 다음 작업
+## 6. 적용 문서 / 다음 작업
 
-후속 구현 컷 작업:
-
-```text
-Vertical Slice NPC 구현 목록.
-```
-
-목표:
+후속 구현 컷 작업은 완료되었다.
 
 ```text
-R01 NPC 12명 전체를 한 번에 구현하려 하지 않는다.
-OPEN-HOST, ROOM-12, MAIL-LOOP, PORCH-LINE을 필수 축으로 두고,
-NAME-PAINTER, DINING-4, VAC-0를 있으면 좋은 축으로 둔다.
-P1 NPC는 보스 후 후폭풍 루트로 별도 우선순위를 잡는다.
-
-이 스키마 문서를 기준으로
-첫 구현에 필요한 npc_id, 선택 플래그, 상태값, 대사 참조, 이름 해금 조건을 추린다.
-```
-
-산출물 후보:
-
-```text
+Vertical Slice NPC 구현 목록:
 story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
+
+데이터 스키마 적용표:
+story/03_regions/r01_npc_data_schema_application_v0_1.md
+```
+
+적용 결과:
+
+```text
+R01 NPC 12명을 전부 데이터 등록 대상으로 두되,
+Vertical Slice 직접 대면은 OPEN-HOST / ROOM-12 / PORCH-LINE / DINING-4로 제한한다.
+MAIL-LOOP / NAME-PAINTER / VAC-0 / FRAME-LEFT는 잔향/오브젝트 중심으로 처리한다.
+DRAIN-MARK / SIGN-BACK / KEY-RING / WELCOME-DESK는 P1 보류 플래그만 저장한다.
+```
+
+다음 작업:
+
+```text
+E01 R02/R03/R04/R08 보조 NPC 최소안
 ```
 
 ---

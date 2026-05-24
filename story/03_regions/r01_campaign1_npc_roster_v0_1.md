@@ -58,6 +58,8 @@
   **v0.1 작성 완료. 직접 대면/음성 잔향/오브젝트 흔적/보스 후 잔향/P1 보류 범위를 재정리.**
 - R01 Vertical Slice NPC 구현 목록 상태:
   **v0.1 작성 완료. NPC별 구현 등급, 첫 노출 위치, 씬/오브젝트, 대사 수, 플래그, 보스 전후 연결, P1 보류 기준을 정리.**
+- R01 NPC 데이터 스키마 적용 상태:
+  **v0.1 작성 완료. NPC 12명의 npc_id, npc_type, 구현 묶음, 최소 플래그, 대사 참조, 이름 노출 정책을 Vertical Slice 기준으로 적용.**
 - R01 보스 문서와 NPC 연결 상태:
   **v0.1 작성 완료. 보스 진입/패턴/선택 결과에 OPEN-HOST, ROOM-12, MAIL-LOOP, PORCH-LINE, DINING-4, WELCOME-DESK, FRAME-LEFT 연결을 정리.**
 - R01 보스 문서 본문 정리 상태:
