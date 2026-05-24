@@ -32,10 +32,13 @@ E01 R02/R03/R04/R08 보조 NPC 최소안 12명 후보
 E01 NPC 대량 후보 풀 120개 후보
 E01 L5/L4 승격 후보 28개 재분류
 E01 프로필 v1.0 1차 필수 3명
+E01 L5/L4 묶음 산출물 4개
+전역 NPC 스토리 네트워크 제작 프롬프트
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
 이 숫자는 상세 기준이 존재하는 첫 기준점일 뿐이다.
+전역 NPC 340~480개는 아직 실제 산출물이 아니라 프롬프트 단계다.
 ```
 
 사용할 기준 문서:
@@ -49,9 +52,15 @@ story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
 story/03_regions/r06_member_rank_broker_profile_v1_0.md
 story/03_regions/r02_discharge_review_face_profile_v1_0.md
 story/03_regions/r03_final_return_review_officer_profile_v1_0.md
+story/03_regions/e01_l5_l4_short_profiles_v0_1.md
+story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
+story/03_regions/e01_npc_trace_background_bank_v0_1.md
+story/03_regions/e01_npc_name_location_registry_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
+docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md
+docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md
 docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md
 docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md
 docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md
@@ -510,6 +519,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 3. L5/L4 승격 후보 28개 재분류 완료.
 4. 승격 검토 결과 문서는 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
 5. 프로필 v1.0 1차 필수 3명 작성 완료.
-6. 다음은 v0.1 짧은 프로필, 대사 은행, 잔향/배경 은행, 이름/현실 위치 검산으로 넘긴다.
-7. L2/L1/L0와 하향 후보는 대사/잔향/배경 은행으로 넘긴다.
+6. E01 L5/L4 묶음 산출물 4개 작성 완료.
+7. v0.1 짧은 프로필, 대사 은행, 잔향/배경 은행, 이름/현실 위치 검산 결과를 기준으로 사용한다.
+8. 다음은 전역 NPC 스토리 네트워크 실제 산출 또는 E02 첫 외부 슬라이스 후보 풀로 넘긴다.
 ```

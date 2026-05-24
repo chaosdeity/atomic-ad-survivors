@@ -48,6 +48,15 @@ v0.1 짧은 프로필 묶음
 잔향/배경 은행
 이름/현실 위치 검산
 
+후속 상태:
+묶음 산출물 4개 작성 완료
+
+완료 파일:
+story/03_regions/e01_l5_l4_short_profiles_v0_1.md
+story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
+story/03_regions/e01_npc_trace_background_bank_v0_1.md
+story/03_regions/e01_npc_name_location_registry_v0_1.md
+
 이번 작업의 성격:
 NPC 제작 AI팀 산출물 제작 지시
 새 후보 생성 아님
@@ -623,3 +632,4 @@ NPC 제작 AI팀은 이번 작업에서 문서를 실제로 작성한다.
 하지만 이 프롬프트를 넘기는 방에서는 산출물을 대신 쓰지 않는다.
 
 이 프롬프트의 역할은 제작 범위와 금지 방향을 고정하는 것이다.
+후속 묶음 산출물 4개는 `docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md` 기준으로 작성 완료되었다.
