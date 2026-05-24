@@ -736,10 +736,10 @@ hub_supply_pressure_high_seen
 story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md
 ```
 
-다음 작업은 R01 Vertical Slice 구현 전환이다.
+R01 Vertical Slice 구현 전환 산출물은 작성 완료했다.
 
 ```text
-다음 산출물:
+완료 산출물:
 story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 
 목표:
@@ -760,6 +760,8 @@ R01 NPC 12명을 실제 Vertical Slice에서 어떻게 노출할지
 로봇 자율성 상승
 R01 보스 후 귀환
 ```
+
+다음 작업은 R01 NPC 데이터 스키마 적용이다.
 
 ---
 

@@ -65,6 +65,7 @@ NPC:
 | 대사 | 조건 대사 은행 완료 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` |
 | 데이터 구조 | 구현 스키마 초안 완료 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` |
 | Vertical Slice | 구현 범위 정리 완료 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
+| Vertical Slice 구현 목록 | 씬/오브젝트/대사 수/플래그 컷 완료 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
 | 작업 포인터 | 다음 작업 정리 완료 | `story/03_regions/r01_remaining_work_list_v0_1.md` |
 
 ---
@@ -147,9 +148,10 @@ NPC 로스터 단계에서 확정할 것:
 | 순서 | 문서 | 읽는 이유 |
 | ---: | --- | --- |
 | 1 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` | 직접 대면, 음성/잔향, 오브젝트 흔적, 선택 플래그, 후속 보류 범위를 본다. |
-| 2 | `story/03_regions/r01_suburb.md` | 지역 본문 안의 구현 우선순위와 구역별 노출을 대조한다. |
-| 3 | `story/03_regions/r01_boss.md` | 보스 관련 실제 구현 범위와 후속 보류 범위를 확인한다. |
-| 4 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` | 최소 구현 데이터 필드와 플래그 이름을 확인한다. |
+| 2 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` | NPC별 구현 등급, 첫 노출 위치, 씬/오브젝트, 대사 수, 플래그를 확인한다. |
+| 3 | `story/03_regions/r01_suburb.md` | 지역 본문 안의 구현 우선순위와 구역별 노출을 대조한다. |
+| 4 | `story/03_regions/r01_boss.md` | 보스 관련 실제 구현 범위와 후속 보류 범위를 확인한다. |
+| 5 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` | 최소 구현 데이터 필드와 플래그 이름을 확인한다. |
 
 Vertical Slice 단계에서 확정할 것:
 
@@ -184,7 +186,8 @@ Vertical Slice 단계에서 확정할 것:
 | 3 | `story/03_regions/r01_npc_choice_consequence_matrix_v0_1.md` |
 | 4 | `story/03_regions/r01_p1_npc_branch_map_v0_1.md` |
 | 5 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
-| 6 | `story/03_regions/r01_remaining_work_list_v0_1.md` |
+| 6 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
+| 7 | `story/03_regions/r01_remaining_work_list_v0_1.md` |
 
 기획팀은 상태값을 RPG 능력치처럼 쓰지 않는다. 상태값은 R01의 생활, 윤리, 절차 압력을 읽히게 하는 장치다.
 
@@ -196,8 +199,9 @@ Vertical Slice 단계에서 확정할 것:
 | 2 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` |
 | 3 | `story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md` |
 | 4 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` |
-| 5 | `story/03_regions/r01_boss.md` |
-| 6 | `story/03_regions/r01_suburb.md` |
+| 5 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` |
+| 6 | `story/03_regions/r01_boss.md` |
+| 7 | `story/03_regions/r01_suburb.md` |
 
 구현팀은 스키마와 대사 조건을 먼저 보고, 지역/보스 문서로 연출 의도를 확인한다.
 
@@ -222,6 +226,7 @@ Vertical Slice 단계에서 확정할 것:
 | 대사 | `story/03_regions/r01_npc_dialogue_bank_v0_1.md` | 조건 대사 은행 |
 | 데이터 | `story/03_regions/r01_npc_data_schema_draft_v0_1.md` | 구현 스키마 초안 |
 | 구현 범위 | `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md` | Vertical Slice 범위 |
+| 구현 목록 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` | NPC별 씬/오브젝트/플래그 컷 |
 | 작업 관리 | `story/03_regions/r01_remaining_work_list_v0_1.md` | 남은 작업과 다음 포인터 |
 | 전달 메모 | `story/03_regions/r01_npc_story_team_transfer_note_v0_1.md` | 스토리팀 전달 요약 |
 

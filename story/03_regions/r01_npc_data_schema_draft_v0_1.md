@@ -913,10 +913,10 @@ name_unlock/name_blocked는 1회성으로 처리한다.
 
 ## 6. 다음 작업
 
-바로 다음 작업:
+후속 구현 컷 작업:
 
 ```text
-Vertical Slice 구현 우선순위 재정리.
+Vertical Slice NPC 구현 목록.
 ```
 
 목표:
@@ -934,7 +934,7 @@ P1 NPC는 보스 후 후폭풍 루트로 별도 우선순위를 잡는다.
 산출물 후보:
 
 ```text
-story/03_regions/r01_vertical_slice_npc_implementation_priority_v0_1.md
+story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 ```
 
 ---

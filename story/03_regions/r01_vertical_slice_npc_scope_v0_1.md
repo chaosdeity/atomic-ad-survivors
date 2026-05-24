@@ -9,6 +9,9 @@ v0.1 범위 설계 문서
 용도:
 R01 Vertical Slice에서 실제 구현할 NPC, 흔적, 대사, 선택 플래그의 최소 범위를 확정한다.
 
+후속 구현 목록:
+`story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`
+
 전제:
 이번 문서는 실제 게임 코드가 아니다.
 R01 NPC 12명을 전부 직접 등장시키지 않는다.
@@ -43,12 +46,11 @@ R01의 질문을 플레이어가 처음 몸으로 느끼는 구간이다.
 다음 작업 포인터:
 
 ```text
-R01 보스 문서와 NPC 연결
+R01 Vertical Slice NPC 구현 목록
 
 이유:
-Vertical Slice 범위가 정리되었으므로,
-이제 첫 보스 전/후에 OPEN-HOST, ROOM-12, DINING-4, FRAME-LEFT, MAIL-LOOP, PORCH-LINE이
-어떤 장면 단위로 보스 문서와 연결되는지 고정해야 한다.
+Vertical Slice 범위와 보스 연결은 정리되었으므로,
+이제 각 NPC를 실제 씬/오브젝트/대사 수/플래그 단위로 자른 구현 목록을 둔다.
 ```
 
 ---
@@ -358,37 +360,29 @@ P1 NPC를 초반 서브퀘스트로 많이 연다.
 
 Vertical Slice NPC 범위 재정리는 완료 판정으로 둔다.
 
-바로 다음 작업은 아래가 먼저다.
+후속 구현 목록은 작성 완료 기준으로 둔다.
 
 ```text
-R01 보스 문서와 NPC 연결
+story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
+```
+
+그 다음 작업은 아래가 먼저다.
+
+```text
+R01 NPC 데이터 스키마 적용
 ```
 
 권장 산출물:
 
 ```text
-story/03_regions/r01_boss_npc_links_v0_1.md
-```
-
-이 작업이 플레이어블 20인 로스터 설계도보다 먼저인 이유:
-
-```text
-Vertical Slice 범위가 보스 전/후 NPC 장면을 직접 자르고 있기 때문이다.
-OPEN-HOST, ROOM-12, MAIL-LOOP, PORCH-LINE, DINING-4, FRAME-LEFT를
-보스 문서의 장면/플래그/대사 출력 지점에 먼저 연결해야 한다.
-
-그 다음에야 플레이어블 20인 로스터에서 OPEN-HOST의 장기 전환 후보성을
-R01 NPC 기능과 충돌하지 않게 검토할 수 있다.
+story/03_regions/r01_npc_data_schema_application_v0_1.md
 ```
 
 다음 작업에서 확인할 항목:
 
 ```text
-1. 보스 진입 전 OPEN-HOST 안내 검증이 전투/연출 문서에 어디 붙는가?
-2. ROOM-12 우회 배급 또는 보류가 보스 전 빈 가족 칸 압박을 어떻게 바꾸는가?
-3. MAIL-LOOP 호출 보류가 보스 직전 가족 수령 대기를 어떻게 줄이는가?
-4. PORCH-LINE 유연한 순번표가 보스 후 해산 압박을 어떻게 낮추는가?
-5. DINING-4 네 번째 자리 보류가 보스 패턴/연출의 어느 빈칸과 연결되는가?
-6. FRAME-LEFT 보스 후 잔향이 복희/세븐/이름 조각 처리와 어떻게 연결되는가?
-7. WELCOME-DESK는 직접 NPC가 아니라 상담표/질문 압박으로 어디까지 충분한가?
+1. 구현 목록의 씬 ID 후보를 데이터 스키마 필드로 옮긴다.
+2. 필수/선택 플래그를 choice_flags와 dialogue_refs에 연결한다.
+3. 직접 대면 NPC와 잔향형 NPC의 npc_type을 다시 확인한다.
+4. P1 보류 NPC가 Vertical Slice 완료 조건에 섞이지 않게 한다.
 ```
