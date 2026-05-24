@@ -1,12 +1,12 @@
 # Atomic Ad Survivors E02 이후 광역권 확장 원칙 v0.1
 
-상태: v0.1 기준 문서  
-목적: E01 이후 실제 지구 광역권을 어떤 순서, 규모, 캐릭터 연결로 열지 정한다.  
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`
+상태: v0.1 기준 문서
+목적: E01 이후 실제 지구 광역권을 어떤 순서, 규모, 캐릭터 연결로 열지 정한다.
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`
 
 ## 0. 판정 요약
 
-E02 이후 확장은 96개 캠페인을 전부 한꺼번에 펼치는 작업이 아니다.  
+E02 이후 확장은 96개 캠페인을 전부 한꺼번에 펼치는 작업이 아니다.
 E02 이후 확장은 `실제 지구 인프라 -> 권역별 2차 붕괴 -> 캐릭터 심화 -> 로컬 캠페인` 순서로 열어야 한다.
 
 잠금:
@@ -18,6 +18,7 @@ E02 이후 확장은 `실제 지구 인프라 -> 권역별 2차 붕괴 -> 캐릭
 - 한 시즌/확장팩은 보통 1개 광역권 안의 1~3개 정식 캠페인을 깊게 다룬다.
 - 96개 정식 캠페인 밖에 새 캠페인을 즉흥 추가하지 않는다.
 - 실제 지명 인식 밀도는 계속 `100명 중 10명 정도`를 목표로 한다.
+- E02 이후 소형 로컬 노드도 `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`의 부모 캠페인 현실 앵커 안에서만 만든다.
 
 가장 큰 위험:
 
@@ -56,6 +57,13 @@ E01에서 확인한 캐릭터 원점과 캠페인 계열을 다른 실제 인프
 ```text
 E01 = 풀 시즌 광역권 예시.
 E02 이후 기본값 = 시즌 슬라이스.
+```
+
+추가 잠금:
+
+```text
+시즌 슬라이스는 작게 열어도 현실 위치가 없는 임시 캠페인으로 만들지 않는다.
+모든 로컬 노드는 부모 정식 캠페인 ID와 관리자용 현실 인프라 앵커를 가진다.
 ```
 
 ## 4. E02 이후 해금 원칙

@@ -2,7 +2,7 @@
 
 상태: v0.3 기반 잠금 반영 / v0.1 작업 정리
 목적: 지금까지 완료한 세계지도/캠페인 작업과 아직 하지 않은 작업을 분리한다.
-기준 문서: `docs/world/WORLD_FOUNDATION_LOCK_V0_3.md`, `docs/world/WORLD_CAUSE_REVIEW_RESULT_V0_1.md`, `docs/world/LEGACY_TERM_MIGRATION_V0_1.md`, `docs/world/WORLD_FOUNDATION_LOCK_V0_2.md`, `docs/world/WORLD_CAUSE_REVIEW_PROMPT_V0_1.md`, `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_UI_WIREFRAME_V0_1.md`, `docs/world/E01_WORLD_MAP_ART_COLOR_DIRECTION_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md`, `docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`, `docs/world/WORLD_LORE_LOCK_V0_1.md`
+기준 문서: `docs/world/WORLD_FOUNDATION_LOCK_V0_3.md`, `docs/world/WORLD_CAUSE_REVIEW_RESULT_V0_1.md`, `docs/world/LEGACY_TERM_MIGRATION_V0_1.md`, `docs/world/WORLD_FOUNDATION_LOCK_V0_2.md`, `docs/world/WORLD_CAUSE_REVIEW_PROMPT_V0_1.md`, `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_UI_WIREFRAME_V0_1.md`, `docs/world/E01_WORLD_MAP_ART_COLOR_DIRECTION_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md`, `docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`, `docs/world/WORLD_LORE_LOCK_V0_1.md`
 
 ## 0. 결론
 
@@ -14,6 +14,7 @@
 - 현재 시점 14년 후 기준.
 - 캠페인 정의.
 - 전 지구 96개 정식 캠페인 목록.
+- 전 지구 96개 정식 캠페인의 관리자용 현실 위치/도시권/인프라 앵커.
 - E01 첫 시즌 40개 로컬 노드.
 - E01 관리자용 현실 위치/도시권/인프라 축 매트릭스.
 - E01 노드 좌표 블록아웃.
@@ -65,6 +66,7 @@
 | 시간축 | 현재 시점 대사고 14년 후로 고정 | `WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md` |
 | 자원명 | 보급태그/식량태그/충전태그 등 태그 계열 UI 명칭 잠금 | `WORLD_TERMINOLOGY_LOCK_V0_1.md` |
 | 전 지구 구조 | 12개 광역권 x 8개 계열 = 96개 정식 캠페인 | `GLOBAL_CAMPAIGN_CATALOG_V0_1.md` |
+| 전 지구 관리자 위치 | 12개 광역권과 96개 정식 캠페인의 현실 도시권/인프라 앵커, 소형 로컬 노드 위치 지정 규칙 | `GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md` |
 | 실제 지구 기반 | 실루엣+가명, 10% 인식 밀도 기준 정리 | `GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md` |
 | E01 로컬 | 첫 시즌 40개 로컬 노드 지정 | `E01_FIRST_SEASON_LOCAL_NODES_V0_1.md` |
 | E01 관리자 위치 | 유저에게 숨길 현실 도시권/인프라 축과 로컬 노드별 관리자 위치 명시 | `E01_ADMIN_REAL_LOCATION_MAP_V0_1.md` |

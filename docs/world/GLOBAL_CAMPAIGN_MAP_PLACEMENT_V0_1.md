@@ -2,13 +2,14 @@
 
 상태: v0.1 지도 제작 전 배치 기준
 목적: 96개 정식 캠페인을 실제 지구 실루엣 위에 배치하기 위한 광역권/방향/노출 규칙을 정한다.
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
 
 ## 0. 판정 요약
 
 - 월드맵은 실제 지구 지도 위에 캠페인 생태를 덮은 지도다.
 - 유저용 지도는 `실루엣+가명` 기반이다. 100명 중 10명 정도가 실제 장소를 알아채는 밀도를 목표로 한다.
 - 실명 지명은 초반에 직접 노출하지 않는다. 해안선, 강, 산맥, 항만/공항 거리, 도시 밀도, 교통축, 랜드마크 실루엣으로 암시한다.
+- 전 지구 96개 정식 캠페인의 관리자용 현실 위치와 인프라 축은 `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 잠근다.
 - E01의 관리자용 현실 위치와 제작 세부 앵커는 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 별도 관리한다.
 - 전 지구에는 12개 광역권이 있고, 각 광역권마다 8개 정식 캠페인이 있다.
 - E01 한반도 서부 수도권-항만-산업 벨트가 첫 시즌 광역권이다.
@@ -214,3 +215,4 @@ E02 이후 광역권의 추천 해금 순서와 시즌 슬라이스 규모는 `d
 - 보스 세부화가 96개를 조급하게 확정하지 않고 시즌 단위로 열리는가?
 - 침묵권이 캠페인이 아니라 예외 공간으로 유지되는가?
 - 월드맵 정보 공개가 보상처럼 작동하는가?
+- 관리자용 현실 위치가 없는 정식 캠페인이나 소형 로컬 노드가 생기지 않게 막았는가?

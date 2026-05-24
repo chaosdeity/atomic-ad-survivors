@@ -2,7 +2,7 @@
 
 상태: v0.1 기준 문서 후보
 목적: 전 세계 공통 원인, 권역별 2차 붕괴, 로컬 캠페인 개별 원인을 분리해 세계지도/지역/보스/기믹 설계의 기준으로 삼는다.
-연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/population_model.md`, `story/01_bible/campaign_registration_model_0_2.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `story/03_regions/r01_suburb.md`
+연결 문서: `story/01_bible/world_overview.md`, `story/01_bible/population_model.md`, `story/01_bible/campaign_registration_model_0_2.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `story/03_regions/r01_suburb.md`
 
 ## 0. 판정 요약
 
@@ -186,6 +186,8 @@ v0.1 기준으로 `전 지구에 10만 개 이상의 자립 캠페인이 있다`
 정식 캠페인 아래 주요 로컬 노드 후보: 전 지구 약 600~1200개
 광고 파편/잔여 절차: 수천~수만 개 이상, 단 정식 캠페인으로 세지 않음
 ```
+
+전 지구 96개 정식 캠페인의 관리자용 현실 위치와 인프라 앵커는 `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`를 기준으로 한다. 정식 캠페인 아래 소형 로컬 노드도 부모 캠페인의 현실 앵커 없이 만들지 않는다.
 
 여기서 `96개`는 8개 핵심 캠페인 계열이 12개 실제 지구 광역권에 변형되어 남은 수량이다. 예를 들어 가족/주거, 의료/보험, 물류/반품, 충전/정품, 방송/추천, 멤버십/결제, 검역/통행, 비상보급/대피 계열이 지역 인프라와 결합해 서로 다른 정식 캠페인으로 굳어진다.
 

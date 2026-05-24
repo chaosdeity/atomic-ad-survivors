@@ -2,7 +2,7 @@
 
 상태: v0.3 기반 잠금 반영 / v0.1 제작 잠금표
 목적: `WORLD_FOUNDATION_LOCK_V0_3.md`에서 정리한 세계 기반을 상위 기준으로 두고, 월드맵, P1 확장, 캐릭터 해금, E02 이후 확장, 용어 기준 중 제작자가 바꾸면 안 되는 항목과 아직 열려 있는 항목을 분리한다.
-연결 문서: `docs/world/WORLD_FOUNDATION_LOCK_V0_3.md`, `docs/world/WORLD_CAUSE_REVIEW_RESULT_V0_1.md`, `docs/world/LEGACY_TERM_MIGRATION_V0_1.md`, `docs/world/WORLD_FOUNDATION_LOCK_V0_2.md`, `docs/world/WORLD_CAUSE_REVIEW_PROMPT_V0_1.md`, `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_UI_WIREFRAME_V0_1.md`, `docs/world/E01_WORLD_MAP_ART_COLOR_DIRECTION_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md`, `docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md`, `docs/world/WORLD_MAP_REMAINING_TASKS_V0_1.md`
+연결 문서: `docs/world/WORLD_FOUNDATION_LOCK_V0_3.md`, `docs/world/WORLD_CAUSE_REVIEW_RESULT_V0_1.md`, `docs/world/LEGACY_TERM_MIGRATION_V0_1.md`, `docs/world/WORLD_FOUNDATION_LOCK_V0_2.md`, `docs/world/WORLD_CAUSE_REVIEW_PROMPT_V0_1.md`, `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_UI_WIREFRAME_V0_1.md`, `docs/world/E01_WORLD_MAP_ART_COLOR_DIRECTION_V0_1.md`, `docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md`, `docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md`, `docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md`, `docs/world/WORLD_MAP_REMAINING_TASKS_V0_1.md`
 
 ## 0. 판정 요약
 
@@ -18,6 +18,7 @@
 - 거의 사라진 것은 생물학적 인간 전체가 아니라 자유 인간 사회다.
 - 전 지구 정식 캠페인은 `12개 광역권 x 8개 계열 = 96개`로 둔다.
 - 첫 시즌 E01은 한반도 서부 수도권-항만-산업 벨트의 실루엣/가명 지도다.
+- 전 지구 96개 정식 캠페인은 모두 `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`의 관리자용 현실 위치와 인프라 앵커를 가진다.
 - E01의 관리자용 현실 권역과 인프라 축은 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`를 기준으로 하되, 유저용 지도에는 실명 지명을 직접 노출하지 않는다.
 - P0 첫 화면은 R08/R01의 5개 노드만 선명하게 보여준다.
 - P1은 첫 보스 직후 모든 지역을 여는 구조가 아니라, R01/R08 재정렬 후 R03 또는 R02로 확장하는 구조다.
@@ -145,6 +146,7 @@
 - 유저용 지도는 실루엣+가명 기반이다.
 - 목표 인식 밀도는 100명 중 10명 정도가 실제 장소를 알아채는 수준이다.
 - 실제 지명은 후반 기록, 복구 로그, 일부 단서에서만 제한적으로 암시한다.
+- 제작자는 96개 정식 캠페인과 그 아래 소형 로컬 노드를 만들 때 관리자용 현실 위치를 반드시 지정한다.
 
 금지:
 

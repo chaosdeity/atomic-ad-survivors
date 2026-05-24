@@ -1,8 +1,8 @@
 # Atomic Ad Survivors 전 지구 정식 캠페인 목록 v0.1
 
-상태: v0.1 지도 제작 전 캠페인 카탈로그  
-목적: 실제 지구 지도 위에 올릴 96개 정식 캠페인을 먼저 고정한다.  
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
+상태: v0.1 지도 제작 전 캠페인 카탈로그
+목적: 실제 지구 지도 위에 올릴 96개 정식 캠페인을 먼저 고정한다.
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
 
 ## 0. 사용 원칙
 
@@ -10,6 +10,7 @@
 - 이 문서의 96개는 모두 세계 안에 존재한다.
 - 유저에게는 잠금 해제 전까지 전부 노출하지 않는다.
 - 실제 지도 제작은 이 목록의 `지도 앵커`를 먼저 배치한 뒤, 각 캠페인 아래 로컬 노드를 붙인다.
+- 96개 정식 캠페인의 관리자용 현실 위치/도시권/인프라 축은 `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`를 따른다.
 - 실명 지리는 내부 기준으로 쓰고, 유저용 지도는 실루엣+가명으로 노출한다.
 - 새 캠페인을 즉흥 추가하지 않는다. 새 지역/보스/확장팩 아이디어는 먼저 이 96개 중 하나에 배정한다.
 
