@@ -58,6 +58,7 @@ E02 실제 JSON 파일 6개
 전역 NPC 풀스케일 목표 사다리
 전역 NPC 2,048 1차 검수 배치
 전역 NPC 검수팀 프롬프트
+전역 NPC 검수 보고서
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -94,6 +95,7 @@ story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
 story/03_regions/global_npc_full_scale_target_ladder_v0_1.md
 story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
+story/03_regions/global_npc_review_report_v0_1.md
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 story/03_regions/e02_npc_promotion_candidates_v0_1.md
 story/03_regions/e02_locker_recipient_profile_v0_1.md
@@ -628,5 +630,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 42. 전역 NPC 2,048 1차 검수 배치도 작성 완료되었다.
 43. E01은 120개 고정, E02~E12와 cross_region만 증분 배정했다.
 44. 전역 NPC 검수팀 프롬프트도 2,048개 기준으로 갱신 완료되었다.
-45. 다음은 전역 NPC 검수 보고서 작성으로 넘긴다.
+45. 전역 NPC 검수 보고서도 작성 완료되었다.
+46. 2,048 슬롯 조건부 통과, L5/L4 192개만 이름/직접 대면 검토, L3 이하 1,856개 하향으로 판정했다.
+47. 다음은 전역 NPC 통과 슬롯 v0.1 정리로 넘긴다.
 ```

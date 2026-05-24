@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-전역 NPC 2,048 1차 검수 배치
+전역 NPC 검수 보고서
 
 현재 NPC 트랙 다음 작업:
-전역 NPC 검수 보고서 작성
+전역 NPC 통과 슬롯 v0.1 정리
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -92,6 +92,9 @@ story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 
 전역 NPC 검수팀 프롬프트:
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
+
+전역 NPC 검수 보고서:
+story/03_regions/global_npc_review_report_v0_1.md
 
 R08/R07 v1.0 보류 해제 게이트:
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
@@ -707,5 +710,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 47. 전역 NPC 2,048 1차 검수 배치도 작성 완료되었다.
 48. E01은 120개 고정, E02~E12와 cross_region만 증분 배정했다.
 49. 전역 NPC 검수팀 프롬프트도 2,048개 기준으로 갱신 완료되었다.
-50. 다음 산출물은 전역 NPC 검수 보고서 작성을 권장한다.
+50. 전역 NPC 검수 보고서도 작성 완료되었다.
+51. 2,048 슬롯 조건부 통과, L5/L4 192개만 이름/직접 대면 검토, L3 이하 1,856개 하향으로 판정했다.
+52. 다음 산출물은 전역 NPC 통과 슬롯 v0.1 정리를 권장한다.
 ```
