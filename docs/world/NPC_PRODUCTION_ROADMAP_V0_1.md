@@ -6,6 +6,8 @@
 
 추가 데이터 산출물: `docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md`, `data/e02/first_slice_applications.json`, `data/e02/first_slice_object_texts.json`, `data/e02/first_slice_reactions.json`, `data/e02/first_slice_flags.json`, `data/e02/first_slice_state_keys.json`, `data/e02/first_slice_validation.json`
 
+추가 검수 산출물: `story/03_regions/global_npc_name_origin_review_v0_1.md`
+
 ## 0. 판정
 
 ```text
@@ -398,6 +400,7 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 | NPC-7.13 | E02 실제 JSON 파일 생성 | `docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md`, `data/e02/first_slice_applications.json`, `data/e02/first_slice_object_texts.json`, `data/e02/first_slice_reactions.json`, `data/e02/first_slice_flags.json`, `data/e02/first_slice_state_keys.json`, `data/e02/first_slice_validation.json` | 완료. 허용된 6개 JSON만 생성하고 `validation.actual_files_created=true`로 갱신 |
 | NPC-7.14 | E02 엔진 변환/로더 계약 검토 또는 데이터 적용 QA | 후보 문서 미정 | 다음. JSON을 런타임 직접 로딩 계약으로 확정하지 않고 변환/검증 단계부터 검토 |
 | NPC-8 | 전역 NPC 이름/위치/노출 레지스트리 | `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md` | 완료. 중복 이름과 캠페인 없는 NPC 방지 |
+| NPC-8.1 | 전역 NPC 이름/원점 검수 | `story/03_regions/global_npc_name_origin_review_v0_1.md` | 완료. E01 한국권 과밀 생산 금지, E02 이후 한국어 임시명 금지, L5/L4 이름 게이트 잠금 |
 
 ### 9.2 플레이어블 트랙
 
@@ -419,7 +422,7 @@ NPC-6.6 E01 프로필 v1.0 1차 상세화 완료.
 NPC-6.7 E01 L5/L4 묶음 산출물 완료.
 NPC-6.9 전역 NPC 스토리 네트워크 1차 실제 산출 완료.
 NPC-6.10 R08/R07 v1.0 보류 해제 게이트 완료.
-다음은 E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA, 또는 11번 CLAUSE-11 상세 결재로 진행한다.
+다음은 기존 NPC legacy 이름 마이그레이션으로 진행한다.
 
 병렬:
 PC-1은 완료되었고, 플레이어블 트랙은 11번 CLAUSE-11 상세 결재로 진행한다.
@@ -457,7 +460,8 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 21. E02 실제 JSON 파일 생성 여부 결정 문서가 조건부 생성 가능으로 작성되어 있고 실제 `data/e02/*.json` 파일은 생성하지 않았다.
 22. E02 실제 JSON 파일 생성 조건 해소 문서가 조건 해소 판정으로 작성되어 있고 해당 문서 시점에서는 실제 `data/e02/` 디렉터리와 JSON 파일을 생성하지 않았다.
 23. E02 실제 JSON 파일 생성 프롬프트와 `data/e02/` 6개 JSON 파일이 작성되어 있고 `validation.actual_files_created=true`를 유지한다.
-24. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
+24. 전역 NPC 이름/원점 검수 문서가 작성되어 있고 E02 이후 한국어 임시명으로 NPC 슬롯을 채우지 않는 원칙을 유지한다.
+25. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
 
 판정:
 
@@ -465,5 +469,5 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 통과.
 이제 NPC는 전체 숫자부터 늘리지 말고,
 보급소 5명 기준, R01 구현 컷, E01 보조 NPC 최소안, E01 NPC 대량 후보 풀, E01 L5/L4 승격 후보 검토, E01 묶음 산출물 4개를 유지한 채
-E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA, 또는 11번 CLAUSE-11 상세 결재로 다음 깊이를 나눈다.
+기존 NPC legacy 이름 마이그레이션으로 다음 깊이를 나눈다.
 ```

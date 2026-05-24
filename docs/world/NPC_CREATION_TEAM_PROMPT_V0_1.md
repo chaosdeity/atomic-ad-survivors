@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-E02 실제 JSON 파일 생성
+전역 NPC 이름/원점 검수
 
 현재 NPC 트랙 다음 작업:
-E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재
+기존 NPC legacy 이름 마이그레이션
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -71,6 +71,9 @@ story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md
 story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md
 story/06_characters/playable_global_npc_link_matrix_v0_1.md
 story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
+
+전역 NPC 이름/원점 검수:
+story/03_regions/global_npc_name_origin_review_v0_1.md
 
 R08/R07 v1.0 보류 해제 게이트:
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
@@ -673,5 +676,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 34. 판정은 조건 해소이며 해당 문서 시점에서는 실제 data/e02/ 디렉터리와 JSON 파일을 만들지 않았다.
 35. E02 실제 JSON 파일 생성 프롬프트도 작성 완료되었다.
 36. 실제 data/e02/ 디렉터리와 허용된 6개 JSON 파일을 생성했고 validation.actual_files_created는 true다.
-37. 다음 산출물은 E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재를 권장한다.
+37. 전역 NPC 이름/원점 검수도 작성 완료되었다.
+38. E01 한국권 과밀 생산 금지, E02 이후 한국어 임시명 금지, L5/L4 이름 게이트를 잠갔다.
+39. 다음 산출물은 기존 NPC legacy 이름 마이그레이션을 권장한다.
 ```

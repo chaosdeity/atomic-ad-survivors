@@ -51,6 +51,7 @@ E02 실제 JSON 파일 생성 여부 결정
 E02 실제 JSON 파일 생성 조건 해소
 E02 실제 JSON 파일 생성 프롬프트
 E02 실제 JSON 파일 6개
+전역 NPC 이름/원점 검수
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -78,6 +79,7 @@ story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md
 story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md
 story/06_characters/playable_global_npc_link_matrix_v0_1.md
 story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
+story/03_regions/global_npc_name_origin_review_v0_1.md
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 story/03_regions/e02_npc_promotion_candidates_v0_1.md
 story/03_regions/e02_locker_recipient_profile_v0_1.md
@@ -599,5 +601,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 29. 판정은 조건 해소이며 해당 문서 시점에서는 실제 data/e02/ 디렉터리와 JSON 파일을 만들지 않았다.
 30. E02 실제 JSON 파일 생성 프롬프트도 작성 완료되었다.
 31. 실제 data/e02/ 디렉터리와 허용된 6개 JSON 파일을 생성했고 validation.actual_files_created는 true다.
-32. 다음은 E02 엔진 변환/로더 계약 검토, E02 데이터 적용 QA 또는 CLAUSE-11 상세 결재로 넘긴다.
+32. 전역 NPC 이름/원점 검수도 작성 완료되었다.
+33. E01 한국권 과밀 생산 금지, E02 이후 한국어 임시명 금지, L5/L4 이름 게이트를 잠갔다.
+34. 다음은 기존 NPC legacy 이름 마이그레이션으로 넘긴다.
 ```
