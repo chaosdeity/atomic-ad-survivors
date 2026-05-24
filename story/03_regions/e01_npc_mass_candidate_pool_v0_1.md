@@ -333,12 +333,21 @@ L5/L4 후보는 총 28개다.
 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
 ```
 
-바로 다음 산출물:
+완료된 1차 산출물:
 
 ```text
 story/03_regions/r06_member_rank_broker_profile_v1_0.md
 story/03_regions/r02_discharge_review_face_profile_v1_0.md
 story/03_regions/r03_final_return_review_officer_profile_v1_0.md
+```
+
+바로 다음 산출물:
+
+```text
+story/03_regions/e01_l5_l4_short_profiles_v0_1.md
+story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
+story/03_regions/e01_npc_trace_background_bank_v0_1.md
+story/03_regions/e01_npc_name_location_registry_v0_1.md
 ```
 
 완료 기준:

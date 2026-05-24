@@ -53,7 +53,7 @@ E01 L5/L4 승격 후보 검토:
 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
 
 현재 NPC 트랙 다음 작업:
-E01 프로필 v1.0 1차 상세화
+E01 L5/L4 묶음 산출물 작성
 ```
 
 ---
@@ -549,6 +549,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 5. E01 대량 후보 풀은 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md를 기준으로 사용한다.
 6. E01 L5/L4 승격 후보 검토도 완료되었다.
 7. 승격 검토 결과는 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
-8. 다음 산출물은 프로필 v1.0 우선 후보 중 상위 3~5명 상세화를 권장한다.
-9. 가장 추천하는 1차 묶음은 r06_mass_001, r02_mass_001, r03_mass_001이다.
+8. E01 프로필 v1.0 1차 필수 3명도 작성 완료되었다.
+9. 완료 산출물은 r06_member_rank_broker_profile_v1_0.md, r02_discharge_review_face_profile_v1_0.md, r03_final_return_review_officer_profile_v1_0.md다.
+10. 다음 산출물은 e01_l5_l4_short_profiles_v0_1.md, e01_l5_l4_dialogue_bank_v0_1.md, e01_npc_trace_background_bank_v0_1.md, e01_npc_name_location_registry_v0_1.md를 권장한다.
 ```

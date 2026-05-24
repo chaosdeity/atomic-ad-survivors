@@ -31,6 +31,7 @@ R01 지역 NPC 12명
 E01 R02/R03/R04/R08 보조 NPC 최소안 12명 후보
 E01 NPC 대량 후보 풀 120개 후보
 E01 L5/L4 승격 후보 28개 재분류
+E01 프로필 v1.0 1차 필수 3명
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -45,6 +46,9 @@ docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md
 story/03_regions/e01_support_npc_minimum_plan_v0_1.md
 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md
+story/03_regions/r06_member_rank_broker_profile_v1_0.md
+story/03_regions/r02_discharge_review_face_profile_v1_0.md
+story/03_regions/r03_final_return_review_officer_profile_v1_0.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -505,6 +509,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 2. 결과 문서는 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md를 기준으로 사용한다.
 3. L5/L4 승격 후보 28개 재분류 완료.
 4. 승격 검토 결과 문서는 story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
-5. 다음은 프로필 v1.0 우선 후보 중 상위 3~5명만 상세화한다.
-6. L2/L1/L0와 하향 후보는 대사/잔향/배경 은행으로 넘긴다.
+5. 프로필 v1.0 1차 필수 3명 작성 완료.
+6. 다음은 v0.1 짧은 프로필, 대사 은행, 잔향/배경 은행, 이름/현실 위치 검산으로 넘긴다.
+7. L2/L1/L0와 하향 후보는 대사/잔향/배경 은행으로 넘긴다.
 ```
