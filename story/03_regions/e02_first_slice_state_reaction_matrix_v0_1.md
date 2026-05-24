@@ -166,7 +166,8 @@ extraction_stability, residence_tag, supply_pressure 모두 포함
 | 다음 산출물 | 목적 |
 |---|---|
 | `story/03_regions/e02_first_slice_object_text_bank_v0_1.md` | 위 상태 반응을 오브젝트 문구/로그/자막으로 구현 |
-| E02 상태값 데이터 적용표 | 구현 단계에서 `reaction_id`, 상태 키, 플래그, 오브젝트 ID를 데이터로 연결 |
+| `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. 구현 단계에서 `reaction_id`, 상태 키, 플래그, 오브젝트 ID를 데이터로 연결 |
+| `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 다음. 새 NPC/새 ID 없이 노출 조건과 금지 해금을 검산 |
 | `story/06_characters/clause_11_playable_decision_v0_1.md` | 플레이어블 트랙의 다음 상세 결재 |
 
 최종 판정:

@@ -159,7 +159,7 @@ story/03_regions/e02_first_slice_object_text_bank_v0_1.md
 
 | 다음 산출물 | 목적 |
 |---|---|
-| E02 상태값 데이터 적용표 | `reaction_id`와 `object_text_id`를 구현 데이터로 연결 |
+| `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. `reaction_id`와 `object_text_id`를 구현 데이터로 연결 |
 | E02 첫 외부 슬라이스 QA 체크리스트 | 새 NPC 없이 상태 반응/오브젝트 문구만 노출되는지 검산 |
 | `story/06_characters/clause_11_playable_decision_v0_1.md` | 플레이어블 트랙의 다음 상세 결재 |
 
