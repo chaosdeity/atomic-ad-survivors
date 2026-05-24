@@ -2,7 +2,7 @@
 
 상태: v0.1 제작 기준
 목적: 게임 전체에서 필요한 NPC 규모를 계층별로 정리하고, 플레이어블 20인 작업과 NPC 작업을 병렬 트랙으로 분리한다.
-연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
+연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
 
 ## 0. 판정
 
@@ -354,6 +354,7 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 | NPC-1 | 보급소 5명 최신화 | `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md` | 완료. 보급소는 모든 시즌 반응의 기준점 |
 | NPC-2 | R01 Vertical Slice 구현 전환 | `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md` | 완료. R01 12명을 전부 직접 만들지 않기 위한 제작 컷 |
 | NPC-3 | R01 데이터 스키마 적용 | `story/03_regions/r01_npc_data_schema_application_v0_1.md` | 완료. 구현 목록의 `npc_id`, 상태값, 대사 조건, 이름 해금 필드를 데이터 적용표로 넘김 |
+| NPC-3.5 | NPC 제작팀 프롬프트 작성 | `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md` | 완료. NPC 후보를 빠르게 뽑고 통과 후보만 상세화하기 위한 제작팀 전달 프롬프트 |
 | NPC-4 | E01 R02/R03/R04/R08 보조 NPC 최소안 | 각 지역 2~4명 이하의 보조 NPC 후보표 | 다음. 플레이어블 4~7번과 충돌 방지 |
 | NPC-5 | E02 첫 외부 슬라이스 NPC 예산 | E02_C03/C07/C05/C04 기준 5~7명 핵심 후보 | 첫 외부 광역권 규모 폭주 방지 |
 | NPC-6 | 전역 NPC 레지스트리 | 이름/국적/현실 위치/플레이어블 겹침 체크표 | 중복 이름과 캠페인 없는 NPC 방지 |
@@ -372,6 +373,7 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 ```text
 단기:
 NPC-1, NPC-2, NPC-3 완료.
+NPC 제작팀 프롬프트 작성 완료.
 다음은 NPC-4 E01 R02/R03/R04/R08 보조 NPC 최소안으로 진행한다.
 
 병렬:
