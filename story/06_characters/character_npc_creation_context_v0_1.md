@@ -110,6 +110,7 @@ story/03_regions/r01_p1_npc_branch_map_v0_1.md
 story/03_regions/r01_state_value_npc_reaction_matrix_v0_1.md
 story/03_regions/r01_npc_dialogue_bank_v0_1.md
 story/03_regions/r01_npc_data_schema_draft_v0_1.md
+story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
@@ -1051,6 +1052,45 @@ WELCOME-DESK
 ```
 
 다음 R01 NPC 작업:
+
+```text
+R01 Vertical Slice NPC 구현 목록 완료.
+완료 문서:
+story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
+```
+
+### R01 Vertical Slice NPC 구현 목록
+
+R01 Vertical Slice NPC 구현 목록은 완료되었다.
+
+```text
+직접 대면:
+OPEN-HOST
+ROOM-12
+PORCH-LINE
+DINING-4
+
+음성 잔향:
+MAIL-LOOP
+
+오브젝트 흔적:
+NAME-PAINTER
+VAC-0
+
+보스 후 잔향:
+FRAME-LEFT
+
+P1 보류:
+DRAIN-MARK
+SIGN-BACK
+KEY-RING
+WELCOME-DESK
+
+후속 NPC 트랙:
+R01 NPC 데이터 스키마 적용
+```
+
+기존 완료된 R01 NPC 작업:
 
 ```text
 R01 보스 문서와 NPC 연결 완료.
