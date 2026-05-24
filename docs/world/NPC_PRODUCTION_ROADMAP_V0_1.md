@@ -2,7 +2,7 @@
 
 상태: v0.1 제작 기준
 목적: 게임 전체에서 필요한 NPC 규모를 계층별로 정리하고, 플레이어블 20인 작업과 NPC 작업을 병렬 트랙으로 분리한다.
-연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/03_regions/e01_support_npc_minimum_plan_v0_1.md`, `story/03_regions/e01_npc_mass_candidate_pool_v0_1.md`, `story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md`, `story/03_regions/r06_member_rank_broker_profile_v1_0.md`, `story/03_regions/r02_discharge_review_face_profile_v1_0.md`, `story/03_regions/r03_final_return_review_officer_profile_v1_0.md`, `story/03_regions/e01_l5_l4_short_profiles_v0_1.md`, `story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md`, `story/03_regions/e01_npc_trace_background_bank_v0_1.md`, `story/03_regions/e01_npc_name_location_registry_v0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md`, `docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md`, `docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
+연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/03_regions/e01_support_npc_minimum_plan_v0_1.md`, `story/03_regions/e01_npc_mass_candidate_pool_v0_1.md`, `story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md`, `story/03_regions/r06_member_rank_broker_profile_v1_0.md`, `story/03_regions/r02_discharge_review_face_profile_v1_0.md`, `story/03_regions/r03_final_return_review_officer_profile_v1_0.md`, `story/03_regions/e01_l5_l4_short_profiles_v0_1.md`, `story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md`, `story/03_regions/e01_npc_trace_background_bank_v0_1.md`, `story/03_regions/e01_npc_name_location_registry_v0_1.md`, `story/03_regions/global_npc_story_seed_registry_v0_1.md`, `story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md`, `story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md`, `story/06_characters/playable_global_npc_link_matrix_v0_1.md`, `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md`, `story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md`, `docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md`, `docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
 
 ## 0. 판정
 
@@ -29,7 +29,7 @@
 ```text
 20명은 "게임 전체 최종 NPC 수"가 아니다.
 현재 상세 기준이 존재하는 확정/통과 추천 NPC의 기준점이다.
-E01 후보 풀 120개와 전역 NPC 340~480개 목표는 별도 후보/프롬프트 단계다.
+E01 후보 풀 120개는 후보 씨앗 기준이며, 전역 NPC 스토리 네트워크는 420개 씨앗 기준의 1차 실제 산출물로 분리한다.
 ```
 
 ---
@@ -378,15 +378,20 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 | NPC-6.6 | E01 프로필 v1.0 1차 상세화 | `story/03_regions/r06_member_rank_broker_profile_v1_0.md`, `story/03_regions/r02_discharge_review_face_profile_v1_0.md`, `story/03_regions/r03_final_return_review_officer_profile_v1_0.md` | 완료. 1차 필수 3명을 v1.0으로 상세화하고 R08/R07은 시즌 오픈 순서에 맞춰 보류 |
 | NPC-6.7 | E01 L5/L4 묶음 산출물 | `story/03_regions/e01_l5_l4_short_profiles_v0_1.md`, `story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md`, `story/03_regions/e01_npc_trace_background_bank_v0_1.md`, `story/03_regions/e01_npc_name_location_registry_v0_1.md` | 완료. v0.1 8명, 대사 은행 8명, 잔향/배경 7개, 이름/현실 위치 28개 검산 작성 |
 | NPC-6.8 | 전역 NPC 스토리 네트워크 제작 프롬프트 | `docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md` | 완료. 실제 340~480개 씨앗 산출이 아니라 제작팀 지시서 |
-| NPC-6.9 | 전역 NPC 스토리 네트워크 실제 산출 | `story/03_regions/global_npc_story_seed_registry_v0_1.md` 외 | 다음 후보. E01 120개를 유지한 채 E02~E12와 96개 캠페인 씨앗을 작성 |
-| NPC-7 | E02 첫 외부 슬라이스 NPC 후보 풀 | E02_C03/C07/C05/C04 기준 40~60개 후보 | 첫 외부 광역권 규모와 밀도 확보 |
-| NPC-8 | 전역 NPC 레지스트리 | 이름/국적/현실 위치/플레이어블 겹침 체크표 | 중복 이름과 캠페인 없는 NPC 방지 |
+| NPC-6.9 | 전역 NPC 스토리 네트워크 실제 산출 | `story/03_regions/global_npc_story_seed_registry_v0_1.md`, `story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md`, `story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md`, `story/06_characters/playable_global_npc_link_matrix_v0_1.md`, `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md` | 완료. E01 120개 연결, E02 48개, E03~E12 240개, 전역 교차 12개로 총 420개 씨앗 기준 작성 |
+| NPC-6.10 | R08/R07 v1.0 보류 해제 게이트 | `story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md` | 완료. 시즌 순서 확정 전 v1.0 장문 프로필 작성 금지와 해제 조건 잠금 |
+| NPC-7 | E02 승격 후보 v0.1 검토 | `story/03_regions/e02_npc_promotion_candidates_v0_1.md` | 완료. E02_C03/C05/C07의 G5/G4 후보를 직접 대면/잔향/오브젝트로 분리 |
+| NPC-7.1 | E02 핵심 후보 v0.1 프로필 3종 | `story/03_regions/e02_locker_recipient_profile_v0_1.md`, `story/03_regions/e02_disaster_phrase_approver_profile_v0_1.md`, `story/03_regions/e02_last_train_transfer_hold_profile_v0_1.md` | 완료. E02_C03/C05/C07 우선 후보를 장문 v1.0이 아닌 v0.1로 잠금 |
+| NPC-7.2 | E02 첫 외부 슬라이스 대사/잔향 은행 | `story/03_regions/e02_first_slice_dialogue_bank_v0_1.md`, `story/03_regions/e02_trace_object_bank_v0_1.md` | 완료. E02 G4/G3 보조 후보를 조건 대사와 오브젝트로 분리 |
+| NPC-7.3 | E02 Vertical Slice NPC 구현 컷 | `story/03_regions/e02_first_slice_npc_implementation_scope_v0_1.md` | 완료. E02 직접 대면/음성/오브젝트/보류 수량을 구현 기준으로 자름 |
+| NPC-7.4 | E02 상태 반응/오브젝트 문구 확장 | `story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md`, `story/03_regions/e02_first_slice_object_text_bank_v0_1.md` | 다음. E02 상태값과 조사 문구를 구현 데이터로 확장 |
+| NPC-8 | 전역 NPC 이름/위치/노출 레지스트리 | `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md` | 완료. 중복 이름과 캠페인 없는 NPC 방지 |
 
 ### 9.2 플레이어블 트랙
 
 | 우선 | 작업 | 산출물 | 이유 |
 |---:|---|---|---|
-| PC-1 | 9~12번 중반 플레이어블 후보군 선정 | `story/06_characters/playable_slots_9_to_12_candidate_selection_v0_1.md` | 완료. 다음 플레이어블 작업은 9번 후보 상세 결재 |
+| PC-1 | 9~12번 중반 플레이어블 후보군 선정 | `story/06_characters/playable_slots_9_to_12_candidate_selection_v0_1.md` | 완료. 9번/10번 프로필 v1.0 완료, 다음 플레이어블 작업은 11번 CLAUSE-11 상세 결재 |
 | PC-2 | OPEN-HOST 전환 조건 검토 | NPC 기능 보존 체크 + 전환 조건 | R01 NPC 기능을 빼앗지 않기 위해 |
 | PC-3 | 리오 해금 시점 유지 검토 | E08_C01 중반 해금 조건 | 초반 로봇 과밀 방지 |
 | PC-4 | 9~20번 이름/국적 재판정 준비 | E02~E12 현실 권역별 이름 후보 규칙 | 글로벌 확장과 이름 충돌 방지 |
@@ -400,10 +405,12 @@ NPC 제작팀 프롬프트와 대량 제작팀 프롬프트 작성 완료.
 NPC-6.5 E01 L5/L4 승격 후보 검토 완료.
 NPC-6.6 E01 프로필 v1.0 1차 상세화 완료.
 NPC-6.7 E01 L5/L4 묶음 산출물 완료.
-다음은 전역 NPC 스토리 네트워크 실제 산출 또는 R08/R07 v1.0 보류 후보 상세화로 진행한다.
+NPC-6.9 전역 NPC 스토리 네트워크 1차 실제 산출 완료.
+NPC-6.10 R08/R07 v1.0 보류 해제 게이트 완료.
+다음은 E02 상태 반응/오브젝트 문구 확장 또는 11번 CLAUSE-11 상세 결재로 진행한다.
 
 병렬:
-PC-1은 완료되었고, 플레이어블 트랙은 9번 후보 상세 결재로 진행한다.
+PC-1은 완료되었고, 플레이어블 트랙은 11번 CLAUSE-11 상세 결재로 진행한다.
 
 보류:
 E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 한다.
@@ -427,8 +434,9 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 10. E01 L5/L4 승격 후보 28개가 v1.0/v0.1/대사 은행/잔향 배경으로 재분류되어 있다.
 11. E01 프로필 v1.0 1차 필수 3명이 작성되어 있다.
 12. E01 L5/L4 묶음 산출물 4개가 작성되어 있다.
-13. 전역 NPC 스토리 네트워크는 실제 산출물이 아니라 프롬프트 단계로 분리되어 있다.
-14. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
+13. 전역 NPC 스토리 네트워크는 420개 씨앗 기준의 1차 실제 산출물로 작성되어 있다.
+14. R08/R07 v1.0 보류 후보는 시즌 순서 확정 전 장문 프로필로 올리지 않는 해제 게이트를 가진다.
+15. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
 
 판정:
 
@@ -436,5 +444,5 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 통과.
 이제 NPC는 전체 숫자부터 늘리지 말고,
 보급소 5명 기준, R01 구현 컷, E01 보조 NPC 최소안, E01 NPC 대량 후보 풀, E01 L5/L4 승격 후보 검토, E01 묶음 산출물 4개를 유지한 채
-전역 NPC 스토리 네트워크 실제 산출 또는 R08/R07 보류 후보 상세화로 다음 깊이를 나눈다.
+E02 상태 반응/오브젝트 문구 확장 또는 11번 CLAUSE-11 상세 결재로 다음 깊이를 나눈다.
 ```

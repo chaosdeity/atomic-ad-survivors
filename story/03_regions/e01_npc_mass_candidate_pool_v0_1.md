@@ -324,7 +324,8 @@ L5/L4 후보는 총 28개다.
 2. story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md를 기준으로 사용한다.
 3. 프로필 v1.0 우선 후보 중 1차 필수 3명 상세화 완료.
 4. v0.1 짧은 프로필, 대사 은행, 잔향/배경 은행, 이름/현실 위치 검산 완료.
-5. 이후 전역 NPC 스토리 네트워크 실제 산출 또는 E02 첫 외부 슬라이스 NPC 후보 풀로 진행한다.
+5. 전역 NPC 스토리 네트워크 1차 실제 산출 완료.
+6. 이후 E02 승격 후보 v0.1 프로필 또는 CLAUSE-11 상세 결재로 진행한다.
 ```
 
 완료 산출물:
@@ -335,6 +336,12 @@ story/03_regions/e01_l5_l4_short_profiles_v0_1.md
 story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
 story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
+story/03_regions/global_npc_story_seed_registry_v0_1.md
+story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md
+story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md
+story/06_characters/playable_global_npc_link_matrix_v0_1.md
+story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
+story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 ```
 
 완료된 1차 산출물:
@@ -353,6 +360,7 @@ story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md
 story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md
 story/06_characters/playable_global_npc_link_matrix_v0_1.md
 story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
+story/03_regions/e02_npc_promotion_candidates_v0_1.md
 ```
 
 완료 기준:
@@ -363,11 +371,12 @@ story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
 4. L5/L4 승격 후보 28개가 후속 상세화 후보로 분리되었다.
 5. L2/L1/L0는 이름 있는 NPC로 과승격하지 않는 기준을 가진다.
 6. L5/L4 묶음 산출물 4개가 작성되어 8/8/7/28 수량이 검증 가능하다.
+7. 전역 NPC 스토리 네트워크 1차 실제 산출물이 작성되어 420개 씨앗 기준으로 외부 광역권을 비우지 않는다.
 
 최종 판정:
 
 ```text
 통과.
 E01 NPC 대량 후보 풀은 제작팀이 세계 밀도와 후속 상세화 후보를 동시에 관리하는 기준으로 사용 가능하다.
-단, 전역 NPC 340~480개는 아직 실제 산출물이 아니라 별도 프롬프트 단계다.
+전역 NPC는 420개 씨앗 기준의 1차 실제 산출물로 연결되었다.
 ```

@@ -34,11 +34,17 @@ E01 L5/L4 승격 후보 28개 재분류
 E01 프로필 v1.0 1차 필수 3명
 E01 L5/L4 묶음 산출물 4개
 전역 NPC 스토리 네트워크 제작 프롬프트
+전역 NPC 스토리 네트워크 1차 실제 산출물 5개
+R08/R07 v1.0 보류 해제 게이트
+E02 승격 후보 v0.1 검토
+E02 핵심 후보 v0.1 프로필 3종
+E02 첫 외부 슬라이스 대사/잔향 은행
+E02 Vertical Slice NPC 구현 컷
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
 이 숫자는 상세 기준이 존재하는 첫 기준점일 뿐이다.
-전역 NPC 340~480개는 아직 실제 산출물이 아니라 프롬프트 단계다.
+전역 NPC는 420개 씨앗 기준의 1차 실제 산출물로 들어갔지만, 전부 완성급 NPC는 아니다.
 ```
 
 사용할 기준 문서:
@@ -56,6 +62,19 @@ story/03_regions/e01_l5_l4_short_profiles_v0_1.md
 story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md
 story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
+story/03_regions/global_npc_story_seed_registry_v0_1.md
+story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md
+story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md
+story/06_characters/playable_global_npc_link_matrix_v0_1.md
+story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
+story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
+story/03_regions/e02_npc_promotion_candidates_v0_1.md
+story/03_regions/e02_locker_recipient_profile_v0_1.md
+story/03_regions/e02_disaster_phrase_approver_profile_v0_1.md
+story/03_regions/e02_last_train_transfer_hold_profile_v0_1.md
+story/03_regions/e02_first_slice_dialogue_bank_v0_1.md
+story/03_regions/e02_trace_object_bank_v0_1.md
+story/03_regions/e02_first_slice_npc_implementation_scope_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -521,5 +540,11 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 5. 프로필 v1.0 1차 필수 3명 작성 완료.
 6. E01 L5/L4 묶음 산출물 4개 작성 완료.
 7. v0.1 짧은 프로필, 대사 은행, 잔향/배경 은행, 이름/현실 위치 검산 결과를 기준으로 사용한다.
-8. 다음은 전역 NPC 스토리 네트워크 실제 산출 또는 E02 첫 외부 슬라이스 후보 풀로 넘긴다.
+8. 전역 NPC 스토리 네트워크 1차 실제 산출물 5개 작성 완료.
+9. R08/R07 v1.0 보류 해제 게이트 작성 완료.
+10. E02 승격 후보 v0.1 검토 작성 완료.
+11. E02 핵심 후보 v0.1 프로필 3종 작성 완료.
+12. E02 첫 외부 슬라이스 대사/잔향 은행 작성 완료.
+13. E02 Vertical Slice NPC 구현 컷 작성 완료.
+14. 다음은 E02 상태 반응/오브젝트 문구 확장 또는 CLAUSE-11 상세 결재로 넘긴다.
 ```
