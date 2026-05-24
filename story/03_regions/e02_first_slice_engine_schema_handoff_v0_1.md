@@ -353,6 +353,7 @@ QA 통과 산출물을 새 ID 없이 엔진팀 전달 문서로 정리했다.
 `docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md`
 `story/03_regions/e02_first_slice_engine_data_package_v0_1.md`
 `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md`
+`story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md`
 
 | 판정 | 다음 작업 |
 |---|---|
@@ -363,6 +364,6 @@ QA 통과 산출물을 새 ID 없이 엔진팀 전달 문서로 정리했다.
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 실제 JSON 파일 생성 조건을 해소한다.
-조건 해소 전 실제 data/e02/*.json 파일 생성은 금지한다.
+E02 첫 외부 슬라이스 실제 JSON 파일 생성 프롬프트를 작성한다.
+실제 data/e02/*.json 파일 생성은 다음 프롬프트와 별도 명시 지시가 있을 때만 진행한다.
 ```

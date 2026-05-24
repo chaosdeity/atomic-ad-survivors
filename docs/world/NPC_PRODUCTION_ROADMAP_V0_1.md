@@ -2,7 +2,7 @@
 
 상태: v0.1 제작 기준
 목적: 게임 전체에서 필요한 NPC 규모를 계층별로 정리하고, 플레이어블 20인 작업과 NPC 작업을 병렬 트랙으로 분리한다.
-연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/03_regions/e01_support_npc_minimum_plan_v0_1.md`, `story/03_regions/e01_npc_mass_candidate_pool_v0_1.md`, `story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md`, `story/03_regions/r06_member_rank_broker_profile_v1_0.md`, `story/03_regions/r02_discharge_review_face_profile_v1_0.md`, `story/03_regions/r03_final_return_review_officer_profile_v1_0.md`, `story/03_regions/e01_l5_l4_short_profiles_v0_1.md`, `story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md`, `story/03_regions/e01_npc_trace_background_bank_v0_1.md`, `story/03_regions/e01_npc_name_location_registry_v0_1.md`, `story/03_regions/global_npc_story_seed_registry_v0_1.md`, `story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md`, `story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md`, `story/06_characters/playable_global_npc_link_matrix_v0_1.md`, `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md`, `story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md`, `docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md`, `docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E02_FIRST_SLICE_STATE_OBJECT_EXPANSION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_STATE_OBJECT_DATA_APPLICATION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_NPC_QA_CHECKLIST_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_SCHEMA_HANDOFF_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_DATA_PRE_CONVERSION_VALIDATION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md`, `story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md`, `story/03_regions/e02_first_slice_object_text_bank_v0_1.md`, `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md`, `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md`, `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md`, `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md`, `story/03_regions/e02_first_slice_engine_data_package_v0_1.md`, `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md`
+연결 문서: `story/02_hub/npcs.md`, `story/02_hub/outpost_core_npc_profiles_v1_0.md`, `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`, `story/03_regions/r01_campaign1_npc_roster_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_scope_v0_1.md`, `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`, `story/03_regions/r01_npc_name_registry_v1_0.md`, `story/03_regions/e01_support_npc_minimum_plan_v0_1.md`, `story/03_regions/e01_npc_mass_candidate_pool_v0_1.md`, `story/03_regions/e01_npc_l5_l4_promotion_review_v0_1.md`, `story/03_regions/r06_member_rank_broker_profile_v1_0.md`, `story/03_regions/r02_discharge_review_face_profile_v1_0.md`, `story/03_regions/r03_final_return_review_officer_profile_v1_0.md`, `story/03_regions/e01_l5_l4_short_profiles_v0_1.md`, `story/03_regions/e01_l5_l4_dialogue_bank_v0_1.md`, `story/03_regions/e01_npc_trace_background_bank_v0_1.md`, `story/03_regions/e01_npc_name_location_registry_v0_1.md`, `story/03_regions/global_npc_story_seed_registry_v0_1.md`, `story/03_regions/global_campaign_npc_coverage_matrix_v0_1.md`, `story/05_progression/global_mystery_reversal_ending_seed_map_v0_1.md`, `story/06_characters/playable_global_npc_link_matrix_v0_1.md`, `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md`, `story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`, `story/06_characters/playable_20_name_registry_v0_1.md`, `docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md`, `docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_PRODUCTION_TEAM_PROMPT_V0_1.md`, `docs/world/E01_NPC_L5_L4_BUNDLE_OUTPUTS_TEAM_PROMPT_V0_1.md`, `docs/world/GLOBAL_NPC_STORY_NETWORK_PRODUCTION_PROMPT_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`, `docs/world/E02_FIRST_SLICE_STATE_OBJECT_EXPANSION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_STATE_OBJECT_DATA_APPLICATION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_NPC_QA_CHECKLIST_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_SCHEMA_HANDOFF_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_DATA_PRE_CONVERSION_VALIDATION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md`, `docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_CONDITION_PATCH_TEAM_PROMPT_V0_1.md`, `story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md`, `story/03_regions/e02_first_slice_object_text_bank_v0_1.md`, `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md`, `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md`, `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md`, `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md`, `story/03_regions/e02_first_slice_engine_data_package_v0_1.md`, `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md`, `story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md`
 
 ## 0. 판정
 
@@ -392,7 +392,8 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 | NPC-7.9 | E02 실제 엔진 데이터 작성 프롬프트 | `docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md` | 완료. 실제 파일 생성 여부와 엔진 포맷 확정 범위를 분리 |
 | NPC-7.10 | E02 엔진 데이터 패키지 | `story/03_regions/e02_first_slice_engine_data_package_v0_1.md` | 완료. Markdown 내부 parseable JSON으로 36 application, 18 object, 36 reaction, 11 flag, 12 state key를 잠금 |
 | NPC-7.11 | E02 실제 JSON 파일 생성 여부 결정 | `docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md`, `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md` | 완료. 판정은 조건부 생성 가능이며 조건 해소 전 실제 JSON/CSV/Godot 리소스 파일 생성 금지 |
-| NPC-7.12 | E02 실제 JSON 파일 생성 조건 해소 | `story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md` | 다음. `data/e02/` 경로, 엔진 로더/변환층, 자동 검증 절차를 먼저 잠금 |
+| NPC-7.12 | E02 실제 JSON 파일 생성 조건 해소 | `docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_CONDITION_PATCH_TEAM_PROMPT_V0_1.md`, `story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md` | 완료. `data/e02/` 후보 경로 승인, JSON 역할은 중립 소스 데이터, PowerShell 검산 필수로 잠금 |
+| NPC-7.13 | E02 실제 JSON 파일 생성 프롬프트 | `docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md` 후보 | 다음. 실제 파일 생성은 별도 명시 지시 때만 진행 |
 | NPC-8 | 전역 NPC 이름/위치/노출 레지스트리 | `story/03_regions/global_npc_name_location_exposure_registry_v0_1.md` | 완료. 중복 이름과 캠페인 없는 NPC 방지 |
 
 ### 9.2 플레이어블 트랙
@@ -415,7 +416,7 @@ NPC-6.6 E01 프로필 v1.0 1차 상세화 완료.
 NPC-6.7 E01 L5/L4 묶음 산출물 완료.
 NPC-6.9 전역 NPC 스토리 네트워크 1차 실제 산출 완료.
 NPC-6.10 R08/R07 v1.0 보류 해제 게이트 완료.
-다음은 E02 실제 JSON 파일 생성 조건 해소 또는 11번 CLAUSE-11 상세 결재로 진행한다.
+다음은 E02 실제 JSON 파일 생성 프롬프트 작성 또는 11번 CLAUSE-11 상세 결재로 진행한다.
 
 병렬:
 PC-1은 완료되었고, 플레이어블 트랙은 11번 CLAUSE-11 상세 결재로 진행한다.
@@ -451,7 +452,8 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 19. E02 엔진 데이터 변환 전 검증 문서가 실제 엔진 파일 생성 없이 작성되어 있다.
 20. E02 엔진 데이터 패키지가 Markdown 내부 parseable JSON으로 작성되어 있고 `actual_files_created=false`를 유지한다.
 21. E02 실제 JSON 파일 생성 여부 결정 문서가 조건부 생성 가능으로 작성되어 있고 실제 `data/e02/*.json` 파일은 생성하지 않았다.
-22. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
+22. E02 실제 JSON 파일 생성 조건 해소 문서가 조건 해소 판정으로 작성되어 있고 실제 `data/e02/` 디렉터리와 JSON 파일은 생성하지 않았다.
+23. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
 
 판정:
 
@@ -459,5 +461,5 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 통과.
 이제 NPC는 전체 숫자부터 늘리지 말고,
 보급소 5명 기준, R01 구현 컷, E01 보조 NPC 최소안, E01 NPC 대량 후보 풀, E01 L5/L4 승격 후보 검토, E01 묶음 산출물 4개를 유지한 채
-E02 실제 JSON 파일 생성 조건 해소 또는 11번 CLAUSE-11 상세 결재로 다음 깊이를 나눈다.
+E02 실제 JSON 파일 생성 프롬프트 작성 또는 11번 CLAUSE-11 상세 결재로 다음 깊이를 나눈다.
 ```

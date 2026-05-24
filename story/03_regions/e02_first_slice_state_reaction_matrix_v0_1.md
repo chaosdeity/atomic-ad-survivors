@@ -172,7 +172,8 @@ extraction_stability, residence_tag, supply_pressure 모두 포함
 | `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md` | 완료. 실제 엔진 데이터 작성 전 반응 ID 누락/중복 검산 |
 | `story/03_regions/e02_first_slice_engine_data_package_v0_1.md` | 완료. 반응 ID 36개를 Markdown 내부 parseable JSON 패키지로 이전 |
 | `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md` | 완료. 조건부 생성 가능으로 판정하고 실제 `data/e02/*.json` 파일은 만들지 않음 |
-| E02 실제 JSON 파일 생성 조건 해소 | 다음. 경로/로더/검증 조건을 먼저 잠금 |
+| `story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md` | 완료. 경로/역할/검증 조건을 해소하고 실제 `data/e02/*.json` 파일은 만들지 않음 |
+| E02 실제 JSON 파일 생성 프롬프트 | 다음. 실제 파일 생성은 별도 명시 지시 때만 진행 |
 | `story/06_characters/clause_11_playable_decision_v0_1.md` | 플레이어블 트랙의 다음 상세 결재 |
 
 최종 판정:

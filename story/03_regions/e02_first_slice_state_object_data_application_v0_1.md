@@ -224,12 +224,15 @@ story/03_regions/e02_first_slice_engine_data_package_v0_1.md
 후속 실제 JSON 생성 결정:
 story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md
 
+후속 실제 JSON 생성 조건 해소:
+story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md
+
 다음 작업:
-E02 실제 JSON 파일 생성 조건 해소
+E02 실제 JSON 파일 생성 프롬프트
 
 최종 판정:
 
 ```text
 통과.
-E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결했고, QA 체크리스트, 엔진 스키마화 전달 문서, 변환 전 검증, 엔진 데이터 패키지, 실제 JSON 생성 결정에서 통과/조건부 생성 가능 판정을 유지한다.
+E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결했고, QA 체크리스트, 엔진 스키마화 전달 문서, 변환 전 검증, 엔진 데이터 패키지, 실제 JSON 생성 결정/조건 해소에서 통과/조건부 생성 가능/조건 해소 판정을 유지한다.
 ```

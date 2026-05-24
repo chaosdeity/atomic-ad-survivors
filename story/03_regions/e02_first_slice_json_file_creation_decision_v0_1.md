@@ -230,9 +230,9 @@ data/e02/first_slice_validation.json
 ## 9. 다음 작업 포인터
 
 ```text
-다음 작업: E02 실제 JSON 파일 생성 조건 해소
+다음 작업: E02 실제 JSON 파일 생성 조건 해소 완료
 후보 산출물: story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md
-주의: 조건 해소 전 실제 data/e02/*.json 생성 금지
+주의: 조건 해소 문서에서도 실제 data/e02/*.json 생성 금지 유지
 ```
 
 조건 해소 후 후보 작업:
@@ -241,4 +241,11 @@ data/e02/first_slice_validation.json
 후보 프롬프트: docs/world/E02_FIRST_SLICE_ACTUAL_JSON_FILE_WRITING_TEAM_PROMPT_V0_1.md
 후보 산출물: data/e02/*.json
 주의: 실제 파일 생성은 별도 명시 지시가 있을 때만 진행한다.
+```
+
+후속 완료:
+
+```text
+story/03_regions/e02_first_slice_json_file_creation_condition_patch_v0_1.md
+판정: 조건 해소
 ```
