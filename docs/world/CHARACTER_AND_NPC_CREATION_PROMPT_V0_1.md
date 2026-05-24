@@ -177,6 +177,13 @@ docs/world/HERO_CHARACTER_CREATION_PROMPT_V0_1.md
 용도:
 20명 전체 로스터 재작성용이 아니라, 슬롯 하나를 상세 결재/프로필 v1.0으로 밀기 위한 복붙용 프롬프트.
 
+플레이어블팀 GATE-09 조건부 해소 프롬프트 v0.1 작성 완료.
+완료 문서:
+docs/world/PLAYABLE_TEAM_GATE_09_CONDITION_PATCH_PROMPT_V0_1.md
+
+용도:
+GATE-09 조건부 통과 사유를 해소하고 `gate_09_playable_condition_patch_v0_1.md`를 작성하기 위한 다음 작업 전용 프롬프트.
+
 NPC 제작팀 프롬프트 v0.1 작성 완료.
 완료 문서:
 docs/world/NPC_CREATION_TEAM_PROMPT_V0_1.md

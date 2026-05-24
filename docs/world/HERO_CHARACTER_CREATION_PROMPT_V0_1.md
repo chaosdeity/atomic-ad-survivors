@@ -64,6 +64,9 @@ R01 NPC 선등장 후 플레이어블 전환 후보
 story/06_characters/gate_09_playable_decision_v0_1.md
 조건부 통과
 
+플레이어블팀 GATE-09 조건부 해소 프롬프트:
+docs/world/PLAYABLE_TEAM_GATE_09_CONDITION_PATCH_PROMPT_V0_1.md
+
 현재 다음 상세화 우선순위:
 9번 GATE-09 조건부 해소
 ```
