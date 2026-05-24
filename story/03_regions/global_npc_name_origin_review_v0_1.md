@@ -28,6 +28,7 @@ story/03_regions/global_npc_full_scale_target_ladder_v0_1.md
 story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/global_npc_review_report_v0_1.md
+story/03_regions/global_npc_passed_slot_registry_v0_1.md
 ```
 
 위 문서들의 768개 제작 슬롯 기준, 1,024개 검수 전 기준, 2,048개 1차 검수 배치, 10,240개 장기 목표에도 이 검수 원칙을 그대로 적용한다.
@@ -268,5 +269,6 @@ E02 이후 한국어 임시명으로 빈 NPC 슬롯을 채우지 않는다.
 후속 수량 충족 단계에서 768개 제작 슬롯으로 확장했고, 검수팀 전달 전 기준은 2,048개 제작 슬롯으로 확장했다.
 장기 풀스케일 목표는 10,240개 제작 슬롯으로 설정했다.
 전역 NPC 검수 보고서에서 L5/L4만 이름 후보를 검토하고 L3 이하 이름 제거를 확정했다.
+전역 NPC 통과 슬롯 레지스트리에서 E02 이후 한국어 이름 기본값 금지를 다시 잠갔다.
 다만 E02 이후 한국어 임시명 금지와 L3 이하 본명 금지는 유지한다.
 ```

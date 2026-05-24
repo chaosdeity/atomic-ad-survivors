@@ -41,6 +41,7 @@ E03~E12는 캠페인당 3개 씨앗으로 최소 커버한다.
 후속 1차 검수 배치는 2,048개 제작 슬롯으로 확장했다.
 장기 풀스케일 목표는 10,240개 제작 슬롯이다.
 전역 NPC 검수 보고서에서 2,048 슬롯은 조건부 통과로 판정했다.
+전역 NPC 통과 슬롯 레지스트리에서 L5/L4 192개와 L3 이하 1,856개를 분리했다.
 ```
 
 후속 수량 산출물:
@@ -53,6 +54,7 @@ story/03_regions/global_npc_full_scale_target_ladder_v0_1.md
 story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
 story/03_regions/global_npc_review_report_v0_1.md
+story/03_regions/global_npc_passed_slot_registry_v0_1.md
 ```
 
 ---
@@ -147,4 +149,5 @@ G1/G0 배경: g_[campaign_id]_g1_001
 검수 전 추가 확장 매트릭스에서 1,024개 제작 슬롯까지 올렸고, 검수팀이 하향/폐기해도 768개 충족 기준을 유지하도록 했다.
 후속 2,048 1차 검수 배치에서도 E01 추가 생산 없이 전역 외부권 밀도를 늘렸다.
 검수 보고서에서 L5/L4만 이름/대면 검토 대상으로 남기고 L3 이하는 대사/잔향/오브젝트/호출번호/목록으로 낮췄다.
+통과 슬롯 레지스트리에서 직접 대면 NPC 수 증가 금지를 유지했다.
 ```
