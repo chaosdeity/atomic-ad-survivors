@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-전역 NPC 이름/원점 검수
+전역 NPC 확장 슬롯 레지스트리
 
 현재 NPC 트랙 다음 작업:
-기존 NPC legacy 이름 마이그레이션
+전역 NPC 이름/원점 검수
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -74,6 +74,12 @@ story/03_regions/global_npc_name_location_exposure_registry_v0_1.md
 
 전역 NPC 이름/원점 검수:
 story/03_regions/global_npc_name_origin_review_v0_1.md
+
+전역 NPC 수량 충족 매트릭스:
+story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
+
+전역 NPC 확장 슬롯 레지스트리:
+story/03_regions/global_npc_expansion_slot_registry_v0_1.md
 
 R08/R07 v1.0 보류 해제 게이트:
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
@@ -678,5 +684,9 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 36. 실제 data/e02/ 디렉터리와 허용된 6개 JSON 파일을 생성했고 validation.actual_files_created는 true다.
 37. 전역 NPC 이름/원점 검수도 작성 완료되었다.
 38. E01 한국권 과밀 생산 금지, E02 이후 한국어 임시명 금지, L5/L4 이름 게이트를 잠갔다.
-39. 다음 산출물은 기존 NPC legacy 이름 마이그레이션을 권장한다.
+39. 전역 NPC 수량 충족 매트릭스도 작성 완료되었다.
+40. 420개 1차 게이트를 768개 제작 슬롯 만족 기준으로 확장했고, 증분 +348개는 E02~E12와 cross_region에만 배정했다.
+41. 전역 NPC 확장 슬롯 레지스트리도 작성 완료되었다.
+42. 증분 +348개를 E02 +24, E03~E12 +300, cross_region +24 슬롯으로 등록했다.
+43. 다음 산출물은 전역 NPC 이름/원점 검수를 권장한다.
 ```

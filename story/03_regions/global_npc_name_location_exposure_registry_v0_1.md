@@ -125,12 +125,14 @@ R01 확정 NPC 12명
 
 ```text
 story/03_regions/global_npc_name_origin_review_v0_1.md
+story/03_regions/global_npc_quantity_satisfaction_matrix_v0_1.md
+story/03_regions/global_npc_expansion_slot_registry_v0_1.md
 ```
 
 다음 작업 포인터:
 
 ```text
-기존 NPC legacy 이름 마이그레이션
+전역 NPC 이름/원점 검수
 ```
 
 최종 판정:
@@ -140,4 +142,5 @@ story/03_regions/global_npc_name_origin_review_v0_1.md
 전역 420개 씨앗은 이름보다 역할/노출/현실 위치 정책을 먼저 가진다.
 새 본명 대량 확정은 하지 않았다.
 후속 검수 게이트에서 E02 이후 한국어 임시명 금지와 캠페인 개방 후 이름 부여 원칙을 잠갔다.
+후속 수량 충족 단계에서는 768개 제작 슬롯으로 확장하되, L3 이하 이름 금지와 권역별 현실권 검수를 유지한다.
 ```
