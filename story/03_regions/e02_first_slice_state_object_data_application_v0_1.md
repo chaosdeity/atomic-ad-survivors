@@ -209,9 +209,15 @@ story/03_regions/e02_first_slice_state_object_data_application_v0_1.md
 통과
 ```
 
+후속 QA:
+story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md
+
+다음 작업:
+E02 구현 데이터 전달 또는 엔진 데이터 스키마화
+
 최종 판정:
 
 ```text
 통과.
-E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결한다.
+E02 첫 외부 슬라이스의 상태 반응과 오브젝트 문구는 새 ID 없이 구현 데이터 적용표로 연결했고, QA 체크리스트에서 통과 판정을 유지한다.
 ```

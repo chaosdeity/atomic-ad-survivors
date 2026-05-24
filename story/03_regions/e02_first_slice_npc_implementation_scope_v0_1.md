@@ -124,7 +124,8 @@ BROAD-10 방송 설명 장면 대체
 | `story/03_regions/e02_first_slice_state_reaction_matrix_v0_1.md` | 완료. E02 상태값/플래그별 NPC 반응 36행 |
 | `story/03_regions/e02_first_slice_object_text_bank_v0_1.md` | 완료. E02 오브젝트 그룹 13개, 문구 36개 |
 | `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. `reaction_id`와 `object_text_id`를 구현 데이터로 연결 |
-| `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 다음. 실제 노출 조건, 직접 대면 2행 제한, 금지 해금 검산 |
+| `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 완료. 실제 노출 조건, 직접 대면 2행 제한, 금지 해금 검산 |
+| E02 구현 데이터 전달/엔진 스키마화 | 다음. QA 통과 기준을 유지한 채 구현 데이터로 이전 |
 
 최종 판정:
 
