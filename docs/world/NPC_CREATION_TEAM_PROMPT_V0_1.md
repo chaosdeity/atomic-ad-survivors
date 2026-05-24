@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-E02 엔진 데이터 패키지
+E02 실제 JSON 파일 생성 여부 결정
 
 현재 NPC 트랙 다음 작업:
-E02 실제 JSON 파일 생성 여부 결정 또는 CLAUSE-11 상세 결재
+E02 실제 JSON 파일 생성 조건 해소 또는 CLAUSE-11 상세 결재
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -126,6 +126,12 @@ docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md
 
 E02 엔진 데이터 패키지:
 story/03_regions/e02_first_slice_engine_data_package_v0_1.md
+
+E02 실제 JSON 파일 생성 여부 결정 프롬프트:
+docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md
+
+E02 실제 JSON 파일 생성 여부 결정:
+story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md
 ```
 
 ---
@@ -644,5 +650,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 28. 완료 산출물은 e02_first_slice_engine_data_pre_conversion_validation_v0_1.md다.
 29. E02 실제 엔진 데이터 작성 프롬프트와 엔진 데이터 패키지도 작성 완료되었다.
 30. 완료 산출물은 E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md와 e02_first_slice_engine_data_package_v0_1.md다.
-31. 다음 산출물은 E02 실제 JSON 파일 생성 여부 결정 또는 CLAUSE-11 상세 결재를 권장한다.
+31. E02 실제 JSON 파일 생성 여부 결정도 작성 완료되었다.
+32. 판정은 조건부 생성 가능이며 실제 data/e02/*.json 파일은 만들지 않았다.
+33. 다음 산출물은 E02 실제 JSON 파일 생성 조건 해소 또는 CLAUSE-11 상세 결재를 권장한다.
 ```

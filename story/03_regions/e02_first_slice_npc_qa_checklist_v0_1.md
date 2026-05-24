@@ -258,6 +258,7 @@ QA 실패가 있어도 새 NPC, 새 문구, 새 ID를 만들지 않는다.
 `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md`
 `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md`
 `story/03_regions/e02_first_slice_engine_data_package_v0_1.md`
+`story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md`
 
 | 판정 | 다음 작업 |
 |---|---|
@@ -268,6 +269,6 @@ QA 실패가 있어도 새 NPC, 새 문구, 새 ID를 만들지 않는다.
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 엔진 데이터 패키지 검산 통과 기준으로 실제 JSON 파일 생성 여부를 결정한다.
-단, 실제 엔진 데이터 파일 생성은 별도 지시와 엔진 포맷 확정 후 진행한다.
+E02 첫 외부 슬라이스 실제 JSON 파일 생성 조건을 해소한다.
+단, 조건 해소 전 실제 data/e02/*.json 파일 생성은 금지한다.
 ```

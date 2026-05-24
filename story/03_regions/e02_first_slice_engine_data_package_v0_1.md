@@ -320,6 +320,12 @@ CSV, Godot 리소스, GDScript 병행 작성 금지.
 엔진 데이터 패키지 작성 완료
 
 다음 작업:
-패키지 검산 통과 시 실제 JSON 파일 생성 여부 결정.
-실제 파일 생성은 별도 명시 지시가 있을 때만 진행.
+실제 JSON 파일 생성 여부 결정 완료.
+판정은 조건부 생성 가능이며, 조건 해소 전 실제 파일 생성은 금지한다.
+```
+
+후속 결정 문서:
+
+```text
+story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md
 ```

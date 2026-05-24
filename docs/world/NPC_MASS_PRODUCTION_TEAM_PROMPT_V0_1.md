@@ -47,6 +47,7 @@ E02 구현 데이터 전달/엔진 스키마화
 E02 엔진 데이터 변환 전 검증
 E02 실제 엔진 데이터 작성 프롬프트
 E02 엔진 데이터 패키지
+E02 실제 JSON 파일 생성 여부 결정
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -95,6 +96,8 @@ docs/world/E02_FIRST_SLICE_ENGINE_DATA_PRE_CONVERSION_VALIDATION_TEAM_PROMPT_V0_
 story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md
 docs/world/E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md
 story/03_regions/e02_first_slice_engine_data_package_v0_1.md
+docs/world/E02_FIRST_SLICE_JSON_FILE_CREATION_DECISION_TEAM_PROMPT_V0_1.md
+story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -578,5 +581,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 23. 완료 산출물은 e02_first_slice_engine_data_pre_conversion_validation_v0_1.md다.
 24. E02 실제 엔진 데이터 작성 프롬프트와 Markdown 엔진 데이터 패키지도 작성 완료되었다.
 25. 완료 산출물은 E02_FIRST_SLICE_ENGINE_DATA_WRITING_TEAM_PROMPT_V0_1.md와 e02_first_slice_engine_data_package_v0_1.md다.
-26. 다음은 E02 실제 JSON 파일 생성 여부 결정 또는 CLAUSE-11 상세 결재로 넘긴다.
+26. E02 실제 JSON 파일 생성 여부 결정도 작성 완료되었다.
+27. 판정은 조건부 생성 가능이며 실제 data/e02/*.json 파일은 만들지 않았다.
+28. 다음은 E02 실제 JSON 파일 생성 조건 해소 또는 CLAUSE-11 상세 결재로 넘긴다.
 ```

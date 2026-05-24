@@ -177,7 +177,8 @@ GATE-09 전투/해금 기능 대체
 | `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md` | 완료. QA 통과 범위를 유지한 채 엔진 전달 스키마로 이전 |
 | `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md` | 완료. 실제 엔진 데이터 작성 전 ID/수량/금지 해금 재검산 |
 | `story/03_regions/e02_first_slice_engine_data_package_v0_1.md` | 완료. 실제 파일 생성 없이 Markdown 내부 parseable JSON 패키지 작성 |
-| E02 실제 JSON 파일 생성 여부 결정 | 다음. 별도 명시 전까지 실제 `data/e02/*.json` 파일은 만들지 않음 |
+| `story/03_regions/e02_first_slice_json_file_creation_decision_v0_1.md` | 완료. 조건부 생성 가능으로 판정하고 실제 `data/e02/*.json` 파일은 만들지 않음 |
+| E02 실제 JSON 파일 생성 조건 해소 | 다음. 경로/로더/검증 조건을 먼저 잠금 |
 
 최종 판정:
 
