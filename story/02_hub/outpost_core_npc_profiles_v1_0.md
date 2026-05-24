@@ -695,7 +695,7 @@ NPC당 10~15줄
 총 50~75줄
 ```
 
-다음 문서에서 대사 은행으로 분리한다.
+대사 은행은 별도 문서에서 관리한다.
 
 ---
 
@@ -727,19 +727,27 @@ hub_supply_pressure_high_seen
 
 ---
 
-## 11. 다음 작업
+## 11. 대사 은행 / 다음 작업
 
-다음 작업은 새 NPC 추가가 아니라 대사 은행이다.
+보급소 초기 NPC 5명 대사 은행은 별도 문서로 분리한다.
+
+```text
+대사 은행:
+story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md
+```
+
+다음 작업은 R01 Vertical Slice 구현 전환이다.
 
 ```text
 다음 산출물:
-story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md
+story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 
 목표:
-보급소 초기 NPC 5명의 조건 대사를 NPC / 조건 / 대사 / 용도 구조로 정리한다.
+R01 NPC 12명을 실제 Vertical Slice에서 어떻게 노출할지
+직접 대면 / 음성 잔향 / 오브젝트 흔적 / 보스 후 잔향 / P1 보류로 다시 자른다.
 ```
 
-우선 채울 조건:
+대사 은행에서 우선 채운 조건:
 
 ```text
 기본 인사
