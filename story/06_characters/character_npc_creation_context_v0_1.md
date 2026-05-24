@@ -102,6 +102,7 @@ story/03_regions/r01_npc_name_registry_v0_1.md
 story/03_regions/r01_npc_name_registry_v1_0.md
 story/03_regions/r01_npc_name_reveal_matrix_v0_1.md
 story/03_regions/r01_npc_choice_consequence_matrix_v0_1.md
+story/03_regions/r01_boss_before_after_npc_state_v0_1.md
 story/03_regions/r01_remaining_work_list_v0_1.md
 ```
 
@@ -791,7 +792,50 @@ R01 NPC 선택은 정답 버튼이 아니다.
 ```text
 각 선택은 인간 안정도, 캠페인 농도, 흔적 보존, 인양 안정도 중 최소 하나를 흔들어야 한다.
 본명/이름 조각 해금은 보상만이 아니라 캠페인 오염 위험도 함께 가져야 한다.
-다음 작업은 이 선택 결과를 R01 보스 전후 시간표에 배치하는 것이다.
+선택 결과를 R01 보스 전후 시간표에 배치하는 작업은 완료되었다.
+다음 작업은 ROOM-12의 자리와 PORCH-LINE의 줄이 P1 재방문에서 어떻게 서로를 흔드는지 분기화하는 것이다.
+```
+
+### R01 보스 전후 NPC 상태 변화
+
+R01 보스 전후 NPC 상태 변화 정리는 완료되었다.
+
+```text
+완료 문서:
+story/03_regions/r01_boss_before_after_npc_state_v0_1.md
+```
+
+시간축 기준:
+
+```text
+T0. 첫 보스 전:
+사람, 이름, 주소, 줄, 자리의 문제가 처음 보인다.
+
+T1. 보스 직전:
+OPEN-HOST의 길, WELCOME-DESK의 질문, DINING-4의 자리가 동시에 압박한다.
+
+T2. 보스 직후:
+FRAME-LEFT, 복희, 세븐 연결이 열리고 보스 클리어가 구원 완료가 아님을 보여준다.
+
+T3. P1 재방문:
+선택 후폭풍이 줄, 자리, 표식, 열쇠, 청소 제외 목록, 가짜 귀환로로 돌아온다.
+```
+
+보스 전후 잠금:
+
+```text
+보스는 죽이는 적이 아니라 지역 광고 약관의 얼굴이다.
+DINING-4는 ROOM-12 반복이 아니라 빈 가족 칸의 얼굴이다.
+FRAME-LEFT는 사진 속 유령이 아니라 프로필 잔향이다.
+보스 후 작업은 구원 완료가 아니라 역할/이름/주소/사진을 분리하고 빈칸을 보류하는 일이다.
+```
+
+다음 R01 NPC 작업:
+
+```text
+PORCH-LINE / ROOM-12 재방문 분기.
+산출물 후보:
+story/03_regions/r01_porch_line_room_12_revisit_branch_v0_1.md
 ```
 
 ### 8번 후보: 리오
@@ -981,7 +1025,7 @@ NPC가 세계관을 장문으로 설명한다.
 6. PATCH가 2번째 후보로 충분한지 별도 판정한다.
 7. 그 다음 3번째 주인공 후보를 상세 결재한다.
 8. 별도로 보급소 NPC/지역 NPC 로스터를 만든다.
-9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화, 본명/호칭 확정, 선택 분기별 후폭풍 정리는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 R01 보스 전후 NPC 상태 변화 정리부터 진행한다.
+9. NPC도 한 명씩 결재한다. R01 NPC 12명 상세화, 본명/호칭 확정, 선택 분기별 후폭풍, 보스 전후 NPC 상태 변화 정리는 한 바퀴 완료되었고, 다음은 `story/03_regions/r01_remaining_work_list_v0_1.md` 기준으로 PORCH-LINE / ROOM-12 재방문 분기부터 진행한다.
 ```
 
 한 번에 하면 안 되는 것:
