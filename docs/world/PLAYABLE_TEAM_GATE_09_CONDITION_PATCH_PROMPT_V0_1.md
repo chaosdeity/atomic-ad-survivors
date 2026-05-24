@@ -1,6 +1,6 @@
 # GATE-09 조건부 해소 플레이어블팀 프롬프트 v0.1
 
-이 문서는 플레이어블 제작팀에게 넘기는 다음 작업용 복붙 프롬프트다.
+이 문서는 플레이어블 제작팀에게 넘긴 GATE-09 조건부 해소 작업용 복붙 프롬프트다.
 
 목표는 20인 로스터를 다시 검토하는 것이 아니다.
 목표는 이미 조건부 통과한 9번 후보 `Mika Arakawa / GATE-09 / 미카, 막차 환승 심사자`의 조건을 해소하고, 프로필 v1.0으로 갈 수 있는지 판정하는 것이다.
@@ -19,8 +19,11 @@ story/06_characters/gate_09_playable_decision_v0_1.md
 다음 작성 문서:
 story/06_characters/gate_09_playable_condition_patch_v0_1.md
 
+작성 결과:
+완료 / 통과로 승격 가능
+
 다음 단계:
-조건부 해소 후 통과로 승격 가능 여부 판정
+story/06_characters/gate_09_profile_v1_0.md
 ```
 
 GATE-09는 이미 9번 슬롯 후보로 둘 가치가 있다고 판정되었다.
@@ -485,4 +488,17 @@ HP 0 직전
 5. C07 계열 캠페인 차별화 표가 있다.
 6. HP 0이 플랫폼 잔류 처리 중심으로 고정된다.
 7. 다음 포인터가 gate_09_profile_v1_0.md 또는 추가 보완 문서로 이어진다.
+```
+
+완료 결과:
+
+```text
+완료 문서:
+story/06_characters/gate_09_playable_condition_patch_v0_1.md
+
+판정:
+통과로 승격 가능
+
+다음 작업:
+story/06_characters/gate_09_profile_v1_0.md
 ```
