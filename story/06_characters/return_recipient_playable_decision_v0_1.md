@@ -26,8 +26,11 @@ story/06_characters/return_recipient_playable_condition_patch_v0_1.md
 후속 프로필:
 story/06_characters/return_recipient_profile_v1_0.md
 
+프로필 판정:
+통과 / 5번 플레이어블 후보 프로필 v1.0 고정
+
 다음 작업 포인터:
-5번 한이루 / RETURN-05 / 반송 수취인 프로필 v1.0
+6번 차유건 / METER-06 / 폐충전소 계량자 상세 결재
 ```
 
 ---
@@ -464,6 +467,7 @@ MAIL-LOOP는 주소가 남아 사람을 부르는 R01 잔향이다.
 
 ```text
 return_recipient_playable_condition_patch_v0_1.md에서 통과로 승격 가능 판정을 받았다.
+return_recipient_profile_v1_0.md에서 통과 / 5번 플레이어블 후보 프로필 v1.0 고정 판정을 받았다.
 ```
 
 ---
@@ -473,7 +477,7 @@ return_recipient_playable_condition_patch_v0_1.md에서 통과로 승격 가능 
 추천:
 
 ```text
-5번 한이루 / RETURN-05 / 반송 수취인 프로필 v1.0
+6번 차유건 / METER-06 / 폐충전소 계량자 상세 결재
 ```
 
 보완 문서 결과:
@@ -486,10 +490,21 @@ story/06_characters/return_recipient_playable_condition_patch_v0_1.md
 통과로 승격 가능
 ```
 
-프로필 v1.0에서 유지할 것:
+프로필 v1.0 결과:
 
-1. 윤서와의 중복 방지선.
-2. 중심 전투 이미지는 송장, 포장끈, 반송 스티커, 배송 박스.
-3. R03-L01~L02 해금 범위.
-4. HP 0의 수취인 확인 실패, 미수령 보관, 재배송 대기 연출.
-5. MAIL-LOOP 연결의 한계선.
+```text
+완료 문서:
+story/06_characters/return_recipient_profile_v1_0.md
+
+이름/코드명/유저 첫 표기:
+한이루 / RETURN-05 / 이루, 반송 수취인
+
+판정:
+통과 / 5번 플레이어블 후보 프로필 v1.0 고정
+```
+
+6번 상세 결재에서 유지할 것:
+
+1. 5번 이루는 L5 확정으로 흔들지 않는다.
+2. 6번 차유건은 기술자 직업명이 아니라 충전 순번/계량/차단기/정품 인증 절차를 비트는 후보로 검토한다.
+3. PATCH와 리오 사이의 로봇 과밀을 피한다.
