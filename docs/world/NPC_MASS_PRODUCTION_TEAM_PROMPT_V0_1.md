@@ -44,6 +44,7 @@ E02 상태 반응/오브젝트 문구 확장
 E02 상태/오브젝트 데이터 적용표
 E02 첫 외부 슬라이스 QA 체크리스트
 E02 구현 데이터 전달/엔진 스키마화
+E02 엔진 데이터 변환 전 검증
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -88,6 +89,8 @@ docs/world/E02_FIRST_SLICE_NPC_QA_CHECKLIST_TEAM_PROMPT_V0_1.md
 story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md
 docs/world/E02_FIRST_SLICE_ENGINE_SCHEMA_HANDOFF_TEAM_PROMPT_V0_1.md
 story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md
+docs/world/E02_FIRST_SLICE_ENGINE_DATA_PRE_CONVERSION_VALIDATION_TEAM_PROMPT_V0_1.md
+story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md
 story/02_hub/outpost_core_npc_profiles_v1_0.md
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 story/06_characters/playable_20_name_registry_v0_1.md
@@ -567,5 +570,7 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 19. 완료 산출물은 e02_first_slice_npc_qa_checklist_v0_1.md다.
 20. E02 구현 데이터 전달/엔진 스키마화도 작성 완료되었다.
 21. 완료 산출물은 e02_first_slice_engine_schema_handoff_v0_1.md다.
-22. 다음은 E02 엔진 데이터 변환 전 검증 또는 CLAUSE-11 상세 결재로 넘긴다.
+22. E02 엔진 데이터 변환 전 검증도 작성 완료되었다.
+23. 완료 산출물은 e02_first_slice_engine_data_pre_conversion_validation_v0_1.md다.
+24. 다음은 E02 실제 엔진 데이터 작성 프롬프트 또는 CLAUSE-11 상세 결재로 넘긴다.
 ```

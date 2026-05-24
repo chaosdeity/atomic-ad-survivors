@@ -175,7 +175,8 @@ GATE-09 전투/해금 기능 대체
 | `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. 상태 반응과 오브젝트 문구를 구현 데이터 적용표로 연결 |
 | `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 완료. 9개 대상, 36개 적용행, 18개 오브젝트, reaction-only 8행, 직접 대면 2행 제한 검산 |
 | `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md` | 완료. QA 통과 범위를 유지한 채 엔진 전달 스키마로 이전 |
-| E02 엔진 데이터 변환 전 검증 | 다음. 실제 엔진 데이터 작성 전 ID/수량/금지 해금 재검산 |
+| `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md` | 완료. 실제 엔진 데이터 작성 전 ID/수량/금지 해금 재검산 |
+| E02 실제 엔진 데이터 작성 프롬프트 | 다음. 실제 파일 생성 여부와 엔진 포맷 확정 범위를 분리 |
 
 최종 판정:
 

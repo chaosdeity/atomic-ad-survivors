@@ -169,7 +169,8 @@ extraction_stability, residence_tag, supply_pressure 모두 포함
 | `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. 구현 단계에서 `reaction_id`, 상태 키, 플래그, 오브젝트 ID를 데이터로 연결 |
 | `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 완료. 새 NPC/새 ID 없이 노출 조건과 금지 해금을 검산 |
 | `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md` | 완료. 통과한 반응 ID 36개를 엔진 전달 스키마로 이전 |
-| E02 엔진 데이터 변환 전 검증 | 다음. 실제 엔진 데이터 작성 전 반응 ID 누락/중복 검산 |
+| `story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md` | 완료. 실제 엔진 데이터 작성 전 반응 ID 누락/중복 검산 |
+| E02 실제 엔진 데이터 작성 프롬프트 | 다음. 반응 ID 36개를 실제 변환 프롬프트 범위로 넘김 |
 | `story/06_characters/clause_11_playable_decision_v0_1.md` | 플레이어블 트랙의 다음 상세 결재 |
 
 최종 판정:

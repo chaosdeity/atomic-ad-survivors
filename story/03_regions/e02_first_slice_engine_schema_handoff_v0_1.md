@@ -348,15 +348,18 @@ QA 통과 산출물을 새 ID 없이 엔진팀 전달 문서로 정리했다.
 
 ## 15. 다음 작업 포인터
 
+완료된 후속 문서:
+`story/03_regions/e02_first_slice_engine_data_pre_conversion_validation_v0_1.md`
+
 | 판정 | 다음 작업 |
 |---|---|
-| 스키마 전달 가능 | E02 첫 외부 슬라이스 엔진 데이터 변환 전 검증 또는 실제 엔진 데이터 작성 프롬프트 |
+| 스키마 전달 가능 | E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 |
 | 조건부 전달 | `story/03_regions/e02_first_slice_engine_schema_handoff_patch_v0_1.md` |
 | 보류 | `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` 또는 `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` 수정 지시 |
 
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 엔진 데이터 변환 전 검증 프롬프트 작성.
-실제 엔진 데이터 작성은 검증 프롬프트 통과 후 별도 작업으로 분리한다.
+E02 첫 외부 슬라이스 실제 엔진 데이터 작성 프롬프트 작성.
+실제 엔진 데이터 파일 생성은 별도 지시와 엔진 포맷 확정 후 진행한다.
 ```
