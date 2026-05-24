@@ -260,4 +260,5 @@ L2/L1/L0는 작은 결말의 증거물, 명단, 문구, 로그로 남는다.
 E01 한국권 NPC는 추가 생산하지 않았다.
 추가 슬롯 다수는 이름 있는 직접 대면 NPC가 아니라 상태 반응, 잔향, 로그, 오브젝트, 배경 슬롯이다.
 후속 산출물 `story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md`에서 검수 전 기준을 1,024개 제작 슬롯으로 올렸다.
+후속 산출물 `story/03_regions/global_npc_2048_pre_review_wave_v0_1.md`에서 1차 검수 배치를 2,048개 제작 슬롯으로 올렸다.
 ```

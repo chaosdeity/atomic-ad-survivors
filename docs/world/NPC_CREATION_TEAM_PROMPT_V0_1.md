@@ -60,7 +60,7 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-전역 NPC 검수팀 프롬프트
+전역 NPC 2,048 1차 검수 배치
 
 현재 NPC 트랙 다음 작업:
 전역 NPC 검수 보고서 작성
@@ -83,6 +83,12 @@ story/03_regions/global_npc_expansion_slot_registry_v0_1.md
 
 전역 NPC 검수 전 추가 확장 매트릭스:
 story/03_regions/global_npc_pre_review_overfill_matrix_v0_1.md
+
+전역 NPC 풀스케일 목표 사다리:
+story/03_regions/global_npc_full_scale_target_ladder_v0_1.md
+
+전역 NPC 2,048 1차 검수 배치:
+story/03_regions/global_npc_2048_pre_review_wave_v0_1.md
 
 전역 NPC 검수팀 프롬프트:
 docs/world/GLOBAL_NPC_REVIEW_TEAM_PROMPT_V0_1.md
@@ -696,6 +702,10 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 42. 증분 +348개를 E02 +24, E03~E12 +300, cross_region +24 슬롯으로 등록했다.
 43. 전역 NPC 검수 전 추가 확장 매트릭스도 작성 완료되었다.
 44. 검수 전 기준을 1,024개 제작 슬롯으로 올렸고, 증분 +256개는 E02~E12와 cross_region에만 배정했다.
-45. 전역 NPC 검수팀 프롬프트도 작성 완료되었다.
-46. 다음 산출물은 전역 NPC 검수 보고서 작성을 권장한다.
+45. 전역 NPC 풀스케일 목표 사다리도 작성 완료되었다.
+46. 1,024개를 약 1/10 단계로 보고 장기 목표 10,240개 제작 슬롯을 설정했다.
+47. 전역 NPC 2,048 1차 검수 배치도 작성 완료되었다.
+48. E01은 120개 고정, E02~E12와 cross_region만 증분 배정했다.
+49. 전역 NPC 검수팀 프롬프트도 2,048개 기준으로 갱신 완료되었다.
+50. 다음 산출물은 전역 NPC 검수 보고서 작성을 권장한다.
 ```
