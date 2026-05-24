@@ -125,7 +125,8 @@ BROAD-10 방송 설명 장면 대체
 | `story/03_regions/e02_first_slice_object_text_bank_v0_1.md` | 완료. E02 오브젝트 그룹 13개, 문구 36개 |
 | `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` | 완료. `reaction_id`와 `object_text_id`를 구현 데이터로 연결 |
 | `story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md` | 완료. 실제 노출 조건, 직접 대면 2행 제한, 금지 해금 검산 |
-| E02 구현 데이터 전달/엔진 스키마화 | 다음. QA 통과 기준을 유지한 채 구현 데이터로 이전 |
+| `story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md` | 완료. QA 통과 기준을 필드 사전, enum, 매핑 전달표로 이전 |
+| E02 엔진 데이터 변환 전 검증 | 다음. 실제 엔진 데이터 작성 전 수량/ID/금지 해금 재검산 |
 
 최종 판정:
 

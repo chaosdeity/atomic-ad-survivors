@@ -254,15 +254,18 @@ QA 실패가 있어도 새 NPC, 새 문구, 새 ID를 만들지 않는다.
 
 ## 13. 다음 작업 포인터
 
+완료된 후속 문서:
+`story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md`
+
 | 판정 | 다음 작업 |
 |---|---|
-| 통과 | E02 첫 외부 슬라이스 구현 데이터 전달 또는 엔진 데이터 스키마화 |
+| 통과 | E02 첫 외부 슬라이스 엔진 데이터 변환 전 검증 |
 | 조건부 통과 | `story/03_regions/e02_first_slice_npc_qa_patch_v0_1.md` |
 | 보류 | `story/03_regions/e02_first_slice_state_object_data_application_v0_1.md` 수정 지시 |
 
 권장 다음 작업:
 
 ```text
-E02 첫 외부 슬라이스 구현 데이터 전달.
-단, 엔진 데이터 스키마화 전에도 새 NPC, 새 application_id, 새 reaction_id, 새 object_text_id는 만들지 않는다.
+E02 첫 외부 슬라이스 엔진 데이터 변환 전 검증.
+단, 실제 엔진 데이터 작성 전에도 새 NPC, 새 application_id, 새 reaction_id, 새 object_text_id는 만들지 않는다.
 ```

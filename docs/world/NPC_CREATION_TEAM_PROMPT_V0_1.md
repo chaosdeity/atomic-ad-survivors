@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-E02 첫 외부 슬라이스 QA 체크리스트
+E02 구현 데이터 전달/엔진 스키마화
 
 현재 NPC 트랙 다음 작업:
-E02 구현 데이터 전달/엔진 스키마화 또는 CLAUSE-11 상세 결재
+E02 엔진 데이터 변환 전 검증 또는 CLAUSE-11 상세 결재
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -108,6 +108,12 @@ docs/world/E02_FIRST_SLICE_NPC_QA_CHECKLIST_TEAM_PROMPT_V0_1.md
 
 E02 첫 외부 슬라이스 QA 체크리스트:
 story/03_regions/e02_first_slice_npc_qa_checklist_v0_1.md
+
+E02 구현 데이터 전달/엔진 스키마화 프롬프트:
+docs/world/E02_FIRST_SLICE_ENGINE_SCHEMA_HANDOFF_TEAM_PROMPT_V0_1.md
+
+E02 구현 데이터 전달/엔진 스키마화:
+story/03_regions/e02_first_slice_engine_schema_handoff_v0_1.md
 ```
 
 ---
@@ -620,5 +626,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 22. 완료 산출물은 e02_first_slice_state_object_data_application_v0_1.md다.
 23. E02 첫 외부 슬라이스 QA 체크리스트도 작성 완료되었다.
 24. 완료 산출물은 e02_first_slice_npc_qa_checklist_v0_1.md다.
-25. 다음 산출물은 E02 구현 데이터 전달/엔진 스키마화 또는 CLAUSE-11 상세 결재를 권장한다.
+25. E02 구현 데이터 전달/엔진 스키마화도 작성 완료되었다.
+26. 완료 산출물은 e02_first_slice_engine_schema_handoff_v0_1.md다.
+27. 다음 산출물은 E02 엔진 데이터 변환 전 검증 또는 CLAUSE-11 상세 결재를 권장한다.
 ```
