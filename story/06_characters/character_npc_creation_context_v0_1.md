@@ -126,6 +126,7 @@ story/06_characters/patch_playable_2nd_slot_final_decision_v0_1.md
 story/06_characters/playable_slots_3_to_7_candidate_selection_v0_1.md
 story/06_characters/discharge_hold_patient_playable_decision_v0_1.md
 story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
+story/06_characters/discharge_hold_patient_profile_v1_0.md
 story/06_characters/player_characters.md
 story/06_characters/character_long_term_model.md
 story/06_characters/character_affection_monetization.md
@@ -823,7 +824,8 @@ R01 전체 문서 인덱스/정리도 완료되었다.
 3~7번 초반 플레이어블 후보 선정도 완료되었다.
 4번 퇴원 보류 환자 상세 결재도 완료되었다.
 4번 퇴원 보류 환자 보완 문서도 완료되었다.
-다음 작업은 퇴원 보류 환자 프로필 v1.0이다.
+4번 퇴원 보류 환자 프로필 v1.0도 완료되었다.
+다음 작업은 5번 반송 수취인 상세 결재다.
 ```
 
 ### R01 보스 전후 NPC 상태 변화
@@ -1178,10 +1180,20 @@ story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
 판정:
 통과로 승격 가능
 
+4번 퇴원 보류 환자 프로필 v1.0 완료.
+완료 문서:
+story/06_characters/discharge_hold_patient_profile_v1_0.md
+
+이름/코드명/유저 첫 표기:
+강하람 / HOLD-04 / 하람, 퇴원 보류자
+
+판정:
+통과 / 4번 플레이어블 후보 프로필 v1.0 고정
+
 다음:
-퇴원 보류 환자 프로필 v1.0.
+5번 반송 수취인 상세 결재.
 그 다음 큰 작업:
-시즌 1 큰 줄거리 잠금.
+플레이어블 20인 이름 레지스트리 v0.1.
 ```
 
 ### 8번 후보: 리오
@@ -1279,7 +1291,7 @@ story/06_characters/playable_slots_3_to_7_candidate_selection_v0_1.md
 
 ```text
 3 OPEN-HOST / R01 / NPC 선등장 후 전환
-4 퇴원 보류 환자 / R02 의료·보험 / 통과 후보
+4 강하람 / HOLD-04 / R02 의료·보험 / 프로필 v1.0 완료
 5 반송 수취인 / R03 물류·반품
 6 폐충전소 계량자 / R04 정품·충전·산업
 7 침묵권 피난자 / R08 비상보급·대피
@@ -1301,8 +1313,8 @@ R01과 침묵 보급소에서 바로 이해 가능한 인물
 OPEN-HOST는 3번 후보로 번호를 예약하되 NPC 선등장 후 전환한다.
 3~7번에는 새 로봇을 넣지 않는다.
 R04는 폐충전소 계량자로 열어 PATCH/리오와 로봇 과밀을 피한다.
-4번 퇴원 보류 환자는 보완 결과 통과 후보로 승격 가능하다.
-다음 상세화 대상은 퇴원 보류 환자 프로필 v1.0이다.
+4번 퇴원 보류 환자는 강하람/HOLD-04 프로필 v1.0으로 고정했다.
+다음 상세화 대상은 5번 반송 수취인 상세 결재다.
 ```
 
 주의:
@@ -1382,9 +1394,9 @@ NPC가 세계관을 장문으로 설명한다.
 추천 순서:
 
 ```text
-1. 퇴원 보류 환자 프로필 v1.0을 작성한다.
-2. 보완 문서의 잠금인 힐러화 금지, R02-L01~L03 해금 범위, 퇴원 취소/병상 재배정 HP 0을 유지한다.
-3. 그 다음 5번 반송 수취인의 윤서 중복 위험을 점검한다.
+1. 5번 반송 수취인의 윤서 중복 위험을 점검한다.
+2. 반송 수취인은 윤서의 반품 도장과 겹치지 않게 주소/배송 방향으로 분리한다.
+3. 별도 작업으로 플레이어블 20인 이름 레지스트리 v0.1을 작성해 강하람/HOLD-04와 이후 후보 이름 중복을 검사한다.
 4. 6번 폐충전소 계량자가 기술자 직업 슬롯으로 납작해지지 않는지 검증한다.
 5. 7번 침묵권 피난자가 저항군/탱커가 되지 않게 보급소·인양 안정도 축을 고정한다.
 6. 3번 OPEN-HOST는 상세 프로필보다 R01 NPC 선등장 후 전환 조건과 기능 보존을 점검한다.

@@ -20,8 +20,14 @@ story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
 보완 판정:
 통과로 승격 가능
 
+후속 프로필:
+story/06_characters/discharge_hold_patient_profile_v1_0.md
+
+프로필 판정:
+통과 / 4번 플레이어블 후보 프로필 v1.0 고정
+
 다음 작업 포인터:
-퇴원 보류 환자 프로필 v1.0
+5번 반송 수취인 상세 결재
 ```
 
 ---
@@ -410,4 +416,23 @@ story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
 
 따라서 다음 작업은 `퇴원 보류 환자 프로필 v1.0` 작성이다.
 
-조건을 충족하지 못하면 4번은 보류하고, 다음 상세 결재는 5번 반송 수취인으로 넘긴다.
+프로필 결과:
+
+```text
+완료 문서:
+story/06_characters/discharge_hold_patient_profile_v1_0.md
+
+이름:
+강하람
+
+코드명:
+HOLD-04
+
+유저용 첫 표기:
+하람 / 퇴원 보류자
+
+판정:
+통과 / 4번 플레이어블 후보 프로필 v1.0 고정
+```
+
+따라서 다음 상세 결재는 5번 반송 수취인으로 넘긴다.
