@@ -6,6 +6,7 @@
 최신 보급소 5명 통합 기준: `story/02_hub/outpost_core_npc_profiles_v1_0.md`
 최신 보급소 5명 대사 기준: `story/02_hub/outpost_core_npc_dialogue_bank_v0_1.md`
 최신 R01 NPC 구현 목록 기준: `story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md`
+최신 E01 보조 NPC 최소안 기준: `story/03_regions/e01_support_npc_minimum_plan_v0_1.md`
 
 ## 설계 원칙
 

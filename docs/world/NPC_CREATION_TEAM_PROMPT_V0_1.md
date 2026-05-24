@@ -40,8 +40,11 @@ story/03_regions/r01_vertical_slice_npc_implementation_list_v0_1.md
 R01 NPC 데이터 스키마 적용:
 story/03_regions/r01_npc_data_schema_application_v0_1.md
 
+E01 R02/R03/R04/R08 보조 NPC 최소안:
+story/03_regions/e01_support_npc_minimum_plan_v0_1.md
+
 현재 NPC 트랙 다음 작업:
-E01 R02/R03/R04/R08 보조 NPC 최소안
+E02 첫 외부 슬라이스 NPC 예산
 ```
 
 ---
@@ -530,8 +533,9 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 ## 8. 다음 작업
 
 ```text
-1. 이 프롬프트를 사용해 E01 R02/R03/R04/R08 보조 NPC 최소안을 작성한다.
-2. 결과 문서는 story/03_regions/e01_support_npc_minimum_plan_v0_1.md로 작성한다.
-3. 통과 후보 중 각 지역 1명 이하만 우선 프로필 v1.0 대상으로 올린다.
+1. E01 R02/R03/R04/R08 보조 NPC 최소안 작성 완료.
+2. 결과 문서는 story/03_regions/e01_support_npc_minimum_plan_v0_1.md를 기준으로 사용한다.
+3. 통과 후보 중 각 지역 1명 이하만 우선 프로필 v0.1/v1.0 대상으로 올린다.
 4. 나머지는 대사 은행/오브젝트 잔향/배경 처리로 보류한다.
+5. 다음 NPC 트랙은 E02 첫 외부 슬라이스 NPC 예산으로 넘어간다.
 ```
