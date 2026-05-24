@@ -69,6 +69,7 @@ docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md
 docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md
 docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md
 docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md
+docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md
 docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md
 docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md
 docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md
@@ -156,6 +157,8 @@ story/05_progression/story_trigger_schema.md
 위 문서가 충돌하면 v0.3 세계 기준을 우선한다.
 캐릭터 문서가 v0.3과 충돌하면 캐릭터를 고친다.
 NPC 대사와 낡은 표지에서는 속어를 허용하지만, UI/튜토리얼/결과창은 정식 태그명을 쓴다.
+캐릭터 원점과 캠페인 배치는 관리자용 현실 위치 매트릭스를 확인한다.
+유저에게는 실명 지명을 숨기되, 제작자는 현실 권역과 인프라 축을 알고 있어야 한다.
 ```
 
 ---

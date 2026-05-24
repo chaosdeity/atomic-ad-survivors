@@ -94,6 +94,11 @@ story/06_characters/meter_06_playable_condition_patch_v0_1.md
 다음 작업:
 METER-06 프로필 v1.0 작성.
 시즌 1 큰 줄거리 잠금.
+
+지도/현실 위치 잠금:
+캐릭터 슬롯은 월드맵의 관리자용 현실 권역을 기준으로 배치한다.
+E01의 관리자용 기준은 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`다.
+E01 초반에 8명 주인공이 모두 있는 것이 아니며, 9~20번은 각자 열리는 E02~E12 실제 광역권에 맞춰 현지명/다국적 이름으로 재판정한다.
 ```
 
 ```text
@@ -117,53 +122,54 @@ Atomic Ad Survivors의 플레이어블 캐릭터 20명을 장기 로스터로 �
 7. docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md
 8. docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md
 9. docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md
-10. docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md
-11. docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md
-12. docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md
-13. docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md
-14. story/03_regions/r01_document_index_v0_1.md
-15. story/03_regions/r01_npc_story_team_transfer_note_v0_1.md
-16. story/03_regions/r01_campaign1_npc_roster_v0_1.md
-17. story/03_regions/room_12_npc_detail_decision_v0_1.md
-18. story/03_regions/room_12_npc_drama_draft_v0_1.md
-19. story/03_regions/room_12_npc_profile_v1_0.md
-20. story/03_regions/porch_line_npc_drama_draft_v0_1.md
-21. story/03_regions/porch_line_npc_profile_v1_0.md
-22. story/03_regions/name_painter_npc_drama_draft_v0_1.md
-23. story/03_regions/name_painter_npc_profile_v1_0.md
-24. story/03_regions/mail_loop_npc_drama_draft_v0_1.md
-25. story/03_regions/mail_loop_npc_profile_v1_0.md
-26. story/03_regions/vac_0_npc_drama_draft_v0_1.md
-27. story/03_regions/vac_0_npc_profile_v1_0.md
-28. docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md
+10. docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md
+11. docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md
+12. docs/world/E01_P1_EXPANSION_DESIGN_V0_1.md
+13. docs/world/R01_FIRST_SORTIE_LEVEL_CONNECTION_V0_1.md
+14. docs/world/R01_L03_FIRST_BOSS_DETAIL_V0_1.md
+15. story/03_regions/r01_document_index_v0_1.md
+16. story/03_regions/r01_npc_story_team_transfer_note_v0_1.md
+17. story/03_regions/r01_campaign1_npc_roster_v0_1.md
+18. story/03_regions/room_12_npc_detail_decision_v0_1.md
+19. story/03_regions/room_12_npc_drama_draft_v0_1.md
+20. story/03_regions/room_12_npc_profile_v1_0.md
+21. story/03_regions/porch_line_npc_drama_draft_v0_1.md
+22. story/03_regions/porch_line_npc_profile_v1_0.md
+23. story/03_regions/name_painter_npc_drama_draft_v0_1.md
+24. story/03_regions/name_painter_npc_profile_v1_0.md
+25. story/03_regions/mail_loop_npc_drama_draft_v0_1.md
+26. story/03_regions/mail_loop_npc_profile_v1_0.md
+27. story/03_regions/vac_0_npc_drama_draft_v0_1.md
+28. story/03_regions/vac_0_npc_profile_v1_0.md
+29. docs/world/CHARACTER_UNLOCK_STRUCTURE_V0_1.md
 
 기존 캐릭터 참고:
-29. story/06_characters/yunseo_profile_v1_0.md
-30. story/06_characters/patch_profile_v1_0.md
-31. story/06_characters/patch_character_drama_draft_v0_1.md
-32. story/06_characters/open_host_profile_v1_0.md
-33. story/06_characters/open_host_character_drama_draft_v0_1.md
-34. story/06_characters/rio_profile_v1_0.md
-35. story/06_characters/rio_character_drama_draft_v0_2.md
-36. story/06_characters/yunseo.md
-37. story/06_characters/yunseo_0_2_playable_spec.md
-38. story/06_characters/player_characters.md
-39. story/06_characters/character_long_term_model.md
-40. story/06_characters/character_affection_monetization.md
-41. story/06_characters/character_npc_review.md
-42. story/90_implementation/story_deepening_0_2_asset_brief.md
-43. story/06_characters/playable_20_roster_blueprint_v0_1.md
-44. story/06_characters/patch_playable_2nd_slot_final_decision_v0_1.md
-45. story/06_characters/playable_slots_3_to_7_candidate_selection_v0_1.md
-46. story/06_characters/discharge_hold_patient_playable_decision_v0_1.md
-47. story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
-48. story/06_characters/discharge_hold_patient_profile_v1_0.md
-49. story/06_characters/playable_20_name_registry_v0_1.md
-50. story/06_characters/return_recipient_playable_decision_v0_1.md
-51. story/06_characters/return_recipient_playable_condition_patch_v0_1.md
-52. story/06_characters/return_recipient_profile_v1_0.md
-53. story/06_characters/meter_06_playable_decision_v0_1.md
-54. story/06_characters/meter_06_playable_condition_patch_v0_1.md
+30. story/06_characters/yunseo_profile_v1_0.md
+31. story/06_characters/patch_profile_v1_0.md
+32. story/06_characters/patch_character_drama_draft_v0_1.md
+33. story/06_characters/open_host_profile_v1_0.md
+34. story/06_characters/open_host_character_drama_draft_v0_1.md
+35. story/06_characters/rio_profile_v1_0.md
+36. story/06_characters/rio_character_drama_draft_v0_2.md
+37. story/06_characters/yunseo.md
+38. story/06_characters/yunseo_0_2_playable_spec.md
+39. story/06_characters/player_characters.md
+40. story/06_characters/character_long_term_model.md
+41. story/06_characters/character_affection_monetization.md
+42. story/06_characters/character_npc_review.md
+43. story/90_implementation/story_deepening_0_2_asset_brief.md
+44. story/06_characters/playable_20_roster_blueprint_v0_1.md
+45. story/06_characters/patch_playable_2nd_slot_final_decision_v0_1.md
+46. story/06_characters/playable_slots_3_to_7_candidate_selection_v0_1.md
+47. story/06_characters/discharge_hold_patient_playable_decision_v0_1.md
+48. story/06_characters/discharge_hold_patient_playable_condition_patch_v0_1.md
+49. story/06_characters/discharge_hold_patient_profile_v1_0.md
+50. story/06_characters/playable_20_name_registry_v0_1.md
+51. story/06_characters/return_recipient_playable_decision_v0_1.md
+52. story/06_characters/return_recipient_playable_condition_patch_v0_1.md
+53. story/06_characters/return_recipient_profile_v1_0.md
+54. story/06_characters/meter_06_playable_decision_v0_1.md
+55. story/06_characters/meter_06_playable_condition_patch_v0_1.md
 
 판단 우선순위:
 - `WORLD_FOUNDATION_LOCK_V0_3.md`가 최상위다.

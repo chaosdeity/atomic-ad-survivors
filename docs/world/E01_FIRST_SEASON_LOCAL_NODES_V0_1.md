@@ -1,8 +1,8 @@
 # Atomic Ad Survivors E01 첫 시즌 로컬 노드 지정 v0.1
 
-상태: v0.1 지도 제작 전 로컬 노드 기준  
-목적: E01 한반도 서부 수도권-항만-산업 벨트 안의 실제 플레이 노드를 먼저 고정한다.  
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
+상태: v0.1 지도 제작 전 로컬 노드 기준
+목적: E01 한반도 서부 수도권-항만-산업 벨트 안의 실제 플레이 노드를 먼저 고정한다.
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
 
 ## 0. 판정 요약
 
@@ -44,6 +44,7 @@ R03-L02 = R03 권역 안의 2번 로컬 노드
 |---|---|
 | 실명 지명 | 초반 유저용 지도에는 직접 쓰지 않는다. |
 | 내부 지리 앵커 | 실제 지도 제작 기준으로만 쓴다. |
+| 관리자용 현실 위치 | `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 실제 도시권/인프라 축을 확인한다. |
 | 유저 노출 단서 | 해안선, 간선도로, 강, 산지, 항만/공항 거리, 도시 밀도, 방송탑 실루엣으로 암시한다. |
 | 인식 밀도 | 100명 중 10명 정도가 실제 장소를 알아채는 수준을 목표로 한다. |
 | 정확 좌표 | v0.1에서는 확정하지 않는다. 맵 아트/월드맵 UI 단계에서 좌표화한다. |
@@ -51,6 +52,8 @@ R03-L02 = R03 권역 안의 2번 로컬 노드
 ## 2. E01 광역 지도 기준
 
 E01의 내부 실제 지리 기준은 `한반도 서부 수도권-항만-산업 벨트`다. 유저에게는 실명 대신 `서부권`, `닫힌 항로`, `반품 벨트`, `마지막 수신권` 같은 캠페인식 이름으로 보인다.
+
+관리자용 현실 권역과 제작 세부 앵커는 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`를 기준으로 한다.
 
 | 방향 | 권역 | 정식 캠페인 | 지도 의미 |
 |---|---|---|---|

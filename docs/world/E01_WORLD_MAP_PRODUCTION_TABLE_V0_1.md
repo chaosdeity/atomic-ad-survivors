@@ -1,14 +1,15 @@
 # Atomic Ad Survivors E01 월드맵 제작용 위치/특징표 v0.1
 
-상태: v0.1 제작자 공유용  
-목적: E01 월드맵 SVG와 JSON을 보는 제작자가 각 노드의 위치감, 시각 특징, 플레이 의미를 빠르게 이해하도록 정리한다.  
-연결 문서: `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`  
-데이터 파일: `data/world/e01_world_map_nodes_v0_1.json`  
+상태: v0.1 제작자 공유용
+목적: E01 월드맵 SVG와 JSON을 보는 제작자가 각 노드의 위치감, 시각 특징, 플레이 의미를 빠르게 이해하도록 정리한다.
+연결 문서: `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
+데이터 파일: `data/world/e01_world_map_nodes_v0_1.json`
 시각화 파일: `assets/world/e01_world_map_blockout_v0_1.svg`
 
 ## 0. 사용 원칙
 
 - 이 표는 제작자용이다. 유저에게 실제 지명이나 내부 지리 앵커를 그대로 노출하지 않는다.
+- 현실 도시권/인프라 축의 관리자용 기준은 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`를 따른다.
 - 좌표는 실제 GPS가 아니라 E01 월드맵의 `0~100 정규화 좌표`다.
 - SVG 색상은 최종 아트 팔레트가 아니라 제작용 구분색이다.
 - 각 노드는 `출격 지점`, `회수 지점`, `보스 결절`, `서사 단서`, `월드맵 해금 지점` 중 하나 이상의 역할을 가진다.

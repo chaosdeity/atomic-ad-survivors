@@ -1,12 +1,12 @@
 # Atomic Ad Survivors E01 월드맵 좌표 블록아웃 v0.1
 
-상태: v0.1 지도 제작용 좌표 초안  
-목적: E01 첫 시즌 40개 로컬 노드를 실제 지구 기반 실루엣 위에 올리기 전, 내부 제작용 상대 좌표와 인양 반경을 고정한다.  
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`  
-데이터 파일: `data/world/e01_world_map_nodes_v0_1.json`  
-시각화 파일: `assets/world/e01_world_map_blockout_v0_1.svg`  
-P0 UI 와이어프레임: `assets/world/e01_p0_world_map_ui_wireframe_v0_1.svg`  
-아트/색채 보드: `assets/world/e01_world_map_art_color_direction_v0_1.svg`  
+상태: v0.1 지도 제작용 좌표 초안
+목적: E01 첫 시즌 40개 로컬 노드를 실제 지구 기반 실루엣 위에 올리기 전, 내부 제작용 상대 좌표와 인양 반경을 고정한다.
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `docs/world/E01_P0_WORLD_MAP_FIRST_SCREEN_FLOW_V0_1.md`, `docs/world/EMERGENCY_EXTRACTION_RULES_V0_1.md`, `docs/world/WORLD_TERMINOLOGY_LOCK_V0_1.md`
+데이터 파일: `data/world/e01_world_map_nodes_v0_1.json`
+시각화 파일: `assets/world/e01_world_map_blockout_v0_1.svg`
+P0 UI 와이어프레임: `assets/world/e01_p0_world_map_ui_wireframe_v0_1.svg`
+아트/색채 보드: `assets/world/e01_world_map_art_color_direction_v0_1.svg`
 생성 스크립트: `tools/generate_e01_world_map_blockout.ps1`
 
 ## 0. 판정 요약
@@ -14,6 +14,7 @@ P0 UI 와이어프레임: `assets/world/e01_p0_world_map_ui_wireframe_v0_1.svg`
 - 이 문서의 좌표는 실제 GPS가 아니다.
 - 좌표는 E01 광역권을 `0~100`으로 정규화한 내부 블록아웃 좌표다.
 - 유저용 월드맵은 실명 지명을 숨기고, 해안선/도로축/도시 밀도/산지/항만/방송탑 실루엣만 남긴다.
+- 관리자용 현실 위치와 도시권/인프라 축은 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 확인한다.
 - 목표 인식 밀도는 기존 기준대로 100명 중 10명 정도가 실제 장소를 알아채는 수준이다.
 - E01 첫 시즌 노드는 총 40개이며, P0 5개, P1 16개, P2 19개다.
 - P0는 화면 중앙 외곽의 침묵권에서 동/남동 주택가로 이동하는 짧은 동선으로 둔다.
