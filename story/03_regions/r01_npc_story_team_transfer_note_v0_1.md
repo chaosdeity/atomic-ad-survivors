@@ -40,7 +40,7 @@ OPEN-HOST의 핵심:
 
 ## 이번 전달 범위
 
-이번 전달은 서른일곱 부분으로 나눈다.
+이번 전달은 서른여덟 부분으로 나눈다.
 
 ```text
 1. R01_CAMPAIGN1_NPC_ROSTER_V0_1.md
@@ -155,6 +155,9 @@ OPEN-HOST의 핵심:
 
 37. R01_BOSS_NPC_LINKS_V0_1.md
    - R01 첫 보스와 OPEN-HOST, ROOM-12, PORCH-LINE, MAIL-LOOP, DINING-4, WELCOME-DESK, FRAME-LEFT의 장면/플래그/대사 연결 정리
+
+38. R01_BOSS.md
+   - 스마일 홈 가족심사 관리자 기준, 보스 패턴별 NPC 연결, 결절 처리 후 선택, FRAME-LEFT 보스 후 잔향, Vertical Slice 구현 범위 정리
 ```
 
 ---
@@ -192,27 +195,28 @@ OPEN-HOST의 핵심:
 26. R01 Vertical Slice NPC 구현 범위가 12명 전원 직접 등장 욕심을 줄이고, 필수 체감 축과 P1 보류 축을 분리하는가?
 27. R01 Vertical Slice NPC 구현 범위가 R01 보스 문서와 NPC 연결로 자연스럽게 이어졌는가?
 28. R01 보스 문서와 NPC 연결이 보스를 죽이는 적이 아니라 가족 심사 절차/지역 광고 약관의 얼굴로 유지하는가?
-29. 다음 작업이 R01 보스 문서 본문 정리로 명확히 넘어가는가?
+29. R01 보스 문서 본문이 NPC 연결/상태값/Vertical Slice 범위를 보존한 채 정리되었는가?
+30. 다음 작업이 R01 지역 문서 본문 정리로 명확히 넘어가는가?
 ```
 
 ---
 
 ## 다음 작업 기준
 
-R01 보스 문서와 NPC 연결은 완료되었다.
+R01 보스 문서 본문 정리는 완료되었다.
 
 바로 다음 작업은 아래 문서로 넘긴다.
 
 ```text
-R01_BOSS_DOC_BODY_REVISION_V0_1.md
+R01_REGION_DOC_BODY_REVISION_V0_1.md
 ```
 
 목표:
 
 ```text
-R01 보스 문서 본문을 최신 NPC 연결과 Vertical Slice 범위에 맞게 정리한다.
+R01 지역 문서 본문을 최신 NPC/보스/Vertical Slice 기준에 맞게 정리한다.
 
-핵심은 기존 미추적 r01_boss.md를 바로 수정할지 먼저 판단하고,
-수정한다면 "스마일 홈 가족심사 관리자" 기준,
-NPC 플래그, 보스 패턴, 처치 후 선택, 상태값 후폭풍을 본문에 맞추는 것이다.
+핵심은 r01_suburb.md를 수정할지 먼저 판단하고,
+수정한다면 R01 지역 본문이 스마일 홈 가족심사 관리자,
+NPC 흔적, 보스 후 상태값, P1 재방문 기준과 충돌하지 않게 맞추는 것이다.
 ```
