@@ -44,7 +44,10 @@ E01 R02/R03/R04/R08 보조 NPC 최소안:
 story/03_regions/e01_support_npc_minimum_plan_v0_1.md
 
 현재 NPC 트랙 다음 작업:
-E02 첫 외부 슬라이스 NPC 예산
+NPC 대량 후보 풀 제작
+
+대량 제작 전용 프롬프트:
+docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md
 ```
 
 ---
@@ -535,7 +538,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 ```text
 1. E01 R02/R03/R04/R08 보조 NPC 최소안 작성 완료.
 2. 결과 문서는 story/03_regions/e01_support_npc_minimum_plan_v0_1.md를 기준으로 사용한다.
-3. 통과 후보 중 각 지역 1명 이하만 우선 프로필 v0.1/v1.0 대상으로 올린다.
-4. 나머지는 대사 은행/오브젝트 잔향/배경 처리로 보류한다.
-5. 다음 NPC 트랙은 E02 첫 외부 슬라이스 NPC 예산으로 넘어간다.
+3. 다음은 12명 단위 최소안이 아니라 NPC 대량 후보 풀 제작으로 넘어간다.
+4. 대량 제작 전용 프롬프트는 docs/world/NPC_MASS_PRODUCTION_TEAM_PROMPT_V0_1.md를 사용한다.
+5. 우선 산출물은 story/03_regions/e01_npc_mass_candidate_pool_v0_1.md를 권장한다.
 ```
