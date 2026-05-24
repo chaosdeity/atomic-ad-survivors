@@ -60,10 +60,10 @@ story/03_regions/e01_npc_trace_background_bank_v0_1.md
 story/03_regions/e01_npc_name_location_registry_v0_1.md
 
 현재 NPC 트랙 최신 완료:
-전역 NPC L3 이하 잔향/오브젝트 은행
+전역 NPC L3 이하 은행 검수
 
 현재 NPC 트랙 다음 작업:
-전역 NPC L3 이하 은행 검수
+전역 NPC L3 이하 은행 세부 문구 샘플링 기준 작성
 
 전역 NPC 스토리 네트워크 1차 실제 산출:
 story/03_regions/global_npc_story_seed_registry_v0_1.md
@@ -101,6 +101,9 @@ story/03_regions/global_npc_passed_slot_registry_v0_1.md
 
 전역 NPC L3 이하 잔향/오브젝트 은행:
 story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
+
+전역 NPC L3 이하 은행 검수:
+story/03_regions/global_npc_l3_below_bank_review_v0_1.md
 
 R08/R07 v1.0 보류 해제 게이트:
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
@@ -722,5 +725,7 @@ NPC 후보를 많이 받았을 때는 아래 기준으로 바로 자른다.
 53. 통과 슬롯 2,048개를 L5/L4 192개 후보와 L3 이하 1,856개 은행형 슬롯으로 정리했다.
 54. 전역 NPC L3 이하 잔향/오브젝트 은행도 작성 완료되었다.
 55. L3 이하 1,856개를 표현 방식 은행으로 정리했고 L5/L4 192개는 건드리지 않았다.
-56. 다음 산출물은 전역 NPC L3 이하 은행 검수를 권장한다.
+56. 전역 NPC L3 이하 은행 검수도 작성 완료되었다.
+57. 직접 대면화 위험, 이름 과잉, E02 이후 한국어 기본명, 플레이어블 기능 침범이 없음을 확인했다.
+58. 다음 산출물은 전역 NPC L3 이하 은행 세부 문구 샘플링 기준 작성을 권장한다.
 ```
