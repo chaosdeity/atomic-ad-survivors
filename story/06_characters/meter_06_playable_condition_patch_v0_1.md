@@ -24,7 +24,7 @@ story/06_characters/meter_06_profile_v1_0.md
 통과 / 6번 플레이어블 후보 프로필 v1.0 고정
 
 다음 작업 포인터:
-7번 백여울 / QUIET-07 / 침묵권 피난자 상세 결재
+7번 백여울 / QUIET-07 / 침묵권 피난자 프로필 v1.0 작성
 ```
 
 ---
@@ -483,5 +483,5 @@ story/06_characters/meter_06_profile_v1_0.md
 다음 작업 추천:
 
 ```text
-7번 백여울 / QUIET-07 / 침묵권 피난자 상세 결재
+7번 백여울 / QUIET-07 / 침묵권 피난자 프로필 v1.0 작성
 ```
