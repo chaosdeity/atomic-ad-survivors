@@ -163,6 +163,13 @@ story/06_characters/playable_slots_9_to_12_candidate_selection_v0_1.md
 판정:
 통과 / 9~12번 후보군 선정
 
+영웅 생성 프롬프트 v0.1 작성 완료.
+완료 문서:
+docs/world/HERO_CHARACTER_CREATION_PROMPT_V0_1.md
+
+용도:
+20명 전체 로스터 재작성용이 아니라, 슬롯 하나를 상세 결재/프로필 v1.0으로 밀기 위한 복붙용 프롬프트.
+
 다음 작업:
 9번 후보 상세 결재.
 시즌 1 큰 줄거리 잠금.
