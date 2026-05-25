@@ -3179,13 +3179,20 @@ func _debug_preview_r01_campaign_node(index: int) -> void:
 	if index < 0 or index >= ids.size():
 		return
 	selected_r01_node_id = String(ids[index])
+	var current_state := String(r01_campaign_node_states.get(selected_r01_node_id, R01CampaignMap.STATE_LOCKED))
+	var unlocked_for_preview := current_state == R01CampaignMap.STATE_LOCKED
+	if unlocked_for_preview:
+		r01_campaign_node_states[selected_r01_node_id] = R01CampaignMap.STATE_AVAILABLE
+		if not r01_campaign_new_signal_node_ids.has(selected_r01_node_id):
+			r01_campaign_new_signal_node_ids.append(selected_r01_node_id)
 	if match_state != "supply":
 		_show_supply_depot()
 	if not r01_campaign_map_open:
 		_open_r01_campaign_map()
 	else:
 		hud.update_campaign_map(_r01_campaign_map_data())
-	effects.show_combat_banner("%s 상태 미리보기" % R01CampaignMap.node_name(selected_r01_node_id), C.VITAMIN_YELLOW)
+	var verb := "테스트 개방" if unlocked_for_preview else "상태 미리보기"
+	effects.show_combat_banner("%s %s" % [R01CampaignMap.node_name(selected_r01_node_id), verb], C.VITAMIN_YELLOW)
 
 func _debug_r01_campaign_unlock_all() -> void:
 	if not C.DEBUG_TOOLS_ENABLED:

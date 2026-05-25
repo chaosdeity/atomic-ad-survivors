@@ -120,6 +120,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표: 주택가 첫 광고 신호 확인") != -1
 	main._sortie_selected_r01_campaign_node()
 	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
+	var l01_start_pos: Vector2 = main.player_pos
 	main._finish_match("recalled")
 	main._handle_terminal_action()
 	var post_run_supply_ok: bool = main.match_state == "supply"
@@ -131,6 +132,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var l02_opened_pulse_ok: bool = post_l01_text.find("새 신호: 분양 주택 루프 접근 가능") != -1 and main.r01_campaign_new_signal_node_ids.has("R01-L02")
 	main._select_r01_campaign_node("R01-L02")
 	main._sortie_selected_r01_campaign_node()
+	var l02_entry_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L02" and l01_start_pos.distance_to(main.player_pos) > 500.0 and main._combat_goal_label().find("분양 주택 루프") != -1
 	main._finish_match("victory")
 	main._handle_terminal_action()
 	var l03_unlocked_after_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "boss_ready"
@@ -158,9 +160,18 @@ func _probe_r01_campaign_map_flow() -> void:
 	_record("post-run returns to supply", post_run_supply_ok)
 	_record("L02 available after L01 visit", l02_available)
 	_record("L01 complete -> L02 pulse/opened state", l02_opened_pulse_ok)
+	_record("L02 sortie changes combat entry", l02_entry_ok)
 	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02 and l03_opened_text_ok)
 	_record("L05 displayed as false route", l05_false_route_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
 	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
 	main._close_r01_campaign_map()
 	await _finish_main(main)
+
+	var preview_main = await _new_main()
+	preview_main._debug_preview_r01_campaign_node(2)
+	var debug_preview_unlock_ok: bool = preview_main.match_state == "supply" and preview_main.r01_campaign_map_open and preview_main.selected_r01_node_id == "R01-L03" and String(preview_main.r01_campaign_node_states.get("R01-L03", "")) == "available"
+	preview_main._sortie_selected_r01_campaign_node()
+	var debug_preview_sortie_ok: bool = preview_main.match_state == "playing" and preview_main.current_r01_node_id == "R01-L03"
+	_record("Ctrl+1-5 debug preview unlocks sortie", debug_preview_unlock_ok and debug_preview_sortie_ok)
+	await _finish_main(preview_main)
