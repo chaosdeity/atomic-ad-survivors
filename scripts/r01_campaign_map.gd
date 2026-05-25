@@ -41,7 +41,7 @@ const NODE_DEFS := {
 		"recovery_line": "안정",
 		"route_note": "보급소 회수선이 닿는 외곽입니다.",
 		"zone_id": "silence_edge_start",
-		"ui_pos": Vector2(70, 190),
+		"ui_pos": Vector2(58, 184),
 		"start_offset": Vector2(32, -18),
 		"blockout_variant": "first_visit",
 		"blockout_phrase": "낮은 광고 밀도, 보급소 회수선의 가장자리",
@@ -58,7 +58,7 @@ const NODE_DEFS := {
 		"recovery_line": "흔들림",
 		"route_note": "외곽을 지나 같은 집들이 가격표만 바꿔 반복됩니다.",
 		"zone_id": "subdivision_loop_center",
-		"ui_pos": Vector2(190, 136),
+		"ui_pos": Vector2(160, 138),
 		"start_offset": Vector2(-210, 142),
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "우편함, 가격표, 쿠폰 밀도가 올라가는 반복 주택가",
@@ -75,7 +75,7 @@ const NODE_DEFS := {
 		"recovery_line": "불안정",
 		"route_note": "중심 루트 끝, 모델하우스 심사 절차가 열리는 결절입니다.",
 		"zone_id": "model_house_node_anchor",
-		"ui_pos": Vector2(356, 68),
+		"ui_pos": Vector2(276, 78),
 		"start_offset": Vector2(-300, 170),
 		"blockout_variant": "destroy_node",
 		"blockout_phrase": "모델하우스 방향의 결절 신호와 보스 심사 절차",
@@ -92,7 +92,7 @@ const NODE_DEFS := {
 		"recovery_line": "희미함",
 		"route_note": "중심 루트에서 빠지는 곁길, 소음이 잠깐 낮아집니다.",
 		"zone_id": "drain_pocket_anchor",
-		"ui_pos": Vector2(268, 214),
+		"ui_pos": Vector2(244, 194),
 		"start_offset": Vector2(-160, 48),
 		"blockout_variant": "extract_memory",
 		"blockout_phrase": "위험은 낮지만 흔적이 진하게 남는 배수로 곁길",
@@ -109,7 +109,7 @@ const NODE_DEFS := {
 		"recovery_line": "불안정",
 		"route_note": "보급소 방향처럼 보이는 가지지만 실제 회수선이 아닙니다.",
 		"zone_id": "fake_return_route_anchor",
-		"ui_pos": Vector2(110, 76),
+		"ui_pos": Vector2(86, 82),
 		"start_offset": Vector2(-110, 118),
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "귀환 UI를 흉내 내는 산책로, 혼동과 광고 스피커 위험",
@@ -140,7 +140,10 @@ var _node_buttons := {}
 var _title_label: Label
 var _hint_label: Label
 var _change_label: Label
+var _brief_title_label: Label
 var _status_label: Label
+var _objective_label: Label
+var _legend_label: Label
 var _description_label: Label
 var _sortie_button: Button
 var _close_button: Button
@@ -256,24 +259,37 @@ func build() -> void:
 	visible = false
 	set_process(true)
 
-	_title_label = _make_label(Vector2(20, 12), Vector2(300, 18), 13, C.INK)
-	_title_label.text = "R01 출격 게시판 / 광고화된 주택가 작전도"
+	_title_label = _make_label(Vector2(18, 12), Vector2(282, 18), 13, C.INK)
+	_title_label.text = "R01 작전도"
 	add_child(_title_label)
 
-	_hint_label = _make_label(Vector2(20, 30), Vector2(276, 24), 9, Color("#433227"))
-	_hint_label.text = "중심 루트는 안쪽 모델하우스로 이어지고, 가지 신호는 곁길입니다. 1-5 선택 / Enter 출격 / Esc 복귀"
+	_hint_label = _make_label(Vector2(18, 30), Vector2(282, 22), 9, Color("#433227"))
+	_hint_label.text = "작전 구역: 외곽 회수선 -> 반복 주택 루프 -> 모델하우스 안쪽 / 숫자 노드 선택"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
 
-	_change_label = _make_label(Vector2(316, 20), Vector2(136, 30), 9, C.NEON_RED)
+	_change_label = _make_label(Vector2(312, 18), Vector2(142, 28), 9, C.NEON_RED)
 	_change_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_change_label)
 
-	_status_label = _make_label(Vector2(316, 54), Vector2(136, 142), 9, C.INK)
+	_brief_title_label = _make_label(Vector2(312, 52), Vector2(142, 18), 12, C.INK)
+	_brief_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	add_child(_brief_title_label)
+
+	_status_label = _make_label(Vector2(312, 72), Vector2(142, 38), 9, C.INK)
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status_label)
 
-	_description_label = _make_label(Vector2(20, 220), Vector2(292, 32), 10, C.INK)
+	_objective_label = _make_label(Vector2(312, 114), Vector2(142, 72), 9, C.INK)
+	_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_objective_label)
+
+	_legend_label = _make_label(Vector2(18, 217), Vector2(282, 36), 8, Color("#433227"))
+	_legend_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_legend_label.text = "범례: 초록 접근 가능 / 노랑 선택 중 / 빨강 위험 / 주황 심사 / 회색 잠김 / 얇은 선은 골목"
+	add_child(_legend_label)
+
+	_description_label = _make_label(Vector2(312, 188), Vector2(142, 28), 8, Color("#433227"))
 	_description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_description_label)
 
@@ -281,12 +297,12 @@ func build() -> void:
 		var node_id := String(NODE_IDS[i])
 		var button := Button.new()
 		var pos: Vector2 = node_def(node_id).get("ui_pos", Vector2.ZERO)
-		button.position = pos - Vector2(48, 16)
-		button.size = Vector2(96, 32)
+		button.position = pos - Vector2(19, 19)
+		button.size = Vector2(38, 38)
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.add_theme_font_size_override("font_size", 8)
+		button.add_theme_font_size_override("font_size", 12)
 		button.add_theme_color_override("font_color", C.INK)
 		button.add_theme_color_override("font_disabled_color", Color("#4f4135"))
 		button.pressed.connect(_on_node_button_pressed.bind(node_id))
@@ -297,7 +313,7 @@ func build() -> void:
 	_sortie_button = Button.new()
 	_sortie_button.position = Vector2(316, 224)
 	_sortie_button.size = Vector2(88, 24)
-	_sortie_button.text = "출격 실행"
+	_sortie_button.text = "Enter 출격"
 	_sortie_button.add_theme_font_size_override("font_size", 10)
 	_sortie_button.add_theme_color_override("font_color", C.INK)
 	_sortie_button.pressed.connect(_on_sortie_button_pressed)
@@ -307,7 +323,7 @@ func build() -> void:
 	_close_button = Button.new()
 	_close_button.position = Vector2(410, 224)
 	_close_button.size = Vector2(42, 24)
-	_close_button.text = "복귀"
+	_close_button.text = "Esc"
 	_close_button.add_theme_font_size_override("font_size", 10)
 	_close_button.add_theme_color_override("font_color", C.INK)
 	_close_button.pressed.connect(_on_close_button_pressed)
@@ -356,7 +372,7 @@ func _refresh_controls() -> void:
 		var selectable := is_state_selectable(raw_state)
 		var definition := node_def(node_id)
 		button.disabled = not selectable
-		button.text = "%d %s\n%s" % [i + 1, String(definition["name"]), state_label(display_state)]
+		button.text = "%d\n%s" % [i + 1, _compact_state_label(display_state)]
 		button.tooltip_text = "%s: %s" % [String(definition["name"]), String(definition["description"])]
 		_apply_button_state_style(button, display_state, selectable)
 
@@ -367,18 +383,37 @@ func _refresh_controls() -> void:
 	_change_label.text = _current_change_banner()
 	_description_label.text = _bottom_map_line()
 	_sortie_button.disabled = not can_sortie
-	_sortie_button.text = "출격 실행" if can_sortie else "잠김"
+	_sortie_button.text = "Enter 출격" if can_sortie else "잠김"
 	_apply_button_state_style(_sortie_button, STATE_SELECTED if can_sortie else STATE_LOCKED, can_sortie)
 	_apply_button_state_style(_close_button, STATE_AVAILABLE, true)
 
-	_status_label.text = "선택 중: %s\n상태: %s\n위험: %s\n힌트: %s\n목표: %s\n회수선: %s" % [
-		String(selected_def["name"]),
+	_brief_title_label.text = "선택 중: %s" % String(selected_def["name"])
+	_status_label.text = "상태: %s\n위험: %s\n회수선: %s" % [
 		state_brief(selected_display_state),
 		String(selected_def["risk"]),
-		String(selected_def["enemy_hint"]),
-		String(selected_def["objective"]),
 		String(selected_def["recovery_line"]),
 	]
+	_objective_label.text = "목표\n%s\n\n힌트\n%s" % [
+		String(selected_def["objective"]),
+		String(selected_def["enemy_hint"]),
+	]
+
+func _compact_state_label(state: String) -> String:
+	match state:
+		STATE_LOCKED:
+			return "잠김"
+		STATE_SELECTED:
+			return "선택"
+		STATE_VISITED:
+			return "방문"
+		STATE_CLEARED:
+			return "고정"
+		STATE_DANGER:
+			return "위험"
+		STATE_BOSS_READY:
+			return "심사"
+		_:
+			return "열림"
 
 func _draw() -> void:
 	if not visible:
@@ -391,10 +426,13 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(308, 16), Vector2(150, 196)), Color("#6b5b4a"), false, 1.5)
 	draw_rect(Rect2(Vector2(312, 48), Vector2(142, 2)), Color(1.0, 0.3, 0.36, 0.32))
 	draw_rect(Rect2(Vector2(16, 216), Vector2(442, 40)), Color(1.0, 0.97, 0.86, 0.88))
+	_draw_operation_district()
 	_draw_suburb_texture()
+	_draw_map_labels()
 	_draw_edges()
 	_draw_selected_route()
 	_draw_node_marks()
+	_draw_node_nameplates()
 
 func _current_change_banner() -> String:
 	if _change_banner != "":
@@ -407,6 +445,64 @@ func _bottom_map_line() -> String:
 	var selected_note := node_route_note(_selected_node_id)
 	var completed_name := "최근 회수 없음" if _last_completed_node_id == "" else "%s 회수선 고정" % node_name(_last_completed_node_id)
 	return "%s / %s" % [selected_note, completed_name]
+
+func _draw_operation_district() -> void:
+	var area := Rect2(Vector2(18, 60), Vector2(280, 150))
+	draw_rect(area, Color(0.93, 0.86, 0.64, 0.18))
+	draw_rect(area, Color(0.28, 0.20, 0.17, 0.30), false, 1.0)
+	draw_rect(Rect2(Vector2(20, 64), Vector2(72, 142)), Color(0.50, 0.76, 0.58, 0.12))
+	draw_rect(Rect2(Vector2(94, 64), Vector2(96, 142)), Color(1.0, 0.91, 0.25, 0.10))
+	draw_rect(Rect2(Vector2(192, 64), Vector2(104, 142)), Color(1.0, 0.30, 0.36, 0.08))
+
+	var spine := [
+		Vector2(28, 190),
+		Vector2(72, 178),
+		Vector2(118, 154),
+		Vector2(162, 137),
+		Vector2(214, 108),
+		Vector2(290, 74),
+	]
+	for i in range(spine.size() - 1):
+		draw_line(spine[i], spine[i + 1], Color(0.37, 0.29, 0.24, 0.24), 12.0)
+		draw_line(spine[i], spine[i + 1], Color(1.0, 0.97, 0.86, 0.34), 2.0)
+
+	draw_arc(Vector2(154, 136), 42.0, -PI * 0.10, PI * 1.80, 48, Color(0.37, 0.29, 0.24, 0.26), 7.0)
+	draw_arc(Vector2(154, 136), 28.0, -PI * 0.10, PI * 1.80, 42, Color(1.0, 0.97, 0.86, 0.18), 2.0)
+	draw_line(Vector2(166, 142), Vector2(250, 194), Color(0.25, 0.23, 0.19, 0.18), 5.0)
+	draw_line(Vector2(152, 130), Vector2(86, 82), Color(0.78, 0.22, 0.45, 0.22), 5.0)
+	_draw_dashed_line(Vector2(72, 74), Vector2(144, 104), Color(0.78, 0.22, 0.45, 0.30), 2.0, 7.0, 5.0)
+
+	for x in range(42, 284, 32):
+		draw_line(Vector2(x, 66), Vector2(x - 18, 206), Color(0.28, 0.20, 0.17, 0.08), 1.0)
+	for y in range(84, 198, 24):
+		draw_line(Vector2(26, y), Vector2(288, y - 10), Color(0.28, 0.20, 0.17, 0.07), 1.0)
+
+	_draw_house_row(Vector2(34, 154), 4, Vector2(22, -9))
+	_draw_house_row(Vector2(104, 106), 5, Vector2(20, 8))
+	_draw_house_row(Vector2(114, 166), 5, Vector2(21, 6))
+	_draw_house_row(Vector2(204, 86), 4, Vector2(22, -7))
+	_draw_house_row(Vector2(202, 132), 4, Vector2(19, 10))
+
+	draw_rect(Rect2(Vector2(248, 62), Vector2(36, 18)), Color(1.0, 0.72, 0.18, 0.18))
+	draw_rect(Rect2(Vector2(248, 62), Vector2(36, 18)), Color(0.60, 0.24, 0.16, 0.28), false, 1.0)
+	draw_line(Vector2(220, 200), Vector2(292, 184), Color(0.18, 0.35, 0.35, 0.34), 4.0)
+	draw_line(Vector2(220, 204), Vector2(292, 188), Color(1.0, 0.97, 0.86, 0.18), 1.0)
+	draw_rect(Rect2(Vector2(22, 184), Vector2(18, 14)), Color(0.50, 0.76, 0.58, 0.20))
+	draw_string(UIFont.get_font(), Vector2(22, 181), "보급소", HORIZONTAL_ALIGNMENT_LEFT, 48, 7, Color("#433227"))
+
+func _draw_house_row(start: Vector2, count: int, step: Vector2) -> void:
+	for i in range(count):
+		var p := start + step * float(i)
+		draw_rect(Rect2(p, Vector2(13, 9)), Color(0.60, 0.42, 0.32, 0.13))
+		draw_line(p + Vector2(-1, 1), p + Vector2(6, -4), Color(0.42, 0.28, 0.22, 0.15), 1.0)
+		draw_line(p + Vector2(6, -4), p + Vector2(14, 1), Color(0.42, 0.28, 0.22, 0.15), 1.0)
+
+func _draw_map_labels() -> void:
+	draw_string(UIFont.get_font(), Vector2(46, 70), "외곽 회수선", HORIZONTAL_ALIGNMENT_LEFT, 86, 8, Color("#433227"))
+	draw_string(UIFont.get_font(), Vector2(126, 104), "반복 주택 블록", HORIZONTAL_ALIGNMENT_LEFT, 104, 8, Color("#433227"))
+	draw_string(UIFont.get_font(), Vector2(210, 62), "모델하우스 안쪽", HORIZONTAL_ALIGNMENT_LEFT, 98, 8, Color("#433227"))
+	draw_string(UIFont.get_font(), Vector2(224, 203), "배수로 곁길", HORIZONTAL_ALIGNMENT_LEFT, 64, 8, Color("#433227"))
+	draw_string(UIFont.get_font(), Vector2(52, 92), "가짜 귀환 신호", HORIZONTAL_ALIGNMENT_LEFT, 96, 8, Color(0.65, 0.16, 0.32, 0.82))
 
 func _draw_suburb_texture() -> void:
 	for i in range(9):
@@ -491,8 +587,56 @@ func _draw_node_marks() -> void:
 			draw_line(pos + Vector2(-6, 8), pos + Vector2(8, 12), Color(0.1, 0.08, 0.06, 0.52), 1.5)
 		elif state == STATE_CLEARED:
 			draw_arc(pos, radius - 5.0, PI * 0.1, PI * 0.9, 20, Color(0.62, 1.0, 0.36, 0.70), 2.0)
-		var short_line := String(node_def(id).get("short_description", "작전 지점"))
-		draw_string(UIFont.get_font(), pos + Vector2(-44, 31), short_line, HORIZONTAL_ALIGNMENT_CENTER, 88, 7, Color("#433227"))
+
+func _draw_node_nameplates() -> void:
+	for i in range(NODE_IDS.size()):
+		var id := String(NODE_IDS[i])
+		var definition := node_def(id)
+		var pos: Vector2 = definition.get("ui_pos", Vector2.ZERO)
+		var state := String(_display_states.get(id, STATE_LOCKED))
+		var selected := id == _selected_node_id
+		var name := String(definition["name"])
+		var label_pos := _node_label_position(id, pos)
+		var label_size := Vector2(92, 20)
+		var fill := Color(1.0, 0.97, 0.86, 0.92) if selected else Color(1.0, 0.97, 0.86, 0.72)
+		if state == STATE_LOCKED:
+			fill = Color(0.80, 0.76, 0.68, 0.60)
+		draw_rect(Rect2(label_pos, label_size), fill)
+		draw_rect(Rect2(label_pos, label_size), _state_color(state), false, 1.2 if selected else 0.8)
+		draw_string(UIFont.get_font(), label_pos + Vector2(4, 8), "%d %s" % [i + 1, name], HORIZONTAL_ALIGNMENT_LEFT, 84, 8, C.INK if state != STATE_LOCKED else Color("#5a4d3f"))
+		draw_string(UIFont.get_font(), label_pos + Vector2(4, 17), _status_map_label(state), HORIZONTAL_ALIGNMENT_LEFT, 84, 7, Color("#433227"))
+
+func _node_label_position(node_id: String, pos: Vector2) -> Vector2:
+	match node_id:
+		NODE_L01:
+			return pos + Vector2(-36, -33)
+		NODE_L02:
+			return pos + Vector2(-42, 27)
+		NODE_L03:
+			return pos + Vector2(-82, 28)
+		NODE_L04:
+			return pos + Vector2(-40, -45)
+		NODE_L05:
+			return pos + Vector2(28, -12)
+		_:
+			return pos + Vector2(-44, 28)
+
+func _status_map_label(state: String) -> String:
+	match state:
+		STATE_LOCKED:
+			return "잠김 - 아직 신호 없음"
+		STATE_SELECTED:
+			return "선택 중"
+		STATE_VISITED:
+			return "방문 흔적"
+		STATE_CLEARED:
+			return "회수선 고정"
+		STATE_DANGER:
+			return "위험 신호"
+		STATE_BOSS_READY:
+			return "심사 접근"
+		_:
+			return "접근 가능"
 
 func _draw_selected_route() -> void:
 	if _selected_node_id == "":

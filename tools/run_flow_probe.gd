@@ -114,10 +114,11 @@ func _probe_r01_campaign_map_flow() -> void:
 	var open_ok: bool = main.match_state == "supply" and main.r01_campaign_map_open and main.hud.is_campaign_map_visible()
 	var initial_ui_text: String = main.hud.campaign_map_visible_text()
 	var initial_ui_clean: bool = initial_ui_text.find("R01-L") == -1
+	var readability_text_ok: bool = initial_ui_text.find("범례: 초록 접근 가능") != -1 and initial_ui_text.find("숫자 노드 선택") != -1 and initial_ui_text.find("작전 구역:") != -1 and initial_ui_text.find("얇은 선은 골목") != -1
 
 	main._select_r01_campaign_node("R01-L01")
 	var l01_selected_text: String = main.hud.campaign_map_visible_text()
-	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표: 주택가 첫 광고 신호 확인") != -1
+	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표") != -1 and l01_selected_text.find("주택가 첫 광고 신호 확인") != -1
 	main._sortie_selected_r01_campaign_node()
 	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
 	var l01_start_pos: Vector2 = main.player_pos
@@ -154,6 +155,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1
 
 	_record("campaign map opens from supply", open_ok)
+	_record("campaign map has readable legend and instruction", readability_text_ok)
 	_record("L01 selected highlight exists", l01_highlight_ok)
 	_record("campaign UI hides internal ids", initial_ui_clean and final_ui_clean)
 	_record("L01 select -> sortie starts", sortie_ok)
