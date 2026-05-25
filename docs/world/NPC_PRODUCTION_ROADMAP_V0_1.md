@@ -38,6 +38,8 @@
 
 추가 L3 이하 1차 적용 티켓 QA 산출물: `story/03_regions/global_npc_l3_below_text_application_ticket_qa_v0_1.md`
 
+추가 L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준 산출물: `story/03_regions/global_npc_l3_below_text_engine_level_handoff_standard_v0_1.md`
+
 ## 0. 판정
 
 ```text
@@ -450,6 +452,7 @@ NPC 트랙과 플레이어블 트랙을 동시에 진행하되, 산출물을 섞
 | NPC-8.15 | 전역 NPC L3 이하 1차 샘플 문구 적용 기준 | `story/03_regions/global_npc_l3_below_text_application_standard_v0_1.md` | 완료. 240개 표본을 스토리/레벨/오브젝트/상태 반응으로 넘기는 적용 단위와 전달 기준을 설정 |
 | NPC-8.16 | 전역 NPC L3 이하 1차 샘플 문구 적용 티켓 | `story/03_regions/global_npc_l3_below_text_application_tickets_v0_1.md` | 완료. 240개 sample_id를 캠페인별 ticket_id 240개와 1:1 연결 |
 | NPC-8.17 | 전역 NPC L3 이하 1차 적용 티켓 QA | `story/03_regions/global_npc_l3_below_text_application_ticket_qa_v0_1.md` | 완료. ticket_id 연속성, sample_id 1:1 매칭, 캠페인별 수량, 허용값을 검수 |
+| NPC-8.18 | 전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준 | `story/03_regions/global_npc_l3_below_text_engine_level_handoff_standard_v0_1.md` | 완료. 실제 JSON/CSV/Godot/코드 생성 없이 필드 사전, 상태 키/플래그, 레벨/UI/오디오 전달 기준을 작성 |
 
 ### 9.2 플레이어블 트랙
 
@@ -487,7 +490,8 @@ NPC-8.14 전역 NPC L3 이하 1차 샘플 문구 QA 완료.
 NPC-8.15 전역 NPC L3 이하 1차 샘플 문구 적용 기준 완료.
 NPC-8.16 전역 NPC L3 이하 1차 샘플 문구 적용 티켓 완료.
 NPC-8.17 전역 NPC L3 이하 1차 적용 티켓 QA 완료.
-다음은 전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준 작성으로 진행한다.
+NPC-8.18 전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준 완료.
+다음은 전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 QA로 진행한다.
 
 병렬:
 PC-1은 완료되었고, 플레이어블 트랙은 11번 CLAUSE-11 상세 결재로 진행한다.
@@ -542,7 +546,8 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 38. 전역 NPC L3 이하 1차 샘플 문구 적용 기준이 240개 표본을 적용 후보로 제한하고 1,856개 전체 적용으로 번지지 않게 한다.
 39. 전역 NPC L3 이하 1차 샘플 문구 적용 티켓이 240개 sample_id와 240개 ticket_id를 1:1로 연결한다.
 40. 전역 NPC L3 이하 1차 적용 티켓 QA가 ticket_id 연속성, sample_id 매칭, 캠페인별 수량, 허용값 오류 0개를 확인한다.
-41. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
+41. 전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준이 실제 JSON/CSV/Godot/코드 생성 없이 필드 사전과 팀 전달 기준만 작성한다.
+42. 다음 작업이 NPC 트랙과 플레이어블 트랙으로 나뉘어 있다.
 
 판정:
 
@@ -550,5 +555,5 @@ E02 이후 NPC 이름 확정은 E02 시즌 슬라이스가 실제로 열릴 때 
 통과.
 이제 NPC는 전체 숫자부터 늘리지 말고,
 보급소 5명 기준, R01 구현 컷, E01 보조 NPC 최소안, E01 NPC 대량 후보 풀, E01 L5/L4 승격 후보 검토, E01 묶음 산출물 4개를 유지한 채
-전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준으로 다음 깊이를 나눈다.
+전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 QA로 다음 깊이를 나눈다.
 ```

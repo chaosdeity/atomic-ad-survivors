@@ -303,6 +303,7 @@ seed id는 `g_[campaign_id]_g3_001`, `g_[campaign_id]_g2_001`, `g_[campaign_id]_
 | `story/03_regions/global_npc_l3_below_text_application_standard_v0_1.md` | 작성 완료 |
 | `story/03_regions/global_npc_l3_below_text_application_tickets_v0_1.md` | 작성 완료 |
 | `story/03_regions/global_npc_l3_below_text_application_ticket_qa_v0_1.md` | 작성 완료 |
+| `story/03_regions/global_npc_l3_below_text_engine_level_handoff_standard_v0_1.md` | 작성 완료 |
 
 최종 판정:
 
@@ -322,6 +323,7 @@ seed id는 `g_[campaign_id]_g3_001`, `g_[campaign_id]_g2_001`, `g_[campaign_id]_
 전역 NPC L3 이하 1차 샘플 문구 적용 기준에서 240개 표본의 적용 단위와 팀 전달 기준을 작성했다.
 전역 NPC L3 이하 1차 샘플 문구 적용 티켓에서 240개 sample_id와 240개 ticket_id를 1:1 연결했다.
 전역 NPC L3 이하 1차 적용 티켓 QA에서 ticket_id 연속성, sample_id 매칭, 캠페인별 수량, 허용값을 검수했다.
+전역 NPC L3 이하 1차 적용 티켓 엔진/레벨 핸드오프 기준에서 전달 필드, 상태 키/플래그, 레벨/UI/오디오 기준, 금지선을 작성했다.
 96개 캠페인 커버리지, 미스터리/반전/작은 결말, 플레이어블 연결, 이름/위치/노출 레지스트리는 작성 완료했다.
 후속으로 E02 승격 후보 v0.1 검토, 전역 확장 슬롯 레지스트리, 검수팀 전달 프롬프트도 작성 완료했다.
 ```
