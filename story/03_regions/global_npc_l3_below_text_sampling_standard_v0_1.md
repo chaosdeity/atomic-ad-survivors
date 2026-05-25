@@ -26,6 +26,12 @@ story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
 story/03_regions/global_npc_passed_slot_registry_v0_1.md
 ```
 
+후속 산출물:
+
+```text
+story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md
+```
+
 잠금:
 
 ```text
@@ -226,7 +232,7 @@ L3 이하 표본에는 본명 후보를 만들지 않는다.
 
 ## 8. 다음 작업 포인터
 
-전역 NPC L3 이하 1차 샘플 문구 작성
+전역 NPC L3 이하 1차 샘플 문구 검수
 
 작성 제한:
 
@@ -247,5 +253,6 @@ L5/L4 192개를 건드리지 않는다.
 표본은 캠페인 권역, 계층, 표현 방식, 상태 키, 작은 결말 연결을 기준으로 고른다.
 E02 이후 한국어 이름 기본값을 쓰지 않는다.
 플레이어블 기능을 설명하지 않는다.
-다음 작업은 이 기준에 맞춘 1차 샘플 문구 작성이다.
+후속 산출물에서 이 기준에 맞춘 1차 샘플 문구 240개를 작성했다.
+다음 작업은 240개 샘플 문구 검수다.
 ```

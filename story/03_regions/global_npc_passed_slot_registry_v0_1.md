@@ -37,6 +37,7 @@ E02 이후 한국어 이름은 기본값으로 쓰지 않는다.
 후속 은행 문서는 story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md로 작성 완료했다.
 후속 은행 검수 문서는 story/03_regions/global_npc_l3_below_bank_review_v0_1.md로 작성 완료했다.
 후속 샘플링 기준 문서는 story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md로 작성 완료했다.
+후속 1차 샘플 문구 문서는 story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md로 작성 완료했다.
 ```
 
 ---
@@ -154,7 +155,7 @@ L3 이하 본명 부여 금지.
 
 ## 5. 다음 작업 포인터
 
-전역 NPC L3 이하 1차 샘플 문구 작성
+전역 NPC L3 이하 1차 샘플 문구 검수
 
 최종 판정:
 
@@ -169,4 +170,5 @@ E02 이후 한국어 이름은 기본값으로 쓰지 않는다.
 후속 L3 이하 잔향/오브젝트 은행에서 1,856개를 본명 없이 표현 방식별로 고정했다.
 후속 L3 이하 은행 검수에서 직접 대면화 위험, 이름 과잉, 플레이어블 침범이 없음을 확인했다.
 후속 샘플링 기준에서 전체 문구 작성 대신 240개 1차 표본으로 제한했다.
+후속 1차 샘플 문구에서 L3 52 / L2 82 / L1 55 / L0 51개만 작성했다.
 ```

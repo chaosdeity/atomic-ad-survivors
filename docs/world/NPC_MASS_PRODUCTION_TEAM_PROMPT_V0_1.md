@@ -63,6 +63,7 @@ E02 실제 JSON 파일 6개
 전역 NPC L3 이하 잔향/오브젝트 은행
 전역 NPC L3 이하 은행 검수
 전역 NPC L3 이하 세부 문구 샘플링 기준
+전역 NPC L3 이하 1차 샘플 문구
 
 그러나:
 이 숫자는 전체 게임 NPC 수가 아니다.
@@ -104,6 +105,7 @@ story/03_regions/global_npc_passed_slot_registry_v0_1.md
 story/03_regions/global_npc_l3_below_echo_object_bank_v0_1.md
 story/03_regions/global_npc_l3_below_bank_review_v0_1.md
 story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md
+story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md
 story/03_regions/e01_r08_r07_v1_hold_release_gate_v0_1.md
 story/03_regions/e02_npc_promotion_candidates_v0_1.md
 story/03_regions/e02_locker_recipient_profile_v0_1.md
@@ -645,5 +647,6 @@ story/03_regions/e01_npc_mass_candidate_pool_v0_1.md
 49. 전역 NPC L3 이하 잔향/오브젝트 은행도 작성 완료되었다.
 50. 전역 NPC L3 이하 은행 검수도 작성 완료되었다.
 51. 전역 NPC L3 이하 세부 문구 샘플링 기준도 작성 완료되었다.
-52. 다음은 전역 NPC L3 이하 1차 샘플 문구 작성으로 넘긴다.
+52. 전역 NPC L3 이하 1차 샘플 문구도 작성 완료되었다.
+53. 다음은 전역 NPC L3 이하 1차 샘플 문구 검수로 넘긴다.
 ```

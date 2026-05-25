@@ -32,6 +32,7 @@ story/03_regions/global_npc_full_scale_target_ladder_v0_1.md
 ```text
 story/03_regions/global_npc_l3_below_bank_review_v0_1.md
 story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md
+story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md
 ```
 
 수량 잠금:
@@ -165,7 +166,7 @@ E02 이후 한국어 이름 기본값을 쓰지 않는다.
 
 ## 4. 다음 작업 포인터
 
-전역 NPC L3 이하 1차 샘플 문구 작성
+전역 NPC L3 이하 1차 샘플 문구 검수
 
 최종 판정:
 
@@ -178,4 +179,5 @@ E02 이후 한국어 이름 기본값을 쓰지 않았다.
 직접 대면 NPC 수는 증가하지 않았다.
 후속 검수에서 이 은행은 중복/표현 방식/상태 키/직접 대면화 위험 기준을 통과했다.
 후속 샘플링 기준에서 1차 표본은 240개로 제한했다.
+후속 1차 샘플 문구에서 L3 52 / L2 82 / L1 55 / L0 51개 표본을 작성했다.
 ```
