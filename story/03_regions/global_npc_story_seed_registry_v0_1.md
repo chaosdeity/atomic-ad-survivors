@@ -299,6 +299,7 @@ seed id는 `g_[campaign_id]_g3_001`, `g_[campaign_id]_g2_001`, `g_[campaign_id]_
 | `story/03_regions/global_npc_l3_below_bank_review_v0_1.md` | 작성 완료 |
 | `story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md` | 작성 완료 |
 | `story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md` | 작성 완료 |
+| `story/03_regions/global_npc_l3_below_first_text_samples_qa_v0_1.md` | 작성 완료 |
 
 최종 판정:
 
@@ -314,6 +315,7 @@ seed id는 `g_[campaign_id]_g3_001`, `g_[campaign_id]_g2_001`, `g_[campaign_id]_
 전역 NPC L3 이하 은행 검수에서 직접 대면화 위험, 이름 과잉, 플레이어블 기능 침범이 없음을 확인했다.
 전역 NPC L3 이하 세부 문구 샘플링 기준에서 1차 표본을 240개로 제한했다.
 전역 NPC L3 이하 1차 샘플 문구에서 240개 표본 문구를 작성했다.
+전역 NPC L3 이하 1차 샘플 문구 QA에서 240개 표본의 은행형 표현 유지와 문제 샘플 0개를 확인했다.
 96개 캠페인 커버리지, 미스터리/반전/작은 결말, 플레이어블 연결, 이름/위치/노출 레지스트리는 작성 완료했다.
 후속으로 E02 승격 후보 v0.1 검토, 전역 확장 슬롯 레지스트리, 검수팀 전달 프롬프트도 작성 완료했다.
 ```
