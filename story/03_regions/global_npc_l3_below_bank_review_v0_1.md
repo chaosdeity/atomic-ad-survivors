@@ -32,6 +32,7 @@ story/03_regions/global_npc_l3_below_text_sampling_standard_v0_1.md
 story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md
 story/03_regions/global_npc_l3_below_first_text_samples_qa_v0_1.md
 story/03_regions/global_npc_l3_below_text_application_standard_v0_1.md
+story/03_regions/global_npc_l3_below_text_application_tickets_v0_1.md
 ```
 
 검수 잠금:
@@ -221,5 +222,5 @@ E01은 120개 고정이며 추가 생산하지 않았다.
 다음 작업 포인터:
 
 ```text
-전역 NPC L3 이하 1차 샘플 문구 적용 티켓 작성
+전역 NPC L3 이하 1차 샘플 문구 적용 티켓 QA
 ```

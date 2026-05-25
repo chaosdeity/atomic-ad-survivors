@@ -294,7 +294,7 @@ L3 이하는 전부 은행형 산출물로 넘긴다.
 
 ## 10. 다음 작업 포인터
 
-전역 NPC L3 이하 1차 샘플 문구 적용 티켓 작성
+전역 NPC L3 이하 1차 샘플 문구 적용 티켓 QA
 
 최종 판정:
 
@@ -313,4 +313,5 @@ E02 이후 한국어 이름은 기본값으로 쓰지 않는다.
 후속 산출물 `story/03_regions/global_npc_l3_below_first_text_samples_v0_1.md`에서 240개 1차 표본 문구를 작성했다.
 후속 산출물 `story/03_regions/global_npc_l3_below_first_text_samples_qa_v0_1.md`에서 240개 표본의 은행형 표현 유지와 금지선 통과를 검수했다.
 후속 산출물 `story/03_regions/global_npc_l3_below_text_application_standard_v0_1.md`에서 240개 표본의 적용 단위와 팀 전달 기준을 작성했다.
+후속 산출물 `story/03_regions/global_npc_l3_below_text_application_tickets_v0_1.md`에서 240개 sample_id와 240개 ticket_id를 1:1 연결했다.
 ```
