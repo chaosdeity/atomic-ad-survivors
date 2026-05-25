@@ -4,7 +4,9 @@ const C := preload("res://scripts/game_config.gd")
 const EnemyController := preload("res://scripts/enemy_controller.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 
-const BOSS_NAME := "스마일 홈 시어머니"
+const BOSS_NAME := "스마일 홈 심사관"
+const BOSS_ROLE_NAME := "스마일 홈 가족심사 관리자"
+const BOSS_ALIAS := "스마일 홈 시어머니"
 const MAX_HP := 1750.0
 const BODY_RADIUS := 58.0
 const DEFAULT_POS := Vector2(0, -92)

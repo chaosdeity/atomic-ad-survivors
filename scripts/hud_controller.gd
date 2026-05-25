@@ -228,7 +228,7 @@ func build(parent: Node) -> void:
 	boss_name_label = Label.new()
 	boss_name_label.position = Vector2(8, 2)
 	boss_name_label.size = Vector2(100, 11)
-	boss_name_label.text = "스마일 홈 시어머니"
+	boss_name_label.text = "스마일 홈 심사관"
 	boss_name_label.add_theme_font_size_override("font_size", FONT_TINY)
 	boss_name_label.add_theme_color_override("font_color", C.INK)
 	_apply_font(boss_name_label)

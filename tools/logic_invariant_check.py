@@ -25,6 +25,7 @@ PATHS = {
     "meta": ROOT / "scripts" / "meta_progression.gd",
     "hud": ROOT / "scripts" / "hud_controller.gd",
     "boss": ROOT / "scripts" / "boss_controller.gd",
+    "visible_terms": ROOT / "story" / "01_bible" / "visible_terminology_rules_0_2.md",
     "cards": ROOT / "scripts" / "level_up_cards.gd",
     "debug": ROOT / "scripts" / "debug_tools.gd",
     "config": ROOT / "scripts" / "game_config.gd",
@@ -335,6 +336,7 @@ def check_boss_reward(t: dict[str, str], results: list[Check]) -> None:
     main = t.get("main", "")
     meta = t.get("meta", "")
     boss = t.get("boss", "")
+    visible_terms = t.get("visible_terms", "")
     world = t.get("world_story", "")
     system = t.get("system", "")
     result = t.get("result", "")
@@ -344,7 +346,19 @@ def check_boss_reward(t: dict[str, str], results: list[Check]) -> None:
     outcome_body = function_body(meta, "set_smile_home_boss_outcome")
     core_body = function_body(result, "_campaign_core_fragment_reward", static=True)
 
-    add(results, "PASS" if 'const BOSS_NAME := "스마일 홈 시어머니"' in boss else "FAIL", "boss reward", "first boss display name is 스마일 홈 시어머니")
+    add(results, "PASS" if 'const BOSS_NAME := "스마일 홈 심사관"' in boss else "FAIL", "boss reward", "first boss user display name is 스마일 홈 심사관")
+    add(
+        results,
+        "PASS" if has_all(boss, ['const BOSS_ROLE_NAME := "스마일 홈 가족심사 관리자"', 'const BOSS_ALIAS := "스마일 홈 시어머니"']) else "FAIL",
+        "boss reward",
+        "first boss role name and alias are separated from user display name",
+    )
+    add(
+        results,
+        "PASS" if has_all(visible_terms, ["스마일 홈 심사관", "스마일 홈 가족심사 관리자", "스마일 홈 시어머니", "광고 방송"]) else "FAIL",
+        "boss reward",
+        "visible terminology locks UI name, document role name, and campaign alias",
+    )
     add(
         results,
         "PASS" if "캠페인 송출관" in world and "상위 결절" in world and "후속 목표" in world else "FAIL",

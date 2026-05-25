@@ -1791,8 +1791,8 @@ func _start_boss_encounter() -> void:
 	enemies.clear()
 	active_threats.clear()
 	wave_notice_timer = 4.0
-	wave_notice_text = "보스 조우: 스마일 홈 시어머니"
-	effects.show_combat_banner("스마일 홈 시어머니", C.VITAMIN_YELLOW)
+	wave_notice_text = "보스 조우: %s" % BossController.BOSS_NAME
+	effects.show_combat_banner(BossController.BOSS_NAME, C.VITAMIN_YELLOW)
 	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
 	effects.add_impact_shake(0.28, 5.8)
 	_play_sfx("boss_warning")
@@ -1987,14 +1987,14 @@ func _route_stage_label() -> String:
 
 func _next_goal_label() -> String:
 	if boss.active:
-		return "목표: 스마일 홈 시어머니 처리"
+		return "목표: 스마일 홈 심사관 결절 무력화"
 	if _route_display_sortie_index() <= 1:
 		return "목표: 108초 회수까지 생존"
 	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _combat_goal_label() -> String:
 	if boss.active:
-		return "시어머니 처리"
+		return "심사관 대응"
 	if sortie_index <= 1:
 		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
@@ -2164,7 +2164,7 @@ func _result_data(result_state: String) -> Dictionary:
 			var trace_text := "캠페인 코어 파편 +%d" % fragments if fragments > 0 else "없음"
 			return {
 				"result": "신호 과부하 회수",
-				"description": "스마일 홈 시어머니의 검증 절차에서 회수되었습니다.",
+				"description": "스마일 홈 심사관의 검증 절차에서 회수되었습니다.",
 				"trace": trace_text,
 				"progress_lines": [
 					"보스 분석: %d/3" % analysis_level,

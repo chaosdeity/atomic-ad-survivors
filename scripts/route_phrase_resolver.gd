@@ -126,7 +126,7 @@ static func r01_finale_recovery_description(state: Dictionary) -> String:
 		_:
 			return _pick([
 				"개장 전 점검표가 완성됐습니다. 외곽 주택가 중앙의 모델하우스 결절이 다음 출격을 기다립니다.",
-				"송출관 접근 절차가 끊기지 않고 보급소까지 넘어왔습니다. 스마일 홈 시어머니의 검증 신호가 가까워졌습니다.",
+				"송출관 접근 절차가 끊기지 않고 보급소까지 넘어왔습니다. 스마일 홈 심사관의 검증 신호가 가까워졌습니다.",
 			], visit_index)
 
 static func r01_finale_recovery_progress_phrase(state: Dictionary) -> String:
