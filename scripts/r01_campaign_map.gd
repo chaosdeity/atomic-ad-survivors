@@ -28,67 +28,93 @@ const EDGES := [
 	[NODE_L02, NODE_L04],
 	[NODE_L02, NODE_L05],
 ]
+const MAIN_ROUTE := [NODE_L01, NODE_L02, NODE_L03]
 
 const NODE_DEFS := {
 	NODE_L01: {
 		"name": "침묵 가장자리",
 		"description": "보급소의 회수선이 아직 닿는 외곽입니다.",
 		"short_description": "회수선 외곽",
+		"risk": "낮음",
+		"enemy_hint": "낮은 광고 밀도 / 흩어진 쿠폰",
+		"objective": "주택가 첫 광고 신호 확인",
+		"recovery_line": "안정",
+		"route_note": "보급소 회수선이 닿는 외곽입니다.",
 		"zone_id": "silence_edge_start",
 		"ui_pos": Vector2(70, 190),
 		"start_offset": Vector2(32, -18),
 		"blockout_variant": "first_visit",
 		"blockout_phrase": "낮은 광고 밀도, 보급소 회수선의 가장자리",
-		"combat_goal": "회수선 바깥의 조용한 표식을 확인하세요",
-		"sortie_notice": "침묵 가장자리 진입: 아직 보급소 신호가 등에 닿습니다.",
+		"combat_goal": "회수선이 닿는 외곽을 확보한다",
+		"sortie_notice": "침묵 가장자리 진입: 회수선이 닿는 외곽을 확보합니다.",
 	},
 	NODE_L02: {
 		"name": "분양 주택 루프",
 		"description": "같은 집이 다른 가격표로 반복됩니다.",
 		"short_description": "반복 주택 루프",
+		"risk": "우편함/쿠폰 밀도 증가",
+		"enemy_hint": "스피커, 빠른 쿠폰, 반복 현관",
+		"objective": "오픈하우스 신호를 추적한다",
+		"recovery_line": "흔들림",
+		"route_note": "외곽을 지나 같은 집들이 가격표만 바꿔 반복됩니다.",
 		"zone_id": "subdivision_loop_center",
 		"ui_pos": Vector2(190, 136),
 		"start_offset": Vector2(-210, 142),
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "우편함, 가격표, 쿠폰 밀도가 올라가는 반복 주택가",
-		"combat_goal": "반복 주택 사이의 방송 좌표 흔적을 찾으세요",
-		"sortie_notice": "분양 주택 루프 진입: 같은 현관이 다른 가격으로 다시 나타납니다.",
+		"combat_goal": "반복되는 집 사이의 신호를 추적한다",
+		"sortie_notice": "분양 주택 루프 진입: 반복되는 집 사이의 신호를 추적합니다.",
 	},
 	NODE_L03: {
 		"name": "모델하우스 결절",
 		"description": "가족 심사 절차가 이곳에서 시작됩니다.",
 		"short_description": "심사 절차 접근",
+		"risk": "보스 신호 / 가족 심사 절차",
+		"enemy_hint": "신호체, 스피커, 모델하우스 축",
+		"objective": "가족 심사 절차의 입구를 찾는다",
+		"recovery_line": "불안정",
+		"route_note": "중심 루트 끝, 모델하우스 심사 절차가 열리는 결절입니다.",
 		"zone_id": "model_house_node_anchor",
 		"ui_pos": Vector2(356, 68),
 		"start_offset": Vector2(-300, 170),
 		"blockout_variant": "destroy_node",
 		"blockout_phrase": "모델하우스 방향의 결절 신호와 보스 심사 절차",
-		"combat_goal": "모델하우스 심사 신호를 따라 결절 접근로를 여세요",
-		"sortie_notice": "모델하우스 결절 접근: 심사 절차가 현관등 뒤에서 돌아갑니다.",
+		"combat_goal": "가족 심사 절차의 입구를 찾는다",
+		"sortie_notice": "모델하우스 결절 접근: 가족 심사 절차의 입구를 찾습니다.",
 	},
 	NODE_L04: {
 		"name": "배수로 침묵 주머니",
 		"description": "광고음이 잠깐 끊기는 낮은 통로입니다.",
 		"short_description": "낮은 침묵 통로",
+		"risk": "낮지만 흔적이 진함",
+		"enemy_hint": "신호 흔적, 무거운 검수 로봇",
+		"objective": "광고음이 끊기는 낮은 통로를 조사한다",
+		"recovery_line": "희미함",
+		"route_note": "중심 루트에서 빠지는 곁길, 소음이 잠깐 낮아집니다.",
 		"zone_id": "drain_pocket_anchor",
 		"ui_pos": Vector2(268, 214),
 		"start_offset": Vector2(-160, 48),
 		"blockout_variant": "extract_memory",
 		"blockout_phrase": "위험은 낮지만 흔적이 진하게 남는 배수로 곁길",
-		"combat_goal": "끊긴 광고음 아래의 낮은 흔적을 회수하세요",
-		"sortie_notice": "배수로 침묵 주머니 진입: 광고음이 낮아지고 발밑이 젖습니다.",
+		"combat_goal": "광고음이 끊기는 낮은 통로를 조사한다",
+		"sortie_notice": "배수로 침묵 주머니 진입: 광고음이 끊기는 낮은 통로를 조사합니다.",
 	},
 	NODE_L05: {
 		"name": "가짜 귀환로",
 		"description": "돌아가는 길처럼 보이지만, 회수선이 닿지 않습니다.",
 		"short_description": "회수선 흉내",
+		"risk": "혼동 / 귀환 신호 흉내",
+		"enemy_hint": "빠른 쿠폰, 스피커, 잘못된 화살표",
+		"objective": "접근하지 말고 신호 패턴만 확인",
+		"recovery_line": "불안정",
+		"route_note": "보급소 방향처럼 보이는 가지지만 실제 회수선이 아닙니다.",
 		"zone_id": "fake_return_route_anchor",
 		"ui_pos": Vector2(110, 76),
 		"start_offset": Vector2(-110, 118),
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "귀환 UI를 흉내 내는 산책로, 혼동과 광고 스피커 위험",
-		"combat_goal": "보급소가 아닌 화살표를 따라가지 말고 끊긴 표식을 확인하세요",
-		"sortie_notice": "가짜 귀환로 진입: 친절한 화살표가 보급소 목소리를 흉내 냅니다.",
+		"combat_goal": "귀환처럼 보이는 신호를 따라가지 않는다",
+		"sortie_notice": "가짜 귀환로 진입: 귀환처럼 보이는 신호를 따라가지 않습니다.",
 	},
 }
 
@@ -108,9 +134,12 @@ var _display_states := {}
 var _selected_node_id := NODE_L01
 var _current_node_id := NODE_L01
 var _last_completed_node_id := ""
+var _opened_node_ids: Array[String] = []
+var _change_banner := ""
 var _node_buttons := {}
 var _title_label: Label
 var _hint_label: Label
+var _change_label: Label
 var _status_label: Label
 var _description_label: Label
 var _sortie_button: Button
@@ -144,6 +173,21 @@ static func node_start_offset(node_id: String) -> Vector2:
 static func node_combat_goal(node_id: String) -> String:
 	return String(node_def(node_id).get("combat_goal", "작전 지점을 확인하세요"))
 
+static func node_risk(node_id: String) -> String:
+	return String(node_def(node_id).get("risk", "미확인"))
+
+static func node_enemy_hint(node_id: String) -> String:
+	return String(node_def(node_id).get("enemy_hint", "광고 신호 미확인"))
+
+static func node_objective(node_id: String) -> String:
+	return String(node_def(node_id).get("objective", node_combat_goal(node_id)))
+
+static func node_recovery_line(node_id: String) -> String:
+	return String(node_def(node_id).get("recovery_line", "미확인"))
+
+static func node_route_note(node_id: String) -> String:
+	return String(node_def(node_id).get("route_note", node_def(node_id).get("description", "작전 지점")))
+
 static func node_sortie_notice(node_id: String) -> String:
 	return String(node_def(node_id).get("sortie_notice", "R01 주택가 진입"))
 
@@ -155,6 +199,35 @@ static func node_blockout_variant(node_id: String) -> String:
 
 static func state_label(state: String) -> String:
 	return String(STATUS_LABELS.get(state, state))
+
+static func state_brief(state: String) -> String:
+	match state:
+		STATE_LOCKED:
+			return "신호 미확정"
+		STATE_AVAILABLE:
+			return "접근 가능"
+		STATE_SELECTED:
+			return "선택 중"
+		STATE_VISITED:
+			return "방문 흔적 있음"
+		STATE_CLEARED:
+			return "회수선 고정"
+		STATE_DANGER:
+			return "위험 신호"
+		STATE_BOSS_READY:
+			return "심사 접근 가능"
+		_:
+			return state_label(state)
+
+static func opened_signal_line(node_id: String, state: String = STATE_AVAILABLE) -> String:
+	var label := state_brief(state)
+	if state == STATE_BOSS_READY:
+		label = "심사 접근 가능"
+	elif state == STATE_DANGER:
+		label = "위험 신호 감지"
+	elif state == STATE_AVAILABLE:
+		label = "접근 가능"
+	return "새 신호: %s %s" % [node_name(node_id), label]
 
 static func is_state_selectable(state: String) -> bool:
 	return state == STATE_AVAILABLE or state == STATE_SELECTED or state == STATE_VISITED or state == STATE_CLEARED or state == STATE_DANGER or state == STATE_BOSS_READY
@@ -181,17 +254,22 @@ func build() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	visible = false
+	set_process(true)
 
 	_title_label = _make_label(Vector2(20, 12), Vector2(300, 18), 13, C.INK)
-	_title_label.text = "광고화된 주택가 작전도"
+	_title_label.text = "R01 출격 게시판 / 광고화된 주택가 작전도"
 	add_child(_title_label)
 
 	_hint_label = _make_label(Vector2(20, 30), Vector2(276, 24), 9, Color("#433227"))
-	_hint_label.text = "보급소 게시판에서 다음 진입 지점을 고릅니다. 1-5 선택, Enter 출격, Esc 복귀"
+	_hint_label.text = "중심 루트는 안쪽 모델하우스로 이어지고, 가지 신호는 곁길입니다. 1-5 선택 / Enter 출격 / Esc 복귀"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
 
-	_status_label = _make_label(Vector2(318, 20), Vector2(134, 94), 9, C.INK)
+	_change_label = _make_label(Vector2(316, 20), Vector2(136, 30), 9, C.NEON_RED)
+	_change_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_change_label)
+
+	_status_label = _make_label(Vector2(316, 54), Vector2(136, 142), 9, C.INK)
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status_label)
 
@@ -217,9 +295,9 @@ func build() -> void:
 		_node_buttons[node_id] = button
 
 	_sortie_button = Button.new()
-	_sortie_button.position = Vector2(322, 224)
-	_sortie_button.size = Vector2(72, 24)
-	_sortie_button.text = "출격"
+	_sortie_button.position = Vector2(316, 224)
+	_sortie_button.size = Vector2(88, 24)
+	_sortie_button.text = "출격 실행"
 	_sortie_button.add_theme_font_size_override("font_size", 10)
 	_sortie_button.add_theme_color_override("font_color", C.INK)
 	_sortie_button.pressed.connect(_on_sortie_button_pressed)
@@ -227,8 +305,8 @@ func build() -> void:
 	add_child(_sortie_button)
 
 	_close_button = Button.new()
-	_close_button.position = Vector2(400, 224)
-	_close_button.size = Vector2(52, 24)
+	_close_button.position = Vector2(410, 224)
+	_close_button.size = Vector2(42, 24)
 	_close_button.text = "복귀"
 	_close_button.add_theme_font_size_override("font_size", 10)
 	_close_button.add_theme_color_override("font_color", C.INK)
@@ -247,11 +325,19 @@ func update_map(data: Dictionary) -> void:
 	_selected_node_id = String(data.get("selected_node_id", first_selectable_node_id(_raw_states)))
 	_current_node_id = String(data.get("current_node_id", _selected_node_id))
 	_last_completed_node_id = String(data.get("last_completed_node_id", ""))
+	_change_banner = String(data.get("change_banner", ""))
+	_opened_node_ids.clear()
+	for node_id in Array(data.get("opened_node_ids", [])):
+		_opened_node_ids.append(String(node_id))
 	_refresh_controls()
 	queue_redraw()
 
 func hide_map() -> void:
 	visible = false
+
+func _process(_delta: float) -> void:
+	if visible:
+		queue_redraw()
 
 func selected_node_id() -> String:
 	return _selected_node_id
@@ -276,21 +362,22 @@ func _refresh_controls() -> void:
 
 	var selected_def := node_def(_selected_node_id)
 	var selected_raw_state := String(_raw_states.get(_selected_node_id, STATE_LOCKED))
+	var selected_display_state := String(_display_states.get(_selected_node_id, selected_raw_state))
 	var can_sortie := is_state_selectable(selected_raw_state)
-	_description_label.text = "%s: %s" % [String(selected_def["name"]), String(selected_def["description"])]
+	_change_label.text = _current_change_banner()
+	_description_label.text = _bottom_map_line()
 	_sortie_button.disabled = not can_sortie
-	_sortie_button.text = "출격" if can_sortie else "잠김"
+	_sortie_button.text = "출격 실행" if can_sortie else "잠김"
 	_apply_button_state_style(_sortie_button, STATE_SELECTED if can_sortie else STATE_LOCKED, can_sortie)
 	_apply_button_state_style(_close_button, STATE_AVAILABLE, true)
 
-	var current_name := node_name(_current_node_id)
-	var selected_name := node_name(_selected_node_id)
-	var completed_name := "없음" if _last_completed_node_id == "" else node_name(_last_completed_node_id)
-	_status_label.text = "현재 진입: %s\n선택 지점: %s\n최근 완료: %s\n상태: %s" % [
-		current_name,
-		selected_name,
-		completed_name,
-		state_label(selected_raw_state),
+	_status_label.text = "선택 중: %s\n상태: %s\n위험: %s\n힌트: %s\n목표: %s\n회수선: %s" % [
+		String(selected_def["name"]),
+		state_brief(selected_display_state),
+		String(selected_def["risk"]),
+		String(selected_def["enemy_hint"]),
+		String(selected_def["objective"]),
+		String(selected_def["recovery_line"]),
 	]
 
 func _draw() -> void:
@@ -300,12 +387,26 @@ func _draw() -> void:
 	draw_rect(rect, Color("#f5f0dc"))
 	draw_rect(rect, Color("#433227"), false, 3.0)
 	draw_rect(Rect2(Vector2(16, 58), Vector2(284, 154)), Color(0.72, 0.84, 0.78, 0.16))
-	draw_rect(Rect2(Vector2(312, 16), Vector2(146, 106)), Color(1.0, 0.97, 0.86, 0.84))
+	draw_rect(Rect2(Vector2(308, 16), Vector2(150, 196)), Color(1.0, 0.97, 0.86, 0.88))
+	draw_rect(Rect2(Vector2(308, 16), Vector2(150, 196)), Color("#6b5b4a"), false, 1.5)
+	draw_rect(Rect2(Vector2(312, 48), Vector2(142, 2)), Color(1.0, 0.3, 0.36, 0.32))
 	draw_rect(Rect2(Vector2(16, 216), Vector2(442, 40)), Color(1.0, 0.97, 0.86, 0.88))
 	_draw_suburb_texture()
 	_draw_edges()
-	_draw_node_marks()
 	_draw_selected_route()
+	_draw_node_marks()
+
+func _current_change_banner() -> String:
+	if _change_banner != "":
+		return _change_banner
+	if _last_completed_node_id != "":
+		return "%s 회수선 고정" % node_name(_last_completed_node_id)
+	return "작전도: 외곽 회수선 기준 설정"
+
+func _bottom_map_line() -> String:
+	var selected_note := node_route_note(_selected_node_id)
+	var completed_name := "최근 회수 없음" if _last_completed_node_id == "" else "%s 회수선 고정" % node_name(_last_completed_node_id)
+	return "%s / %s" % [selected_note, completed_name]
 
 func _draw_suburb_texture() -> void:
 	for i in range(9):
@@ -333,11 +434,29 @@ func _draw_edges() -> void:
 		var width := 7.0 if state != STATE_LOCKED else 4.0
 		if to_id == NODE_L05:
 			color = Color(0.95, 0.54, 0.78, 0.28 if state != STATE_LOCKED else 0.12)
-		draw_line(a, b, color, width)
+		if state == STATE_LOCKED:
+			_draw_dashed_line(a, b, color, width, 11.0, 8.0)
+		else:
+			draw_line(a, b, color, width)
 		draw_line(a, b, Color(0.28, 0.20, 0.17, 0.32), 1.4)
+		if _last_completed_node_id == from_id or _opened_node_ids.has(to_id):
+			draw_line(a, b, Color(1.0, 0.91, 0.25, 0.64), 2.6)
 		var dir := (b - a).normalized()
 		var mid := a.lerp(b, 0.54)
 		draw_line(mid - dir.rotated(PI * 0.5) * 7.0, mid + dir * 16.0, Color(1.0, 0.92, 0.48, 0.38), 1.8)
+
+func _draw_dashed_line(a: Vector2, b: Vector2, color: Color, width: float, dash: float, gap: float) -> void:
+	var delta := b - a
+	var length := delta.length()
+	if length <= 0.01:
+		return
+	var dir := delta / length
+	var distance := 0.0
+	while distance < length:
+		var start := a + dir * distance
+		var end := a + dir * minf(distance + dash, length)
+		draw_line(start, end, color, width)
+		distance += dash + gap
 
 func _draw_node_marks() -> void:
 	for node_id in NODE_IDS:
@@ -345,20 +464,74 @@ func _draw_node_marks() -> void:
 		var pos: Vector2 = node_def(id).get("ui_pos", Vector2.ZERO)
 		var state := String(_display_states.get(id, STATE_LOCKED))
 		var color := _state_color(state)
-		var pulse := 1.0
-		if state == STATE_SELECTED or state == STATE_BOSS_READY or state == STATE_DANGER:
-			pulse += 0.08 * sin(float(Time.get_ticks_msec()) * 0.006)
-		draw_circle(pos, 22.0 * pulse, Color(color.r, color.g, color.b, 0.18))
-		draw_arc(pos, 24.0 * pulse, 0.0, TAU, 36, Color(color.r, color.g, color.b, 0.86), 2.0)
-		draw_circle(pos, 5.0, Color(color.r, color.g, color.b, 0.92))
+		var pulse := 1.0 + 0.08 * sin(float(Time.get_ticks_msec()) * 0.006) if state == STATE_SELECTED or _opened_node_ids.has(id) else 1.0
+		var radius := 22.0
+		if state == STATE_LOCKED:
+			radius = 15.0
+		elif state == STATE_BOSS_READY:
+			radius = 27.0
+		elif state == STATE_DANGER:
+			radius = 24.0
+		draw_circle(pos, radius * pulse, Color(color.r, color.g, color.b, 0.10 if state == STATE_LOCKED else 0.20))
+		if state == STATE_DANGER:
+			_draw_ad_noise(pos, radius + 5.0)
+		if state == STATE_BOSS_READY:
+			draw_arc(pos, (radius + 8.0) * pulse, -PI * 0.18, PI * 1.18, 44, Color(1.0, 0.72, 0.18, 0.78), 3.0)
+			draw_rect(Rect2(pos - Vector2(16, 10), Vector2(32, 20)), Color(1.0, 0.72, 0.18, 0.10), false, 1.4)
+		if id == _last_completed_node_id:
+			draw_arc(pos, radius + 10.0, 0.0, TAU, 42, Color(0.62, 1.0, 0.36, 0.76), 2.0)
+			draw_line(pos + Vector2(-8, 0), pos + Vector2(-2, 6), Color(0.62, 1.0, 0.36, 0.90), 2.4)
+			draw_line(pos + Vector2(-2, 6), pos + Vector2(10, -8), Color(0.62, 1.0, 0.36, 0.90), 2.4)
+		if _opened_node_ids.has(id):
+			var open_pulse := 1.0 + 0.16 * sin(float(Time.get_ticks_msec()) * 0.009)
+			draw_arc(pos, (radius + 15.0) * open_pulse, -PI * 0.25, PI * 1.25, 46, C.VITAMIN_YELLOW, 2.2)
+		draw_arc(pos, radius * pulse, 0.0, TAU, 36, Color(color.r, color.g, color.b, 0.86), 2.0 if state != STATE_LOCKED else 1.2)
+		draw_circle(pos, 5.0 if state != STATE_LOCKED else 3.5, Color(color.r, color.g, color.b, 0.92 if state != STATE_LOCKED else 0.45))
+		if state == STATE_VISITED:
+			draw_line(pos + Vector2(-6, 8), pos + Vector2(8, 12), Color(0.1, 0.08, 0.06, 0.52), 1.5)
+		elif state == STATE_CLEARED:
+			draw_arc(pos, radius - 5.0, PI * 0.1, PI * 0.9, 20, Color(0.62, 1.0, 0.36, 0.70), 2.0)
 		var short_line := String(node_def(id).get("short_description", "작전 지점"))
 		draw_string(UIFont.get_font(), pos + Vector2(-44, 31), short_line, HORIZONTAL_ALIGNMENT_CENTER, 88, 7, Color("#433227"))
 
 func _draw_selected_route() -> void:
 	if _selected_node_id == "":
 		return
+	var path := _selected_path_node_ids()
+	for i in range(path.size() - 1):
+		var a: Vector2 = node_def(String(path[i])).get("ui_pos", Vector2.ZERO)
+		var b: Vector2 = node_def(String(path[i + 1])).get("ui_pos", Vector2.ZERO)
+		draw_line(a, b, Color(1.0, 0.91, 0.25, 0.64), 6.0)
+		draw_line(a, b, C.NEON_RED, 1.8)
 	var pos: Vector2 = node_def(_selected_node_id).get("ui_pos", Vector2.ZERO)
-	draw_arc(pos, 33.0, -PI * 0.2, PI * 1.25, 40, C.NEON_RED, 2.4)
+	var pulse := 1.0 + 0.12 * sin(float(Time.get_ticks_msec()) * 0.008)
+	draw_circle(pos, 40.0 * pulse, Color(1.0, 0.91, 0.25, 0.08))
+	draw_arc(pos, 33.0 * pulse, -PI * 0.2, PI * 1.25, 44, C.NEON_RED, 2.4)
+	draw_arc(pos, 44.0 * pulse, PI * 0.05, PI * 1.05, 40, C.VITAMIN_YELLOW, 1.8)
+	draw_line(pos + Vector2(-42, 0), pos + Vector2(-25, 0), C.NEON_RED, 1.4)
+	draw_line(pos + Vector2(25, 0), pos + Vector2(42, 0), C.NEON_RED, 1.4)
+	draw_line(pos + Vector2(0, -42), pos + Vector2(0, -25), C.NEON_RED, 1.4)
+	draw_line(pos + Vector2(0, 25), pos + Vector2(0, 42), C.NEON_RED, 1.4)
+
+func _draw_ad_noise(pos: Vector2, radius: float) -> void:
+	for i in range(5):
+		var t := float(i) / 5.0 * TAU + float(Time.get_ticks_msec()) * 0.002
+		var a := pos + Vector2(cos(t), sin(t)) * (radius - 4.0)
+		var b := pos + Vector2(cos(t + 0.45), sin(t + 0.45)) * (radius + 3.0)
+		draw_line(a, b, Color(1.0, 0.3, 0.36, 0.42), 1.5)
+
+func _selected_path_node_ids() -> Array[String]:
+	match _selected_node_id:
+		NODE_L03:
+			return [NODE_L01, NODE_L02, NODE_L03]
+		NODE_L04:
+			return [NODE_L01, NODE_L02, NODE_L04]
+		NODE_L05:
+			return [NODE_L01, NODE_L02, NODE_L05]
+		NODE_L02:
+			return [NODE_L01, NODE_L02]
+		_:
+			return [NODE_L01]
 
 func _state_color(state: String) -> Color:
 	match state:
@@ -384,6 +557,13 @@ func _apply_button_state_style(button: Button, state: String, selectable: bool) 
 		var state_color := _state_color(state)
 		fill = Color(state_color.r, state_color.g, state_color.b, 0.34)
 		border = Color(state_color.r, state_color.g, state_color.b, 0.90)
+		if state == STATE_SELECTED:
+			fill = Color(1.0, 0.91, 0.25, 0.52)
+			border = C.NEON_RED
+		elif state == STATE_DANGER:
+			fill = Color(1.0, 0.3, 0.36, 0.28)
+		elif state == STATE_BOSS_READY:
+			fill = Color(1.0, 0.72, 0.18, 0.40)
 	button.add_theme_stylebox_override("normal", _button_style(fill, border, 2 if selectable else 1))
 	button.add_theme_stylebox_override("hover", _button_style(Color("#fff7df"), border, 2))
 	button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, C.NEON_RED, 2))

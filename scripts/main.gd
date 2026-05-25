@@ -99,6 +99,7 @@ var selected_r01_node_id := R01CampaignMap.NODE_L01
 var last_completed_r01_node_id := ""
 var r01_campaign_node_states := {}
 var r01_campaign_map_open := false
+var r01_campaign_new_signal_node_ids: Array[String] = []
 var r01_zone_times := {}
 var open_house_signal_stage := 0
 var audit_segment_index := 0
@@ -2109,6 +2110,9 @@ func _session_progress_data() -> Dictionary:
 		"current_campaign_node_name": R01CampaignMap.node_name(current_r01_node_id),
 		"selected_campaign_node_name": R01CampaignMap.node_name(selected_r01_node_id),
 		"last_completed_campaign_node_name": "없음" if last_completed_r01_node_id == "" else R01CampaignMap.node_name(last_completed_r01_node_id),
+		"selected_campaign_node_objective": R01CampaignMap.node_objective(selected_r01_node_id),
+		"campaign_board_line": _r01_campaign_board_line(),
+		"campaign_new_signal_line": _r01_campaign_change_banner(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
@@ -2461,6 +2465,7 @@ func _reset_r01_campaign_state() -> void:
 	selected_r01_node_id = R01CampaignMap.NODE_L01
 	last_completed_r01_node_id = ""
 	r01_campaign_map_open = false
+	r01_campaign_new_signal_node_ids.clear()
 
 func _open_r01_campaign_map() -> void:
 	if match_state != "supply":
@@ -2501,6 +2506,7 @@ func _sortie_selected_r01_campaign_node() -> void:
 			hud.update_campaign_map(_r01_campaign_map_data())
 		return
 	current_r01_node_id = selected_r01_node_id
+	r01_campaign_new_signal_node_ids.clear()
 	_mark_current_campaign_node_visited()
 	_close_r01_campaign_map()
 	_restart()
@@ -2543,6 +2549,8 @@ func _unlock_r01_campaign_node(node_id: String, state: String) -> void:
 	var current_state := String(r01_campaign_node_states.get(node_id, R01CampaignMap.STATE_LOCKED))
 	if current_state == R01CampaignMap.STATE_LOCKED:
 		r01_campaign_node_states[node_id] = state
+		if not r01_campaign_new_signal_node_ids.has(node_id):
+			r01_campaign_new_signal_node_ids.append(node_id)
 
 func _r01_campaign_map_data() -> Dictionary:
 	return {
@@ -2551,6 +2559,8 @@ func _r01_campaign_map_data() -> Dictionary:
 		"selected_node_id": selected_r01_node_id,
 		"current_node_id": current_r01_node_id,
 		"last_completed_node_id": last_completed_r01_node_id,
+		"opened_node_ids": r01_campaign_new_signal_node_ids.duplicate(),
+		"change_banner": _r01_campaign_change_banner(),
 	}
 
 func _r01_campaign_display_states() -> Dictionary:
@@ -2561,6 +2571,26 @@ func _r01_campaign_display_states() -> Dictionary:
 	if selected_r01_node_id != "" and R01CampaignMap.NODE_IDS.has(selected_r01_node_id):
 		display_states[selected_r01_node_id] = R01CampaignMap.STATE_SELECTED
 	return display_states
+
+func _r01_campaign_change_banner() -> String:
+	var lines: Array[String] = []
+	for node_id in r01_campaign_new_signal_node_ids:
+		var state := String(r01_campaign_node_states.get(node_id, R01CampaignMap.STATE_AVAILABLE))
+		lines.append(R01CampaignMap.opened_signal_line(node_id, state))
+	if last_completed_r01_node_id != "":
+		lines.append("%s 회수선 고정" % R01CampaignMap.node_name(last_completed_r01_node_id))
+	if lines.is_empty():
+		return "작전도: 외곽 회수선 기준 설정"
+	return " / ".join(lines)
+
+func _r01_campaign_board_line() -> String:
+	var line := "작전도: %s 선택 / 목표 %s" % [
+		R01CampaignMap.node_name(selected_r01_node_id),
+		R01CampaignMap.node_objective(selected_r01_node_id),
+	]
+	if not r01_campaign_new_signal_node_ids.is_empty():
+		line = "%s / %s" % [line, _r01_campaign_change_banner()]
+	return line
 
 func _r01_campaign_start_position(node_id: String) -> Vector2:
 	if not R01LayoutBlockout.ENABLED:
@@ -2895,6 +2925,7 @@ func _debug_info() -> Dictionary:
 		"last_completed_r01_node_id": last_completed_r01_node_id,
 		"r01_campaign_map_open": r01_campaign_map_open,
 		"r01_campaign_node_state_summary": R01CampaignMap.state_summary(r01_campaign_node_states),
+		"r01_campaign_new_signal_summary": _r01_campaign_change_banner(),
 		"r01_campaign_current_phrase": R01CampaignMap.node_blockout_phrase(current_r01_node_id),
 		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
 		"r01_blockout_variant": r01_blockout.state_variant,
@@ -3159,8 +3190,11 @@ func _debug_preview_r01_campaign_node(index: int) -> void:
 func _debug_r01_campaign_unlock_all() -> void:
 	if not C.DEBUG_TOOLS_ENABLED:
 		return
+	r01_campaign_new_signal_node_ids.clear()
 	for node_id in R01CampaignMap.NODE_IDS:
-		r01_campaign_node_states[String(node_id)] = R01CampaignMap.STATE_AVAILABLE
+		var id := String(node_id)
+		r01_campaign_node_states[id] = R01CampaignMap.STATE_AVAILABLE
+		r01_campaign_new_signal_node_ids.append(id)
 	_ensure_selected_r01_campaign_node()
 	if r01_campaign_map_open:
 		hud.update_campaign_map(_r01_campaign_map_data())

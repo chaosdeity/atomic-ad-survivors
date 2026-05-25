@@ -116,6 +116,8 @@ func _probe_r01_campaign_map_flow() -> void:
 	var initial_ui_clean: bool = initial_ui_text.find("R01-L") == -1
 
 	main._select_r01_campaign_node("R01-L01")
+	var l01_selected_text: String = main.hud.campaign_map_visible_text()
+	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표: 주택가 첫 광고 신호 확인") != -1
 	main._sortie_selected_r01_campaign_node()
 	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
 	main._finish_match("recalled")
@@ -125,25 +127,40 @@ func _probe_r01_campaign_map_flow() -> void:
 	var l03_locked_before_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "locked"
 
 	main._open_r01_campaign_map()
+	var post_l01_text: String = main.hud.campaign_map_visible_text()
+	var l02_opened_pulse_ok: bool = post_l01_text.find("새 신호: 분양 주택 루프 접근 가능") != -1 and main.r01_campaign_new_signal_node_ids.has("R01-L02")
 	main._select_r01_campaign_node("R01-L02")
 	main._sortie_selected_r01_campaign_node()
 	main._finish_match("victory")
 	main._handle_terminal_action()
 	var l03_unlocked_after_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "boss_ready"
+	main._open_r01_campaign_map()
+	var post_l02_text: String = main.hud.campaign_map_visible_text()
+	var l03_opened_text_ok: bool = post_l02_text.find("새 신호: 모델하우스 결절 심사 접근 가능") != -1
 
 	main._debug_r01_campaign_unlock_all()
 	var unlock_all_ok: bool = true
 	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
 		unlock_all_ok = unlock_all_ok and String(main.r01_campaign_node_states.get(node_id, "")) == "available"
 	main._open_r01_campaign_map()
-	var final_ui_clean: bool = main.hud.campaign_map_visible_text().find("R01-L") == -1
+	main._select_r01_campaign_node("R01-L05")
+	var l05_text: String = main.hud.campaign_map_visible_text()
+	var l05_false_route_ok: bool = l05_text.find("가짜 귀환로") != -1 and l05_text.find("회수선: 불안정") != -1 and l05_text.find("실제 회수선이 아닙니다") != -1 and l05_text.find("보급소로 돌아가기") == -1
+	var final_ui_clean: bool = l05_text.find("R01-L") == -1
+	main.debug_tools.detail_visible = true
+	var debug_text: String = main._debug_overlay_text()
+	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1
 
 	_record("campaign map opens from supply", open_ok)
+	_record("L01 selected highlight exists", l01_highlight_ok)
 	_record("campaign UI hides internal ids", initial_ui_clean and final_ui_clean)
 	_record("L01 select -> sortie starts", sortie_ok)
 	_record("post-run returns to supply", post_run_supply_ok)
 	_record("L02 available after L01 visit", l02_available)
-	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02)
+	_record("L01 complete -> L02 pulse/opened state", l02_opened_pulse_ok)
+	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02 and l03_opened_text_ok)
+	_record("L05 displayed as false route", l05_false_route_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
+	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
 	main._close_r01_campaign_map()
 	await _finish_main(main)

@@ -436,7 +436,7 @@ func build(parent: Node) -> void:
 	supply_campaign_button = Button.new()
 	supply_campaign_button.position = Vector2(204, 224)
 	supply_campaign_button.size = Vector2(90, 18)
-	supply_campaign_button.text = "캠페인맵"
+	supply_campaign_button.text = "R01 작전도"
 	supply_campaign_button.add_theme_font_size_override("font_size", FONT_SMALL)
 	supply_campaign_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(supply_campaign_button)
@@ -649,6 +649,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var next_change := str(session_progress.get("next_run_change_summary", "배분 효과 없음"))
 	var selected_route := str(session_progress.get("selected_campaign_node_name", "현재 지점"))
 	supply_restart_button.text = "바로 출격: %s" % _compact_ui_text(selected_route, 8)
+	supply_campaign_button.text = "R01 작전도"
 	var board_text := "%s / 보스 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
@@ -671,6 +672,9 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	board_text = _compact_ui_text(board_text, 30)
 	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
 	clause_short = _compact_ui_text(clause_short, 22)
+	var campaign_board := _compact_ui_text(str(session_progress.get("campaign_board_line", "")), 42)
+	if campaign_board != "":
+		board_text = _compact_ui_text(campaign_board, 42)
 	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n목표: %s\n약관: %s" % [
 		_supply_currency_text(meta_progression),
 		allocation_summary,
@@ -686,6 +690,9 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		for i in range(mini(1, event_lines.size())):
 			compact_events.append(_compact_ui_text(str(event_lines[i]), 45))
 		event_text = " / ".join(compact_events)
+	var campaign_signal := str(session_progress.get("campaign_new_signal_line", ""))
+	if campaign_signal != "":
+		event_text = "%s / %s" % [_compact_ui_text(campaign_signal, 38), _compact_ui_text(event_text, 30)]
 	supply_event_log_label.text = "보급소 로그: %s" % _compact_ui_text(event_text, 48)
 	var actions: Array[Dictionary] = supply_actions
 	if actions.is_empty():
@@ -701,7 +708,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		supply_feedback_label.text = "선택 가능: 보급/강화"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
-		supply_feedback_label.text = "캠페인맵 확인 가능"
+		supply_feedback_label.text = "R01 작전도 확인 가능"
 	_ensure_supply_button_count(actions.size())
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
