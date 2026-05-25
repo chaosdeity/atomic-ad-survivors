@@ -42,6 +42,7 @@ The prototype is evolving toward a run-based action RPG:
 
 See `RPG_ARCHITECTURE_PLAN.md` for the current high-level architecture.
 Use `STORY_DEVELOPMENT_PROMPT.md` when starting a dedicated story/worldbuilding session.
+The working story bible now lives in `story/`, with `story/00_source/story_0.001.md` as the first locked source version.
 
 ## Art Direction Lock
 
