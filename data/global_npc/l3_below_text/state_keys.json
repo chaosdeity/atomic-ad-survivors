@@ -1,0 +1,74 @@
+[
+  {
+    "key": "broadcast_trust",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "campaign_density",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "human_stability",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "identity_mismatch",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "payment_failure",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "quarantine_delay",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "return_loop",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "robot_autonomy",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "route_access",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "supply_pressure",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "trace_retained",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  },
+  {
+    "key": "trace_spent",
+    "scope": "state_reference_only",
+    "allowed_use": "sample text visibility condition reference",
+    "forbidden_use": "playable unlock, NPC promotion, direct encounter event creation"
+  }
+]

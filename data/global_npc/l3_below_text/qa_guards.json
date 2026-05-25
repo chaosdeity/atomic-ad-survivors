@@ -1,0 +1,66 @@
+[
+  {
+    "guard_id": "qa_count_ticket_240",
+    "rule": "application_tickets count must equal 240",
+    "expected": 240
+  },
+  {
+    "guard_id": "qa_count_sample_240",
+    "rule": "text_samples count must equal 240",
+    "expected": 240
+  },
+  {
+    "guard_id": "qa_unique_sample_240",
+    "rule": "sample_id values must be unique and 1:1 with tickets",
+    "expected": 240
+  },
+  {
+    "guard_id": "qa_campaign_distribution",
+    "rule": "campaign distribution must remain locked",
+    "expected": {
+      "E01": 16,
+      "E02": 32,
+      "E03": 18,
+      "E04": 18,
+      "E05": 18,
+      "E06": 18,
+      "E07": 18,
+      "E08": 18,
+      "E09": 18,
+      "E10": 18,
+      "E11": 18,
+      "E12": 18,
+      "cross_region": 12
+    }
+  },
+  {
+    "guard_id": "qa_no_actual_files",
+    "rule": "no data directory, JSON file, CSV file, Godot resource, GDScript, or loader code",
+    "expected": false
+  },
+  {
+    "guard_id": "qa_no_new_npc_name_encounter",
+    "rule": "no new NPC, new name, or direct encounter",
+    "expected": false
+  },
+  {
+    "guard_id": "qa_no_l5_l4_change",
+    "rule": "L5/L4 192 slots must not change or increase",
+    "expected": false
+  },
+  {
+    "guard_id": "qa_no_full_1856",
+    "rule": "do not write the full 1,856 L3-below bank",
+    "expected": false
+  },
+  {
+    "guard_id": "qa_no_playable_unlock",
+    "rule": "state_key and flag must not describe playable unlock conditions",
+    "expected": false
+  },
+  {
+    "guard_id": "qa_no_e02_korean_default_names",
+    "rule": "E02+ slots must not use Korean default names",
+    "expected": false
+  }
+]

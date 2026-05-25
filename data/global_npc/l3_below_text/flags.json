@@ -1,0 +1,32 @@
+[
+  {
+    "flag": "flag_cross_region_echo_hold",
+    "scope": "display_or_hold_control_only",
+    "allowed_use": "presentation, visibility, exposure control",
+    "forbidden_use": "new NPC creation, new name creation, direct encounter creation, L5/L4 promotion"
+  },
+  {
+    "flag": "flag_l0_background_text_visible",
+    "scope": "display_or_hold_control_only",
+    "allowed_use": "presentation, visibility, exposure control",
+    "forbidden_use": "new NPC creation, new name creation, direct encounter creation, L5/L4 promotion"
+  },
+  {
+    "flag": "flag_l1_registry_visible",
+    "scope": "display_or_hold_control_only",
+    "allowed_use": "presentation, visibility, exposure control",
+    "forbidden_use": "new NPC creation, new name creation, direct encounter creation, L5/L4 promotion"
+  },
+  {
+    "flag": "flag_l2_object_trace_visible",
+    "scope": "display_or_hold_control_only",
+    "allowed_use": "presentation, visibility, exposure control",
+    "forbidden_use": "new NPC creation, new name creation, direct encounter creation, L5/L4 promotion"
+  },
+  {
+    "flag": "flag_l3_sample_visible",
+    "scope": "display_or_hold_control_only",
+    "allowed_use": "presentation, visibility, exposure control",
+    "forbidden_use": "new NPC creation, new name creation, direct encounter creation, L5/L4 promotion"
+  }
+]
