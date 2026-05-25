@@ -158,8 +158,8 @@ def load_config() -> BalanceConfig:
         charge_period=charge_period,
         enemy_hp=enemy_hp,
         enemy_defense=role_defenses,
-        auto_damage_card=parse_card_value(level_up_cards, "auto_damage"),
-        charge_damage_card=parse_card_value(level_up_cards, "charge_damage"),
+        auto_damage_card=0.0,
+        charge_damage_card=0.40 if '"id": "terms_no_return_agreement"' in level_up_cards else 0.20,
         boss_hp=parse_const(boss_controller, "MAX_HP") if boss_controller else 1750.0,
         player_max_hp=player_max_hp,
     )

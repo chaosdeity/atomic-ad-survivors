@@ -61,8 +61,12 @@ Set-Location $RepoRoot
 $GodotPath = Resolve-GodotPath
 
 Invoke-QAStep "Logic invariant check" "python" @("tools\logic_invariant_check.py")
+Invoke-QAStep "R03 story document check" "python" @("tools\r03_story_doc_check.py")
 Invoke-QAStep "Balance simulation" "python" @("tools\balance_sim.py")
 Invoke-QAStep "Godot headless main scene" $GodotPath @("--headless", "--path", ".", "scenes/main.tscn", "--quit-after", "2")
+Invoke-QAStep "Godot playtest metrics probe" $GodotPath @("--headless", "--path", ".", "--script", "tools\playtest_metrics_probe.gd")
+Invoke-QAStep "Godot UI compaction probe" $GodotPath @("--headless", "--path", ".", "--script", "tools\ui_compaction_probe.gd")
+Invoke-QAStep "Godot contamination readability probe" $GodotPath @("--headless", "--path", ".", "--script", "tools\contamination_readability_probe.gd")
 Invoke-QAStep "Git whitespace check" "git" @("diff", "--check")
 
 Write-Host ""
