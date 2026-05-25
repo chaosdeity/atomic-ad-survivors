@@ -6,6 +6,8 @@
 
 기존 `GAME_PRODUCTION_PLAN.md`는 Vertical Slice 0.1의 제작 기준으로 유지한다. 이 문서는 그 다음 단계인 RPG 구조, 거점, 월드 상태, 진영, 내러티브 시스템을 설계하고 작업을 나눌 때 기준으로 사용한다.
 
+현재 0.2 성장 구조의 최신 기준은 `META_PROGRESSION_ARCHITECTURE.md`를 따른다. 이 문서는 상위 방향과 오래된 구조 메모를 포함하므로, 성장/보상/정산/보급소/지역 반응의 세부 기준은 반드시 `META_PROGRESSION_ARCHITECTURE.md`와 `story/90_implementation/implementation_0_2_story_directive.md`를 함께 확인한다.
+
 다른 Codex 방이나 작업자에게 일을 맡길 때는 반드시 이 문서와 해당 작업 지시서를 함께 전달한다. 작업 결과는 이 문서의 "검토 체크리스트" 기준으로 다시 확인한다.
 
 ## 1. 최종 방향 한 줄 정의
@@ -313,6 +315,10 @@ WorldState
 
 ## 11. 지역과 보스
 
+전체 지역 로드맵과 재방문 구조를 확정하기 전에는 첫 지역만 계속 확장하지 않는다. 지역 설계 전담 방을 열 때는 `story/90_implementation/region_progression_analysis_prompt.md`를 전달해 전체 지역 수, 해금 순서, 지역별 캠페인 법칙, 클리어 후 재방문 루프를 먼저 검토한다.
+
+지역 재사용의 최종 기준은 `story/05_progression/region_evolution_model.md`를 따른다. 지역은 클리어되는 스테이지가 아니라, 플레이어의 보스 처리 선택과 반복 출격에 반응해 캠페인 농도, 적 구성, 보상, NPC 요청이 변하는 생태계로 구현한다.
+
 ```text
 RegionDefinition
   id
@@ -519,4 +525,3 @@ world_flags
 - 아이템명, 카드명, 보스 대사, NPC 대사가 톤의 절반이다.
 
 스토리 전담 방에는 `STORY_DEVELOPMENT_PROMPT.md`를 전달한다.
-
