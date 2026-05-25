@@ -12,19 +12,43 @@ func handle_input(event: InputEvent, main) -> bool:
 		return false
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return false
+	if event.shift_pressed and event.keycode == KEY_M:
+		main._debug_r01_campaign_unlock_all()
+		return true
+
 	if event.ctrl_pressed:
+		if event.shift_pressed:
+			match event.keycode:
+				KEY_1, KEY_KP_1:
+					main._debug_r01_blockout_variant("first_visit")
+					return true
+				KEY_2, KEY_KP_2:
+					main._debug_r01_blockout_variant("broadcast_record_3")
+					return true
+				KEY_3, KEY_KP_3:
+					main._debug_r01_blockout_variant("destroy_node")
+					return true
+				KEY_4, KEY_KP_4:
+					main._debug_r01_blockout_variant("extract_memory")
+					return true
 		match event.keycode:
+			KEY_M:
+				main._debug_open_r01_campaign_map()
+				return true
 			KEY_1, KEY_KP_1:
-				main._debug_r01_blockout_variant("first_visit")
+				main._debug_preview_r01_campaign_node(0)
 				return true
 			KEY_2, KEY_KP_2:
-				main._debug_r01_blockout_variant("broadcast_record_3")
+				main._debug_preview_r01_campaign_node(1)
 				return true
 			KEY_3, KEY_KP_3:
-				main._debug_r01_blockout_variant("destroy_node")
+				main._debug_preview_r01_campaign_node(2)
 				return true
 			KEY_4, KEY_KP_4:
-				main._debug_r01_blockout_variant("extract_memory")
+				main._debug_preview_r01_campaign_node(3)
+				return true
+			KEY_5, KEY_KP_5:
+				main._debug_preview_r01_campaign_node(4)
 				return true
 
 	match event.keycode:
@@ -123,7 +147,9 @@ func help_text() -> String:
 		"Ctrl+F8 Boss Recall Reward",
 		"Ctrl+F10 Destroy Node",
 		"Ctrl+F11 Extract Memory",
-		"Ctrl+1/2/3/4 R01 Blockout State",
+		"Ctrl+M Campaign Map  Shift+M Unlock Nodes",
+		"Ctrl+1-5 Campaign Node Preview",
+		"Ctrl+Shift+1-4 R01 Blockout State",
 		"F12 R01/outpost debug overlay",
 	])
 
@@ -141,6 +167,14 @@ func detail_text(info: Dictionary) -> String:
 		"route %s" % str(info.get("route_stage_label", "")),
 		"goal %s" % str(info.get("next_goal_label", "")),
 		"r01 %s nearest=%s" % [str(info.get("r01_zone_debug_label", "R01 zone:")), str(info.get("r01_blockout_nearest", ""))],
+		"campaign current=%s selected=%s last=%s open=%s" % [
+			str(info.get("current_r01_node_id", "")),
+			str(info.get("selected_r01_node_id", "")),
+			str(info.get("last_completed_r01_node_id", "")),
+			str(info.get("r01_campaign_map_open", false)),
+		],
+		"campaign states %s" % str(info.get("r01_campaign_node_state_summary", "")),
+		"campaign phrase %s" % str(info.get("r01_campaign_current_phrase", "")),
 		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d" % [
 			int(info.get("r01_collision_hard", 0)),
 			int(info.get("r01_collision_soft", 0)),

@@ -16,6 +16,7 @@ const BossController := preload("res://scripts/boss_controller.gd")
 const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
+const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
@@ -93,6 +94,11 @@ var last_run_result := {}
 var current_supply_actions: Array[Dictionary] = []
 var last_supply_reaction_line := ""
 var r01_visit_recorded_sortie_index := 0
+var current_r01_node_id := R01CampaignMap.NODE_L01
+var selected_r01_node_id := R01CampaignMap.NODE_L01
+var last_completed_r01_node_id := ""
+var r01_campaign_node_states := {}
+var r01_campaign_map_open := false
 var r01_zone_times := {}
 var open_house_signal_stage := 0
 var audit_segment_index := 0
@@ -157,13 +163,14 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_reset_player_stats()
+	_reset_r01_campaign_state()
 	_ensure_input_map()
 	_build_camera()
 	r01_blockout.reset()
 	if R01LayoutBlockout.ENABLED:
 		r01_blockout.configure_camera(camera)
 		enemies.configure_world(R01LayoutBlockout.WORLD_BOUNDS, Callable(r01_blockout, "enemy_spawn_position"))
-		player_pos = r01_blockout.anchor_position("silence_edge_start")
+		player_pos = _r01_campaign_start_position(current_r01_node_id)
 		r01_blockout.print_probe()
 	_build_audio()
 	if _audio_runtime_enabled():
@@ -171,9 +178,11 @@ func _ready() -> void:
 	sprite_assets.load_all()
 	hud.build(self)
 	r01_map.reset(elapsed, true)
+	_sync_r01_map_to_player_zone(false)
 	_reset_r01_run_tracking()
 	_reset_audit_run_tracking()
 	_reset_playtest_metrics()
+	_mark_current_campaign_node_visited()
 	_record_r01_visit_for_current_sortie()
 	set_process(true)
 
@@ -248,6 +257,11 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if match_state == "supply":
+		if _handle_campaign_map_input(event):
+			return
+		if _campaign_map_open_key(event):
+			_open_r01_campaign_map()
+			return
 		var upgrade_choice := _supply_choice_from_event(event)
 		if upgrade_choice != -1:
 			_apply_supply_choice(upgrade_choice)
@@ -264,6 +278,46 @@ func _input(event: InputEvent) -> void:
 			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
+
+func _campaign_map_open_key(event: InputEvent) -> bool:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return false
+	return event.keycode == KEY_M or event.keycode == KEY_TAB
+
+func _handle_campaign_map_input(event: InputEvent) -> bool:
+	if not r01_campaign_map_open:
+		return false
+	if not event is InputEventKey:
+		return true
+	if not event.pressed or event.echo:
+		return true
+	match event.keycode:
+		KEY_ESCAPE:
+			_close_r01_campaign_map()
+			return true
+		KEY_ENTER, KEY_KP_ENTER:
+			_sortie_selected_r01_campaign_node()
+			return true
+		KEY_1, KEY_KP_1:
+			_select_r01_campaign_node(R01CampaignMap.NODE_L01)
+			return true
+		KEY_2, KEY_KP_2:
+			_select_r01_campaign_node(R01CampaignMap.NODE_L02)
+			return true
+		KEY_3, KEY_KP_3:
+			_select_r01_campaign_node(R01CampaignMap.NODE_L03)
+			return true
+		KEY_4, KEY_KP_4:
+			_select_r01_campaign_node(R01CampaignMap.NODE_L04)
+			return true
+		KEY_5, KEY_KP_5:
+			_select_r01_campaign_node(R01CampaignMap.NODE_L05)
+			return true
+		KEY_M, KEY_TAB:
+			_close_r01_campaign_map()
+			return true
+		_:
+			return true
 
 func _exit_tree() -> void:
 	_cleanup_audio_players()
@@ -1388,7 +1442,34 @@ func _trigger_audit_failure_pressure(segment: Dictionary) -> void:
 func _wave_params_for_elapsed(value: float) -> Dictionary:
 	var params := WaveDirector.params_for_time(value, sortie_index, r01_map.current_zone_id())
 	params = _apply_r01_contamination_spawn_pressure(params)
+	params = _apply_r01_campaign_node_spawn_hint(params)
 	return _apply_audit_spawn_pressure(params)
+
+func _apply_r01_campaign_node_spawn_hint(params: Dictionary) -> Dictionary:
+	var result := params.duplicate(true)
+	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
+	match current_r01_node_id:
+		R01CampaignMap.NODE_L01:
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.96
+			weights["basic"] = float(weights.get("basic", 0.0)) + 0.03
+		R01CampaignMap.NODE_L02:
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.02
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.02
+			weights["fast"] = float(weights.get("fast", 0.0)) + 0.01
+		R01CampaignMap.NODE_L03:
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.04
+			weights["signal"] = float(weights.get("signal", 0.0)) + 0.03
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.02
+		R01CampaignMap.NODE_L04:
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.98
+			weights["signal"] = float(weights.get("signal", 0.0)) + 0.02
+			weights["tank"] = float(weights.get("tank", 0.0)) + 0.01
+		R01CampaignMap.NODE_L05:
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.05
+			weights["fast"] = float(weights.get("fast", 0.0)) + 0.03
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.03
+	result["role_weights"] = weights
+	return result
 
 func _apply_r01_contamination_spawn_pressure(params: Dictionary) -> Dictionary:
 	var r01_state := _r01_phrase_state()
@@ -1966,6 +2047,8 @@ func _r01_contamination_short_line() -> String:
 
 func _sortie_start_notice() -> String:
 	var parts: Array[String] = []
+	parts.append(R01CampaignMap.node_sortie_notice(current_r01_node_id))
+	parts.append("구역 상태: %s" % R01CampaignMap.node_blockout_phrase(current_r01_node_id))
 	if meta_progression.signal_board_level() > 0:
 		parts.append(meta_progression.signal_board_guidance_line())
 	parts.append("지역 약관: %s" % _regional_clause_preview_line())
@@ -1979,22 +2062,32 @@ func _route_display_sortie_index() -> int:
 func _route_stage_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
 		return "스마일 홈 결절 침묵"
+	if match_state == "supply":
+		return "출격 게시판: %s" % R01CampaignMap.node_name(selected_r01_node_id)
 	if _boss_route_ready():
 		return "모델하우스 결절 접근 가능"
 	if _route_display_sortie_index() <= 1:
 		return "침묵 보급소 회수선"
+	if current_r01_node_id != "":
+		return "%s 작전 중" % R01CampaignMap.node_name(current_r01_node_id)
 	return "외곽 주택가 출격 게시판"
 
 func _next_goal_label() -> String:
 	if boss.active:
 		return "목표: 스마일 홈 심사관 결절 무력화"
+	if match_state == "supply":
+		return "목표: %s로 출격 준비" % R01CampaignMap.node_name(selected_r01_node_id)
 	if _route_display_sortie_index() <= 1:
 		return "목표: 108초 회수까지 생존"
+	if current_r01_node_id != "":
+		return "목표: %s" % R01CampaignMap.node_combat_goal(current_r01_node_id)
 	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _combat_goal_label() -> String:
 	if boss.active:
 		return "심사관 대응"
+	if current_r01_node_id != "":
+		return "%s | %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_combat_goal(current_r01_node_id)]
 	if sortie_index <= 1:
 		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
@@ -2013,6 +2106,9 @@ func _session_progress_data() -> Dictionary:
 		"preboss_stage": _preboss_stage_label(),
 		"route_stage_label": _route_stage_label(),
 		"r01_zone_name": r01_map.current_zone_name(),
+		"current_campaign_node_name": R01CampaignMap.node_name(current_r01_node_id),
+		"selected_campaign_node_name": R01CampaignMap.node_name(selected_r01_node_id),
+		"last_completed_campaign_node_name": "없음" if last_completed_r01_node_id == "" else R01CampaignMap.node_name(last_completed_r01_node_id),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
@@ -2114,6 +2210,7 @@ func _finish_match(result_state: String) -> void:
 		last_boss_recall_report = meta_progression.record_boss_recall(boss.hp_ratio())
 	if result_state == "boss_victory":
 		last_boss_victory_report = meta_progression.record_boss_victory()
+	_complete_current_campaign_node(result_state)
 	last_run_result = RunResultEvaluator.evaluate_run_result(_run_result_input(result_state))
 	_apply_run_result_progression()
 	print("RunResult: %s" % JSON.stringify(last_run_result))
@@ -2337,8 +2434,10 @@ func _show_supply_depot() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 	last_supply_reaction_line = ""
+	r01_campaign_map_open = false
+	hud.hide_campaign_map()
 	current_supply_actions = _build_supply_actions()
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions)
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions, Callable(self, "_open_r01_campaign_map"))
 	_set_music("amb_outpost_loop")
 	_play_sfx("outpost_return")
 
@@ -2355,6 +2454,126 @@ func _handle_terminal_action() -> void:
 			_restart()
 		_:
 			_restart()
+
+func _reset_r01_campaign_state() -> void:
+	r01_campaign_node_states = R01CampaignMap.initial_states()
+	current_r01_node_id = R01CampaignMap.NODE_L01
+	selected_r01_node_id = R01CampaignMap.NODE_L01
+	last_completed_r01_node_id = ""
+	r01_campaign_map_open = false
+
+func _open_r01_campaign_map() -> void:
+	if match_state != "supply":
+		return
+	_ensure_selected_r01_campaign_node()
+	r01_campaign_map_open = true
+	hud.show_campaign_map(_r01_campaign_map_data(), Callable(self, "_select_r01_campaign_node"), Callable(self, "_sortie_r01_campaign_node"), Callable(self, "_close_r01_campaign_map"))
+	_update_hud()
+
+func _close_r01_campaign_map() -> void:
+	r01_campaign_map_open = false
+	hud.hide_campaign_map()
+	_update_hud()
+
+func _select_r01_campaign_node(node_id: String) -> void:
+	if not R01CampaignMap.NODE_IDS.has(node_id):
+		return
+	if not R01CampaignMap.is_node_selectable(node_id, r01_campaign_node_states):
+		selected_r01_node_id = node_id
+		effects.show_combat_banner("%s: 아직 게시판 신호가 잠겨 있습니다" % R01CampaignMap.node_name(node_id), C.NEON_RED)
+		if r01_campaign_map_open:
+			hud.update_campaign_map(_r01_campaign_map_data())
+		return
+	selected_r01_node_id = node_id
+	if r01_campaign_map_open:
+		hud.update_campaign_map(_r01_campaign_map_data())
+	effects.show_combat_banner("%s 선택" % R01CampaignMap.node_name(node_id), C.VITAMIN_YELLOW)
+
+func _sortie_r01_campaign_node(node_id: String) -> void:
+	if R01CampaignMap.NODE_IDS.has(node_id):
+		selected_r01_node_id = node_id
+	_sortie_selected_r01_campaign_node()
+
+func _sortie_selected_r01_campaign_node() -> void:
+	if not R01CampaignMap.is_node_selectable(selected_r01_node_id, r01_campaign_node_states):
+		effects.show_combat_banner("잠긴 작전 지점입니다", C.NEON_RED)
+		if r01_campaign_map_open:
+			hud.update_campaign_map(_r01_campaign_map_data())
+		return
+	current_r01_node_id = selected_r01_node_id
+	_mark_current_campaign_node_visited()
+	_close_r01_campaign_map()
+	_restart()
+
+func _ensure_selected_r01_campaign_node() -> void:
+	if R01CampaignMap.is_node_selectable(selected_r01_node_id, r01_campaign_node_states):
+		return
+	selected_r01_node_id = R01CampaignMap.first_selectable_node_id(r01_campaign_node_states, R01CampaignMap.NODE_L01)
+
+func _mark_current_campaign_node_visited() -> void:
+	var state := String(r01_campaign_node_states.get(current_r01_node_id, R01CampaignMap.STATE_LOCKED))
+	if state == R01CampaignMap.STATE_AVAILABLE or state == R01CampaignMap.STATE_SELECTED or state == R01CampaignMap.STATE_DANGER or state == R01CampaignMap.STATE_BOSS_READY:
+		r01_campaign_node_states[current_r01_node_id] = R01CampaignMap.STATE_VISITED
+
+func _complete_current_campaign_node(_result_state: String) -> void:
+	if not R01CampaignMap.NODE_IDS.has(current_r01_node_id):
+		return
+	var previous_state := String(r01_campaign_node_states.get(current_r01_node_id, R01CampaignMap.STATE_LOCKED))
+	if previous_state != R01CampaignMap.STATE_LOCKED:
+		r01_campaign_node_states[current_r01_node_id] = R01CampaignMap.STATE_CLEARED
+	last_completed_r01_node_id = current_r01_node_id
+	match current_r01_node_id:
+		R01CampaignMap.NODE_L01:
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L02, R01CampaignMap.STATE_AVAILABLE)
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L04, R01CampaignMap.STATE_DANGER)
+		R01CampaignMap.NODE_L02:
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L03, R01CampaignMap.STATE_BOSS_READY)
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L04, R01CampaignMap.STATE_AVAILABLE)
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L05, R01CampaignMap.STATE_DANGER)
+		R01CampaignMap.NODE_L03:
+			_unlock_r01_campaign_node(R01CampaignMap.NODE_L05, R01CampaignMap.STATE_DANGER)
+		R01CampaignMap.NODE_L04:
+			if String(r01_campaign_node_states.get(R01CampaignMap.NODE_L02, "")) == R01CampaignMap.STATE_CLEARED:
+				_unlock_r01_campaign_node(R01CampaignMap.NODE_L03, R01CampaignMap.STATE_BOSS_READY)
+		_:
+			pass
+	_ensure_selected_r01_campaign_node()
+
+func _unlock_r01_campaign_node(node_id: String, state: String) -> void:
+	var current_state := String(r01_campaign_node_states.get(node_id, R01CampaignMap.STATE_LOCKED))
+	if current_state == R01CampaignMap.STATE_LOCKED:
+		r01_campaign_node_states[node_id] = state
+
+func _r01_campaign_map_data() -> Dictionary:
+	return {
+		"raw_states": r01_campaign_node_states.duplicate(true),
+		"display_states": _r01_campaign_display_states(),
+		"selected_node_id": selected_r01_node_id,
+		"current_node_id": current_r01_node_id,
+		"last_completed_node_id": last_completed_r01_node_id,
+	}
+
+func _r01_campaign_display_states() -> Dictionary:
+	var display_states := r01_campaign_node_states.duplicate(true)
+	var l03_state := String(display_states.get(R01CampaignMap.NODE_L03, R01CampaignMap.STATE_LOCKED))
+	if _boss_route_ready() and l03_state != R01CampaignMap.STATE_LOCKED and l03_state != R01CampaignMap.STATE_CLEARED:
+		display_states[R01CampaignMap.NODE_L03] = R01CampaignMap.STATE_BOSS_READY
+	if selected_r01_node_id != "" and R01CampaignMap.NODE_IDS.has(selected_r01_node_id):
+		display_states[selected_r01_node_id] = R01CampaignMap.STATE_SELECTED
+	return display_states
+
+func _r01_campaign_start_position(node_id: String) -> Vector2:
+	if not R01LayoutBlockout.ENABLED:
+		return Vector2.ZERO
+	var zone_id := R01CampaignMap.node_zone_id(node_id)
+	var start_pos := r01_blockout.anchor_position(zone_id) + R01CampaignMap.node_start_offset(node_id)
+	return r01_blockout.clamp_player_position(start_pos)
+
+func _sync_r01_map_to_player_zone(show_entry_notice: bool) -> void:
+	if not R01LayoutBlockout.ENABLED:
+		return
+	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	r01_map.update(0.0, elapsed, show_entry_notice, zone_id)
 
 func _apply_supply_choice(index: int) -> void:
 	if index < 0 or index >= current_supply_actions.size():
@@ -2383,7 +2602,7 @@ func _apply_supply_choice(index: int) -> void:
 		action_name = ""
 		last_supply_reaction_line = ""
 	current_supply_actions = _build_supply_actions()
-	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), action_name, _session_progress_data(), current_supply_actions)
+	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), action_name, _session_progress_data(), current_supply_actions, Callable(self, "_open_r01_campaign_map"))
 
 func _build_supply_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
@@ -2671,6 +2890,12 @@ func _debug_info() -> Dictionary:
 		"r01_zone_id": r01_map.current_zone_id(),
 		"r01_zone_name": r01_map.current_zone_name(),
 		"r01_zone_debug_label": r01_map.current_debug_label(),
+		"current_r01_node_id": current_r01_node_id,
+		"selected_r01_node_id": selected_r01_node_id,
+		"last_completed_r01_node_id": last_completed_r01_node_id,
+		"r01_campaign_map_open": r01_campaign_map_open,
+		"r01_campaign_node_state_summary": R01CampaignMap.state_summary(r01_campaign_node_states),
+		"r01_campaign_current_phrase": R01CampaignMap.node_blockout_phrase(current_r01_node_id),
 		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
 		"r01_blockout_variant": r01_blockout.state_variant,
 		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
@@ -2898,7 +3123,7 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_handle_terminal_action"))
 	elif match_state == "supply":
 		current_supply_actions = _build_supply_actions()
-		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions)
+		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions, Callable(self, "_open_r01_campaign_map"))
 
 func _debug_r01_blockout_variant(variant: String) -> void:
 	if not C.DEBUG_TOOLS_ENABLED or not R01LayoutBlockout.ENABLED:
@@ -2908,6 +3133,38 @@ func _debug_r01_blockout_variant(variant: String) -> void:
 	effects.show_combat_banner("R01 blockout: %s" % variant, C.VITAMIN_YELLOW)
 	_update_hud()
 	queue_redraw()
+
+func _debug_open_r01_campaign_map() -> void:
+	if not C.DEBUG_TOOLS_ENABLED:
+		return
+	if match_state != "supply":
+		_show_supply_depot()
+	_open_r01_campaign_map()
+
+func _debug_preview_r01_campaign_node(index: int) -> void:
+	if not C.DEBUG_TOOLS_ENABLED:
+		return
+	var ids := R01CampaignMap.node_ids()
+	if index < 0 or index >= ids.size():
+		return
+	selected_r01_node_id = String(ids[index])
+	if match_state != "supply":
+		_show_supply_depot()
+	if not r01_campaign_map_open:
+		_open_r01_campaign_map()
+	else:
+		hud.update_campaign_map(_r01_campaign_map_data())
+	effects.show_combat_banner("%s 상태 미리보기" % R01CampaignMap.node_name(selected_r01_node_id), C.VITAMIN_YELLOW)
+
+func _debug_r01_campaign_unlock_all() -> void:
+	if not C.DEBUG_TOOLS_ENABLED:
+		return
+	for node_id in R01CampaignMap.NODE_IDS:
+		r01_campaign_node_states[String(node_id)] = R01CampaignMap.STATE_AVAILABLE
+	_ensure_selected_r01_campaign_node()
+	if r01_campaign_map_open:
+		hud.update_campaign_map(_r01_campaign_map_data())
+	effects.show_combat_banner("R01 캠페인맵: 모든 지점 열림", C.TOXIC_GREEN)
 
 func _debug_defeat_boss() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -3478,6 +3735,9 @@ func _restart() -> void:
 	var was_terminal_redeploy := TERMINAL_STATES.has(match_state) and first_recall_done
 	if is_inside_tree():
 		get_tree().paused = false
+	if was_supply and R01CampaignMap.is_node_selectable(selected_r01_node_id, r01_campaign_node_states):
+		current_r01_node_id = selected_r01_node_id
+	r01_campaign_map_open = false
 	if was_supply or was_terminal_redeploy:
 		sortie_index += 1
 		first_sortie = false
@@ -3490,7 +3750,7 @@ func _restart() -> void:
 	current_supply_actions.clear()
 	last_supply_reaction_line = ""
 	_reset_player_stats()
-	player_pos = r01_blockout.anchor_position("silence_edge_start") if R01LayoutBlockout.ENABLED else Vector2.ZERO
+	player_pos = _r01_campaign_start_position(current_r01_node_id) if R01LayoutBlockout.ENABLED else Vector2.ZERO
 	player_hp = float(player_stats["max_hp"])
 	elapsed = 0.0
 	xp = 0.0
@@ -3530,10 +3790,15 @@ func _restart() -> void:
 	flyer_drop_timer = 0.0
 	last_threat_label = ""
 	hud.reset()
+	var blockout_variant := R01CampaignMap.node_blockout_variant(current_r01_node_id)
+	if R01LayoutBlockout.ENABLED:
+		r01_blockout.set_state_variant(blockout_variant)
 	r01_map.reset(elapsed, true)
+	_sync_r01_map_to_player_zone(true)
 	_reset_r01_run_tracking()
 	_reset_audit_run_tracking()
 	_reset_playtest_metrics()
+	_mark_current_campaign_node_visited()
 	_set_music("amb_r01_suburb_loop")
 	_show_wave_notice(_sortie_start_notice())
 

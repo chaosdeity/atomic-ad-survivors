@@ -3,6 +3,7 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
+const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 
 var hud: CanvasLayer
 var hp_bar: ColorRect
@@ -33,13 +34,19 @@ var outpost_visual_layer: Control
 var supply_label: Label
 var supply_event_log_label: Label
 var supply_scroll_hint_label: Label
+var supply_campaign_button: Button
 var supply_restart_button: Button
 var supply_list_scroll: ScrollContainer
 var supply_button_list: VBoxContainer
 var supply_upgrade_buttons: Array[Button] = []
 var supply_upgrade_callback := Callable()
+var supply_campaign_callback := Callable()
 var supply_feedback_label: Label
 var supply_footer_divider: ColorRect
+var campaign_map: Control
+var campaign_select_callback := Callable()
+var campaign_sortie_callback := Callable()
+var campaign_close_callback := Callable()
 var debug_panel: Panel
 var debug_label: Label
 var outpost_blockout := OutpostLayoutBlockout.new()
@@ -409,7 +416,7 @@ func build(parent: Node) -> void:
 
 	supply_feedback_label = Label.new()
 	supply_feedback_label.position = Vector2(16, 224)
-	supply_feedback_label.size = Vector2(278, 18)
+	supply_feedback_label.size = Vector2(182, 18)
 	supply_feedback_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	supply_feedback_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	supply_feedback_label.add_theme_font_size_override("font_size", FONT_SMALL)
@@ -426,6 +433,19 @@ func build(parent: Node) -> void:
 	supply_footer_divider.color = Color("#8a7962")
 	supply_panel.add_child(supply_footer_divider)
 
+	supply_campaign_button = Button.new()
+	supply_campaign_button.position = Vector2(204, 224)
+	supply_campaign_button.size = Vector2(90, 18)
+	supply_campaign_button.text = "캠페인맵"
+	supply_campaign_button.add_theme_font_size_override("font_size", FONT_SMALL)
+	supply_campaign_button.add_theme_color_override("font_color", C.INK)
+	_apply_font(supply_campaign_button)
+	supply_campaign_button.add_theme_stylebox_override("normal", _button_style(Color("#fff7df")))
+	supply_campaign_button.add_theme_stylebox_override("hover", _button_style(Color("#ffe7a8")))
+	supply_campaign_button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, 3))
+	supply_campaign_button.pressed.connect(_on_supply_campaign_button_pressed)
+	supply_panel.add_child(supply_campaign_button)
+
 	supply_restart_button = Button.new()
 	supply_restart_button.position = Vector2(300, 224)
 	supply_restart_button.size = Vector2(154, 18)
@@ -437,6 +457,13 @@ func build(parent: Node) -> void:
 	supply_restart_button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, 3))
 	supply_restart_button.pressed.connect(_on_restart_button_pressed)
 	supply_panel.add_child(supply_restart_button)
+
+	campaign_map = R01CampaignMap.new()
+	campaign_map.build()
+	campaign_map.node_selected.connect(_on_campaign_node_selected)
+	campaign_map.sortie_requested.connect(_on_campaign_sortie_requested)
+	campaign_map.close_requested.connect(_on_campaign_close_requested)
+	root.add_child(campaign_map)
 
 	debug_panel = Panel.new()
 	debug_panel.position = Vector2(8, 38)
@@ -569,8 +596,11 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	card_chosen_callback = Callable()
 	supply_panel.visible = false
 	_set_supply_buttons_visible(false)
+	supply_campaign_button.visible = false
 	supply_feedback_label.visible = false
 	supply_upgrade_callback = Callable()
+	supply_campaign_callback = Callable()
+	hide_campaign_map()
 	result_panel.position = Vector2(58, 28)
 	result_panel.size = Vector2(364, 214)
 	result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#fff0cf"), C.COCOA, 3, 5))
@@ -604,18 +634,21 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 		extra_lines,
 	]
 
-func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "", session_progress: Dictionary = {}, supply_actions: Array[Dictionary] = []) -> void:
+func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_callback: Callable, applied_upgrade_name: String = "", session_progress: Dictionary = {}, supply_actions: Array[Dictionary] = [], campaign_callback: Callable = Callable()) -> void:
 	restart_callback = sortie_callback
 	supply_upgrade_callback = upgrade_callback
+	supply_campaign_callback = campaign_callback
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	result_panel.visible = false
 	supply_panel.visible = true
+	supply_campaign_button.visible = campaign_callback.is_valid()
 	var outpost_state := outpost_blockout.build_preview_layer(outpost_visual_layer, session_progress, meta_progression, false)
 	prompt_label.visible = false
-	prompt_label.text = "스페이스 / 클릭으로 다시 출격"
+	prompt_label.text = "M 또는 Tab으로 캠페인맵"
 	var next_change := str(session_progress.get("next_run_change_summary", "배분 효과 없음"))
-	supply_restart_button.text = "재출격 - 배분 반영" if next_change != "배분 효과 없음" else "재출격 - 선택 없이 출격"
+	var selected_route := str(session_progress.get("selected_campaign_node_name", "현재 지점"))
+	supply_restart_button.text = "바로 출격: %s" % _compact_ui_text(selected_route, 8)
 	var board_text := "%s / 보스 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
@@ -665,10 +698,10 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		supply_feedback_label.text = _compact_ui_text("적용 완료: %s" % applied_upgrade_name if last_reaction == "" else "적용 완료: %s - %s" % [applied_upgrade_name, last_reaction], 44)
 	elif _has_usable_supply_action(actions):
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
-		supply_feedback_label.text = "선택 가능: 보급태그 배분 또는 정비대 강화"
+		supply_feedback_label.text = "선택 가능: 보급/강화"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
-		supply_feedback_label.text = "배분할 표/흔적 없음. 재출격 가능"
+		supply_feedback_label.text = "캠페인맵 확인 가능"
 	_ensure_supply_button_count(actions.size())
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
@@ -717,8 +750,36 @@ func hide_result_screen() -> void:
 	supply_panel.visible = false
 	restart_callback = Callable()
 	supply_upgrade_callback = Callable()
+	supply_campaign_callback = Callable()
 	_set_supply_buttons_visible(false)
+	supply_campaign_button.visible = false
 	supply_feedback_label.visible = false
+	hide_campaign_map()
+
+func show_campaign_map(data: Dictionary, select_callback: Callable, sortie_callback: Callable, close_callback: Callable) -> void:
+	campaign_select_callback = select_callback
+	campaign_sortie_callback = sortie_callback
+	campaign_close_callback = close_callback
+	campaign_map.show_map(data)
+
+func update_campaign_map(data: Dictionary) -> void:
+	if campaign_map.visible:
+		campaign_map.update_map(data)
+
+func hide_campaign_map() -> void:
+	if campaign_map != null:
+		campaign_map.hide_map()
+	campaign_select_callback = Callable()
+	campaign_sortie_callback = Callable()
+	campaign_close_callback = Callable()
+
+func is_campaign_map_visible() -> bool:
+	return campaign_map != null and campaign_map.visible
+
+func campaign_map_visible_text() -> String:
+	if campaign_map == null or not campaign_map.visible:
+		return ""
+	return campaign_map.visible_ui_text()
 
 func set_debug_text(text: String) -> void:
 	if text == "":
@@ -782,9 +843,25 @@ func _on_restart_button_pressed() -> void:
 	if restart_callback.is_valid():
 		restart_callback.call()
 
+func _on_supply_campaign_button_pressed() -> void:
+	if supply_campaign_callback.is_valid():
+		supply_campaign_callback.call()
+
 func _on_supply_upgrade_button_pressed(index: int) -> void:
 	if supply_upgrade_callback.is_valid():
 		supply_upgrade_callback.call(index)
+
+func _on_campaign_node_selected(node_id: String) -> void:
+	if campaign_select_callback.is_valid():
+		campaign_select_callback.call(node_id)
+
+func _on_campaign_sortie_requested(node_id: String) -> void:
+	if campaign_sortie_callback.is_valid():
+		campaign_sortie_callback.call(node_id)
+
+func _on_campaign_close_requested() -> void:
+	if campaign_close_callback.is_valid():
+		campaign_close_callback.call()
 
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	var max_lines := 6
@@ -933,7 +1010,7 @@ func _set_supply_buttons_visible(visible: bool) -> void:
 			button.disabled = true
 
 func _blocking_panel_visible() -> bool:
-	return result_panel.visible or supply_panel.visible
+	return result_panel.visible or supply_panel.visible or is_campaign_map_visible()
 
 func reset() -> void:
 	prompt_label.visible = false
@@ -943,3 +1020,4 @@ func reset() -> void:
 	card_panel.visible = false
 	card_chosen_callback = Callable()
 	hide_result_screen()
+	hide_campaign_map()

@@ -14,6 +14,7 @@ func _run() -> void:
 	await _probe_boss_recall()
 	await _probe_boss_victory()
 	await _probe_terminal_action_parity()
+	await _probe_r01_campaign_map_flow()
 
 	if failures.is_empty():
 		print("RUN_FLOW_PROBE PASS")
@@ -105,3 +106,44 @@ func _probe_terminal_action_parity() -> void:
 		callback_method == "_handle_terminal_action" and button_ok and space_ok,
 		"button callback was %s" % callback_method
 	)
+
+func _probe_r01_campaign_map_flow() -> void:
+	var main = await _new_main()
+	main._show_supply_depot()
+	main._open_r01_campaign_map()
+	var open_ok: bool = main.match_state == "supply" and main.r01_campaign_map_open and main.hud.is_campaign_map_visible()
+	var initial_ui_text: String = main.hud.campaign_map_visible_text()
+	var initial_ui_clean: bool = initial_ui_text.find("R01-L") == -1
+
+	main._select_r01_campaign_node("R01-L01")
+	main._sortie_selected_r01_campaign_node()
+	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
+	main._finish_match("recalled")
+	main._handle_terminal_action()
+	var post_run_supply_ok: bool = main.match_state == "supply"
+	var l02_available: bool = String(main.r01_campaign_node_states.get("R01-L02", "")) == "available"
+	var l03_locked_before_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "locked"
+
+	main._open_r01_campaign_map()
+	main._select_r01_campaign_node("R01-L02")
+	main._sortie_selected_r01_campaign_node()
+	main._finish_match("victory")
+	main._handle_terminal_action()
+	var l03_unlocked_after_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "boss_ready"
+
+	main._debug_r01_campaign_unlock_all()
+	var unlock_all_ok: bool = true
+	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
+		unlock_all_ok = unlock_all_ok and String(main.r01_campaign_node_states.get(node_id, "")) == "available"
+	main._open_r01_campaign_map()
+	var final_ui_clean: bool = main.hud.campaign_map_visible_text().find("R01-L") == -1
+
+	_record("campaign map opens from supply", open_ok)
+	_record("campaign UI hides internal ids", initial_ui_clean and final_ui_clean)
+	_record("L01 select -> sortie starts", sortie_ok)
+	_record("post-run returns to supply", post_run_supply_ok)
+	_record("L02 available after L01 visit", l02_available)
+	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02)
+	_record("debug unlock all campaign nodes", unlock_all_ok)
+	main._close_r01_campaign_map()
+	await _finish_main(main)
