@@ -118,12 +118,20 @@ const OBJECT_PLACEMENTS := [
 	{"id": "outpost_signal_scraps", "zone_id": "outer_recovery_lane_anchor", "offset": Vector2(122, 54), "kind": "scraps", "state": STATE_ALL, "tags": ["outer_recovery"]},
 	{"id": "wide_return_barrier", "asset_key": "r01_prop_wide_lane_soft_barrier", "zone_id": "outer_recovery_lane_anchor", "offset": Vector2(220, -86), "kind": "road_barrier", "state": STATE_ALL, "tags": ["outer_recovery"]},
 	{"id": "quiet_lane_mailbox", "zone_id": "outer_recovery_lane_anchor", "offset": Vector2(-240, 86), "kind": "mailbox", "state": STATE_ALL, "tags": ["outer_recovery", "mailbox"]},
+	{"id": "outer_lane_left_house_mass", "asset_key": "r01_prop_outer_lane_house_shadow", "zone_id": "outer_recovery_lane_anchor", "offset": Vector2(92, -188), "kind": "house", "state": STATE_ALL, "tags": ["outer_recovery", "hard_lane_edge"]},
+	{"id": "outer_lane_right_house_mass", "asset_key": "r01_prop_outer_lane_house_shadow", "zone_id": "outer_recovery_lane_anchor", "offset": Vector2(386, 112), "kind": "house", "state": STATE_ALL, "tags": ["outer_recovery", "hard_lane_edge"]},
 	{"id": "house_front_placeholder", "asset_key": "r01_prop_house_front_01", "zone_id": "subdivision_loop_center", "offset": Vector2(-166, -116), "kind": "house", "state": STATE_ALL},
 	{"id": "mirror_house_left", "asset_key": "r01_prop_house_front_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(-322, 132), "kind": "house", "state": STATE_ALL},
 	{"id": "mirror_house_right", "asset_key": "r01_prop_house_front_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(282, -124), "kind": "house", "state": STATE_ALL},
+	{"id": "loop_north_house_wall_a", "asset_key": "r01_prop_loop_house_wall_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(-448, -220), "kind": "house", "state": STATE_ALL, "tags": ["subdivision_loop", "hard_lane_edge"]},
+	{"id": "loop_north_house_wall_b", "asset_key": "r01_prop_loop_house_wall_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(424, -214), "kind": "house", "state": STATE_ALL, "tags": ["subdivision_loop", "hard_lane_edge"]},
+	{"id": "loop_south_house_wall_a", "asset_key": "r01_prop_loop_house_wall_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(-420, 262), "kind": "house", "state": STATE_ALL, "tags": ["subdivision_loop", "hard_lane_edge"]},
+	{"id": "loop_south_house_wall_b", "asset_key": "r01_prop_loop_house_wall_repeat", "zone_id": "subdivision_loop_center", "offset": Vector2(390, 252), "kind": "house", "state": STATE_ALL, "tags": ["subdivision_loop", "hard_lane_edge"]},
 	{"id": "sales_speaker_tower", "zone_id": "subdivision_loop_center", "offset": Vector2(248, 136), "kind": "ad_device", "state": STATE_ALL},
 	{"id": "cul_de_sac_barrier", "zone_id": "subdivision_loop_center", "offset": Vector2(-22, -178), "kind": "road_barrier", "state": STATE_ALL},
 	{"id": "mailbox_device_placeholder", "zone_id": "subdivision_loop_center", "offset": Vector2(-92, 118), "kind": "mailbox", "state": STATE_ALL},
+	{"id": "loop_side_mailbox_left", "asset_key": "r01_prop_mailbox_speaker", "zone_id": "subdivision_loop_center", "offset": Vector2(-276, -18), "kind": "mailbox", "state": STATE_ALL, "tags": ["subdivision_loop", "enemy_source"]},
+	{"id": "loop_side_mailbox_right", "asset_key": "r01_prop_mailbox_speaker", "zone_id": "subdivision_loop_center", "offset": Vector2(310, 36), "kind": "mailbox", "state": STATE_ALL, "tags": ["subdivision_loop", "enemy_source"]},
 	{"id": "flyer_pile_placeholder", "zone_id": "subdivision_loop_center", "offset": Vector2(42, 74), "kind": "flyer", "state": STATE_ALL},
 	{"id": "price_customer_tag_placeholder", "zone_id": "subdivision_loop_center", "offset": Vector2(-118, -42), "kind": "tag", "state": STATE_ALL},
 	{"id": "recommended_route_decal_placeholder", "asset_key": "r01_decal_subdivision_loop_recommended_route", "zone_id": "subdivision_loop_center", "offset": Vector2(154, -20), "kind": "route", "state": STATE_ALL},
@@ -135,6 +143,9 @@ const OBJECT_PLACEMENTS := [
 	{"id": "family_discount_projector", "zone_id": "open_house_street_anchor", "offset": Vector2(226, 70), "kind": "projector", "state": STATE_ALL, "tags": ["open_house", "family_ad"]},
 	{"id": "guided_visit_floor_plan", "zone_id": "open_house_street_anchor", "offset": Vector2(-44, 130), "kind": "floor_plan", "state": STATE_ALL, "tags": ["open_house", "hazard"]},
 	{"id": "open_house_flyer_spill", "zone_id": "open_house_street_anchor", "offset": Vector2(-260, 110), "kind": "flyer", "state": STATE_ALL, "tags": ["open_house", "flyer"]},
+	{"id": "open_house_queue_barrier_left", "asset_key": "r01_prop_open_house_queue_barrier", "zone_id": "open_house_street_anchor", "offset": Vector2(-352, -18), "kind": "road_barrier", "state": STATE_ALL, "tags": ["open_house", "soft_lane_edge"]},
+	{"id": "open_house_queue_barrier_right", "asset_key": "r01_prop_open_house_queue_barrier", "zone_id": "open_house_street_anchor", "offset": Vector2(350, 18), "kind": "road_barrier", "state": STATE_ALL, "tags": ["open_house", "soft_lane_edge"]},
+	{"id": "open_house_sprinkler_hazard", "asset_key": "r01_hazard_open_house_sprinkler_path", "zone_id": "open_house_street_anchor", "offset": Vector2(154, 132), "kind": "floor_plan", "state": STATE_ALL, "tags": ["open_house", "passable_hazard"]},
 	{"id": "signal_residue_preview", "zone_id": "open_house_street_anchor", "offset": Vector2(280, -98), "kind": "residue", "state": STATE_BROADCAST_RECORD_3, "tags": ["open_house", "signal"]},
 	{"id": "smile_home_photo_loop", "zone_id": "open_house_street_anchor", "offset": Vector2(116, -144), "kind": "photo", "state": STATE_EXTRACT_MEMORY, "tags": ["open_house", "memory"]},
 	{"id": "model_house_mass_placeholder", "zone_id": "model_house_node_anchor", "offset": Vector2(208, -118), "kind": "model_house", "state": STATE_ALL},
@@ -143,6 +154,8 @@ const OBJECT_PLACEMENTS := [
 	{"id": "family_plan_terminal", "asset_key": "r01_prop_family_plan_ad_terminal", "zone_id": "model_house_node_anchor", "offset": Vector2(204, 126), "kind": "ad_device", "state": STATE_ALL},
 	{"id": "consultation_kiosk_socket_placeholder", "zone_id": "model_house_node_anchor", "offset": Vector2(-92, 62), "kind": "kiosk", "state": STATE_ALL},
 	{"id": "family_window_loop_placeholder", "zone_id": "model_house_node_anchor", "offset": Vector2(106, -70), "kind": "photo", "state": STATE_ALL},
+	{"id": "model_approach_left_house_mass", "asset_key": "r01_prop_model_approach_house_mass", "zone_id": "model_house_node_anchor", "offset": Vector2(-342, -118), "kind": "house", "state": STATE_ALL, "tags": ["model_house", "hard_lane_edge"]},
+	{"id": "model_approach_right_house_mass", "asset_key": "r01_prop_model_approach_house_mass", "zone_id": "model_house_node_anchor", "offset": Vector2(358, 104), "kind": "house", "state": STATE_ALL, "tags": ["model_house", "hard_lane_edge"]},
 	{"id": "doorbell_projector_placeholder", "zone_id": "model_house_node_anchor", "offset": Vector2(96, 66), "kind": "projector", "state": STATE_ALL},
 	{"id": "floor_plan_line_placeholder", "zone_id": "model_house_node_anchor", "offset": Vector2(-38, 98), "kind": "floor_plan", "state": STATE_ALL},
 	{"id": "open_house_direction_stack", "zone_id": "model_house_node_anchor", "offset": Vector2(-150, -38), "kind": "sign", "state": STATE_BROADCAST_RECORD_3},
@@ -171,7 +184,7 @@ func reset_cache() -> void:
 	_object_cache.clear()
 
 func object_field_names() -> Array[String]:
-	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "placement", "tags"]
+	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role"]
 
 func art_inbox_paths() -> Dictionary:
 	return ART_INBOX_PATHS.duplicate(true)
@@ -217,6 +230,9 @@ func collision_record_from_object(object: Dictionary) -> Dictionary:
 		"collision_class": String(object.get("collision_class", COLLISION_NONE)),
 		"nav_behavior": String(object.get("nav_behavior", NAV_IGNORE)),
 		"risk_role": String(object.get("risk_role", "unknown")),
+		"spawn_influence": String(object.get("spawn_influence", "neutral")),
+		"story_role": String(object.get("story_role", "surface")),
+		"source_role": String(object.get("source_role", "ambient")),
 		"layer": String(object.get("layer", LAYER_PROP_MID)),
 		"tags": Array(object.get("tags", [])),
 		"debug_label": "%s/%s/%s" % [String(object.get("layer", "")), String(object.get("zone_id", "")), String(object.get("id", ""))],
@@ -303,12 +319,71 @@ func _build_object(placement: Dictionary) -> Dictionary:
 	object["collision_class"] = String(placement.get("collision_class", defaults.get("collision_class", COLLISION_NONE)))
 	object["nav_behavior"] = String(placement.get("nav_behavior", defaults.get("nav_behavior", NAV_IGNORE)))
 	object["state"] = String(placement.get("state", STATE_ALL))
+	object["state_variant"] = String(placement.get("state_variant", object["state"]))
 	object["placement"] = String(placement.get("placement", "world"))
 	object["size"] = Vector2(placement.get("size", defaults.get("size", Vector2(24, 24))))
 	object["pivot"] = Vector2(placement.get("pivot", defaults.get("pivot", object["size"] * 0.5)))
+	object["spawn_influence"] = String(placement.get("spawn_influence", defaults.get("spawn_influence", _spawn_influence_for_kind(kind))))
+	object["story_role"] = String(placement.get("story_role", defaults.get("story_role", _story_role_for_zone(zone_id))))
+	object["source_role"] = String(placement.get("source_role", defaults.get("source_role", _source_role_for_kind(kind))))
 	var tags: Array = Array(defaults.get("tags", [])).duplicate()
 	for tag in Array(placement.get("tags", [])):
 		if not tags.has(tag):
 			tags.append(tag)
 	object["tags"] = tags
 	return object
+
+func _spawn_influence_for_kind(kind: String) -> String:
+	match kind:
+		"mailbox", "speaker":
+			return "enemy_source_angle"
+		"ad_device", "kiosk", "projector", "node", "residue":
+			return "elite_or_signal_source"
+		"floor_plan", "drain", "flyer", "fake_recovery":
+			return "hazard_or_trigger_origin"
+		"house", "model_house":
+			return "hard_path_funnel"
+		"road_barrier", "sign":
+			return "soft_path_funnel"
+		_:
+			return "density_or_readability"
+
+func _story_role_for_zone(zone_id: String) -> String:
+	match zone_id:
+		"silence_edge_start":
+			return "outer_recovery_edge"
+		"outer_recovery_lane_anchor":
+			return "recovery_lane_transition"
+		"subdivision_loop_center":
+			return "repeated_house_pressure"
+		"open_house_street_anchor":
+			return "risk_reward_signal_street"
+		"model_house_node_anchor":
+			return "boss_signal_node_approach"
+		"drain_pocket_anchor":
+			return "side_route_trace_pocket"
+		"fake_return_route_anchor":
+			return "false_recovery_mimic"
+		_:
+			return "r01_surface"
+
+func _source_role_for_kind(kind: String) -> String:
+	match kind:
+		"mailbox":
+			return "mailbox_broadcast"
+		"speaker":
+			return "street_speaker"
+		"kiosk":
+			return "open_house_checkin"
+		"projector", "photo":
+			return "family_review_projection"
+		"drain":
+			return "drain_silence_leak"
+		"fake_recovery":
+			return "fake_recovery_signal"
+		"node", "model_house":
+			return "model_house_contract_node"
+		"house":
+			return "repeated_house_front"
+		_:
+			return "environmental_readability"

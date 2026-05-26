@@ -46,6 +46,11 @@ const NODE_DEFS := {
 		"zone_id": "silence_edge_start",
 		"ui_pos": Vector2(58, 184),
 		"start_offset": Vector2(32, -18),
+		"entry_camera_offset": Vector2(84, -44),
+		"spawn_bias": "wide_edge",
+		"spawn_axis_label": "외곽 회수선 너머에서 느리게 접근",
+		"operation_role": "외곽 진입 작전권",
+		"region_reaction": "침묵 가장자리의 회수선이 한 번 더 고정됩니다.",
 		"blockout_variant": "first_visit",
 		"blockout_phrase": "낮은 광고 밀도, 보급소 회수선의 가장자리",
 		"combat_goal": "회수선이 닿는 외곽을 확보한다",
@@ -66,6 +71,11 @@ const NODE_DEFS := {
 		"zone_id": "subdivision_loop_center",
 		"ui_pos": Vector2(160, 138),
 		"start_offset": Vector2(-210, 142),
+		"entry_camera_offset": Vector2(120, -74),
+		"spawn_bias": "mailbox_pincer",
+		"spawn_axis_label": "우편함과 현관 양쪽에서 포위",
+		"operation_role": "반복 주택가 안쪽 작전권",
+		"region_reaction": "분양 주택 루프의 우편함/입주 문구 신호가 강해집니다.",
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "우편함, 입주 문구, 쿠폰 밀도가 올라가는 반복 주택가",
 		"combat_goal": "반복되는 집 사이의 신호를 추적한다",
@@ -86,6 +96,11 @@ const NODE_DEFS := {
 		"zone_id": "model_house_node_anchor",
 		"ui_pos": Vector2(276, 78),
 		"start_offset": Vector2(-300, 170),
+		"entry_camera_offset": Vector2(150, -112),
+		"spawn_bias": "signal_converge",
+		"spawn_axis_label": "모델하우스 축에서 심사 신호 수렴",
+		"operation_role": "결절 접근 작전권",
+		"region_reaction": "모델하우스 결절의 심사 절차가 작전도에 더 선명하게 남습니다.",
 		"blockout_variant": "destroy_node",
 		"blockout_phrase": "모델하우스 방향의 결절 신호와 보스 심사 절차",
 		"combat_goal": "가족 심사 절차의 입구를 찾는다",
@@ -106,6 +121,11 @@ const NODE_DEFS := {
 		"zone_id": "drain_pocket_anchor",
 		"ui_pos": Vector2(244, 194),
 		"start_offset": Vector2(-160, 48),
+		"entry_camera_offset": Vector2(86, 18),
+		"spawn_bias": "quiet_pocket",
+		"spawn_axis_label": "낮은 배수로 흔적에서 느린 압박",
+		"operation_role": "우회/저신호 작전권",
+		"region_reaction": "배수로 침묵 주머니에 흔적 후보가 남습니다.",
 		"blockout_variant": "extract_memory",
 		"blockout_phrase": "위험은 낮지만 흔적이 진하게 남는 배수로 곁길",
 		"combat_goal": "광고음이 끊기는 낮은 통로를 조사한다",
@@ -126,6 +146,11 @@ const NODE_DEFS := {
 		"zone_id": "fake_return_route_anchor",
 		"ui_pos": Vector2(86, 82),
 		"start_offset": Vector2(-110, 118),
+		"entry_camera_offset": Vector2(108, -62),
+		"spawn_bias": "false_return_pincer",
+		"spawn_axis_label": "귀환처럼 보이는 화살표 뒤쪽에서 급습",
+		"operation_role": "위험 귀환/재방문 작전권",
+		"region_reaction": "가짜 귀환로의 혼동 신호가 회수 결과에 오염 흔적으로 남습니다.",
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "귀환 UI를 흉내 내는 산책로, 혼동과 광고 스피커 위험",
 		"combat_goal": "귀환처럼 보이는 신호를 따라가지 않는다",
@@ -188,8 +213,23 @@ static func node_zone_id(node_id: String) -> String:
 static func node_start_offset(node_id: String) -> Vector2:
 	return Vector2(node_def(node_id).get("start_offset", Vector2.ZERO))
 
+static func node_entry_camera_offset(node_id: String) -> Vector2:
+	return Vector2(node_def(node_id).get("entry_camera_offset", Vector2.ZERO))
+
 static func node_combat_goal(node_id: String) -> String:
 	return String(node_def(node_id).get("combat_goal", "작전 지점을 확인하세요"))
+
+static func node_operation_role(node_id: String) -> String:
+	return String(node_def(node_id).get("operation_role", "작전권"))
+
+static func node_region_reaction(node_id: String) -> String:
+	return String(node_def(node_id).get("region_reaction", "R01 지역 반응이 작전도에 남습니다."))
+
+static func node_spawn_bias(node_id: String) -> String:
+	return String(node_def(node_id).get("spawn_bias", "wide_edge"))
+
+static func node_spawn_axis_label(node_id: String) -> String:
+	return String(node_def(node_id).get("spawn_axis_label", "주변 광고 장치에서 접근"))
 
 static func node_risk(node_id: String) -> String:
 	return String(node_def(node_id).get("risk", "미확인"))
@@ -288,7 +328,7 @@ func build() -> void:
 	add_child(_title_label)
 
 	_hint_label = _make_label(Vector2(18, 30), Vector2(282, 22), 9, Color("#433227"))
-	_hint_label.text = "작전 구역: 외곽 회수선 -> 분양 주택 루프 -> 모델하우스 결절 / 숫자 노드 선택"
+	_hint_label.text = "작전권: 외곽 회수선 -> 분양 주택 루프 -> 모델하우스 결절 / 핀 선택 후 출격"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
 
@@ -310,7 +350,7 @@ func build() -> void:
 
 	_legend_label = _make_label(Vector2(18, 217), Vector2(282, 36), 8, Color("#433227"))
 	_legend_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_legend_label.text = "범례: 초록 접근 가능 / 노랑 선택 중 / 빨강 위험 / 주황 심사 / 회색 잠김 / 얇은 선은 골목"
+	_legend_label.text = "범례: 초록 접근 가능 / 노랑 출격 지점 / 빨강 위험 / 주황 심사 / 회색 미개방 신호 / 얇은 선은 곁길"
 	add_child(_legend_label)
 
 	_description_label = _make_label(Vector2(312, 188), Vector2(142, 28), 8, Color("#433227"))
@@ -396,7 +436,7 @@ func _refresh_controls() -> void:
 		var selectable := is_state_selectable(raw_state)
 		var definition := node_def(node_id)
 		button.disabled = not selectable
-		button.text = str(i + 1) if selectable else ""
+		button.text = "•" if selectable else ""
 		button.tooltip_text = "%s: %s" % [String(definition["name"]), String(definition["description"])]
 		_apply_button_state_style(button, display_state, selectable)
 
@@ -412,15 +452,15 @@ func _refresh_controls() -> void:
 	_apply_button_state_style(_close_button, STATE_AVAILABLE, true)
 
 	_brief_title_label.text = "선택 중: %s" % String(selected_def["name"])
-	_status_label.text = "상태: %s\n위험: %s\n회수선: %s\n지역 변조: %s" % [
+	_status_label.text = "역할: %s\n상태: %s\n위험: %s\n회수선: %s" % [
+		node_operation_role(_selected_node_id),
 		state_brief(selected_display_state),
 		String(selected_def["risk"]),
 		String(selected_def["recovery_line"]),
-		node_modifier_short(_selected_node_id),
 	]
-	_objective_label.text = "목표\n%s\n\n위협\n%s" % [
+	_objective_label.text = "목표\n%s\n\n스폰\n%s" % [
 		String(selected_def["objective"]),
-		node_threat_hint(_selected_node_id),
+		node_spawn_axis_label(_selected_node_id),
 	]
 
 func _compact_state_label(state: String) -> String:
@@ -646,7 +686,7 @@ func _draw_node_nameplates() -> void:
 		draw_line(pos, anchor, line_color, 1.0 if state != STATE_LOCKED else 0.7)
 		draw_rect(Rect2(label_pos, label_size), fill)
 		draw_rect(Rect2(label_pos, label_size), _state_color(state), false, 1.0 if selected else 0.6)
-		draw_string(UIFont.get_font(), label_pos + Vector2(4, 10), "%d %s" % [i + 1, name], HORIZONTAL_ALIGNMENT_LEFT, 84, 8, C.INK if state != STATE_LOCKED else Color("#5a4d3f"))
+		draw_string(UIFont.get_font(), label_pos + Vector2(4, 10), name, HORIZONTAL_ALIGNMENT_LEFT, 84, 8, C.INK if state != STATE_LOCKED else Color("#5a4d3f"))
 
 func _node_label_position(node_id: String, pos: Vector2) -> Vector2:
 	match node_id:

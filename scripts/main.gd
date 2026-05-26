@@ -33,6 +33,7 @@ const FLYER_DROP_WARNING := 0.82
 const FLYER_DROP_LINGER := 0.30
 const FLYER_DROP_RADIUS := 42.0
 const FLYER_DROP_DAMAGE := 10.0
+const ENTRY_CAMERA_PAN_DURATION := 1.2
 const CHARGE_WEAPON_RETURN_STAMP := "return_stamp"
 const CHARGE_WEAPONS := [
 	{"id": CHARGE_WEAPON_RETURN_STAMP, "name": "반품 도장", "label": "관통 표식"},
@@ -141,6 +142,8 @@ var pressure_ring_timer := 0.0
 var flyer_drop_timer := 0.0
 var last_threat_label := ""
 var node_pressure_cue_timer := 0.0
+var entry_camera_offset := Vector2.ZERO
+var entry_camera_timer := 0.0
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -179,6 +182,7 @@ func _ready() -> void:
 		r01_blockout.configure_camera(camera)
 		enemies.configure_world(R01LayoutBlockout.WORLD_BOUNDS, Callable(r01_blockout, "enemy_spawn_position"))
 		player_pos = _r01_campaign_start_position(current_r01_node_id)
+		_arm_entry_camera_for_node(current_r01_node_id)
 		r01_blockout.print_probe()
 	_build_audio()
 	if _audio_runtime_enabled():
@@ -195,11 +199,12 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
+	entry_camera_timer = maxf(0.0, entry_camera_timer - delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		camera.global_position = _camera_target_position().round()
 		queue_redraw()
 		if match_state != "supply" and Input.is_action_just_pressed("charge"):
 			_handle_terminal_action()
@@ -208,7 +213,7 @@ func _process(delta: float) -> void:
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		camera.global_position = _camera_target_position().round()
 		queue_redraw()
 		return
 
@@ -223,7 +228,7 @@ func _process(delta: float) -> void:
 	if match_state == "victory" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		camera.global_position = _camera_target_position().round()
 		queue_redraw()
 		return
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
@@ -241,7 +246,7 @@ func _process(delta: float) -> void:
 	if match_state == "game_over" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+		camera.global_position = _camera_target_position().round()
 		queue_redraw()
 		return
 	_update_boss(delta)
@@ -251,7 +256,7 @@ func _process(delta: float) -> void:
 	_update_charge_puddles(delta)
 	effects.update(delta)
 	_update_hud()
-	camera.global_position = (player_pos + effects.shake_offset(rng)).round()
+	camera.global_position = _camera_target_position().round()
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
@@ -384,6 +389,13 @@ func _build_camera() -> void:
 	camera.zoom = Vector2.ONE
 	add_child(camera)
 	camera.make_current()
+
+func _camera_target_position() -> Vector2:
+	var entry_offset := Vector2.ZERO
+	if entry_camera_timer > 0.0:
+		var ratio := clampf(entry_camera_timer / ENTRY_CAMERA_PAN_DURATION, 0.0, 1.0)
+		entry_offset = entry_camera_offset * ratio * ratio
+	return player_pos + entry_offset + effects.shake_offset(rng)
 
 func _build_audio() -> void:
 	var sfx_rng := RandomNumberGenerator.new()
@@ -1471,7 +1483,7 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 		R01CampaignMap.NODE_L01:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.96
 			weights["basic"] = float(weights.get("basic", 0.0)) + 0.03
-			result["spawn_bias"] = "wide_edge"
+			result["spawn_bias"] = R01CampaignMap.node_spawn_bias(current_r01_node_id)
 			result["spawn_pincer_chance"] = 0.10
 			result["spawn_axis_angle"] = -0.15
 			result["node_pressure_label"] = "회수선 안정"
@@ -1482,7 +1494,7 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.035
 			weights["fast"] = float(weights.get("fast", 0.0)) + 0.055
 			weights["charger"] = float(weights.get("charger", 0.0)) + (0.018 if value >= 72.0 else 0.0)
-			result["spawn_bias"] = "mailbox_pincer"
+			result["spawn_bias"] = R01CampaignMap.node_spawn_bias(current_r01_node_id)
 			result["spawn_pincer_chance"] = 0.46 if value >= 36.0 else 0.24
 			result["spawn_axis_angle"] = 0.34
 			result["node_pressure_label"] = "우편함 양쪽 발송"
@@ -1493,7 +1505,7 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			weights["signal"] = float(weights.get("signal", 0.0)) + 0.055
 			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.035
 			weights["charger"] = float(weights.get("charger", 0.0)) + 0.012
-			result["spawn_bias"] = "signal_converge"
+			result["spawn_bias"] = R01CampaignMap.node_spawn_bias(current_r01_node_id)
 			result["spawn_pincer_chance"] = 0.34
 			result["spawn_axis_angle"] = -0.62
 			result["node_pressure_label"] = "심사 신호 증폭"
@@ -1503,7 +1515,7 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			weights["basic"] = float(weights.get("basic", 0.0)) + 0.02
 			weights["signal"] = float(weights.get("signal", 0.0)) + 0.025
 			weights["tank"] = float(weights.get("tank", 0.0)) + 0.01
-			result["spawn_bias"] = "quiet_pocket"
+			result["spawn_bias"] = R01CampaignMap.node_spawn_bias(current_r01_node_id)
 			result["spawn_pincer_chance"] = 0.14
 			result["spawn_axis_angle"] = 1.12
 			result["node_pressure_label"] = "침묵 흔적 접근"
@@ -1514,11 +1526,13 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			weights["fast"] = float(weights.get("fast", 0.0)) + 0.055
 			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.045
 			weights["charger"] = float(weights.get("charger", 0.0)) + 0.016
-			result["spawn_bias"] = "false_return_pincer"
+			result["spawn_bias"] = R01CampaignMap.node_spawn_bias(current_r01_node_id)
 			result["spawn_pincer_chance"] = 0.42
 			result["spawn_axis_angle"] = -0.95
 			result["node_pressure_label"] = "가짜 귀환 신호"
 	result["role_weights"] = weights
+	result["operation_zone"] = R01CampaignMap.node_name(current_r01_node_id)
+	result["operation_spawn_axis"] = R01CampaignMap.node_spawn_axis_label(current_r01_node_id)
 	return result
 
 func _apply_r01_contamination_spawn_pressure(params: Dictionary) -> Dictionary:
@@ -2205,6 +2219,9 @@ func _session_progress_data() -> Dictionary:
 		"selected_campaign_node_name": R01CampaignMap.node_name(selected_r01_node_id),
 		"last_completed_campaign_node_name": "없음" if last_completed_r01_node_id == "" else R01CampaignMap.node_name(last_completed_r01_node_id),
 		"selected_campaign_node_objective": R01CampaignMap.node_objective(selected_r01_node_id),
+		"selected_campaign_node_role": R01CampaignMap.node_operation_role(selected_r01_node_id),
+		"selected_campaign_node_spawn": R01CampaignMap.node_spawn_axis_label(selected_r01_node_id),
+		"selected_campaign_node_reaction": R01CampaignMap.node_region_reaction(selected_r01_node_id),
 		"campaign_board_line": _r01_campaign_board_line(),
 		"campaign_new_signal_line": _r01_campaign_change_banner(),
 		"boss_signal_state": boss_signal_state,
@@ -2254,7 +2271,12 @@ func _session_progress_lines() -> Array[String]:
 	return [
 		"%s" % _route_stage_label(),
 		_next_goal_label(),
+		_r01_campaign_region_reaction_line(),
 	]
+
+func _r01_campaign_region_reaction_line() -> String:
+	var node_id := last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
+	return "지역 반응: %s" % R01CampaignMap.node_region_reaction(node_id)
 
 func _finale_recovery_lines() -> Array[String]:
 	var r01_state := _r01_phrase_state()
@@ -2694,6 +2716,12 @@ func _r01_campaign_start_position(node_id: String) -> Vector2:
 	var start_pos := r01_blockout.anchor_position(zone_id) + R01CampaignMap.node_start_offset(node_id)
 	return r01_blockout.clamp_player_position(start_pos)
 
+func _arm_entry_camera_for_node(node_id: String) -> void:
+	entry_camera_offset = R01CampaignMap.node_entry_camera_offset(node_id)
+	entry_camera_timer = ENTRY_CAMERA_PAN_DURATION
+	if camera != null:
+		camera.global_position = _camera_target_position().round()
+
 func _sync_r01_map_to_player_zone(show_entry_notice: bool) -> void:
 	if not R01LayoutBlockout.ENABLED:
 		return
@@ -3022,6 +3050,9 @@ func _debug_info() -> Dictionary:
 		"r01_campaign_node_state_summary": R01CampaignMap.state_summary(r01_campaign_node_states),
 		"r01_campaign_new_signal_summary": _r01_campaign_change_banner(),
 		"r01_campaign_current_phrase": R01CampaignMap.node_blockout_phrase(current_r01_node_id),
+		"r01_campaign_start_pos": "%d,%d" % [int(round(_r01_campaign_start_position(current_r01_node_id).x)), int(round(_r01_campaign_start_position(current_r01_node_id).y))],
+		"r01_campaign_spawn_bias": R01CampaignMap.node_spawn_bias(current_r01_node_id),
+		"r01_campaign_spawn_axis": R01CampaignMap.node_spawn_axis_label(current_r01_node_id),
 		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
 		"r01_blockout_variant": r01_blockout.state_variant,
 		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
@@ -3954,6 +3985,8 @@ func _restart() -> void:
 	last_supply_reaction_line = ""
 	_reset_player_stats()
 	player_pos = _r01_campaign_start_position(current_r01_node_id) if R01LayoutBlockout.ENABLED else Vector2.ZERO
+	if R01LayoutBlockout.ENABLED:
+		_arm_entry_camera_for_node(current_r01_node_id)
 	player_hp = float(player_stats["max_hp"])
 	elapsed = 0.0
 	xp = 0.0

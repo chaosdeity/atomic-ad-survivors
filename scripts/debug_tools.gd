@@ -176,6 +176,11 @@ func detail_text(info: Dictionary) -> String:
 		"campaign states %s" % str(info.get("r01_campaign_node_state_summary", "")),
 		"campaign signals %s" % str(info.get("r01_campaign_new_signal_summary", "")),
 		"campaign phrase %s" % str(info.get("r01_campaign_current_phrase", "")),
+		"campaign entry start=%s bias=%s axis=%s" % [
+			str(info.get("r01_campaign_start_pos", "")),
+			str(info.get("r01_campaign_spawn_bias", "")),
+			str(info.get("r01_campaign_spawn_axis", "")),
+		],
 		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d" % [
 			int(info.get("r01_collision_hard", 0)),
 			int(info.get("r01_collision_soft", 0)),

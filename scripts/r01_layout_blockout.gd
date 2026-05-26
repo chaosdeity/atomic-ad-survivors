@@ -1130,7 +1130,10 @@ func _draw_collision_shape(canvas: CanvasItem, record: Dictionary, color: Color,
 	if shape == "rect":
 		var size: Vector2 = record.get("size", Vector2(24, 24))
 		var rect := Rect2(pos - size * 0.5, size)
-		canvas.draw_rect(rect, color, not outline, width)
+		if outline:
+			canvas.draw_rect(rect, color, false, width)
+		else:
+			canvas.draw_rect(rect, color, true)
 		return
 	var radius := float(record.get("radius", 12.0))
 	if outline:

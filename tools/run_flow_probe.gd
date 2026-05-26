@@ -1,6 +1,7 @@
 extends SceneTree
 
 const MainScene := preload("res://scenes/main.tscn")
+const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 
 var failures: Array[String] = []
 
@@ -114,11 +115,11 @@ func _probe_r01_campaign_map_flow() -> void:
 	var open_ok: bool = main.match_state == "supply" and main.r01_campaign_map_open and main.hud.is_campaign_map_visible()
 	var initial_ui_text: String = main.hud.campaign_map_visible_text()
 	var initial_ui_clean: bool = initial_ui_text.find("R01-L") == -1
-	var readability_text_ok: bool = initial_ui_text.find("범례: 초록 접근 가능") != -1 and initial_ui_text.find("숫자 노드 선택") != -1 and initial_ui_text.find("작전 구역:") != -1 and initial_ui_text.find("얇은 선은 골목") != -1
+	var readability_text_ok: bool = initial_ui_text.find("범례: 초록 접근 가능") != -1 and initial_ui_text.find("핀 선택 후 출격") != -1 and initial_ui_text.find("작전권:") != -1 and initial_ui_text.find("얇은 선은 곁길") != -1
 
 	main._select_r01_campaign_node("R01-L01")
 	var l01_selected_text: String = main.hud.campaign_map_visible_text()
-	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표") != -1 and l01_selected_text.find("주택가 첫 광고 신호 확인") != -1
+	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표") != -1 and l01_selected_text.find("주택가 첫 광고 신호 확인") != -1 and l01_selected_text.find("외곽 진입 작전권") != -1
 	main._sortie_selected_r01_campaign_node()
 	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
 	var l01_start_pos: Vector2 = main.player_pos
@@ -152,7 +153,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var final_ui_clean: bool = l05_text.find("R01-L") == -1
 	main.debug_tools.detail_visible = true
 	var debug_text: String = main._debug_overlay_text()
-	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1
+	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1 and debug_text.find("bias=mailbox_pincer") != -1
 
 	_record("campaign map opens from supply", open_ok)
 	_record("campaign map has readable legend and instruction", readability_text_ok)
@@ -167,6 +168,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	_record("L05 displayed as false route", l05_false_route_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
 	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
+	_probe_r01_campaign_node_entry_profiles(main)
 	main._close_r01_campaign_map()
 	await _finish_main(main)
 
@@ -177,3 +179,44 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_preview_sortie_ok: bool = preview_main.match_state == "playing" and preview_main.current_r01_node_id == "R01-L03"
 	_record("Ctrl+1-5 debug preview unlocks sortie", debug_preview_unlock_ok and debug_preview_sortie_ok)
 	await _finish_main(preview_main)
+
+func _probe_r01_campaign_node_entry_profiles(main) -> void:
+	main._debug_r01_campaign_unlock_all()
+	var starts := {}
+	var spawn_bias := {}
+	var objective_ok := true
+	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
+		main.selected_r01_node_id = node_id
+		main.current_r01_node_id = node_id
+		main.player_pos = main._r01_campaign_start_position(node_id)
+		main.r01_map.update(0.0, main.elapsed, false, main.r01_blockout.nearest_zone_id(main.player_pos))
+		var wave_params: Dictionary = main._wave_params_for_elapsed(90.0)
+		starts[node_id] = main.player_pos
+		spawn_bias[node_id] = String(wave_params.get("spawn_bias", ""))
+		objective_ok = objective_ok and main._combat_goal_label().find(R01CampaignMap.node_name(node_id)) != -1
+	var distinct_starts := true
+	for a in starts.keys():
+		for b in starts.keys():
+			if String(a) >= String(b):
+				continue
+			distinct_starts = distinct_starts and Vector2(starts[a]).distance_to(Vector2(starts[b])) > 320.0
+	var expected_bias := {
+		"R01-L01": "wide_edge",
+		"R01-L02": "mailbox_pincer",
+		"R01-L03": "signal_converge",
+		"R01-L04": "quiet_pocket",
+		"R01-L05": "false_return_pincer",
+	}
+	var bias_ok := true
+	for node_id in expected_bias.keys():
+		bias_ok = bias_ok and String(spawn_bias[node_id]) == String(expected_bias[node_id])
+	var pathing_label: String = main.r01_blockout.pathing_probe_label()
+	var pathing_ok := pathing_label.find("30=pass") != -1 and pathing_label.find("100=") != -1 and pathing_label.find("300=") != -1 and pathing_label.find("node=pass") != -1 and pathing_label.find("fake=pass") != -1
+	var start_summary := {}
+	for node_id in starts.keys():
+		var p := Vector2(starts[node_id])
+		start_summary[node_id] = "%d,%d" % [int(round(p.x)), int(round(p.y))]
+	_record("L01-L05 start positions are distinct world-space entries", distinct_starts, JSON.stringify(start_summary))
+	_record("L01-L05 spawn bias profiles differ", bias_ok, JSON.stringify(spawn_bias))
+	_record("L01-L05 objective phrase follows selected operation zone", objective_ok)
+	_record("R01 pathing probe keeps 30/100/300 and route checks", pathing_ok, pathing_label)
