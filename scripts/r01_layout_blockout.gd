@@ -429,6 +429,21 @@ func source_objects_for_spawn_role(spawn_role: String, zone_id: String = "", var
 func source_objects_for_hazard_role(hazard_role: String, zone_id: String = "", variant: String = state_variant) -> Array[Dictionary]:
 	return map_assembly.source_objects_for_hazard_role(hazard_role, zone_id, variant)
 
+func story_objects_for_state(variant: String = state_variant) -> Array[Dictionary]:
+	return map_assembly.story_objects_for_state(variant)
+
+func story_object_by_id(object_id: String, variant: String = state_variant) -> Dictionary:
+	return map_assembly.story_object_by_id(object_id, variant)
+
+func nearest_story_object(pos: Vector2, radius: float, zone_id: String = "", variant: String = state_variant) -> Dictionary:
+	return map_assembly.nearest_story_object(pos, radius, zone_id, variant)
+
+func story_object_count(variant: String = state_variant) -> int:
+	return map_assembly.story_object_count(variant)
+
+func story_object_summary_line(variant: String = state_variant) -> String:
+	return map_assembly.story_object_summary_line(variant)
+
 func source_summary_by_zone(variant: String = state_variant) -> Dictionary:
 	return map_assembly.source_summary_by_zone(variant)
 

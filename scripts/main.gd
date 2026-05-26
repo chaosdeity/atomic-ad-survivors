@@ -69,6 +69,10 @@ const DAMAGE_NUMBER_DENSE_START := 145
 const DAMAGE_NUMBER_DENSE_NEAR_RADIUS := 18.0
 const NODE_PRESSURE_CUE_START := 22.0
 const NODE_PRESSURE_CUE_INTERVAL := 26.0
+const FIELD_INTERACTION_RADIUS := 74.0
+const FIELD_INTERACTION_NOTICE_TIME := 3.0
+const FIELD_INTERACTION_REVEAL_DURATION := 4.2
+const FIELD_INTERACTION_REVEAL_LIMIT := 4
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -147,6 +151,13 @@ var last_threat_label := ""
 var node_pressure_cue_timer := 0.0
 var entry_camera_offset := Vector2.ZERO
 var entry_camera_timer := 0.0
+var field_interaction_notice_timer := 0.0
+var field_interaction_notice_text := ""
+var field_interacted_counts := {}
+var field_interaction_total_counts := {}
+var field_interaction_reveals: Array[Dictionary] = []
+var last_field_interaction_object_id := ""
+var last_field_interaction_display_name := ""
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -203,6 +214,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	entry_camera_timer = maxf(0.0, entry_camera_timer - delta)
+	_update_field_interaction_runtime(delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
@@ -286,6 +298,10 @@ func _input(event: InputEvent) -> void:
 			return
 		if event is InputEventKey and event.is_action_pressed("charge"):
 			_handle_terminal_action()
+			return
+
+	if match_state == "playing" and not paused_for_card and event.is_action_pressed("interact"):
+		if _try_field_interaction():
 			return
 
 	var pressed_charge := event.is_action_pressed("charge")
@@ -1392,6 +1408,12 @@ func _update_r01_zone(delta: float) -> void:
 func _reset_r01_run_tracking() -> void:
 	r01_zone_times = {}
 	open_house_signal_stage = 0
+	field_interacted_counts.clear()
+	field_interaction_reveals.clear()
+	field_interaction_notice_timer = 0.0
+	field_interaction_notice_text = ""
+	last_field_interaction_object_id = ""
+	last_field_interaction_display_name = ""
 
 func _record_r01_zone_time(delta: float) -> void:
 	var zone_id := r01_map.current_zone_id()
@@ -1461,6 +1483,221 @@ func _update_ration_candidate_feedback() -> void:
 	effects.add_floater(player_pos + Vector2(0, -18), label, C.VITAMIN_YELLOW, 13)
 	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 50.0, 0.34)
 	_show_wave_notice(notice)
+
+func _update_field_interaction_runtime(delta: float) -> void:
+	field_interaction_notice_timer = maxf(0.0, field_interaction_notice_timer - delta)
+	for i in range(field_interaction_reveals.size() - 1, -1, -1):
+		var cue := field_interaction_reveals[i]
+		cue["timer"] = float(cue.get("timer", 0.0)) - delta
+		if float(cue["timer"]) <= 0.0:
+			field_interaction_reveals.remove_at(i)
+		else:
+			field_interaction_reveals[i] = cue
+
+func _nearest_field_story_object() -> Dictionary:
+	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+		return {}
+	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	var object := r01_blockout.nearest_story_object(player_pos, FIELD_INTERACTION_RADIUS, zone_id)
+	if object.is_empty():
+		object = r01_blockout.nearest_story_object(player_pos, FIELD_INTERACTION_RADIUS)
+	return object
+
+func _field_interaction_prompt_text() -> String:
+	if paused_for_card:
+		return ""
+	var object := _nearest_field_story_object()
+	if object.is_empty():
+		return ""
+	return "E %s: %s" % [
+		String(object.get("interaction_type", "조사")),
+		String(object.get("display_name", "흔적")),
+	]
+
+func _try_field_interaction() -> bool:
+	var object := _nearest_field_story_object()
+	if object.is_empty():
+		return false
+	var object_id := String(object.get("id", ""))
+	if object_id == "":
+		return false
+	var display_name := String(object.get("display_name", "흔적"))
+	last_field_interaction_object_id = object_id
+	last_field_interaction_display_name = display_name
+	var already_this_sortie := int(field_interacted_counts.get(object_id, 0)) > 0
+	field_interacted_counts[object_id] = int(field_interacted_counts.get(object_id, 0)) + 1
+	field_interaction_total_counts[object_id] = int(field_interaction_total_counts.get(object_id, 0)) + 1
+	var object_pos := Vector2(object.get("pos", player_pos))
+	if already_this_sortie:
+		_show_field_interaction_notice(String(object.get("repeat_phrase", "이미 확인한 흔적입니다.")))
+		effects.add_floater(object_pos + Vector2(0, -18), "반복 확인", Color(0.35, 0.70, 0.95), 11)
+		effects.add_status_ring(object_pos, Color(0.35, 0.70, 0.95), 34.0, 0.22)
+		return true
+	_apply_field_story_object_effect(object)
+	return true
+
+func _apply_field_story_object_effect(object: Dictionary) -> void:
+	var object_pos := Vector2(object.get("pos", player_pos))
+	var display_name := String(object.get("display_name", "흔적"))
+	var result_phrase := String(object.get("result_phrase", "흔적이 작전도에 남았습니다."))
+	var hint_line := _field_interaction_hint_line(object)
+	var notice := result_phrase if hint_line == "" else "%s / %s" % [result_phrase, hint_line]
+	_show_field_interaction_notice(notice)
+	effects.add_floater(object_pos + Vector2(0, -18), "%s 완료" % String(object.get("interaction_type", "조사")), C.VITAMIN_YELLOW, 12)
+	effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 48.0, 0.32)
+	_apply_field_interaction_node_memory(object)
+	_record_field_interaction_outpost_event(object)
+	_add_field_interaction_reveals(object)
+	_apply_field_interaction_small_combat_link(object)
+	_record_playtest_event("field_interaction_%s" % String(object.get("campaign_effect", display_name)))
+
+func _field_interaction_hint_line(object: Dictionary) -> String:
+	var effect := String(object.get("campaign_effect", ""))
+	var tag_hint := String(object.get("tag_hint", ""))
+	var signal_hint := String(object.get("signal_hint", ""))
+	match effect:
+		"mailbox_address_duplicate", "front_sensor_warning", "drain_low_signal_trace", "fake_return_verified", "model_house_access_warning":
+			return String(object.get("risk_hint", ""))
+		"family_photo_memory", "name_register_rejected", "closed_door_stamp":
+			return signal_hint
+		_:
+			return tag_hint
+
+func _show_field_interaction_notice(text: String) -> void:
+	field_interaction_notice_text = text
+	field_interaction_notice_timer = FIELD_INTERACTION_NOTICE_TIME
+	wave_notice_timer = maxf(wave_notice_timer, 0.0)
+
+func _apply_field_interaction_node_memory(object: Dictionary) -> void:
+	var zone_id := String(object.get("zone_id", ""))
+	var node_id := _r01_node_id_for_zone(zone_id)
+	var memory := _r01_campaign_node_memory(node_id)
+	var names := Array(memory.get("node_story_object_names", [])).duplicate()
+	var display_name := String(object.get("display_name", "흔적"))
+	if not names.has(display_name):
+		names.append(display_name)
+	var effects_seen := Array(memory.get("node_story_effects", [])).duplicate()
+	var effect_id := String(object.get("campaign_effect", "story_object_memory"))
+	if not effects_seen.has(effect_id):
+		effects_seen.append(effect_id)
+	memory["node_story_object_names"] = names
+	memory["node_story_effects"] = effects_seen
+	memory["node_story_object_count"] = names.size()
+	memory["node_last_story_object_name"] = display_name
+	memory["node_last_story_object_phrase"] = String(object.get("node_memory_phrase", display_name))
+	memory["node_last_field_result_phrase"] = String(object.get("result_phrase", ""))
+	memory["node_last_field_outpost_reaction"] = String(object.get("outpost_reaction", ""))
+	memory["node_last_event_line"] = "구역 행동: %s %s" % [display_name, String(object.get("interaction_type", "조사"))]
+	memory["node_last_outpost_reaction"] = String(object.get("outpost_reaction", ""))
+	memory["node_last_tag_summary"] = String(object.get("tag_hint", "태그 힌트 없음"))
+	r01_campaign_node_memory[node_id] = memory
+
+func _record_field_interaction_outpost_event(object: Dictionary) -> void:
+	var npc_id := String(object.get("npc_id", "seven"))
+	var facility_id := String(object.get("facility_id", "sortie_board"))
+	var line := String(object.get("outpost_reaction", "R01 현장 흔적이 보급소 기록으로 넘어왔습니다."))
+	meta_progression.record_outpost_event(npc_id, "field_interaction", line, facility_id)
+
+func _add_field_interaction_reveals(object: Dictionary) -> void:
+	var zone_id := String(object.get("zone_id", r01_blockout.nearest_zone_id(player_pos)))
+	var cue_count := 0
+	for role in Array(object.get("reveal_spawn_roles", [])):
+		for source in r01_blockout.source_objects_for_spawn_role(String(role), zone_id):
+			if _append_field_interaction_reveal(source, _field_reveal_label(String(role)), Color(1.0, 0.91, 0.25, 0.58)):
+				cue_count += 1
+			if cue_count >= FIELD_INTERACTION_REVEAL_LIMIT:
+				return
+	for role in Array(object.get("reveal_hazard_roles", [])):
+		for source in r01_blockout.source_objects_for_hazard_role(String(role), zone_id):
+			if _append_field_interaction_reveal(source, _field_reveal_label(String(role)), Color(1.0, 0.30, 0.36, 0.52)):
+				cue_count += 1
+			if cue_count >= FIELD_INTERACTION_REVEAL_LIMIT:
+				return
+
+func _field_reveal_label(role: String) -> String:
+	match role:
+		"coupon", "fast", "flyer_drop":
+			return "전단 출처"
+		"basic":
+			return "광고 출처"
+		"charger":
+			return "차징 위험"
+		"speaker":
+			return "스피커 출처"
+		"signal":
+			return "신호 출처"
+		"elite", "pressure_ring":
+			return "심사 압력"
+		"warning_line":
+			return "경고선"
+		"low_signal", "silence_leak":
+			return "낮은 신호"
+		"fake_return", "rear_pincer":
+			return "가짜 귀환 위험"
+		"tank":
+			return "무거운 검수"
+		_:
+			return "위험 출처"
+
+func _append_field_interaction_reveal(source: Dictionary, label: String, color: Color) -> bool:
+	var source_id := String(source.get("id", ""))
+	if source_id == "":
+		return false
+	for cue in field_interaction_reveals:
+		if String(cue.get("source_id", "")) == source_id:
+			return false
+	field_interaction_reveals.append({
+		"source_id": source_id,
+		"pos": Vector2(source.get("pos", player_pos)),
+		"label": label,
+		"timer": FIELD_INTERACTION_REVEAL_DURATION,
+		"duration": FIELD_INTERACTION_REVEAL_DURATION,
+		"color": color,
+	})
+	return true
+
+func _apply_field_interaction_small_combat_link(object: Dictionary) -> void:
+	match String(object.get("campaign_effect", "")):
+		"front_sensor_warning":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.4)
+			last_threat_label = "현관 센서 source 경고"
+		"mailbox_address_duplicate":
+			flyer_drop_timer = maxf(flyer_drop_timer, 1.2)
+			last_threat_label = "우편함 전단 source 표시"
+		"drain_low_signal_trace", "low_signal_checked":
+			last_threat_label = "배수로 hazard 표시"
+		"fake_return_verified", "unstable_recovery_line_marked":
+			last_threat_label = "가짜 귀환로 위험 source 표시"
+		"model_house_access_warning", "consultation_question_held", "speaker_signal_checked":
+			_set_boss_signal_state("faint")
+			last_threat_label = "모델하우스 심사 신호 표시"
+		_:
+			pass
+
+func _r01_node_id_for_zone(zone_id: String) -> String:
+	match zone_id:
+		"silence_edge_start", "outer_recovery_lane_anchor":
+			return R01CampaignMap.NODE_L01
+		"subdivision_loop_center":
+			return R01CampaignMap.NODE_L02
+		"open_house_street_anchor", "model_house_node_anchor":
+			return R01CampaignMap.NODE_L03
+		"drain_pocket_anchor":
+			return R01CampaignMap.NODE_L04
+		"fake_return_route_anchor":
+			return R01CampaignMap.NODE_L05
+		_:
+			return current_r01_node_id
+
+func _field_interaction_counts_summary(counts: Dictionary) -> String:
+	if counts.is_empty():
+		return "none"
+	var keys := counts.keys()
+	keys.sort()
+	var parts: Array[String] = []
+	for key in keys:
+		parts.append("%s:%d" % [String(key), int(counts[key])])
+	return ", ".join(parts)
 
 func _open_house_signal_threshold(stage: int) -> float:
 	var reduction := float(player_stats.get("open_house_signal_threshold_reduction", 0.0))
@@ -1915,10 +2152,18 @@ func _reset_playtest_metrics() -> void:
 		"first_low_hp_time": -1.0,
 		"danger_zone_entries": 0,
 		"level_up_choices": 0,
+		"field_interactions": 0,
 		"max_audit_ratio": 0.0,
 		"max_open_house_signal_stage": 0,
 		"ration_candidate_peak": 0,
 	}
+
+func _record_playtest_event(key: String) -> void:
+	if key == "":
+		return
+	playtest_metrics[key] = int(playtest_metrics.get(key, 0)) + 1
+	if key.begins_with("field_interaction"):
+		playtest_metrics["field_interactions"] = int(playtest_metrics.get("field_interactions", 0)) + 1
 
 func _record_playtest_charge(hit_count: int, perfect: bool) -> void:
 	playtest_metrics["charge_uses"] = int(playtest_metrics.get("charge_uses", 0)) + 1
@@ -2310,6 +2555,9 @@ func _session_progress_data() -> Dictionary:
 	_sync_boss_signal_from_clues()
 	var r01_state := _r01_phrase_state()
 	var last_node_memory := _last_completed_node_memory()
+	var last_outpost_reaction := String(last_node_memory.get("node_last_field_outpost_reaction", ""))
+	if last_outpost_reaction == "":
+		last_outpost_reaction = String(last_node_memory.get("node_last_outpost_reaction", ""))
 	return {
 		"sortie_index": sortie_index,
 		"first_recall_done": first_recall_done,
@@ -2325,7 +2573,7 @@ func _session_progress_data() -> Dictionary:
 		"selected_campaign_node_reaction": R01CampaignMap.node_region_reaction(selected_r01_node_id),
 		"selected_campaign_node_tag_hint": R01CampaignMap.node_tag_hint(selected_r01_node_id, meta_progression.tag_context()),
 		"campaign_node_memory_line": _r01_campaign_selected_memory_line(),
-		"campaign_outpost_reaction": String(last_node_memory.get("node_last_outpost_reaction", "")),
+		"campaign_outpost_reaction": last_outpost_reaction,
 		"campaign_last_incident_line": String(last_node_memory.get("node_last_event_line", "")),
 		"campaign_board_line": _r01_campaign_board_line(),
 		"campaign_new_signal_line": _r01_campaign_change_banner(),
@@ -2715,6 +2963,13 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_last_tag_summary": "태그 기록 없음",
 			"node_last_event_line": "",
 			"node_last_outpost_reaction": "",
+			"node_story_object_names": [],
+			"node_story_effects": [],
+			"node_story_object_count": 0,
+			"node_last_story_object_name": "",
+			"node_last_story_object_phrase": "",
+			"node_last_field_result_phrase": "",
+			"node_last_field_outpost_reaction": "",
 		}
 	return memory
 
@@ -2846,6 +3101,9 @@ func _reset_r01_campaign_state() -> void:
 	r01_campaign_map_open = false
 	r01_campaign_new_signal_node_ids.clear()
 	r01_campaign_node_memory.clear()
+	field_interacted_counts.clear()
+	field_interaction_total_counts.clear()
+	field_interaction_reveals.clear()
 
 func _open_r01_campaign_map() -> void:
 	if match_state != "supply":
@@ -3353,8 +3611,13 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _active_notice_text() -> String:
+	if field_interaction_notice_timer > 0.0 and field_interaction_notice_text != "":
+		return field_interaction_notice_text
 	if wave_notice_timer > 0.0:
 		return wave_notice_text
+	var prompt := _field_interaction_prompt_text()
+	if prompt != "":
+		return prompt
 	return r01_map.active_notice_text()
 
 func _update_hud() -> void:
@@ -3436,6 +3699,12 @@ func _debug_info() -> Dictionary:
 		"r01_collision_none": int(r01_collision_summary.get(R01LayoutBlockout.COLLISION_NONE, 0)),
 		"r01_pathing_probe": r01_blockout.pathing_probe_label() if R01LayoutBlockout.ENABLED else "",
 		"r01_object_count": r01_blockout.object_count() if R01LayoutBlockout.ENABLED else 0,
+		"r01_story_object_count": r01_blockout.story_object_count() if R01LayoutBlockout.ENABLED else 0,
+		"r01_story_object_summary": r01_blockout.story_object_summary_line() if R01LayoutBlockout.ENABLED else "",
+		"r01_field_interaction_target": "%s/%s" % [last_field_interaction_object_id, last_field_interaction_display_name],
+		"r01_field_interaction_sortie_counts": _field_interaction_counts_summary(field_interacted_counts),
+		"r01_field_interaction_total_counts": _field_interaction_counts_summary(field_interaction_total_counts),
+		"r01_field_interaction_reveals": field_interaction_reveals.size(),
 		"r01_layer_ground_patch": int(r01_layer_summary.get("ground_patch", 0)),
 		"r01_layer_ground_decal": int(r01_layer_summary.get("ground_decal", 0)),
 		"r01_layer_travel_corridor": int(r01_layer_summary.get("travel_corridor", 0)),
@@ -3738,6 +4007,7 @@ func _draw() -> void:
 	_draw_arena()
 	_draw_signal_board_route_hints()
 	_draw_r01_contamination_marks()
+	_draw_field_interaction_reveals()
 	_draw_charge_puddles()
 	_draw_threats()
 	effects.draw_behind(self)
@@ -3843,6 +4113,26 @@ func _draw_r01_contamination_marks() -> void:
 			spec["fill"],
 			spec["edge"]
 		)
+
+func _draw_field_interaction_reveals() -> void:
+	if field_interaction_reveals.is_empty():
+		return
+	if not (match_state == "playing" or match_state == "level_up"):
+		return
+	for cue in field_interaction_reveals:
+		var pos := Vector2(cue.get("pos", Vector2.ZERO))
+		var timer := float(cue.get("timer", 0.0))
+		var duration := maxf(0.001, float(cue.get("duration", FIELD_INTERACTION_REVEAL_DURATION)))
+		var ratio := clampf(timer / duration, 0.0, 1.0)
+		var color: Color = cue.get("color", C.VITAMIN_YELLOW)
+		var pulse := 0.5 + 0.5 * sin(elapsed * 6.0 + pos.x * 0.01)
+		var radius := 24.0 + 9.0 * pulse
+		draw_circle(pos, radius, Color(color.r, color.g, color.b, 0.07 + 0.08 * ratio))
+		draw_arc(pos, radius + 5.0, 0.0, TAU, 32, Color(color.r, color.g, color.b, 0.32 * ratio), 2.0)
+		draw_line(pos + Vector2(-16, 0), pos + Vector2(16, 0), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
+		draw_line(pos + Vector2(0, -16), pos + Vector2(0, 16), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
+		if debug_tools.blockout_debug_labels_visible() or player_pos.distance_squared_to(pos) < 180.0 * 180.0:
+			draw_string(UIFont.get_font(), pos + Vector2(-54, 36), String(cue.get("label", "source")), HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.18, 0.12, 0.10, 0.62 * ratio))
 
 func _r01_contamination_marks_should_draw() -> bool:
 	if not R01LayoutBlockout.ENABLED:
@@ -4336,6 +4626,7 @@ func _ensure_input_map() -> void:
 	_add_key_action("move_up", [KEY_W, KEY_UP])
 	_add_key_action("move_down", [KEY_S, KEY_DOWN])
 	_add_key_action("charge", [KEY_SPACE])
+	_add_key_action("interact", [KEY_E])
 	if not InputMap.has_action("charge"):
 		InputMap.add_action("charge")
 	var mouse := InputEventMouseButton.new()

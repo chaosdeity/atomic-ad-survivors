@@ -263,9 +263,13 @@ func build(parent: Node) -> void:
 	boss_panel.add_child(boss_status_label)
 
 	prompt_label = Label.new()
-	prompt_label.position = Vector2(96, 230)
-	prompt_label.size = Vector2(288, 16)
+	prompt_label.position = Vector2(94, 218)
+	prompt_label.size = Vector2(260, 30)
 	prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	prompt_label.clip_text = true
+	prompt_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	prompt_label.add_theme_font_size_override("font_size", FONT_BODY)
 	prompt_label.add_theme_color_override("font_color", C.INK)
 	prompt_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)

@@ -176,15 +176,409 @@ const OBJECT_PLACEMENTS := [
 	{"id": "family_voice_risk_marker", "zone_id": "fake_return_route_anchor", "offset": Vector2(128, 10), "kind": "photo", "state": STATE_EXTRACT_MEMORY},
 ]
 
+const STORY_OBJECT_PLACEMENTS := [
+	{
+		"id": "r01_story_l01_mailbox",
+		"display_name": "우편함",
+		"zone_id": "silence_edge_start",
+		"offset": Vector2(188, -108),
+		"kind": "mailbox",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "조사",
+		"interaction_prompt": "우편함 조사",
+		"result_phrase": "주소가 반복됩니다. 사람은 확인되지 않았습니다.",
+		"repeat_phrase": "같은 주소 안내만 다시 나옵니다.",
+		"campaign_effect": "mailbox_address_duplicate",
+		"tag_hint": "식량태그 후보가 아니라 주소 중복 근거입니다.",
+		"signal_hint": "MAIL-LOOP 잔향: 주소와 사람 확인은 다릅니다.",
+		"risk_hint": "쿠폰/전단 source 위치가 잠깐 선명해집니다.",
+		"outpost_reaction": "정산 카운터가 주소 중복 기록을 태그가 아닌 근거 칸에 둡니다.",
+		"facility_id": "settlement_counter",
+		"npc_id": "mina",
+		"node_memory_phrase": "우편함 주소 중복",
+		"reveal_spawn_roles": ["coupon", "basic"],
+		"reveal_hazard_roles": ["flyer_drop"],
+	},
+	{
+		"id": "r01_story_l01_outer_sign",
+		"display_name": "외곽 표지",
+		"zone_id": "silence_edge_start",
+		"offset": Vector2(76, 84),
+		"kind": "sign",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "검증",
+		"interaction_prompt": "표지 검증",
+		"result_phrase": "손글씨 화살표가 광고 화살표 밑에서 버팁니다.",
+		"repeat_phrase": "표지는 여전히 보급소 쪽을 작게 가리킵니다.",
+		"campaign_effect": "outer_route_verified",
+		"tag_hint": "태그 지급 없음. 회수선 기준점만 남깁니다.",
+		"signal_hint": "낮은 신호가 외곽 기준선을 잡습니다.",
+		"risk_hint": "외곽 source는 낮지만 깊은 태그 근거도 약합니다.",
+		"outpost_reaction": "회수 플랫폼이 침묵 가장자리 기준선을 한 칸 더 고정합니다.",
+		"facility_id": "recovery_platform",
+		"npc_id": "doyun",
+		"node_memory_phrase": "외곽 표지 검증",
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l01_recovery_trace",
+		"display_name": "회수선 흔적",
+		"zone_id": "outer_recovery_lane_anchor",
+		"offset": Vector2(-86, 16),
+		"kind": "trace",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "신호 확인",
+		"interaction_prompt": "회수선 신호 확인",
+		"result_phrase": "회수선은 살아 있지만 안쪽으로 갈수록 얇아집니다.",
+		"repeat_phrase": "같은 회수선 떨림만 다시 느껴집니다.",
+		"campaign_effect": "recovery_line_checked",
+		"tag_hint": "충전태그가 아니라 인양 안정도 단서입니다.",
+		"signal_hint": "보급소 회수선과 광고 표지의 결이 다릅니다.",
+		"risk_hint": "외곽 기준에서 벗어난 source가 짧게 표시됩니다.",
+		"outpost_reaction": "도윤이 회수선이 끊길 뻔한 위치를 정비대 지도에 표시합니다.",
+		"facility_id": "maintenance_bench",
+		"npc_id": "doyun",
+		"node_memory_phrase": "회수선 안정 확인",
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l02_mailbox",
+		"display_name": "우편함",
+		"zone_id": "subdivision_loop_center",
+		"offset": Vector2(-152, 108),
+		"kind": "mailbox",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "조사",
+		"interaction_prompt": "우편함 조사",
+		"result_phrase": "가족 수령 대기. 주소는 둘인데 수령인은 비어 있습니다.",
+		"repeat_phrase": "비어 있는 수령인 칸만 다시 깜박입니다.",
+		"campaign_effect": "mailbox_address_duplicate",
+		"tag_hint": "식량태그 후보 힌트: 배급 기록은 사람 이름이 아닙니다.",
+		"signal_hint": "우편함 잔향이 같은 주소를 반복합니다.",
+		"risk_hint": "쿠폰/전단 source가 더 잘 보입니다.",
+		"outpost_reaction": "정산 카운터가 우편함 주소 중복 기록에 보류 딱지를 붙입니다.",
+		"facility_id": "settlement_counter",
+		"npc_id": "mina",
+		"node_memory_phrase": "우편함 주소 중복",
+		"reveal_spawn_roles": ["coupon", "fast"],
+		"reveal_hazard_roles": ["flyer_drop"],
+	},
+	{
+		"id": "r01_story_l02_front_sensor",
+		"display_name": "현관 센서",
+		"zone_id": "subdivision_loop_center",
+		"offset": Vector2(66, -126),
+		"kind": "projector",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "검증",
+		"interaction_prompt": "현관 센서 검증",
+		"result_phrase": "방문 심사 ping. 윤서의 이름칸은 아직 비어 있습니다.",
+		"repeat_phrase": "같은 방문 심사 ping만 반복됩니다.",
+		"campaign_effect": "front_sensor_warning",
+		"tag_hint": "충전태그 후보 힌트: 홈케어 장치가 재동기화를 시도합니다.",
+		"signal_hint": "센서 신호가 speaker/charger source와 연결됩니다.",
+		"risk_hint": "주변 charger/speaker source가 잠깐 드러납니다.",
+		"outpost_reaction": "정비대가 현관 센서 노이즈를 충전태그가 아닌 검수 흔적으로 묶습니다.",
+		"facility_id": "maintenance_bench",
+		"npc_id": "doyun",
+		"node_memory_phrase": "현관 센서 노이즈",
+		"reveal_spawn_roles": ["charger", "speaker"],
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l02_closed_door",
+		"display_name": "닫힌 집 문",
+		"zone_id": "subdivision_loop_center",
+		"offset": Vector2(236, -112),
+		"kind": "tag",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "도장 찍기",
+		"interaction_prompt": "문 앞 도장 찍기",
+		"result_phrase": "문은 열리지 않습니다. 입주자 칸만 반품 처리됐습니다.",
+		"repeat_phrase": "닫힌 문은 더 이상 열리는 척하지 않습니다.",
+		"campaign_effect": "closed_door_stamp",
+		"tag_hint": "거주권 보상이 아니라 입주 심사 거절 근거입니다.",
+		"signal_hint": "문패 아래 이름 흔적이 작전도에 남습니다.",
+		"risk_hint": "반복 현관의 경고선이 짧게 약해집니다.",
+		"outpost_reaction": "이름 보관함이 닫힌 문 아래 문패 흔적을 임시 칸에 세웁니다.",
+		"facility_id": "name_archive",
+		"npc_id": "bokhee",
+		"node_memory_phrase": "닫힌 문 반품 도장",
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l02_family_window",
+		"display_name": "가족사진 창문",
+		"zone_id": "subdivision_loop_center",
+		"offset": Vector2(-24, -156),
+		"kind": "photo",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "조사",
+		"interaction_prompt": "가족사진 창문 조사",
+		"result_phrase": "사진 속 빈칸이 윤서 쪽으로 한 번 돌아섰습니다.",
+		"repeat_phrase": "창문은 다시 웃는 사진만 보여줍니다.",
+		"campaign_effect": "family_photo_memory",
+		"tag_hint": "식량태그가 아니라 이름 보관함으로 갈 기억 후보입니다.",
+		"signal_hint": "가족 슬롯 잔향이 모델하우스 심사와 이어집니다.",
+		"risk_hint": "가족사진 source가 심사 신호를 예고합니다.",
+		"outpost_reaction": "복희가 사진의 빈칸을 이름 대신 보류 표식으로 보관합니다.",
+		"facility_id": "name_archive",
+		"npc_id": "bokhee",
+		"node_memory_phrase": "가족사진 빈칸",
+		"reveal_spawn_roles": ["signal"],
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l03_consultation_booth",
+		"display_name": "상담 부스",
+		"zone_id": "model_house_node_anchor",
+		"offset": Vector2(-132, 58),
+		"kind": "kiosk",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "검증",
+		"interaction_prompt": "상담 부스 검증",
+		"result_phrase": "질문지가 답을 기다리지 않고 가족 구성을 인쇄합니다.",
+		"repeat_phrase": "질문지는 같은 빈칸을 다시 요구합니다.",
+		"campaign_effect": "consultation_question_held",
+		"tag_hint": "수신태그 후보 힌트: 질문 보류 기록이 생겼습니다.",
+		"signal_hint": "상담선이 모델하우스 결절로 이어집니다.",
+		"risk_hint": "상담/스피커 source가 짧게 표시됩니다.",
+		"outpost_reaction": "출격 게시판이 상담 부스 질문 보류 기록을 심사 접근 경고로 붙입니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "상담 질문 보류",
+		"reveal_spawn_roles": ["elite", "signal", "speaker"],
+		"reveal_hazard_roles": ["pressure_ring"],
+	},
+	{
+		"id": "r01_story_l03_model_entry",
+		"display_name": "모델하우스 입구",
+		"zone_id": "model_house_node_anchor",
+		"offset": Vector2(196, -42),
+		"kind": "model_house",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "조사",
+		"interaction_prompt": "모델하우스 입구 조사",
+		"result_phrase": "모델하우스 입구가 윤서를 가족 심사 대상이 아니라 반려 항목으로 읽습니다.",
+		"repeat_phrase": "모델하우스 입구의 심사선은 이미 표시됐습니다.",
+		"campaign_effect": "model_house_access_warning",
+		"tag_hint": "대량 보상 없음. 결절 접근 근거만 작전도에 남습니다.",
+		"signal_hint": "스마일 홈 심사관 접근 경고가 켜집니다.",
+		"risk_hint": "L03 심사 신호 source가 잠깐 보입니다.",
+		"outpost_reaction": "이름 보관함과 출격 게시판이 심사 접근 경고를 같은 줄에 겹쳐 둡니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "모델하우스 심사 접근",
+		"reveal_spawn_roles": ["signal", "speaker", "elite"],
+		"reveal_hazard_roles": ["pressure_ring", "warning_line"],
+	},
+	{
+		"id": "r01_story_l03_name_register",
+		"display_name": "이름 등록 장치",
+		"zone_id": "model_house_node_anchor",
+		"offset": Vector2(52, 116),
+		"kind": "ad_device",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "도장 찍기",
+		"interaction_prompt": "이름 등록 장치 도장",
+		"result_phrase": "등록 칸이 반품 처리됐습니다. 이름은 아직 장치에 들어가지 않았습니다.",
+		"repeat_phrase": "등록 칸은 이미 반품 도장으로 막혀 있습니다.",
+		"campaign_effect": "name_register_rejected",
+		"tag_hint": "태그 지급 없음. 이름 보존 기억만 갱신합니다.",
+		"signal_hint": "이름 등록 실패 로그가 보급소로 넘어갑니다.",
+		"risk_hint": "등록 장치 주변 charger/source가 표시됩니다.",
+		"outpost_reaction": "복희가 이름 등록 실패 로그를 이름 보관함의 빈칸 옆에 놓습니다.",
+		"facility_id": "name_archive",
+		"npc_id": "bokhee",
+		"node_memory_phrase": "이름 등록 반려",
+		"reveal_spawn_roles": ["charger", "signal"],
+		"reveal_hazard_roles": ["warning_line"],
+	},
+	{
+		"id": "r01_story_l03_speaker_pillar",
+		"display_name": "스피커/광고 기둥",
+		"zone_id": "model_house_node_anchor",
+		"offset": Vector2(-218, -28),
+		"kind": "speaker",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "신호 확인",
+		"interaction_prompt": "광고 기둥 신호 확인",
+		"result_phrase": "광고 기둥이 귀환 안내 대신 심사 예약음을 냅니다.",
+		"repeat_phrase": "심사 예약음은 이미 출격 게시판에 남았습니다.",
+		"campaign_effect": "speaker_signal_checked",
+		"tag_hint": "수신태그 후보 힌트: 안내와 심사 예약음을 구분했습니다.",
+		"signal_hint": "스피커 잔향이 결절 접근로를 가리킵니다.",
+		"risk_hint": "speaker/source 위치가 더 선명합니다.",
+		"outpost_reaction": "세븐이 스피커 예약음을 송출 기록 후보로 보류합니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "스피커 심사 예약음",
+		"reveal_spawn_roles": ["speaker", "signal"],
+		"reveal_hazard_roles": ["pressure_ring"],
+	},
+	{
+		"id": "r01_story_l04_drain_trace",
+		"display_name": "배수구 흔적",
+		"zone_id": "drain_pocket_anchor",
+		"offset": Vector2(-42, -6),
+		"kind": "drain",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "회수",
+		"interaction_prompt": "배수구 흔적 회수",
+		"result_phrase": "젖은 전단이 광고음을 먹먹하게 눌러 둡니다.",
+		"repeat_phrase": "젖은 전단은 더 회수되지 않습니다.",
+		"campaign_effect": "drain_low_signal_trace",
+		"tag_hint": "충전태그/수신태그 후보 힌트: 낮은 신호 근거입니다.",
+		"signal_hint": "배수로의 낮은 신호가 보급소 보관실로 넘어갑니다.",
+		"risk_hint": "L04 hazard 위치가 짧게 표시됩니다.",
+		"outpost_reaction": "흔적 보관실이 젖은 전단을 낮은 신호 칸에 둡니다.",
+		"facility_id": "trace_storage_room",
+		"npc_id": "bokhee",
+		"node_memory_phrase": "젖은 전단 회수",
+		"reveal_spawn_roles": ["signal", "tank"],
+		"reveal_hazard_roles": ["low_signal", "silence_leak"],
+	},
+	{
+		"id": "r01_story_l04_wet_flyer",
+		"display_name": "젖은 전단",
+		"zone_id": "drain_pocket_anchor",
+		"offset": Vector2(-108, 86),
+		"kind": "scraps",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "회수",
+		"interaction_prompt": "젖은 전단 회수",
+		"result_phrase": "전단은 젖어 있어서 쿠폰이 아니라 기록처럼 남았습니다.",
+		"repeat_phrase": "남은 종이는 더 이상 읽히지 않습니다.",
+		"campaign_effect": "wet_flyer_stored",
+		"tag_hint": "전단 수치 지급 없음. 보류 흔적만 보관됩니다.",
+		"signal_hint": "물 먹은 글자가 광고 반복을 흐립니다.",
+		"risk_hint": "낮은 신호 hazard가 잠깐 표시됩니다.",
+		"outpost_reaction": "흔적 보관실이 젖은 전단을 소모하지 않고 말립니다.",
+		"facility_id": "trace_storage_room",
+		"npc_id": "bokhee",
+		"node_memory_phrase": "젖은 전단 보관",
+		"reveal_hazard_roles": ["low_signal"],
+	},
+	{
+		"id": "r01_story_l04_low_signal",
+		"display_name": "낮은 신호 흔적",
+		"zone_id": "drain_pocket_anchor",
+		"offset": Vector2(106, 66),
+		"kind": "trace",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "신호 확인",
+		"interaction_prompt": "낮은 신호 확인",
+		"result_phrase": "광고음이 잠깐 내려앉고 회수선 떨림만 남습니다.",
+		"repeat_phrase": "낮은 신호는 이미 보급소 쪽으로 기록됐습니다.",
+		"campaign_effect": "low_signal_checked",
+		"tag_hint": "수신태그 후보가 아니라 회수선 안정도 단서입니다.",
+		"signal_hint": "배수로 신호는 약하지만 가짜 귀환음과 다릅니다.",
+		"risk_hint": "L04 저신호 source가 표시됩니다.",
+		"outpost_reaction": "출격 게시판이 배수로 신호를 조용한 우회 후보로 표시합니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "낮은 신호 확인",
+		"reveal_spawn_roles": ["signal"],
+		"reveal_hazard_roles": ["low_signal", "silence_leak"],
+	},
+	{
+		"id": "r01_story_l05_fake_return_sign",
+		"display_name": "가짜 귀환 표지",
+		"zone_id": "fake_return_route_anchor",
+		"offset": Vector2(64, 52),
+		"kind": "fake_recovery",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "검증",
+		"interaction_prompt": "가짜 귀환 표지 검증",
+		"result_phrase": "보급소 표식처럼 보이지만 회수선 출처가 맞지 않습니다.",
+		"repeat_phrase": "가짜 표지는 이미 회수선이 아닌 것으로 표시됐습니다.",
+		"campaign_effect": "fake_return_verified",
+		"tag_hint": "식량태그 후보처럼 보이지만 오염 위험이 먼저 표시됩니다.",
+		"signal_hint": "수신태그 없이 따르면 출처 불인정 위험이 큽니다.",
+		"risk_hint": "L05 위험 source가 드러납니다.",
+		"outpost_reaction": "출격 게시판이 해당 회수선 출처를 인정하지 않음으로 표시합니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "가짜 회수선 검증",
+		"reveal_spawn_roles": ["fast", "speaker", "charger"],
+		"reveal_hazard_roles": ["fake_return", "rear_pincer", "warning_line"],
+	},
+	{
+		"id": "r01_story_l05_unstable_line",
+		"display_name": "불안정 회수선",
+		"zone_id": "fake_return_route_anchor",
+		"offset": Vector2(-42, -112),
+		"kind": "residue",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "신호 확인",
+		"interaction_prompt": "불안정 회수선 확인",
+		"result_phrase": "회수선처럼 떨리지만 보급소 쪽 침묵이 없습니다.",
+		"repeat_phrase": "불안정 떨림은 이미 가짜 경로로 분류됐습니다.",
+		"campaign_effect": "unstable_recovery_line_marked",
+		"tag_hint": "수신태그 후보 힌트: 출처 대조가 필요합니다.",
+		"signal_hint": "가짜 귀환음과 진짜 인양음을 분리했습니다.",
+		"risk_hint": "뒤쪽 포위 source가 잠깐 표시됩니다.",
+		"outpost_reaction": "회수 플랫폼이 불안정 회수선을 인양 경로에서 제외합니다.",
+		"facility_id": "recovery_platform",
+		"npc_id": "doyun",
+		"node_memory_phrase": "불안정 회수선 제외",
+		"reveal_spawn_roles": ["fast", "speaker"],
+		"reveal_hazard_roles": ["rear_pincer", "fake_return"],
+	},
+	{
+		"id": "r01_story_l05_rear_ad_pillar",
+		"display_name": "뒤쪽 광고 기둥",
+		"zone_id": "fake_return_route_anchor",
+		"offset": Vector2(116, -82),
+		"kind": "speaker",
+		"collision_class": COLLISION_TRIGGER,
+		"nav_behavior": NAV_IGNORE,
+		"interaction_type": "신호 확인",
+		"interaction_prompt": "뒤쪽 광고 기둥 확인",
+		"result_phrase": "광고 기둥은 돌아가라는 말보다 돌아온 척하라는 말을 반복합니다.",
+		"repeat_phrase": "뒤쪽 기둥의 반복 문구는 이미 기록됐습니다.",
+		"campaign_effect": "rear_ad_pillar_checked",
+		"tag_hint": "수신태그 후보 힌트: 반복 문구 출처를 구분했습니다.",
+		"signal_hint": "SIGN-BACK 잔향이 가짜 귀환로 뒤쪽에 남습니다.",
+		"risk_hint": "스피커/빠른 쿠폰 source가 표시됩니다.",
+		"outpost_reaction": "세븐이 뒤쪽 광고 기둥의 반복 문구를 가짜 귀환로 경고에 붙입니다.",
+		"facility_id": "sortie_board",
+		"npc_id": "seven",
+		"node_memory_phrase": "뒤쪽 광고 기둥",
+		"reveal_spawn_roles": ["speaker", "fast"],
+		"reveal_hazard_roles": ["rear_pincer"],
+	},
+]
+
 var _object_cache_variant := ""
 var _object_cache: Array[Dictionary] = []
+var _story_object_cache_variant := ""
+var _story_object_cache: Array[Dictionary] = []
 
 func reset_cache() -> void:
 	_object_cache_variant = ""
 	_object_cache.clear()
+	_story_object_cache_variant = ""
+	_story_object_cache.clear()
 
 func object_field_names() -> Array[String]:
-	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role", "spawn_roles", "hazard_roles", "pressure_tags", "story_function"]
+	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role", "spawn_roles", "hazard_roles", "pressure_tags", "story_function", "display_name", "interaction_type", "interaction_prompt", "result_phrase", "repeat_phrase", "campaign_effect", "tag_hint", "signal_hint", "risk_hint"]
 
 func art_inbox_paths() -> Dictionary:
 	return ART_INBOX_PATHS.duplicate(true)
@@ -200,9 +594,52 @@ func objects_for_state(variant: String = STATE_ALL) -> Array[Dictionary]:
 		if not object_visible_for_variant(placement, variant):
 			continue
 		objects.append(_build_object(placement))
+	for object in story_objects_for_state(variant):
+		objects.append(object)
 	_object_cache_variant = variant
 	_object_cache = objects
 	return objects.duplicate(true)
+
+func story_objects_for_state(variant: String = STATE_ALL) -> Array[Dictionary]:
+	if _story_object_cache_variant == variant:
+		return _story_object_cache.duplicate(true)
+	var objects: Array[Dictionary] = []
+	for placement in STORY_OBJECT_PLACEMENTS:
+		if not object_visible_for_variant(placement, variant):
+			continue
+		objects.append(_build_story_object(placement))
+	_story_object_cache_variant = variant
+	_story_object_cache = objects
+	return objects.duplicate(true)
+
+func story_object_by_id(object_id: String, variant: String = STATE_ALL) -> Dictionary:
+	for object in story_objects_for_state(variant):
+		if String(object.get("id", "")) == object_id:
+			return object
+	return {}
+
+func nearest_story_object(pos: Vector2, radius: float, zone_id: String = "", variant: String = STATE_ALL) -> Dictionary:
+	var best := {}
+	var best_distance := radius * radius
+	for object in story_objects_for_state(variant):
+		if zone_id != "" and String(object.get("zone_id", "")) != zone_id:
+			continue
+		var object_pos := Vector2(object.get("pos", Vector2.ZERO))
+		var distance := pos.distance_squared_to(object_pos)
+		if distance <= best_distance:
+			best_distance = distance
+			best = object
+	return best
+
+func story_object_count(variant: String = STATE_ALL) -> int:
+	return story_objects_for_state(variant).size()
+
+func story_object_summary_line(variant: String = STATE_ALL) -> String:
+	var by_zone := {}
+	for object in story_objects_for_state(variant):
+		var zone_id := String(object.get("zone_id", ""))
+		by_zone[zone_id] = int(by_zone.get(zone_id, 0)) + 1
+	return ", ".join(_source_summary_parts(by_zone))
 
 func objects_for_layer(layer: String, variant: String = STATE_ALL) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -396,6 +833,30 @@ func _build_object(placement: Dictionary) -> Dictionary:
 	for tag in Array(placement.get("tags", [])):
 		if not tags.has(tag):
 			tags.append(tag)
+	object["tags"] = tags
+	return object
+
+func _build_story_object(placement: Dictionary) -> Dictionary:
+	var object := _build_object(placement)
+	object["story_object"] = true
+	object["display_name"] = String(placement.get("display_name", object.get("id", "")))
+	object["interaction_type"] = String(placement.get("interaction_type", "조사"))
+	object["interaction_prompt"] = String(placement.get("interaction_prompt", "%s %s" % [object["interaction_type"], object["display_name"]]))
+	object["result_phrase"] = String(placement.get("result_phrase", "흔적이 작전도에 남았습니다."))
+	object["repeat_phrase"] = String(placement.get("repeat_phrase", "이미 확인한 흔적입니다."))
+	object["campaign_effect"] = String(placement.get("campaign_effect", "story_object_memory"))
+	object["tag_hint"] = String(placement.get("tag_hint", "태그 후보 힌트 없음"))
+	object["signal_hint"] = String(placement.get("signal_hint", "신호 힌트 없음"))
+	object["risk_hint"] = String(placement.get("risk_hint", "위험 힌트 없음"))
+	object["outpost_reaction"] = String(placement.get("outpost_reaction", "보급소가 R01 흔적을 짧게 기록합니다."))
+	object["facility_id"] = String(placement.get("facility_id", "sortie_board"))
+	object["npc_id"] = String(placement.get("npc_id", "seven"))
+	object["node_memory_phrase"] = String(placement.get("node_memory_phrase", object["display_name"]))
+	object["reveal_spawn_roles"] = Array(placement.get("reveal_spawn_roles", [])).duplicate()
+	object["reveal_hazard_roles"] = Array(placement.get("reveal_hazard_roles", [])).duplicate()
+	var tags: Array = Array(object.get("tags", [])).duplicate()
+	if not tags.has("story_object"):
+		tags.append("story_object")
 	object["tags"] = tags
 	return object
 

@@ -18,6 +18,7 @@ func _run() -> void:
 	await _probe_tag_settlement_and_recall_quality()
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
+	await _probe_r01_field_interactions()
 	await _probe_ten_minute_loop_readability()
 
 	if failures.is_empty():
@@ -316,6 +317,102 @@ func _probe_ten_minute_loop_readability() -> void:
 	_record("10min next campaign map carries result state", next_map_state_ok, post_l02_map_text)
 	_record("F12 keeps loop recommendation debug state", debug_ok)
 	await _finish_main(main)
+
+func _probe_r01_field_interactions() -> void:
+	var main = await _new_main()
+	_start_r01_story_probe(main, R01CampaignMap.NODE_L01)
+	var l01_mailbox := _move_to_story_object(main, "r01_story_l01_mailbox")
+	main.wave_notice_timer = 0.0
+	main.field_interaction_notice_timer = 0.0
+	var prompt_text: String = main._active_notice_text()
+	var prompt_ok: bool = prompt_text.find("E 조사: 우편함") != -1 and prompt_text.find("r01_story") == -1
+	var interaction_checks := {
+		"r01_story_l01_mailbox": {"node": R01CampaignMap.NODE_L01, "expect": "주소", "memory": "우편함"},
+		"r01_story_l02_front_sensor": {"node": R01CampaignMap.NODE_L02, "expect": "방문 심사", "memory": "현관 센서"},
+		"r01_story_l03_model_entry": {"node": R01CampaignMap.NODE_L03, "expect": "모델하우스", "memory": "모델하우스"},
+		"r01_story_l04_drain_trace": {"node": R01CampaignMap.NODE_L04, "expect": "젖은 전단", "memory": "젖은 전단"},
+		"r01_story_l05_fake_return_sign": {"node": R01CampaignMap.NODE_L05, "expect": "회수선 출처", "memory": "가짜"},
+	}
+	var zone_memory_ok := not l01_mailbox.is_empty()
+	var reveal_before := int(main.field_interaction_reveals.size())
+	for object_id in interaction_checks.keys():
+		var expected: Dictionary = interaction_checks[object_id]
+		var object := _move_to_story_object(main, String(object_id))
+		var interacted: bool = main._try_field_interaction()
+		var notice: String = main._active_notice_text()
+		var memory: Dictionary = main._r01_campaign_node_memory(String(expected["node"]))
+		zone_memory_ok = zone_memory_ok and interacted
+		zone_memory_ok = zone_memory_ok and notice.find(String(expected["expect"])) != -1
+		zone_memory_ok = zone_memory_ok and int(memory.get("node_story_object_count", 0)) > 0
+		zone_memory_ok = zone_memory_ok and String(memory.get("node_last_story_object_phrase", "")).find(String(expected["memory"])) != -1
+		zone_memory_ok = zone_memory_ok and String(object.get("id", "")) == String(object_id)
+	var reveal_ok: bool = int(main.field_interaction_reveals.size()) > reveal_before
+	var l01_memory_before: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L01)
+	var l01_story_count_before := int(l01_memory_before.get("node_story_object_count", 0))
+	_move_to_story_object(main, "r01_story_l01_mailbox")
+	var repeat_ok: bool = main._try_field_interaction()
+	var repeat_text: String = main._active_notice_text()
+	var l01_memory_after: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L01)
+	repeat_ok = repeat_ok and repeat_text.find("같은 주소") != -1 and int(l01_memory_after.get("node_story_object_count", 0)) == l01_story_count_before
+	_record("R01 field interaction prompt hides ids", prompt_ok, prompt_text)
+	_record("R01 L01-L05 story interactions update memory", zone_memory_ok)
+	_record("R01 repeated story interaction uses repeat phrase", repeat_ok, repeat_text)
+	_record("R01 field interactions reveal combat source hints", reveal_ok)
+	await _finish_main(main)
+
+	var bridge_main = await _new_main()
+	_start_r01_story_probe(bridge_main, R01CampaignMap.NODE_L01)
+	_move_to_story_object(bridge_main, "r01_story_l01_mailbox")
+	var bridge_interact_ok: bool = bridge_main._try_field_interaction()
+	bridge_main.elapsed = 90.0
+	bridge_main._finish_match("victory")
+	bridge_main._handle_terminal_action()
+	var supply_text: String = bridge_main.hud.supply_visible_text()
+	var supply_ok: bool = bridge_interact_ok and bridge_main.match_state == "supply" and supply_text.find("주소 중복") != -1 and supply_text.find("r01_story") == -1
+	bridge_main._open_r01_campaign_map()
+	var map_text: String = bridge_main.hud.campaign_map_visible_text()
+	var map_ok: bool = map_text.find("흔적:") != -1 and map_text.find("우편함") != -1 and map_text.find("r01_story") == -1
+	bridge_main.debug_tools.detail_visible = true
+	var debug_text: String = bridge_main._debug_overlay_text()
+	var debug_ok: bool = debug_text.find("r01 field interactions") != -1 and debug_text.find("r01_story_l01_mailbox") != -1 and debug_text.find("r01 interacted count") != -1 and debug_text.find("campaign node memory") != -1
+	_record("R01 field interactions bridge to outpost", supply_ok, supply_text)
+	_record("R01 field interactions bridge to campaign map without ids", map_ok, map_text)
+	_record("F12 exposes R01 interaction ids/counts", debug_ok, debug_text)
+	await _finish_main(bridge_main)
+
+func _start_r01_story_probe(main, node_id: String) -> void:
+	main.first_sortie = false
+	main.first_recall_done = true
+	main.meta_progression.grant_first_recall_trace()
+	main._show_supply_depot()
+	main._debug_r01_campaign_unlock_all()
+	main._select_r01_campaign_node(node_id)
+	main._sortie_selected_r01_campaign_node()
+
+func _move_to_story_object(main, object_id: String) -> Dictionary:
+	var object: Dictionary = main.r01_blockout.story_object_by_id(object_id)
+	if object.is_empty():
+		return {}
+	main.current_r01_node_id = _story_object_node_id(object)
+	main.selected_r01_node_id = main.current_r01_node_id
+	main.player_pos = Vector2(object.get("pos", main.player_pos))
+	main.r01_map.update(0.0, main.elapsed, false, main.r01_blockout.nearest_zone_id(main.player_pos))
+	return object
+
+func _story_object_node_id(object: Dictionary) -> String:
+	match String(object.get("zone_id", "")):
+		"silence_edge_start", "outer_recovery_lane_anchor":
+			return R01CampaignMap.NODE_L01
+		"subdivision_loop_center":
+			return R01CampaignMap.NODE_L02
+		"open_house_street_anchor", "model_house_node_anchor":
+			return R01CampaignMap.NODE_L03
+		"drain_pocket_anchor":
+			return R01CampaignMap.NODE_L04
+		"fake_return_route_anchor":
+			return R01CampaignMap.NODE_L05
+		_:
+			return R01CampaignMap.NODE_L01
 
 func _probe_r01_campaign_result_bridge_variants() -> void:
 	var checks := {

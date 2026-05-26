@@ -133,6 +133,7 @@ func help_text() -> String:
 	return "\n".join([
 		"DEBUG KEYS",
 		"F1 Help  F12 HUD",
+		"E Field interact",
 		"F2 Cards  F3 Charge",
 		"F4 HP=20",
 		"F5 175s  F6 270s  F7 299s",
@@ -208,6 +209,16 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("r01_layer_blocker_back", 0)),
 			int(info.get("r01_layer_prop_mid", 0)),
 		],
+		"r01 field interactions objects=%d target=%s reveals=%d" % [
+			int(info.get("r01_story_object_count", 0)),
+			str(info.get("r01_field_interaction_target", "")),
+			int(info.get("r01_field_interaction_reveals", 0)),
+		],
+		"r01 interacted count sortie=%s total=%s" % [
+			str(info.get("r01_field_interaction_sortie_counts", "")),
+			str(info.get("r01_field_interaction_total_counts", "")),
+		],
+		"r01 story object zones %s" % str(info.get("r01_story_object_summary", "")),
 		"r01 asset keys: %s" % str(info.get("r01_asset_key_sample", "")),
 		"outpost: %s %s facilities=%d" % [
 			str(info.get("outpost_variant", "")),
