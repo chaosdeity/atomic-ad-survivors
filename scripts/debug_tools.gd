@@ -219,6 +219,13 @@ func detail_text(info: Dictionary) -> String:
 			int(info.get("outpost_collision_decorative", 0)),
 			int(info.get("outpost_collision_exit", 0)),
 		],
+		"outpost facility states %s" % str(info.get("outpost_facility_state_summary", "")),
+		"outpost tags %s result=%s surface=%s" % [
+			str(info.get("outpost_tag_allocation_summary", "")),
+			str(info.get("outpost_result_route_target", "")),
+			str(info.get("outpost_selected_action_surface", "")),
+		],
+		"outpost ui bounds %s" % str(info.get("outpost_ui_bounds_summary", "")),
 		"hp %.0f/%.0f  enemies %d/%d  charge %s" % [
 			float(info.get("player_hp", 0.0)),
 			float(info.get("max_hp", 0.0)),

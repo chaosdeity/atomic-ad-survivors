@@ -100,6 +100,7 @@ var last_boss_victory_report := {}
 var last_run_result := {}
 var current_supply_actions: Array[Dictionary] = []
 var last_supply_reaction_line := ""
+var last_supply_action_surface := ""
 var r01_visit_recorded_sortie_index := 0
 var current_r01_node_id := R01CampaignMap.NODE_L01
 var selected_r01_node_id := R01CampaignMap.NODE_L01
@@ -2305,7 +2306,10 @@ func _session_progress_data() -> Dictionary:
 		"outpost_event_log_summary": meta_progression.outpost_event_log_summary(2),
 		"last_outpost_event": meta_progression.last_outpost_event_line(),
 		"last_outpost_npc_id": meta_progression.last_outpost_focus_npc_id(),
+		"last_outpost_facility_id": meta_progression.last_outpost_facility_id(),
 		"last_supply_reaction": last_supply_reaction_line,
+		"outpost_result_route_target": _outpost_result_route_target(),
+		"outpost_selected_action_surface": last_supply_action_surface,
 		"last_playtest_summary": _last_playtest_metrics_summary(),
 		"next_run_change_summary": meta_progression.next_run_change_summary(),
 		"signal_board_level": meta_progression.signal_board_level(),
@@ -2315,6 +2319,15 @@ func _session_progress_data() -> Dictionary:
 		"r01_contamination_summary": str(r01_state.get("r01_contamination_summary", meta_progression.r01_contamination_summary())),
 		"r01_contamination_total": int(r01_state.get("r01_contamination_total", 0)),
 	}
+
+func _outpost_result_route_target() -> String:
+	match match_state:
+		"supply":
+			return "sortie_gate"
+		"recalled", "game_over", "victory", "boss_victory":
+			return "settlement_counter"
+		_:
+			return "recovery_platform"
 
 func _r01_phrase_state() -> Dictionary:
 	var r01_state := meta_progression.r01_state_summary()
@@ -2609,6 +2622,7 @@ func _show_supply_depot() -> void:
 	if is_inside_tree():
 		get_tree().paused = false
 	last_supply_reaction_line = ""
+	last_supply_action_surface = meta_progression.last_outpost_facility_id()
 	r01_campaign_map_open = false
 	hud.hide_campaign_map()
 	current_supply_actions = _build_supply_actions()
@@ -2787,6 +2801,7 @@ func _apply_supply_choice(index: int) -> void:
 		return
 	var action := current_supply_actions[index]
 	var action_name := String(action.get("name", ""))
+	last_supply_action_surface = String(action.get("facility_surface", ""))
 	var applied := false
 	match String(action.get("kind", "")):
 		"allocation":
@@ -2797,7 +2812,8 @@ func _apply_supply_choice(index: int) -> void:
 		"upgrade":
 			applied = meta_progression.buy(String(action.get("upgrade_id", "")))
 			if applied:
-				last_supply_reaction_line = "정비대가 %s 항목을 출격 전 점검표에 올렸습니다." % action_name
+				var surface_label := outpost_blockout.natural_action_surface_label(last_supply_action_surface)
+				last_supply_reaction_line = "%s가 %s 항목을 출격 전 점검표에 올렸습니다." % [surface_label, action_name]
 	if applied:
 		boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 		effects.show_combat_banner("보급소 적용: %s" % action_name, C.TOXIC_GREEN)
@@ -2808,6 +2824,7 @@ func _apply_supply_choice(index: int) -> void:
 		effects.add_floater(player_pos, "배분/흔적 부족", C.NEON_RED, 13)
 		action_name = ""
 		last_supply_reaction_line = ""
+		last_supply_action_surface = ""
 	current_supply_actions = _build_supply_actions()
 	hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), action_name, _session_progress_data(), current_supply_actions, Callable(self, "_open_r01_campaign_map"))
 
@@ -2841,6 +2858,7 @@ func _build_supply_actions() -> Array[Dictionary]:
 	for i in range(upgrades.size()):
 		var upgrade: Dictionary = upgrades[i]
 		var upgrade_id := String(upgrade["id"])
+		var facility_surface := _upgrade_facility_surface(upgrade)
 		var can_buy := meta_progression.can_buy(upgrade_id)
 		var unlocked := meta_progression.is_unlocked(upgrade_id)
 		var level := meta_progression.upgrade_level(upgrade_id)
@@ -2862,7 +2880,9 @@ func _build_supply_actions() -> Array[Dictionary]:
 			"can_use": can_buy,
 			"locked": not unlocked,
 			"applied": level >= max_level,
-			"prefix": "정비",
+			"facility_surface": facility_surface,
+			"surface_label": _facility_surface_label(facility_surface),
+			"prefix": _facility_surface_prefix(facility_surface),
 			"extra": unlock_text,
 		})
 	return actions
@@ -2871,6 +2891,7 @@ func _allocation_action(allocation_id: String, name: String, effect_text: String
 	var count := meta_progression.ticket_count(ticket_id)
 	var can_use := count > 0
 	var reaction_preview := meta_progression.allocation_preview_line(allocation_id)
+	var facility_surface := _allocation_facility_surface(allocation_id)
 	return {
 		"kind": "allocation",
 		"allocation_id": allocation_id,
@@ -2884,9 +2905,58 @@ func _allocation_action(allocation_id: String, name: String, effect_text: String
 		"can_use": can_use,
 		"locked": false,
 		"applied": false,
-		"prefix": "배분",
+		"facility_surface": facility_surface,
+		"surface_label": _facility_surface_label(facility_surface),
+		"prefix": _facility_surface_prefix(facility_surface),
 		"extra": "  %s" % reaction_preview if reaction_preview != "" else "",
 	}
+
+func _allocation_facility_surface(allocation_id: String) -> String:
+	match allocation_id:
+		MetaProgression.ALLOCATION_HUMAN_ZONE:
+			return "settlement_counter"
+		MetaProgression.ALLOCATION_ROBOT_MAINTENANCE:
+			return "maintenance_bench"
+		MetaProgression.ALLOCATION_SIGNAL_BOARD:
+			return "sortie_board"
+		_:
+			return "settlement_counter"
+
+func _upgrade_facility_surface(upgrade: Dictionary) -> String:
+	var category := String(upgrade.get("category", ""))
+	var upgrade_name := String(upgrade.get("name", ""))
+	var trace_label := String(upgrade.get("trace_label", ""))
+	if trace_label == "파편" or category == "보스 대응":
+		return "name_archive"
+	if category == "차징" or upgrade_name.find("차징") != -1 or upgrade_name.find("코일") != -1:
+		return "charging_tuner"
+	if category == "신호 분석" or upgrade_name.find("신호") != -1 or upgrade_name.find("좌표") != -1:
+		return "sortie_board"
+	if category == "성장/XP" or upgrade_name.find("복기") != -1 or upgrade_name.find("학습") != -1:
+		return "trace_storage_room"
+	return "maintenance_bench"
+
+func _facility_surface_label(surface_id: String) -> String:
+	return outpost_blockout.natural_action_surface_label(surface_id)
+
+func _facility_surface_prefix(surface_id: String) -> String:
+	match surface_id:
+		"settlement_counter":
+			return "정산"
+		"maintenance_bench":
+			return "정비"
+		"charging_tuner":
+			return "조율"
+		"name_archive":
+			return "보관"
+		"sortie_board":
+			return "게시"
+		"trace_storage_room":
+			return "흔적"
+		"sortie_gate":
+			return "출격"
+		_:
+			return "보급"
 
 func _show_level_card() -> void:
 	if match_state != "playing":
@@ -3154,6 +3224,11 @@ func _debug_info() -> Dictionary:
 		"outpost_collision_interaction": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_INTERACTION, 0)),
 		"outpost_collision_decorative": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_DECORATIVE, 0)),
 		"outpost_collision_exit": int(outpost_collision_summary.get(OutpostLayoutBlockout.COLLISION_EXIT, 0)),
+		"outpost_facility_state_summary": outpost_blockout.facility_state_summary_line(outpost_state),
+		"outpost_tag_allocation_summary": outpost_blockout.tag_allocation_summary(outpost_state),
+		"outpost_result_route_target": outpost_blockout.result_route_target(outpost_state),
+		"outpost_selected_action_surface": outpost_blockout.selected_action_surface(outpost_state),
+		"outpost_ui_bounds_summary": hud.outpost_ui_bounds_summary(),
 		"outpost_debug_lines": outpost_blockout.debug_lines(outpost_state),
 		"enemy_role_summary": enemies.role_summary(),
 		"threat_count": active_threats.size(),

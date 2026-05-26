@@ -15,6 +15,7 @@ func _run() -> void:
 	await _probe_boss_recall()
 	await _probe_boss_victory()
 	await _probe_terminal_action_parity()
+	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
 
 	if failures.is_empty():
@@ -181,6 +182,36 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_preview_sortie_ok: bool = preview_main.match_state == "playing" and preview_main.current_r01_node_id == "R01-L03"
 	_record("Ctrl+1-5 debug preview unlocks sortie", debug_preview_unlock_ok and debug_preview_sortie_ok)
 	await _finish_main(preview_main)
+
+func _probe_outpost_place_surfaces() -> void:
+	var main = await _new_main()
+	main.meta_progression.grant_first_recall_trace()
+	main.meta_progression.grant_signal_clue_candidates(["faint_signal", "detected_signal", "near_signal"])
+	main._show_supply_depot()
+	var visible_text: String = main.hud.supply_visible_text()
+	var facilities_visible := visible_text.find("침묵 보급소") != -1 and visible_text.find("시설:") != -1 and visible_text.find("회수") != -1 and visible_text.find("정산") != -1 and visible_text.find("정비") != -1 and visible_text.find("게시") != -1 and visible_text.find("게이트") != -1
+	var buttons_are_places := visible_text.find("출격 게시판") != -1 and visible_text.find("출격 게이트") != -1
+	var general_ui_clean := visible_text.find("recovery_platform") == -1 and visible_text.find("hard_blocker") == -1 and visible_text.find("anchor=(") == -1 and visible_text.find("collision") == -1
+	main.debug_tools.detail_visible = true
+	var debug_text: String = main._debug_overlay_text()
+	var debug_outpost_ok := debug_text.find("outpost facility states") != -1 and debug_text.find("outpost tags") != -1 and debug_text.find("result=") != -1 and debug_text.find("surface=") != -1 and debug_text.find("outpost ui bounds") != -1 and debug_text.find("recovery_platform") != -1
+	var facility_count_ok: bool = main.outpost_blockout.facility_count() == 9
+	var state: Dictionary = main.outpost_blockout.state_from_progress(main._session_progress_data(), main.meta_progression)
+	var state_ok: bool = String(state.get("variant", "")) == "broadcast_record_3" and main.outpost_blockout.facility_variant("sortie_board", state).find("broadcast_cards_3") != -1
+	var actions_before: int = main.current_supply_actions.size()
+	main.meta_progression.traces["torn_ad_flyer"] = 2
+	main.current_supply_actions = main._build_supply_actions()
+	main.hud.show_supply_depot(main.meta_progression, Callable(main, "_apply_supply_choice"), Callable(main, "_restart"), "", main._session_progress_data(), main.current_supply_actions, Callable(main, "_open_r01_campaign_map"))
+	main._apply_supply_choice(4)
+	var purchase_ok: bool = main.match_state == "supply" and main.hud.supply_panel.visible and main.hud.supply_visible_text().find("조율 완료") != -1 and main.last_supply_action_surface != ""
+	_record("outpost compact place facilities visible", facilities_visible)
+	_record("outpost sortie actions are tied to places", buttons_are_places)
+	_record("outpost general UI hides internal ids", general_ui_clean)
+	_record("F12 debug exposes outpost facility/source details", debug_outpost_ok)
+	_record("outpost has exactly nine facility anchors", facility_count_ok)
+	_record("outpost state reacts to signal records", state_ok)
+	_record("upgrade purchase keeps outpost UI refreshed", purchase_ok, "actions before=%d surface=%s" % [actions_before, main.last_supply_action_surface])
+	await _finish_main(main)
 
 func _probe_r01_campaign_node_entry_profiles(main) -> void:
 	main._debug_r01_campaign_unlock_all()

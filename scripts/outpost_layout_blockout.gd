@@ -113,6 +113,9 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 	var signal_alloc := int(progress.get("allocation_signal_count", 0))
 	var contamination_total := int(progress.get("r01_contamination_total", 0))
 	var focus_npc := String(progress.get("last_outpost_npc_id", ""))
+	var last_facility := String(progress.get("last_outpost_facility_id", ""))
+	var selected_surface := String(progress.get("outpost_selected_action_surface", ""))
+	var result_target := String(progress.get("outpost_result_route_target", ""))
 	if meta_progression != null:
 		boss_analysis = int(meta_progression.boss_analysis_level)
 		boss_clears = int(meta_progression.boss_clear_count)
@@ -151,6 +154,9 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 		"allocation_signal_count": signal_alloc,
 		"r01_contamination_total": contamination_total,
 		"last_outpost_npc_id": focus_npc,
+		"last_outpost_facility_id": last_facility,
+		"outpost_selected_action_surface": selected_surface,
+		"outpost_result_route_target": result_target,
 	}
 
 func build_preview_layer(parent: Control, progress: Dictionary, meta_progression, show_debug_labels: bool = false) -> Dictionary:
@@ -225,6 +231,9 @@ func debug_lines(state: Dictionary = {}) -> Array[String]:
 			int(summary.get(COLLISION_EXIT, 0)),
 		],
 		"outpost bounds: %s" % EXPANSION_BOUNDS_NOTE,
+		"outpost facility states: %s" % facility_state_summary_line(state),
+		"outpost tags: %s" % tag_allocation_summary(state),
+		"outpost route target: %s surface=%s" % [result_route_target(state), selected_action_surface(state)],
 	]
 	for facility in FACILITIES:
 		var bounds: Rect2 = facility["bounds"]
@@ -245,7 +254,7 @@ func natural_summary_lines(state: Dictionary = {}) -> Array[String]:
 	var variant := String(state.get("variant", STATE_DORMANT))
 	var records := int(state.get("signal_record_count", 0))
 	var analysis := int(state.get("boss_analysis_level", 0))
-	var line := "시설: 회수 플랫폼, 정산 카운터, 정비대, 이름 보관함, 출격 게시판, 차징 조율대"
+	var line := "시설: 회수/정산/정비/보관/게시/조율/흔적/닫힌통로/게이트"
 	var state_line := "보급소 상태: 회수선과 출격 게이트만 낮게 켜져 있습니다."
 	if variant == STATE_DESTROY_NODE:
 		state_line = "보급소 상태: 낮아진 광고음 사이로 끊긴 동선 표시가 남았습니다."
@@ -260,6 +269,60 @@ func natural_summary_lines(state: Dictionary = {}) -> Array[String]:
 	elif variant == STATE_FIRST_RECALL:
 		state_line = "보급소 상태: 첫 영수증과 전단 묶음이 정산 카운터에 남았습니다."
 	return [line, state_line]
+
+func facility_state_summary_line(state: Dictionary = {}) -> String:
+	var parts: Array[String] = []
+	for facility in FACILITIES:
+		parts.append("%s=%s" % [String(facility["id"]), facility_variant(String(facility["id"]), state)])
+	return ", ".join(parts)
+
+func tag_allocation_summary(state: Dictionary = {}) -> String:
+	return "human=%d robot=%d signal=%d contamination=%d" % [
+		int(state.get("allocation_human_count", 0)),
+		int(state.get("allocation_robot_count", 0)),
+		int(state.get("allocation_signal_count", 0)),
+		int(state.get("r01_contamination_total", 0)),
+	]
+
+func result_route_target(state: Dictionary = {}) -> String:
+	var target := String(state.get("outpost_result_route_target", ""))
+	if target != "":
+		return target
+	if String(state.get("variant", STATE_DORMANT)) == STATE_DORMANT:
+		return "recovery_platform"
+	return "settlement_counter"
+
+func selected_action_surface(state: Dictionary = {}) -> String:
+	var surface := String(state.get("outpost_selected_action_surface", ""))
+	if surface != "":
+		return surface
+	var last_facility := String(state.get("last_outpost_facility_id", ""))
+	if last_facility != "":
+		return last_facility
+	return "sortie_gate"
+
+func natural_action_surface_label(surface_id: String) -> String:
+	match surface_id:
+		"recovery_platform":
+			return "회수 플랫폼"
+		"settlement_counter":
+			return "정산 카운터"
+		"maintenance_bench":
+			return "정비대"
+		"name_archive":
+			return "이름 보관함"
+		"sortie_board":
+			return "출격 게시판"
+		"charging_tuner":
+			return "차징 조율대"
+		"trace_storage_room":
+			return "흔적 보관실"
+		"closed_corridor":
+			return "닫힌 통로"
+		"sortie_gate":
+			return "출격 게이트"
+		_:
+			return "보급소"
 
 func facility_variant(facility_id: String, state: Dictionary = {}) -> String:
 	var variant := String(state.get("variant", STATE_DORMANT))
@@ -333,7 +396,7 @@ func _draw_preview_ground(parent: Control, offset: Vector2, scale: float, state:
 
 func _draw_corridors(parent: Control, offset: Vector2, scale: float, show_debug_labels: bool) -> void:
 	var center := _to_preview(Vector2(720, 445), offset, scale)
-	var anchors := [Vector2(280, 670), Vector2(1090, 555), Vector2(670, 260), Vector2(720, 735), Vector2(1085, 370)]
+	var anchors := [Vector2(280, 670), Vector2(1090, 555), Vector2(670, 260), Vector2(720, 735), Vector2(1085, 370), Vector2(1045, 748), Vector2(330, 295)]
 	var color := Color(0.36, 0.30, 0.24, 0.18 if not show_debug_labels else 0.24)
 	for anchor in anchors:
 		_add_line(parent, center, _to_preview(anchor, offset, scale), color, 3.0 if not show_debug_labels else 4.0)
@@ -344,11 +407,27 @@ func _draw_facility_links(parent: Control, offset: Vector2, scale: float, state:
 	var bench := _to_preview(Vector2(1090, 555), offset, scale)
 	var gate := _to_preview(Vector2(720, 735), offset, scale)
 	var board := _to_preview(Vector2(670, 230), offset, scale)
+	var archive := _to_preview(Vector2(1085, 370), offset, scale)
+	var tuner := _to_preview(Vector2(1045, 748), offset, scale)
+	var trace_room := _to_preview(Vector2(330, 295), offset, scale)
+	var closed := _to_preview(Vector2(1235, 250), offset, scale)
+	var variant := String(state.get("variant", STATE_DORMANT))
 	var link_alpha := 0.16 if bool(state.get("first_recall_seen", false)) else 0.10
 	_add_line(parent, platform, settlement, Color(0.96, 0.78, 0.48, link_alpha), 2.2)
 	_add_line(parent, platform, bench, Color(0.62, 1.0, 0.36, link_alpha), 2.2)
 	_add_line(parent, platform, gate, Color(1.0, 0.91, 0.25, link_alpha + 0.04), 3.0)
 	_add_line(parent, platform, board, Color(0.35, 0.70, 0.95, link_alpha), 2.0)
+	_add_line(parent, bench, tuner, Color(0.62, 1.0, 0.36, link_alpha * 0.82), 1.6)
+	_add_line(parent, archive, tuner, Color(0.35, 0.70, 0.95, link_alpha * 0.9), 1.7)
+	_add_line(parent, settlement, trace_room, Color(0.96, 0.78, 0.48, link_alpha * 0.72), 1.5)
+	_add_line(parent, board, archive, Color(0.35, 0.70, 0.95, link_alpha * 0.8), 1.5)
+	_add_line(parent, archive, closed, Color(0.22, 0.18, 0.14, 0.08), 2.0)
+	if variant == STATE_DESTROY_NODE:
+		_add_rect(parent, (platform + board) * 0.5 - Vector2(11, 1), Vector2(22, 2), Color(0.12, 0.09, 0.07, 0.18), -12.0)
+		_add_rect(parent, (bench + tuner) * 0.5 - Vector2(8, 1), Vector2(16, 2), Color(0.12, 0.09, 0.07, 0.16), 18.0)
+	elif variant == STATE_EXTRACT_MEMORY:
+		_add_line(parent, trace_room, archive, Color(0.95, 0.52, 0.62, 0.13), 2.0)
+		_add_line(parent, settlement, archive, Color(0.95, 0.52, 0.62, 0.09), 1.4)
 
 func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scale: float, state: Dictionary, show_debug_labels: bool) -> void:
 	var bounds: Rect2 = facility["bounds"]
@@ -419,6 +498,15 @@ func _draw_facility_marks(parent: Control, facility_id: String, rect: Rect2, sta
 			_add_rect(parent, rect.position + Vector2(rect.size.x - 74, 18), Vector2(48, 28), Color(0.28, 0.44, 0.52, 0.12))
 			for i in range(waves):
 				_add_rect(parent, rect.position + Vector2(24 + i * 21, 36 - (i % 2) * 5), Vector2(18, 3), Color(0.35, 0.70, 0.95, 0.18))
+		"trace_storage_room":
+			for i in range(3):
+				_add_rect(parent, rect.position + Vector2(18, 22 + i * 17), Vector2(rect.size.x - 42, 4), Color(0.96, 0.82, 0.54, 0.08))
+			if variant == "photo_afterimage_locked":
+				_add_rect(parent, rect.position + Vector2(rect.size.x - 58, 30), Vector2(38, 22), Color(0.95, 0.52, 0.62, 0.13))
+		"closed_corridor":
+			for i in range(4):
+				_add_rect(parent, rect.position + Vector2(20 + i * 13, 20), Vector2(4, rect.size.y - 40), Color(0.10, 0.08, 0.06, 0.16))
+			_add_rect(parent, rect.position + Vector2(18, rect.size.y * 0.5), Vector2(rect.size.x - 36, 3), Color(0.22, 0.18, 0.14, 0.13))
 		"sortie_gate":
 			_add_rect(parent, rect.position + Vector2(28, rect.size.y * 0.5), Vector2(rect.size.x - 56, 4), Color(0.62, 1.0, 0.36, 0.16))
 			_add_rect(parent, rect.position + Vector2(48, 12), Vector2(22, rect.size.y - 24), Color(1.0, 0.91, 0.25, 0.08))
@@ -495,7 +583,7 @@ func _collision_color(collision_class: String) -> Color:
 			return Color(0.44, 0.34, 0.28, 0.38)
 
 func _normal_label_visible(facility_id: String) -> bool:
-	return facility_id == "recovery_platform" or facility_id == "sortie_board" or facility_id == "sortie_gate"
+	return facility_id != ""
 
 func _scaled_alpha(color: Color, scale: float) -> Color:
 	return Color(color.r, color.g, color.b, color.a * scale)

@@ -160,10 +160,13 @@ func _probe_supply_panel(main) -> void:
 	var supply_text := String(main.hud.supply_label.text)
 	var event_text := String(main.hud.supply_event_log_label.text)
 	var hint_text := String(main.hud.supply_scroll_hint_label.text)
+	var visible_text: String = main.hud.supply_visible_text()
 	_record("supply panel visible", main.hud.supply_panel.visible)
 	_record("supply summary compact lines", _line_count(supply_text) <= 9, "%d lines\n%s" % [_line_count(supply_text), supply_text])
 	_record("supply event log compact", event_text.length() <= 58 and _line_count(event_text) <= 1, "%d chars - %s" % [event_text.length(), event_text])
 	_record("supply hint compact", hint_text.length() <= 65 and _line_count(hint_text) <= 1, "%d chars - %s" % [hint_text.length(), hint_text])
+	_record("supply place anchors visible", visible_text.find("시설:") != -1 and visible_text.find("출격 게시판") != -1 and visible_text.find("출격 게이트") != -1)
+	_record("supply general UI hides internal outpost ids", visible_text.find("recovery_platform") == -1 and visible_text.find("hard_blocker") == -1 and visible_text.find("anchor=(") == -1)
 
 	var visible_buttons := 0
 	var button_ok := true
@@ -283,10 +286,12 @@ func _probe_r03_supply_panel(main) -> void:
 	var supply_text := String(main.hud.supply_label.text)
 	var event_text := String(main.hud.supply_event_log_label.text)
 	var hint_text := String(main.hud.supply_scroll_hint_label.text)
+	var visible_text: String = main.hud.supply_visible_text()
 	_record("r03 supply panel visible", main.hud.supply_panel.visible)
 	_record("r03 supply summary compact lines", _line_count(supply_text) <= 9, "%d lines\n%s" % [_line_count(supply_text), supply_text])
 	_record("r03 supply event log compact", event_text.length() <= 58 and _line_count(event_text) <= 1, "%d chars - %s" % [event_text.length(), event_text])
 	_record("r03 supply hint compact", hint_text.length() <= 65 and _line_count(hint_text) <= 1, "%d chars - %s" % [hint_text.length(), hint_text])
+	_record("r03 supply place anchors visible", visible_text.find("시설:") != -1 and visible_text.find("출격 게시판") != -1 and visible_text.find("출격 게이트") != -1)
 
 	var visible_buttons := 0
 	var button_ok := true

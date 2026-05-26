@@ -625,6 +625,11 @@ func last_outpost_event_line() -> String:
 func last_outpost_focus_npc_id() -> String:
 	return last_outpost_npc_id
 
+func last_outpost_facility_id() -> String:
+	if outpost_event_log.is_empty():
+		return ""
+	return String(outpost_event_log[outpost_event_log.size() - 1].get("facility_id", ""))
+
 func record_outpost_event(npc_id: String, kind: String, line: String, facility_id: String = "") -> void:
 	_record_outpost_event(npc_id, kind, line, facility_id)
 
@@ -697,7 +702,8 @@ func buy(upgrade_id: String) -> bool:
 	var cost := int(upgrade.get("cost", 1))
 	traces[trace_id] = int(traces.get(trace_id, 0)) - cost
 	upgrades[upgrade_id] = int(upgrades.get(upgrade_id, 0)) + 1
-	_record_outpost_event(NPC_DOYUN, "upgrade", "정비대가 %s 항목을 출격 전 점검표에 올렸습니다." % String(upgrade.get("name", "강화")), "maintenance_bench")
+	var facility_id := _upgrade_facility_id(upgrade)
+	_record_outpost_event(NPC_DOYUN, "upgrade", "%s가 %s 항목을 출격 전 점검표에 올렸습니다." % [_facility_label(facility_id), String(upgrade.get("name", "강화"))], facility_id)
 	return true
 
 func upgrade_by_id(upgrade_id: String) -> Dictionary:
@@ -705,6 +711,37 @@ func upgrade_by_id(upgrade_id: String) -> Dictionary:
 		if String(upgrade["id"]) == upgrade_id:
 			return upgrade
 	return {}
+
+func _upgrade_facility_id(upgrade: Dictionary) -> String:
+	var category := String(upgrade.get("category", ""))
+	var upgrade_name := String(upgrade.get("name", ""))
+	var trace_label := String(upgrade.get("trace_label", ""))
+	if trace_label == "파편" or category == "보스 대응":
+		return "name_archive"
+	if category == "차징" or upgrade_name.find("차징") != -1 or upgrade_name.find("코일") != -1:
+		return "charging_tuner"
+	if category == "신호 분석" or upgrade_name.find("신호") != -1 or upgrade_name.find("좌표") != -1:
+		return "sortie_board"
+	if category == "성장/XP" or upgrade_name.find("복기") != -1 or upgrade_name.find("학습") != -1:
+		return "trace_storage_room"
+	return "maintenance_bench"
+
+func _facility_label(facility_id: String) -> String:
+	match facility_id:
+		"settlement_counter":
+			return "정산 카운터"
+		"maintenance_bench":
+			return "정비대"
+		"charging_tuner":
+			return "차징 조율대"
+		"name_archive":
+			return "이름 보관함"
+		"sortie_board":
+			return "출격 게시판"
+		"trace_storage_room":
+			return "흔적 보관실"
+		_:
+			return "보급소"
 
 func is_unlocked(upgrade_id: String) -> bool:
 	var upgrade := upgrade_by_id(upgrade_id)

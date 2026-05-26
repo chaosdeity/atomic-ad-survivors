@@ -648,8 +648,8 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	prompt_label.text = "M 또는 Tab으로 캠페인맵"
 	var next_change := str(session_progress.get("next_run_change_summary", "배분 효과 없음"))
 	var selected_route := str(session_progress.get("selected_campaign_node_name", "현재 지점"))
-	supply_restart_button.text = "바로 출격: %s" % _compact_ui_text(selected_route, 8)
-	supply_campaign_button.text = "R01 작전도"
+	supply_restart_button.text = "출격 게이트: %s" % _compact_ui_text(selected_route, 8)
+	supply_campaign_button.text = "출격 게시판"
 	var board_text := "%s / 결절 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
@@ -664,10 +664,12 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	if route_ready_text != "":
 		boss_hint = route_ready_text
 	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
+	var facility_line := _compact_ui_text(str(outpost_lines[0]), 34)
 	var reaction_summary := str(session_progress.get("allocation_reaction_summary", ""))
 	if reaction_summary == "":
 		reaction_summary = str(outpost_lines[1])
 	var allocation_summary := _compact_ui_text(str(session_progress.get("allocation_summary", "")), 28)
+	var place_allocation_line := _compact_ui_text("%s / %s" % [facility_line, allocation_summary], 42)
 	reaction_summary = _compact_ui_text(reaction_summary, 24)
 	board_text = _compact_ui_text(board_text, 30)
 	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
@@ -677,7 +679,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		board_text = _compact_ui_text(campaign_board, 42)
 	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n목표: %s\n약관: %s" % [
 		_supply_currency_text(meta_progression),
-		allocation_summary,
+		place_allocation_line,
 		reaction_summary,
 		board_text,
 		objective_short,
@@ -787,6 +789,36 @@ func campaign_map_visible_text() -> String:
 	if campaign_map == null or not campaign_map.visible:
 		return ""
 	return campaign_map.visible_ui_text()
+
+func supply_visible_text() -> String:
+	if supply_panel == null or not supply_panel.visible:
+		return ""
+	var parts: Array[String] = [
+		String(supply_label.text),
+		String(supply_event_log_label.text),
+		String(supply_scroll_hint_label.text),
+		String(supply_feedback_label.text),
+		String(supply_campaign_button.text),
+		String(supply_restart_button.text),
+	]
+	for button in supply_upgrade_buttons:
+		if button.visible:
+			parts.append(String(button.text))
+	return "\n".join(parts)
+
+func outpost_ui_bounds_summary() -> String:
+	if supply_panel == null:
+		return "supply=none"
+	return "visual=%dx%d summary=%dx%d actions=%dx%d footer=%dx%d" % [
+		int(outpost_visual_layer.size.x),
+		int(outpost_visual_layer.size.y),
+		int(supply_label.size.x),
+		int(supply_label.size.y),
+		int(supply_list_scroll.size.x),
+		int(supply_list_scroll.size.y),
+		int(supply_restart_button.size.x + supply_campaign_button.size.x),
+		int(supply_restart_button.size.y),
+	]
 
 func set_debug_text(text: String) -> void:
 	if text == "":
@@ -924,10 +956,11 @@ func _compact_supply_action_text(action: Dictionary, index: int, buy_marker: Str
 	var cost := _compact_ui_text(str(action.get("cost_text", "")), 12)
 	var effect := _compact_ui_text(str(action.get("effect_text", "")), 24)
 	var extra_text := _compact_ui_text(extra.strip_edges(), 18)
+	var surface_label := _compact_ui_text(str(action.get("surface_label", action.get("prefix", "보급"))), 6)
 	var text := "%s%d [%s] %s | %s | %s | %s | %s" % [
 		buy_marker,
 		index + 1,
-		str(action.get("prefix", "보급")),
+		surface_label,
 		name,
 		state_text,
 		level_text,
