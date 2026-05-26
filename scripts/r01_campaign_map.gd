@@ -182,6 +182,7 @@ var _last_completed_node_id := ""
 var _opened_node_ids: Array[String] = []
 var _change_banner := ""
 var _tag_context := {}
+var _node_memory := {}
 var _node_buttons := {}
 var _title_label: Label
 var _hint_label: Label
@@ -298,6 +299,21 @@ static func node_route_note(node_id: String) -> String:
 static func node_sortie_notice(node_id: String) -> String:
 	return String(node_def(node_id).get("sortie_notice", "R01 주택가 진입"))
 
+static func node_entry_notice(node_id: String) -> String:
+	match node_id:
+		NODE_L01:
+			return "외곽 회수 차선 진입: 낮은 광고음과 회수선 확보를 확인합니다."
+		NODE_L02:
+			return "분양 주택 루프 진입: 우편함과 현관 센서가 좌우 포위를 예고합니다."
+		NODE_L03:
+			return "모델하우스 축 진입: 상담 부스 송출선과 심사 압력이 모입니다."
+		NODE_L04:
+			return "배수로 침묵 주머니 진입: 낮은 신호와 젖은 흔적 후보를 추적합니다."
+		NODE_L05:
+			return "끊긴 광고 산책로 진입: 귀환로처럼 보이지만 회수선이 불안정합니다."
+		_:
+			return node_sortie_notice(node_id)
+
 static func node_blockout_phrase(node_id: String) -> String:
 	return String(node_def(node_id).get("blockout_phrase", "R01 주택가 작전 지점"))
 
@@ -353,6 +369,116 @@ static func state_summary(states: Dictionary) -> String:
 	for node_id in NODE_IDS:
 		parts.append("%s=%s" % [String(node_id), String(states.get(node_id, STATE_LOCKED))])
 	return " ".join(parts)
+
+static func node_result_line(node_id: String, recall_quality: String = "") -> String:
+	var prefix := "작전권: %s" % node_name(node_id)
+	match recall_quality:
+		"unstable_recall":
+			return "%s - 회수선이 흔들려 구역 흔적이 보류 표식으로 남았습니다." % prefix
+		"emergency_retrieval":
+			return "%s - 긴급 인양 중에도 구역 source 반응이 정산대에 남았습니다." % prefix
+		"boss_interrupted":
+			return "%s - 심사 절차 일부가 이름 보관함에 걸렸습니다." % prefix
+		"story_recall":
+			return "%s - 첫 등록 직전 회수 플랫폼이 외곽 기록만 붙잡았습니다." % prefix
+		_:
+			return "%s - 이번 출격 기록이 다음 작전도에 고정됩니다." % prefix
+
+static func node_incident_line(node_id: String, recall_quality: String = "") -> String:
+	if recall_quality == "unstable_recall" and node_id == NODE_L05:
+		return "구역 사건: 가짜 회수선이 뒤쪽 포위를 부르며 보급소의 출처 확인을 실패시켰습니다."
+	if recall_quality == "unstable_recall":
+		match node_id:
+			NODE_L02:
+				return "구역 사건: 우편함 주소 중복과 현관 센서 노이즈가 남았지만 정산 근거는 희미합니다."
+			NODE_L03:
+				return "구역 사건: 모델하우스 심사 신호가 잡혔지만 회수선이 흔들려 보류 표식이 남았습니다."
+			NODE_L04:
+				return "구역 사건: 배수로 낮은 신호와 젖은 전단 흔적이 보류 표식으로 남았습니다."
+			_:
+				return "구역 사건: 짧거나 흔들린 체류 때문에 정산 근거가 희미하게 남았습니다."
+	match node_id:
+		NODE_L01:
+			return "구역 사건: 낮은 광고음 사이에서 회수 차선의 기준점이 다시 켜졌습니다."
+		NODE_L02:
+			return "구역 사건: 우편함들이 같은 주소를 반복 인쇄하고 현관 센서 노이즈가 남았습니다."
+		NODE_L03:
+			return "구역 사건: 모델하우스 안내판과 상담 부스가 심사 신호를 게시판에 고정했습니다."
+		NODE_L04:
+			return "구역 사건: 배수구 아래 젖은 전단과 낮은 신호 흔적이 보관실로 들어왔습니다."
+		NODE_L05:
+			return "구역 사건: 귀환로처럼 보인 화살표가 광고 산책로 경고로 다시 분류됐습니다."
+		_:
+			return "구역 사건: R01 작전권 반응이 보급소 기록으로 남았습니다."
+
+static func node_outpost_reaction(node_id: String, recall_quality: String = "") -> String:
+	if node_id == NODE_L05:
+		if recall_quality == "stable_recall":
+			return "출격 게시판이 가짜 귀환로를 회수선이 아닌 광고 산책로로 다시 표시합니다."
+		return "회수 플랫폼이 해당 회수선의 출처를 인정하지 않고 경고등을 남깁니다."
+	if recall_quality == "unstable_recall":
+		match node_id:
+			NODE_L02:
+				return "정산 카운터가 우편함 주소 중복 기록을 보류 표식으로 묶습니다."
+			NODE_L03:
+				return "이름 보관함이 흔들린 모델하우스 심사관 이름을 추적합니다."
+			NODE_L04:
+				return "흔적 보관실이 젖은 전단과 배수로 표식을 보류 칸에 둡니다."
+			_:
+				return "%s 기록이 보류 표식으로 정산 카운터에 남았습니다." % node_name(node_id)
+	match node_id:
+		NODE_L01:
+			return "회수 플랫폼이 침묵 가장자리 기준선을 다시 잡습니다."
+		NODE_L02:
+			return "정산 카운터가 우편함 주소 중복 기록을 묶고 정비대가 현관 센서 노이즈를 털어냅니다."
+		NODE_L03:
+			return "출격 게시판이 모델하우스 신호를 고정하고 이름 보관함이 심사관 이름을 추적합니다."
+		NODE_L04:
+			return "흔적 보관실이 젖은 전단과 배수로 표식을 낮은 신호 칸에 둡니다."
+		_:
+			return node_region_reaction(node_id)
+
+static func node_map_memory_line(node_id: String, memory: Dictionary = {}) -> String:
+	if memory.is_empty():
+		return node_route_note(node_id)
+	var visit_count := int(memory.get("node_visit_count", 0))
+	if visit_count <= 0:
+		return node_route_note(node_id)
+	var recall_quality := String(memory.get("node_recall_quality", ""))
+	var tag_summary := String(memory.get("node_last_tag_summary", ""))
+	var contamination_hint := String(memory.get("node_contamination_hint", ""))
+	if node_id == NODE_L05 and recall_quality == "unstable_recall":
+		return "흔적: 가짜 귀환 경고 강화 / 회수선 출처 의심"
+	if contamination_hint != "":
+		return "흔적: %s / 방문 %d회" % [contamination_hint, visit_count]
+	if recall_quality == "stable_recall":
+		return "흔적: 신호 안정 / %s" % tag_summary
+	if recall_quality == "emergency_retrieval":
+		return "흔적: 긴급 인양 표식 / 방문 %d회" % visit_count
+	if recall_quality == "boss_interrupted":
+		return "흔적: 심사 중단 기록 / 이름 보관함 연동"
+	if recall_quality == "story_recall":
+		return "흔적: 첫 강제 회수 기준점 / 방문 %d회" % visit_count
+	return "흔적: 방문 %d회 / %s" % [visit_count, tag_summary]
+
+static func node_memory_debug_summary(memories: Dictionary) -> String:
+	var parts: Array[String] = []
+	for node_id in NODE_IDS:
+		var memory := Dictionary(memories.get(node_id, {}))
+		if memory.is_empty():
+			parts.append("%s=none" % String(node_id))
+			continue
+		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,contam=%s,unlock=%s,tags=%s}" % [
+			String(node_id),
+			int(memory.get("node_visit_count", 0)),
+			String(memory.get("last_node_result", "")),
+			String(memory.get("node_recall_quality", "")),
+			int(memory.get("node_signal_level", 0)),
+			String(memory.get("node_contamination_hint", "")),
+			String(memory.get("node_unlocked_by", "")),
+			String(memory.get("node_last_tag_summary", "")),
+		])
+	return " | ".join(parts)
 
 func build() -> void:
 	if _built:
@@ -447,6 +573,7 @@ func update_map(data: Dictionary) -> void:
 	_last_completed_node_id = String(data.get("last_completed_node_id", ""))
 	_change_banner = String(data.get("change_banner", ""))
 	_tag_context = Dictionary(data.get("tag_context", {})).duplicate(true)
+	_node_memory = Dictionary(data.get("node_memory", {})).duplicate(true)
 	_opened_node_ids.clear()
 	for node_id in Array(data.get("opened_node_ids", [])):
 		_opened_node_ids.append(String(node_id))
@@ -550,6 +677,9 @@ func _current_change_banner() -> String:
 
 func _bottom_map_line() -> String:
 	var selected_note := node_route_note(_selected_node_id)
+	var selected_memory := Dictionary(_node_memory.get(_selected_node_id, {}))
+	if not selected_memory.is_empty():
+		selected_note = node_map_memory_line(_selected_node_id, selected_memory)
 	var completed_name := "최근 회수 없음" if _last_completed_node_id == "" else "%s 회수선 고정" % node_name(_last_completed_node_id)
 	return "%s / %s" % [selected_note, completed_name]
 
@@ -697,6 +827,17 @@ func _draw_node_marks() -> void:
 			draw_arc(pos, radius + 7.0, 0.0, TAU, 32, Color(0.62, 1.0, 0.36, 0.70), 1.6)
 			draw_line(pos + Vector2(-5, 0), pos + Vector2(-1, 4), Color(0.62, 1.0, 0.36, 0.90), 1.8)
 			draw_line(pos + Vector2(-1, 4), pos + Vector2(7, -6), Color(0.62, 1.0, 0.36, 0.90), 1.8)
+		var memory := Dictionary(_node_memory.get(id, {}))
+		if not memory.is_empty():
+			var recall_quality := String(memory.get("node_recall_quality", ""))
+			var contamination_hint := String(memory.get("node_contamination_hint", ""))
+			if recall_quality == "unstable_recall" or contamination_hint != "":
+				_draw_ad_noise(pos, radius + 10.0)
+			elif recall_quality == "stable_recall":
+				draw_arc(pos, radius + 10.0, PI * 0.18, PI * 1.82, 30, Color(0.62, 1.0, 0.36, 0.42), 1.2)
+			var visits := mini(3, int(memory.get("node_visit_count", 0)))
+			for tick in range(visits):
+				draw_circle(pos + Vector2(-5 + tick * 5, radius + 9.0), 1.4, Color(0.28, 0.20, 0.17, 0.62))
 		if _opened_node_ids.has(id):
 			var open_pulse := 1.0 + 0.16 * sin(float(Time.get_ticks_msec()) * 0.009)
 			draw_arc(pos, (radius + 9.0) * open_pulse, -PI * 0.25, PI * 1.25, 36, C.VITAMIN_YELLOW, 1.8)

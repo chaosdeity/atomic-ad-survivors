@@ -119,6 +119,7 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 	var recall_quality := String(progress.get("recall_quality", ""))
 	var tag_ledger_summary := String(progress.get("tag_ledger_summary", ""))
 	var tag_facility_response := String(progress.get("tag_facility_response", ""))
+	var campaign_outpost_reaction := String(progress.get("campaign_outpost_reaction", ""))
 	if meta_progression != null:
 		boss_analysis = int(meta_progression.boss_analysis_level)
 		boss_clears = int(meta_progression.boss_clear_count)
@@ -163,6 +164,7 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 		"recall_quality": recall_quality,
 		"tag_ledger_summary": tag_ledger_summary,
 		"tag_facility_response": tag_facility_response,
+		"campaign_outpost_reaction": campaign_outpost_reaction,
 	}
 
 func build_preview_layer(parent: Control, progress: Dictionary, meta_progression, show_debug_labels: bool = false) -> Dictionary:
@@ -275,7 +277,9 @@ func natural_summary_lines(state: Dictionary = {}) -> Array[String]:
 		state_line = "보급소 상태: 송출 기록 %d장이 출격 게시판에 고정되었습니다." % records
 	elif variant == STATE_FIRST_RECALL:
 		state_line = "보급소 상태: 첫 영수증과 전단 묶음이 정산 카운터에 남았습니다."
-	var tag_response := String(state.get("tag_facility_response", ""))
+	var tag_response := String(state.get("campaign_outpost_reaction", ""))
+	if tag_response == "":
+		tag_response = String(state.get("tag_facility_response", ""))
 	if tag_response != "":
 		state_line = tag_response
 	return [line, state_line]

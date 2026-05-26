@@ -486,6 +486,30 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
         "ui/debug",
         "R01 campaign nodes expose natural tag access hints",
     )
+    add(
+        results,
+        "PASS" if has_all(campaign, ["node_entry_notice", "node_result_line", "node_incident_line", "node_outpost_reaction", "node_map_memory_line", "node_memory_debug_summary"]) else "FAIL",
+        "campaign link",
+        "R01 campaign map exposes entry/result/outpost/map-memory text helpers",
+    )
+    add(
+        results,
+        "PASS" if has_all(main, ["r01_campaign_node_memory", "_record_r01_campaign_node_result", "_r01_campaign_selected_memory_line", "_set_r01_campaign_node_unlocked_by", '"node_memory": r01_campaign_node_memory']) else "FAIL",
+        "campaign link",
+        "main keeps session-only R01 node memory and passes it to the campaign map",
+    )
+    add(
+        results,
+        "PASS" if has_all(main + hud + outpost, ["campaign_outpost_reaction", "campaign_last_incident_line", "node_last_outpost_reaction"]) else "FAIL",
+        "campaign link",
+        "R01 node result reaction reaches supply/outpost UI",
+    )
+    add(
+        results,
+        "PASS" if has_all(main + debug, ["r01_campaign_node_memory_summary", "campaign node memory"]) else "FAIL",
+        "campaign link",
+        "F12 debug exposes R01 node memory summary",
+    )
 
 
 def print_results(results: list[Check]) -> None:

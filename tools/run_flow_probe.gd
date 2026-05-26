@@ -186,8 +186,11 @@ func _probe_r01_campaign_map_flow() -> void:
 	var l01_highlight_ok: bool = l01_selected_text.find("선택 중: 침묵 가장자리") != -1 and l01_selected_text.find("회수선: 안정") != -1 and l01_selected_text.find("목표") != -1 and l01_selected_text.find("주택가 첫 광고 신호 확인") != -1 and l01_selected_text.find("외곽 진입 작전권") != -1
 	main._sortie_selected_r01_campaign_node()
 	var sortie_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L01" and not main.r01_campaign_map_open
+	var l01_entry_notice_ok: bool = main._active_notice_text().find("외곽 회수 차선") != -1 and main._active_notice_text().find("회수선 확보") != -1
 	var l01_start_pos: Vector2 = main.player_pos
 	main._finish_match("recalled")
+	var l01_result_text: String = String(main.hud.result_label.text)
+	var l01_result_memory_ok: bool = l01_result_text.find("작전권: 침묵 가장자리") != -1 and l01_result_text.find("구역 사건:") != -1
 	main._handle_terminal_action()
 	var post_run_supply_ok: bool = main.match_state == "supply"
 	var l02_available: bool = String(main.r01_campaign_node_states.get("R01-L02", "")) == "available"
@@ -198,13 +201,18 @@ func _probe_r01_campaign_map_flow() -> void:
 	var l02_opened_pulse_ok: bool = post_l01_text.find("새 신호: 분양 주택 루프 접근 가능") != -1 and main.r01_campaign_new_signal_node_ids.has("R01-L02")
 	main._select_r01_campaign_node("R01-L02")
 	main._sortie_selected_r01_campaign_node()
-	var l02_entry_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L02" and l01_start_pos.distance_to(main.player_pos) > 500.0 and main._combat_goal_label().find("분양 주택 루프") != -1
+	var l02_entry_ok: bool = main.match_state == "playing" and main.current_r01_node_id == "R01-L02" and l01_start_pos.distance_to(main.player_pos) > 500.0 and main._combat_goal_label().find("분양 주택 루프") != -1 and main._active_notice_text().find("우편함") != -1
 	main._finish_match("victory")
+	var l02_result_text: String = String(main.hud.result_label.text)
+	var l02_result_context_ok: bool = l02_result_text.find("작전권: 분양 주택 루프") != -1 and l02_result_text.find("우편함") != -1 and l02_result_text.find("다음 작전도 변화") != -1
 	main._handle_terminal_action()
+	var l02_supply_text: String = main.hud.supply_visible_text()
+	var l02_outpost_reaction_ok: bool = l02_supply_text.find("우편함 주소") != -1 or l02_supply_text.find("현관 센서") != -1
 	var l03_unlocked_after_l02: bool = String(main.r01_campaign_node_states.get("R01-L03", "")) == "boss_ready"
 	main._open_r01_campaign_map()
 	var post_l02_text: String = main.hud.campaign_map_visible_text()
 	var l03_opened_text_ok: bool = post_l02_text.find("새 신호: 모델하우스 결절 심사 접근 가능") != -1
+	var post_l02_memory_ok: bool = post_l02_text.find("흔적:") != -1 and post_l02_text.find("분양 주택 루프") != -1
 
 	main._debug_r01_campaign_unlock_all()
 	var unlock_all_ok: bool = true
@@ -221,6 +229,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1 and debug_text.find("bias=mailbox_pincer") != -1
 	var debug_source_ok: bool = debug_text.find("r01 sources zone=") != -1 and debug_text.find("r01 hazard sources") != -1
 	var debug_tag_ok: bool = debug_text.find("recall quality") != -1 and debug_text.find("tag ledger") != -1 and debug_text.find("tag access current=") != -1
+	var debug_node_memory_ok: bool = debug_text.find("campaign node memory") != -1 and debug_text.find("R01-L02{") != -1
 
 	_record("campaign map opens from supply", open_ok)
 	_record("campaign map has readable legend and instruction", readability_text_ok)
@@ -228,17 +237,24 @@ func _probe_r01_campaign_map_flow() -> void:
 	_record("L01 selected highlight exists", l01_highlight_ok)
 	_record("campaign UI hides internal ids", initial_ui_clean and final_ui_clean)
 	_record("L01 select -> sortie starts", sortie_ok)
+	_record("L01 entry notice follows selected operation", l01_entry_notice_ok)
+	_record("L01 result records selected operation", l01_result_memory_ok)
 	_record("post-run returns to supply", post_run_supply_ok)
 	_record("L02 available after L01 visit", l02_available)
 	_record("L01 complete -> L02 pulse/opened state", l02_opened_pulse_ok)
 	_record("L02 sortie changes combat entry", l02_entry_ok)
+	_record("L02 result explains local operation incident", l02_result_context_ok)
+	_record("L02 outpost reacts to mailbox/front-door residue", l02_outpost_reaction_ok)
 	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02 and l03_opened_text_ok)
-	_record("L05 displayed as false route", l05_false_route_ok)
+	_record("post-result campaign map shows node memory marker text", post_l02_memory_ok)
+	_record("L05 displayed as false route", l05_false_route_ok, l05_text)
 	_record("L05 shows signal tag false-return warning", l05_tag_hint_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
 	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
 	_record("debug HUD exposes source summaries", debug_source_ok)
 	_record("debug HUD exposes tag ledger and recall quality", debug_tag_ok)
+	_record("debug HUD exposes R01 node memory", debug_node_memory_ok)
+	await _probe_r01_campaign_result_bridge_variants()
 	_probe_r01_campaign_node_entry_profiles(main)
 	main._close_r01_campaign_map()
 	await _finish_main(main)
@@ -250,6 +266,37 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_preview_sortie_ok: bool = preview_main.match_state == "playing" and preview_main.current_r01_node_id == "R01-L03"
 	_record("Ctrl+1-5 debug preview unlocks sortie", debug_preview_unlock_ok and debug_preview_sortie_ok)
 	await _finish_main(preview_main)
+
+func _probe_r01_campaign_result_bridge_variants() -> void:
+	var checks := {
+		"R01-L03": {"entry": "모델하우스 축", "result": "모델하우스", "supply": "이름 보관함", "state": "victory"},
+		"R01-L04": {"entry": "배수로 침묵", "result": "배수로", "supply": "젖은 전단", "state": "game_over"},
+		"R01-L05": {"entry": "끊긴 광고 산책로", "result": "가짜 회수선", "supply": "출처", "state": "game_over"},
+	}
+	for node_id in checks.keys():
+		var expected: Dictionary = checks[node_id]
+		var main = await _new_main()
+		main.meta_progression.grant_first_recall_trace()
+		main.first_recall_done = true
+		main.first_sortie = false
+		main._show_supply_depot()
+		main._debug_r01_campaign_unlock_all()
+		main._select_r01_campaign_node(String(node_id))
+		main._sortie_selected_r01_campaign_node()
+		var entry_ok: bool = main._active_notice_text().find(String(expected["entry"])) != -1
+		main._finish_match(String(expected["state"]))
+		var result_text: String = String(main.hud.result_label.text)
+		var result_ok: bool = result_text.find(String(expected["result"])) != -1 and result_text.find("작전권:") != -1
+		main._handle_terminal_action()
+		var supply_text: String = main.hud.supply_visible_text()
+		var supply_ok: bool = supply_text.find(String(expected["supply"])) != -1
+		main._open_r01_campaign_map()
+		var map_text: String = main.hud.campaign_map_visible_text()
+		var map_ok: bool = map_text.find("흔적:") != -1 and map_text.find("R01-L") == -1
+		main.debug_tools.detail_visible = true
+		var debug_ok: bool = main._debug_overlay_text().find("campaign node memory") != -1 and main._debug_overlay_text().find(String(node_id)) != -1
+		_record("%s entry/result/outpost/map bridge" % String(node_id), entry_ok and result_ok and supply_ok and map_ok and debug_ok, "entry=%s result=%s supply=%s map=%s debug=%s text=%s supply_text=%s map_text=%s" % [str(entry_ok), str(result_ok), str(supply_ok), str(map_ok), str(debug_ok), result_text, supply_text, map_text])
+		await _finish_main(main)
 
 func _probe_outpost_place_surfaces() -> void:
 	var main = await _new_main()

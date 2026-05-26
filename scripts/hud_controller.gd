@@ -666,6 +666,9 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
 	var facility_line := _compact_ui_text(str(outpost_lines[0]), 34)
 	var reaction_summary := str(session_progress.get("allocation_reaction_summary", ""))
+	var campaign_response := str(session_progress.get("campaign_outpost_reaction", ""))
+	if campaign_response != "" and (reaction_summary == "" or reaction_summary.begins_with("보급소는 아직")):
+		reaction_summary = campaign_response
 	var tag_facility_response := str(session_progress.get("tag_facility_response", ""))
 	if reaction_summary == "" or reaction_summary.begins_with("보급소는 아직"):
 		reaction_summary = tag_facility_response
@@ -914,6 +917,9 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 		"런 정산 기준:",
 		"회수 상태:",
 		"일반 정산 잠김:",
+		"작전권:",
+		"구역 사건:",
+		"다음 작전도 변화:",
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
@@ -927,7 +933,7 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	]
 	var chosen: Array[String] = []
 	for prefix in priority_prefixes:
-		if chosen.size() >= max_lines - 1:
+		if chosen.size() >= max_lines:
 			break
 		for raw_line in progress_lines:
 			var line := str(raw_line)
@@ -935,7 +941,7 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 				_append_unique_compact_line(chosen, line, 48)
 				break
 	for raw_line in progress_lines:
-		if chosen.size() >= max_lines - 1:
+		if chosen.size() >= max_lines:
 			break
 		var line := str(raw_line)
 		if line.begins_with("정산 사유:") or line.begins_with("카드 기여:") or line.begins_with("광고 감사 결과:"):

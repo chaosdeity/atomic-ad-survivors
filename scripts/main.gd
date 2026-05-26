@@ -108,6 +108,7 @@ var last_completed_r01_node_id := ""
 var r01_campaign_node_states := {}
 var r01_campaign_map_open := false
 var r01_campaign_new_signal_node_ids: Array[String] = []
+var r01_campaign_node_memory := {}
 var r01_zone_times := {}
 var open_house_signal_stage := 0
 var audit_segment_index := 0
@@ -2075,8 +2076,8 @@ func _boss_signal_rank(state: String) -> int:
 
 func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
-	wave_notice_timer = 2.8
-	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력") or text.contains("보스")
+	wave_notice_timer = 4.2 if text.contains("진입:") else 2.8
+	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력") or text.contains("보스") or text.contains("불안정")
 	effects.show_combat_banner(text, C.NEON_RED if danger else C.VITAMIN_YELLOW)
 
 func _update_first_recall_event(delta: float) -> void:
@@ -2211,6 +2212,7 @@ func _r01_contamination_short_line() -> String:
 func _sortie_start_notice() -> String:
 	var parts: Array[String] = []
 	parts.append(R01CampaignMap.node_sortie_notice(current_r01_node_id))
+	parts.append(R01CampaignMap.node_entry_notice(current_r01_node_id))
 	parts.append("구역 상태: %s" % R01CampaignMap.node_blockout_phrase(current_r01_node_id))
 	parts.append("지역 변조: %s" % R01CampaignMap.node_modifier(current_r01_node_id))
 	if meta_progression.signal_board_level() > 0:
@@ -2264,6 +2266,7 @@ func _boss_route_ready() -> bool:
 func _session_progress_data() -> Dictionary:
 	_sync_boss_signal_from_clues()
 	var r01_state := _r01_phrase_state()
+	var last_node_memory := _last_completed_node_memory()
 	return {
 		"sortie_index": sortie_index,
 		"first_recall_done": first_recall_done,
@@ -2278,6 +2281,9 @@ func _session_progress_data() -> Dictionary:
 		"selected_campaign_node_spawn": R01CampaignMap.node_spawn_axis_label(selected_r01_node_id),
 		"selected_campaign_node_reaction": R01CampaignMap.node_region_reaction(selected_r01_node_id),
 		"selected_campaign_node_tag_hint": R01CampaignMap.node_tag_hint(selected_r01_node_id, meta_progression.tag_context()),
+		"campaign_node_memory_line": _r01_campaign_selected_memory_line(),
+		"campaign_outpost_reaction": String(last_node_memory.get("node_last_outpost_reaction", "")),
+		"campaign_last_incident_line": String(last_node_memory.get("node_last_event_line", "")),
 		"campaign_board_line": _r01_campaign_board_line(),
 		"campaign_new_signal_line": _r01_campaign_change_banner(),
 		"boss_signal_state": boss_signal_state,
@@ -2346,8 +2352,18 @@ func _session_progress_lines() -> Array[String]:
 	return [
 		"%s" % _route_stage_label(),
 		_next_goal_label(),
+		_r01_campaign_result_line(),
+		_r01_campaign_incident_line(),
 		_r01_campaign_region_reaction_line(),
 	]
+
+func _r01_campaign_result_line() -> String:
+	var node_id: String = last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
+	return R01CampaignMap.node_result_line(node_id, String(last_run_result.get("recall_quality", "")))
+
+func _r01_campaign_incident_line() -> String:
+	var node_id: String = last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
+	return R01CampaignMap.node_incident_line(node_id, String(last_run_result.get("recall_quality", "")))
 
 func _r01_campaign_region_reaction_line() -> String:
 	var node_id: String = last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
@@ -2408,6 +2424,7 @@ func _finish_match(result_state: String) -> void:
 	_complete_current_campaign_node(result_state)
 	last_run_result = RunResultEvaluator.evaluate_run_result(_run_result_input(result_state))
 	_apply_run_result_progression()
+	_record_r01_campaign_node_result(result_state)
 	print("RunResult: %s" % JSON.stringify(last_run_result))
 	match_state = result_state
 	game_over = result_state == "game_over"
@@ -2575,6 +2592,88 @@ func _apply_run_result_progression() -> void:
 	last_run_result["reward_lines"] = reward_lines
 	_sync_boss_signal_from_clues()
 
+func _record_r01_campaign_node_result(result_state: String) -> void:
+	if not R01CampaignMap.NODE_IDS.has(current_r01_node_id):
+		return
+	var memory := _r01_campaign_node_memory(current_r01_node_id)
+	var recall_quality := String(last_run_result.get("recall_quality", ""))
+	var tag_ledger := Dictionary(last_run_result.get("settlement_tag_ledger", {}))
+	var contamination_hint := _r01_node_contamination_hint(tag_ledger)
+	memory["last_node_result"] = result_state
+	memory["node_visit_count"] = int(memory.get("node_visit_count", 0)) + 1
+	memory["node_recall_quality"] = recall_quality
+	memory["node_recall_label"] = String(last_run_result.get("recall_quality_label", ""))
+	memory["node_signal_level"] = maxi(open_house_signal_stage, meta_progression.signal_clue_count())
+	memory["node_contamination_hint"] = contamination_hint
+	memory["node_last_tag_summary"] = _r01_node_tag_summary(tag_ledger)
+	memory["node_last_event_line"] = R01CampaignMap.node_incident_line(current_r01_node_id, recall_quality)
+	memory["node_last_outpost_reaction"] = R01CampaignMap.node_outpost_reaction(current_r01_node_id, recall_quality)
+	r01_campaign_node_memory[current_r01_node_id] = memory
+	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
+	reward_lines.append(R01CampaignMap.node_result_line(current_r01_node_id, recall_quality))
+	reward_lines.append(String(memory["node_last_event_line"]))
+	reward_lines.append("다음 작전도 변화: %s" % R01CampaignMap.node_map_memory_line(current_r01_node_id, memory))
+	last_run_result["reward_lines"] = reward_lines
+
+func _r01_campaign_node_memory(node_id: String) -> Dictionary:
+	var memory := Dictionary(r01_campaign_node_memory.get(node_id, {})).duplicate(true)
+	if memory.is_empty():
+		memory = {
+			"last_node_result": "",
+			"node_visit_count": 0,
+			"node_recall_quality": "",
+			"node_recall_label": "",
+			"node_signal_level": 0,
+			"node_contamination_hint": "",
+			"node_unlocked_by": "",
+			"node_last_tag_summary": "태그 기록 없음",
+			"node_last_event_line": "",
+			"node_last_outpost_reaction": "",
+		}
+	return memory
+
+func _set_r01_campaign_node_unlocked_by(node_id: String, source_node_id: String) -> void:
+	var memory := _r01_campaign_node_memory(node_id)
+	if String(memory.get("node_unlocked_by", "")) == "":
+		memory["node_unlocked_by"] = source_node_id
+	r01_campaign_node_memory[node_id] = memory
+
+func _r01_node_tag_summary(ledger: Dictionary) -> String:
+	var next_tags := Dictionary(ledger.get("next_run_tags", {}))
+	var approved := Dictionary(ledger.get("approved", {}))
+	var held := Dictionary(ledger.get("held", {}))
+	var contaminated := Dictionary(ledger.get("contaminated", {}))
+	var parts: Array[String] = []
+	if _ticket_total(next_tags) > 0:
+		parts.append("다음 권리 %d" % _ticket_total(next_tags))
+	if _ticket_total(approved) > 0:
+		parts.append("승인 %d" % _ticket_total(approved))
+	if _ticket_total(held) > 0:
+		parts.append("보류 %d" % _ticket_total(held))
+	if _ticket_total(contaminated) > 0:
+		parts.append("오염 %d" % _ticket_total(contaminated))
+	if parts.is_empty():
+		return "태그 정산 없음"
+	return " / ".join(parts)
+
+func _r01_node_contamination_hint(ledger: Dictionary) -> String:
+	var contaminated := Dictionary(ledger.get("contaminated", {}))
+	if int(contaminated.get(MetaProgression.TICKET_SIGNAL, 0)) > 0:
+		return "수신태그 오염"
+	if int(contaminated.get(MetaProgression.TICKET_POWER, 0)) > 0:
+		return "충전태그 오염"
+	if int(contaminated.get(MetaProgression.TICKET_FOOD, 0)) > 0:
+		return "식량태그 오염"
+	return ""
+
+func _ticket_total(counts: Dictionary) -> int:
+	return int(counts.get(MetaProgression.TICKET_FOOD, 0)) + int(counts.get(MetaProgression.TICKET_POWER, 0)) + int(counts.get(MetaProgression.TICKET_SIGNAL, 0))
+
+func _last_completed_node_memory() -> Dictionary:
+	if last_completed_r01_node_id == "":
+		return {}
+	return Dictionary(r01_campaign_node_memory.get(last_completed_r01_node_id, {}))
+
 func _contamination_progression_lines(contamination_report: Dictionary) -> Array[String]:
 	var lines: Array[String] = []
 	if not bool(contamination_report.get("changed", false)):
@@ -2660,6 +2759,7 @@ func _reset_r01_campaign_state() -> void:
 	last_completed_r01_node_id = ""
 	r01_campaign_map_open = false
 	r01_campaign_new_signal_node_ids.clear()
+	r01_campaign_node_memory.clear()
 
 func _open_r01_campaign_map() -> void:
 	if match_state != "supply":
@@ -2743,6 +2843,7 @@ func _unlock_r01_campaign_node(node_id: String, state: String) -> void:
 	var current_state := String(r01_campaign_node_states.get(node_id, R01CampaignMap.STATE_LOCKED))
 	if current_state == R01CampaignMap.STATE_LOCKED:
 		r01_campaign_node_states[node_id] = state
+		_set_r01_campaign_node_unlocked_by(node_id, current_r01_node_id)
 		if not r01_campaign_new_signal_node_ids.has(node_id):
 			r01_campaign_new_signal_node_ids.append(node_id)
 
@@ -2756,10 +2857,23 @@ func _r01_campaign_map_data() -> Dictionary:
 		"opened_node_ids": r01_campaign_new_signal_node_ids.duplicate(),
 		"change_banner": _r01_campaign_change_banner(),
 		"tag_context": meta_progression.tag_context(),
+		"node_memory": r01_campaign_node_memory.duplicate(true),
 	}
 
 func _r01_campaign_display_states() -> Dictionary:
 	var display_states := r01_campaign_node_states.duplicate(true)
+	for node_id in R01CampaignMap.NODE_IDS:
+		var id := String(node_id)
+		var raw_state := String(display_states.get(id, R01CampaignMap.STATE_LOCKED))
+		if raw_state == R01CampaignMap.STATE_LOCKED:
+			continue
+		var memory := Dictionary(r01_campaign_node_memory.get(id, {}))
+		var recall_quality := String(memory.get("node_recall_quality", ""))
+		var contamination_hint := String(memory.get("node_contamination_hint", ""))
+		if recall_quality == "unstable_recall" or contamination_hint != "":
+			display_states[id] = R01CampaignMap.STATE_DANGER
+		elif recall_quality == "stable_recall" and raw_state != R01CampaignMap.STATE_BOSS_READY:
+			display_states[id] = R01CampaignMap.STATE_CLEARED
 	var l03_state := String(display_states.get(R01CampaignMap.NODE_L03, R01CampaignMap.STATE_LOCKED))
 	if _boss_route_ready() and l03_state != R01CampaignMap.STATE_LOCKED and l03_state != R01CampaignMap.STATE_CLEARED:
 		display_states[R01CampaignMap.NODE_L03] = R01CampaignMap.STATE_BOSS_READY
@@ -2773,7 +2887,8 @@ func _r01_campaign_change_banner() -> String:
 		var state := String(r01_campaign_node_states.get(node_id, R01CampaignMap.STATE_AVAILABLE))
 		lines.append(R01CampaignMap.opened_signal_line(node_id, state))
 	if last_completed_r01_node_id != "":
-		lines.append("%s 회수선 고정" % R01CampaignMap.node_name(last_completed_r01_node_id))
+		var last_memory := Dictionary(r01_campaign_node_memory.get(last_completed_r01_node_id, {}))
+		lines.append(R01CampaignMap.node_map_memory_line(last_completed_r01_node_id, last_memory))
 	if lines.is_empty():
 		return "작전도: 외곽 회수선 기준 설정"
 	return " / ".join(lines)
@@ -2788,7 +2903,16 @@ func _r01_campaign_board_line() -> String:
 		line = "%s / %s" % [line, tag_hint]
 	if not r01_campaign_new_signal_node_ids.is_empty():
 		line = "%s / %s" % [line, _r01_campaign_change_banner()]
+	var memory_line := _r01_campaign_selected_memory_line()
+	if memory_line != "":
+		line = "%s / %s" % [line, memory_line]
 	return line
+
+func _r01_campaign_selected_memory_line() -> String:
+	var memory := Dictionary(r01_campaign_node_memory.get(selected_r01_node_id, {}))
+	if memory.is_empty():
+		return ""
+	return R01CampaignMap.node_map_memory_line(selected_r01_node_id, memory)
 
 func _r01_campaign_start_position(node_id: String) -> Vector2:
 	if not R01LayoutBlockout.ENABLED:
@@ -3188,6 +3312,7 @@ func _debug_info() -> Dictionary:
 		"last_completed_r01_node_id": last_completed_r01_node_id,
 		"r01_campaign_map_open": r01_campaign_map_open,
 		"r01_campaign_node_state_summary": R01CampaignMap.state_summary(r01_campaign_node_states),
+		"r01_campaign_node_memory_summary": R01CampaignMap.node_memory_debug_summary(r01_campaign_node_memory),
 		"r01_campaign_new_signal_summary": _r01_campaign_change_banner(),
 		"r01_campaign_current_phrase": R01CampaignMap.node_blockout_phrase(current_r01_node_id),
 		"r01_campaign_start_pos": "%d,%d" % [int(round(_r01_campaign_start_position(current_r01_node_id).x)), int(round(_r01_campaign_start_position(current_r01_node_id).y))],
