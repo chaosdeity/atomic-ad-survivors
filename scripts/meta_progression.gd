@@ -404,6 +404,29 @@ func grant_ration_ticket_settlement(settlement: Dictionary) -> Dictionary:
 		"contamination_report": contamination_report,
 	}
 
+func record_recall_quality(quality_id: String, line: String) -> void:
+	if quality_id == "" or line == "":
+		return
+	var facility_id := "recovery_platform"
+	var npc_id := NPC_MINA
+	match quality_id:
+		"stable_recall":
+			facility_id = "settlement_counter"
+			npc_id = NPC_MINA
+		"emergency_retrieval":
+			facility_id = "recovery_platform"
+			npc_id = NPC_DOYUN
+		"unstable_recall":
+			facility_id = "settlement_counter"
+			npc_id = NPC_BOKHEE
+		"boss_interrupted":
+			facility_id = "name_archive"
+			npc_id = NPC_BOKHEE
+		"story_recall":
+			facility_id = "recovery_platform"
+			npc_id = NPC_MINA
+	_record_outpost_event(npc_id, "recall_quality", line.replace("회수 상태: ", ""), facility_id)
+
 func can_allocate_ticket(allocation_id: String) -> bool:
 	return ticket_count(_allocation_ticket_id(allocation_id)) > 0
 
@@ -429,6 +452,56 @@ func ration_ticket_summary() -> String:
 		ticket_count(TICKET_POWER),
 		ticket_count(TICKET_SIGNAL),
 	]
+
+func tag_rights_summary_line() -> String:
+	return "식량태그=생존권 / 충전태그=정비권 / 수신태그=접근권"
+
+func tag_ledger_summary_line(last_run_result: Dictionary = {}) -> String:
+	var ledger: Dictionary = last_run_result.get("settlement_tag_ledger", {})
+	var confirmed: Dictionary = ledger.get("confirmed", {})
+	var candidates: Dictionary = ledger.get("candidates", {})
+	var held: Dictionary = ledger.get("held", {})
+	var contaminated: Dictionary = ledger.get("contaminated", {})
+	var spent := {
+		TICKET_FOOD: allocation_count(ALLOCATION_HUMAN_ZONE),
+		TICKET_POWER: allocation_count(ALLOCATION_ROBOT_MAINTENANCE),
+		TICKET_SIGNAL: allocation_count(ALLOCATION_SIGNAL_BOARD),
+	}
+	return "보유 %s | 확정 %s | 후보 %s | 보류 %s | 오염 %s | 예약 %s" % [
+		_ticket_counts_text_or_none(ration_tickets),
+		_ticket_counts_text_or_none(confirmed),
+		_ticket_counts_text_or_none(candidates),
+		_ticket_counts_text_or_none(held),
+		_ticket_counts_text_or_none(contaminated),
+		_ticket_counts_text_or_none(spent),
+	]
+
+func tag_facility_response_line(last_run_result: Dictionary = {}) -> String:
+	var recall_quality := String(last_run_result.get("recall_quality", ""))
+	if recall_quality == "unstable_recall":
+		return "정산 카운터가 보류 표식을 먼저 펼칩니다."
+	if recall_quality == "emergency_retrieval":
+		return "회수 플랫폼이 아직 식지 않아 정산표가 천천히 열립니다."
+	if recall_quality == "boss_interrupted":
+		return "이름 보관함이 심사 중단 기록을 조율대에 넘깁니다."
+	if ticket_count(TICKET_SIGNAL) > 0:
+		return "출격 게시판이 수신태그를 위험 구역 접근권으로 묶습니다."
+	if ticket_count(TICKET_POWER) > 0:
+		return "정비대가 충전태그를 차징 조율권으로 따로 빼둡니다."
+	if ticket_count(TICKET_FOOD) > 0:
+		return "정산 카운터가 식량태그를 다음 체류 생존권으로 보관합니다."
+	return "보급소는 아직 다음 출격을 허가할 표를 기다립니다."
+
+func tag_context() -> Dictionary:
+	return {
+		"food": ticket_count(TICKET_FOOD),
+		"power": ticket_count(TICKET_POWER),
+		"signal": ticket_count(TICKET_SIGNAL),
+		"human_alloc": allocation_count(ALLOCATION_HUMAN_ZONE),
+		"robot_alloc": allocation_count(ALLOCATION_ROBOT_MAINTENANCE),
+		"signal_alloc": allocation_count(ALLOCATION_SIGNAL_BOARD),
+		"signal_clues": signal_clue_count(),
+	}
 
 func allocation_summary_short() -> String:
 	return "배분 인간%d 정비%d 게시%d" % [
@@ -924,6 +997,10 @@ func _ticket_counts_text(counts: Dictionary) -> String:
 		if count > 0:
 			parts.append("%s +%d" % [String(TICKET_LABELS[ticket_id]), count])
 	return ", ".join(parts)
+
+func _ticket_counts_text_or_none(counts: Dictionary) -> String:
+	var text := _ticket_counts_text(counts)
+	return "없음" if text == "" else text
 
 func _allocation_ticket_id(allocation_id: String) -> String:
 	match allocation_id:

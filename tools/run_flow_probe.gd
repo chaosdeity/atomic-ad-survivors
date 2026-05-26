@@ -15,6 +15,7 @@ func _run() -> void:
 	await _probe_boss_recall()
 	await _probe_boss_victory()
 	await _probe_terminal_action_parity()
+	await _probe_tag_settlement_and_recall_quality()
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
 
@@ -109,6 +110,67 @@ func _probe_terminal_action_parity() -> void:
 		"button callback was %s" % callback_method
 	)
 
+func _probe_tag_settlement_and_recall_quality() -> void:
+	var fast_main = await _new_main()
+	fast_main.first_sortie = false
+	fast_main.first_recall_done = true
+	fast_main.elapsed = 20.0
+	fast_main._finish_match("game_over")
+	var fast_settlement: Dictionary = fast_main.last_run_result.get("ration_ticket_settlement", {})
+	var fast_candidates: Dictionary = fast_settlement.get("candidates", {})
+	var fast_confirmed: Dictionary = fast_settlement.get("confirmed", {})
+	var fast_no_tags := int(fast_candidates.get("food", 0)) == 0 and int(fast_candidates.get("power", 0)) == 0 and int(fast_candidates.get("signal", 0)) == 0 and int(fast_confirmed.get("food", 0)) == 0
+	var fast_ui_text := String(fast_main.hud.result_label.text)
+	var fast_ui_ok := fast_ui_text.find("정산 근거 없음") != -1 and fast_ui_text.find("일반 정산 잠김") != -1 and fast_ui_text.find("45초 미만") != -1
+	var fast_quality_ok := String(fast_main.last_run_result.get("recall_quality", "")) == "unstable_recall"
+	fast_main._handle_terminal_action()
+	var fast_loop_ok: bool = fast_main.match_state == "supply"
+	_record("45s under fast failure grants no tag settlement", fast_no_tags)
+	_record("45s under fast failure explains no settlement", fast_ui_ok)
+	_record("45s under fast failure has unstable recall quality", fast_quality_ok)
+	_record("post-recall fast failure still returns to supply", fast_loop_ok)
+	await _finish_main(fast_main)
+
+	var story_main = await _new_main()
+	story_main.elapsed = 20.0
+	story_main._finish_match("recalled")
+	var story_ok: bool = String(story_main.last_run_result.get("recall_quality", "")) == "story_recall" and story_main.meta_progression.trace_count("torn_ad_flyer") > 0
+	_record("first forced recall keeps story reward separate", story_ok)
+	await _finish_main(story_main)
+
+	var tier_main = await _new_main()
+	tier_main.first_sortie = false
+	tier_main.first_recall_done = true
+	tier_main.elapsed = 90.0
+	tier_main._finish_match("victory")
+	var ninety_settlement: Dictionary = tier_main.last_run_result.get("ration_ticket_settlement", {})
+	var ninety_confirmed: Dictionary = ninety_settlement.get("confirmed", {})
+	var ninety_ok := int(ninety_confirmed.get("food", 0)) >= 1
+	await _finish_main(tier_main)
+
+	var signal_main = await _new_main()
+	signal_main.first_sortie = false
+	signal_main.first_recall_done = true
+	signal_main.elapsed = 120.0
+	signal_main.open_house_signal_stage = 1
+	signal_main._finish_match("victory")
+	var signal_settlement: Dictionary = signal_main.last_run_result.get("ration_ticket_settlement", {})
+	var signal_candidates: Dictionary = signal_settlement.get("candidates", {})
+	var signal_ok := int(signal_candidates.get("signal", 0)) >= 1 and Array(signal_main.last_run_result.get("signal_clue_candidates", [])).has("faint_signal")
+	await _finish_main(signal_main)
+
+	var deep_main = await _new_main()
+	deep_main.first_sortie = false
+	deep_main.first_recall_done = true
+	deep_main.elapsed = 240.0
+	deep_main.open_house_signal_stage = 3
+	deep_main._finish_match("victory")
+	var deep_ok := Array(deep_main.last_run_result.get("signal_clue_candidates", [])).has("near_signal")
+	_record("90s run confirms food tag survival right", ninety_ok)
+	_record("120s run can produce signal access candidate", signal_ok)
+	_record("240s run can produce boss-route signal clue candidate", deep_ok)
+	await _finish_main(deep_main)
+
 func _probe_r01_campaign_map_flow() -> void:
 	var main = await _new_main()
 	main._show_supply_depot()
@@ -117,6 +179,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	var initial_ui_text: String = main.hud.campaign_map_visible_text()
 	var initial_ui_clean: bool = initial_ui_text.find("R01-L") == -1
 	var readability_text_ok: bool = initial_ui_text.find("범례: 초록 접근 가능") != -1 and initial_ui_text.find("핀 선택 후 출격") != -1 and initial_ui_text.find("작전권:") != -1 and initial_ui_text.find("얇은 선은 곁길") != -1
+	var initial_tag_hint_ok: bool = initial_ui_text.find("태그") != -1 and initial_ui_text.find("진입 가능") != -1
 
 	main._select_r01_campaign_node("R01-L01")
 	var l01_selected_text: String = main.hud.campaign_map_visible_text()
@@ -151,14 +214,17 @@ func _probe_r01_campaign_map_flow() -> void:
 	main._select_r01_campaign_node("R01-L05")
 	var l05_text: String = main.hud.campaign_map_visible_text()
 	var l05_false_route_ok: bool = l05_text.find("가짜 귀환로") != -1 and l05_text.find("회수선: 불안정") != -1 and l05_text.find("실제 회수선이 아닙니다") != -1 and l05_text.find("보급소로 돌아가기") == -1
+	var l05_tag_hint_ok: bool = l05_text.find("수신태그") != -1 and l05_text.find("회수선 출처") != -1
 	var final_ui_clean: bool = l05_text.find("R01-L") == -1
 	main.debug_tools.detail_visible = true
 	var debug_text: String = main._debug_overlay_text()
 	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1 and debug_text.find("bias=mailbox_pincer") != -1
 	var debug_source_ok: bool = debug_text.find("r01 sources zone=") != -1 and debug_text.find("r01 hazard sources") != -1
+	var debug_tag_ok: bool = debug_text.find("recall quality") != -1 and debug_text.find("tag ledger") != -1 and debug_text.find("tag access current=") != -1
 
 	_record("campaign map opens from supply", open_ok)
 	_record("campaign map has readable legend and instruction", readability_text_ok)
+	_record("campaign map shows selected node tag hint", initial_tag_hint_ok)
 	_record("L01 selected highlight exists", l01_highlight_ok)
 	_record("campaign UI hides internal ids", initial_ui_clean and final_ui_clean)
 	_record("L01 select -> sortie starts", sortie_ok)
@@ -168,9 +234,11 @@ func _probe_r01_campaign_map_flow() -> void:
 	_record("L02 sortie changes combat entry", l02_entry_ok)
 	_record("L03 locked until L02 condition", l03_locked_before_l02 and l03_unlocked_after_l02 and l03_opened_text_ok)
 	_record("L05 displayed as false route", l05_false_route_ok)
+	_record("L05 shows signal tag false-return warning", l05_tag_hint_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
 	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
 	_record("debug HUD exposes source summaries", debug_source_ok)
+	_record("debug HUD exposes tag ledger and recall quality", debug_tag_ok)
 	_probe_r01_campaign_node_entry_profiles(main)
 	main._close_r01_campaign_map()
 	await _finish_main(main)

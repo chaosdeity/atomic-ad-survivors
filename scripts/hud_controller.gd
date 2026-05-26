@@ -666,10 +666,16 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var outpost_lines := outpost_blockout.natural_summary_lines(outpost_state)
 	var facility_line := _compact_ui_text(str(outpost_lines[0]), 34)
 	var reaction_summary := str(session_progress.get("allocation_reaction_summary", ""))
+	var tag_facility_response := str(session_progress.get("tag_facility_response", ""))
+	if reaction_summary == "" or reaction_summary.begins_with("보급소는 아직"):
+		reaction_summary = tag_facility_response
 	if reaction_summary == "":
 		reaction_summary = str(outpost_lines[1])
 	var allocation_summary := _compact_ui_text(str(session_progress.get("allocation_summary", "")), 28)
-	var place_allocation_line := _compact_ui_text("%s / %s" % [facility_line, allocation_summary], 42)
+	var tag_rights := str(session_progress.get("tag_rights_summary", ""))
+	tag_rights = tag_rights.replace("식량태그=", "식량=").replace("충전태그=", "충전=").replace("수신태그=", "수신=")
+	var rights_or_allocation := _compact_ui_text(tag_rights if tag_rights != "" else allocation_summary, 30)
+	var place_allocation_line := _compact_ui_text("%s / %s" % ["시설: 회수/정산/정비/게시/게이트", rights_or_allocation], 48)
 	reaction_summary = _compact_ui_text(reaction_summary, 24)
 	board_text = _compact_ui_text(board_text, 30)
 	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
@@ -699,7 +705,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var actions: Array[Dictionary] = supply_actions
 	if actions.is_empty():
 		actions = _fallback_supply_upgrade_actions(meta_progression)
-	supply_scroll_hint_label.text = _compact_supply_hint(clause_preview, next_change, boss_hint)
+	supply_scroll_hint_label.text = _compact_supply_hint(clause_preview, next_change, boss_hint, str(session_progress.get("tag_ledger_summary", "")))
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
@@ -905,10 +911,14 @@ func _on_campaign_close_requested() -> void:
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	var max_lines := 6
 	var priority_prefixes := [
+		"런 정산 기준:",
+		"회수 상태:",
+		"일반 정산 잠김:",
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
 		"후보 정산:",
+		"태그 용도:",
 		"보급소 보관:",
 		"지역 오염 기록:",
 		"다음 출격 변화:",
@@ -941,8 +951,10 @@ func _append_unique_compact_line(lines: Array[String], line: String, max_chars: 
 		return
 	lines.append(compact)
 
-func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint: String) -> String:
+func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint: String, tag_ledger: String = "") -> String:
 	var parts: Array[String] = []
+	if tag_ledger != "":
+		parts.append("권리 %s" % tag_ledger)
 	if clause_preview != "":
 		parts.append("약관 %s" % clause_preview)
 	if next_change != "" and next_change != "배분 효과 없음":

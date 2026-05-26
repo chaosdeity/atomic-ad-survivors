@@ -226,6 +226,12 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("outpost_selected_action_surface", "")),
 		],
 		"outpost ui bounds %s" % str(info.get("outpost_ui_bounds_summary", "")),
+		"recall quality %s anti_farm=%s" % [
+			str(info.get("recall_quality", "")),
+			str(info.get("anti_farm_reason", "")),
+		],
+		"tag ledger %s" % str(info.get("settlement_tag_ledger_line", "")),
+		"tag access current=%s" % str(info.get("current_node_tag_context", "")),
 		"hp %.0f/%.0f  enemies %d/%d  charge %s" % [
 			float(info.get("player_hp", 0.0)),
 			float(info.get("max_hp", 0.0)),

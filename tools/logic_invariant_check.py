@@ -24,6 +24,8 @@ PATHS = {
     "result": ROOT / "scripts" / "run_result_evaluator.gd",
     "meta": ROOT / "scripts" / "meta_progression.gd",
     "hud": ROOT / "scripts" / "hud_controller.gd",
+    "campaign": ROOT / "scripts" / "r01_campaign_map.gd",
+    "outpost": ROOT / "scripts" / "outpost_layout_blockout.gd",
     "boss": ROOT / "scripts" / "boss_controller.gd",
     "visible_terms": ROOT / "story" / "01_bible" / "visible_terminology_rules_0_2.md",
     "cards": ROOT / "scripts" / "level_up_cards.gd",
@@ -173,6 +175,8 @@ def check_reward_economy(t: dict[str, str], results: list[Check]) -> None:
     flyer_body = function_body(result, "_torn_ad_flyer_reward", static=True)
     core_body = function_body(result, "_campaign_core_fragment_reward", static=True)
     clue_body = function_body(result, "_signal_clue_candidates", static=True)
+    recall_body = function_body(result, "_recall_quality", static=True)
+    ledger_body = function_body(result, "_settlement_tag_ledger", static=True)
 
     add(
         results,
@@ -188,12 +192,32 @@ def check_reward_economy(t: dict[str, str], results: list[Check]) -> None:
     )
     add(
         results,
+        "PASS" if has_all(eval_body, ["signal_reward_allowed", "general_reward_allowed", "signal_clue_candidates = _signal_clue_candidates"]) else "FAIL",
+        "tag settlement",
+        "signal clue candidates are gated away from below-threshold quick failures",
+    )
+    add(
+        results,
         "PASS" if all(name in result for name in tier_names) and all(value in result for value in ["60.0", "90.0", "120.0", "180.0", "240.0"]) else "FAIL",
         "reward economy",
         "60/90/120/180/240 reward tiers exist",
     )
     add(results, "PASS" if '"reward_lines": reward_lines' in result else "FAIL", "reward economy", "reward_lines returned")
     add(results, "PASS" if '"anti_farm_reason": anti_farm_reason' in result else "FAIL", "reward economy", "anti_farm_reason returned")
+    add(results, "PASS" if '"recall_quality": recall_quality' in result else "FAIL", "tag settlement", "recall_quality returned")
+    add(results, "PASS" if '"settlement_tag_ledger": tag_ledger' in result else "FAIL", "tag settlement", "settlement_tag_ledger returned")
+    add(
+        results,
+        "PASS" if has_all(recall_body, ["RECALL_STABLE", "RECALL_EMERGENCY", "RECALL_UNSTABLE", "RECALL_BOSS_INTERRUPTED", "RECALL_STORY", "not general_reward_allowed"]) else "FAIL",
+        "tag settlement",
+        "recall quality separates stable, emergency, unstable, boss interrupted, and story recall",
+    )
+    add(
+        results,
+        "PASS" if has_all(ledger_body, ["confirmed", "candidates", "approved", "held", "contaminated", "consumed_or_reserved", "next_run_tags", "rights"]) else "FAIL",
+        "tag settlement",
+        "settlement tag ledger summarizes confirmed/candidate/held/contaminated/next-run rights",
+    )
     add(
         results,
         "PASS" if has_all(eval_body, ["torn_ad_flyer_reward", "signal_clue_candidates", "_torn_ad_flyer_reward", "_signal_clue_candidates"]) else "FAIL",
@@ -277,6 +301,8 @@ def check_meta_progression(t: dict[str, str], results: list[Check]) -> None:
     add(results, "PASS" if upgrade_count == 16 else "FAIL", "meta progression", f"16 upgrade definitions exist (found {upgrade_count})")
     for name in ["upgrade_defs", "can_buy", "buy", "is_unlocked", "upgrade_level", "bonuses"]:
         add(results, "PASS" if function_body(meta, name) else "FAIL", "meta progression", f"{name}() exists")
+    for name in ["tag_rights_summary_line", "tag_ledger_summary_line", "tag_facility_response_line", "record_recall_quality", "tag_context"]:
+        add(results, "PASS" if function_body(meta, name) else "FAIL", "tag settlement", f"{name}() exists")
     add(
         results,
         "PASS" if has_all(reset_body, ["meta_progression.bonuses()", "auto_damage_bonus", "charge_damage_bonus", "max_hp_bonus"]) else "FAIL",
@@ -408,6 +434,8 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
     debug = t.get("debug", "")
     main = t.get("main", "")
     hud = t.get("hud", "")
+    campaign = t.get("campaign", "")
+    outpost = t.get("outpost", "")
 
     add(results, "PASS" if "DEBUG_TOOLS_ENABLED" in config else "FAIL", "ui/debug", "DEBUG_TOOLS_ENABLED exists")
     add(
@@ -433,6 +461,30 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
         "PASS" if "set_debug_text" in hud and "debug_panel" in hud else "FAIL",
         "ui/debug",
         "HUD has dedicated debug text surface",
+    )
+    add(
+        results,
+        "PASS" if has_all(main + debug, ["recall_quality", "settlement_tag_ledger", "anti_farm_reason", "tag_access_hints", "current_node_tag_context"]) else "FAIL",
+        "ui/debug",
+        "F12 debug exposes recall quality, ledger, anti-farm reason, and tag access hints",
+    )
+    add(
+        results,
+        "PASS" if has_all(hud, ["tag_rights_summary", "tag_ledger_summary", "tag_facility_response"]) else "FAIL",
+        "ui/debug",
+        "general outpost UI uses natural tag rights and facility response summaries",
+    )
+    add(
+        results,
+        "PASS" if has_all(outpost, ["tag_facility_response", "recall_quality", "tag_ledger_summary"]) else "FAIL",
+        "ui/debug",
+        "outpost blockout reacts to tag ledger and recall quality",
+    )
+    add(
+        results,
+        "PASS" if has_all(campaign, ["tag_hint", "node_tag_hint", "all_tag_hint_summary", "tag_context"]) else "FAIL",
+        "ui/debug",
+        "R01 campaign nodes expose natural tag access hints",
     )
 
 

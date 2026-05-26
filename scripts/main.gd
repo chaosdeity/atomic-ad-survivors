@@ -2277,6 +2277,7 @@ func _session_progress_data() -> Dictionary:
 		"selected_campaign_node_role": R01CampaignMap.node_operation_role(selected_r01_node_id),
 		"selected_campaign_node_spawn": R01CampaignMap.node_spawn_axis_label(selected_r01_node_id),
 		"selected_campaign_node_reaction": R01CampaignMap.node_region_reaction(selected_r01_node_id),
+		"selected_campaign_node_tag_hint": R01CampaignMap.node_tag_hint(selected_r01_node_id, meta_progression.tag_context()),
 		"campaign_board_line": _r01_campaign_board_line(),
 		"campaign_new_signal_line": _r01_campaign_change_banner(),
 		"boss_signal_state": boss_signal_state,
@@ -2297,6 +2298,13 @@ func _session_progress_data() -> Dictionary:
 		"r01_finale_recovery_description": RoutePhraseResolver.r01_finale_recovery_description(r01_state),
 		"r01_finale_recovery_progress_phrase": RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
 		"ration_ticket_summary": meta_progression.ration_ticket_summary(),
+		"tag_rights_summary": meta_progression.tag_rights_summary_line(),
+		"tag_ledger_summary": meta_progression.tag_ledger_summary_line(last_run_result),
+		"tag_facility_response": meta_progression.tag_facility_response_line(last_run_result),
+		"recall_quality": String(last_run_result.get("recall_quality", "")),
+		"recall_quality_label": String(last_run_result.get("recall_quality_label", "")),
+		"recall_quality_line": String(last_run_result.get("recall_quality_line", "")),
+		"anti_farm_reason": String(last_run_result.get("anti_farm_reason", "")),
 		"allocation_summary": meta_progression.allocation_summary_short(),
 		"allocation_human_count": meta_progression.allocation_count(MetaProgression.ALLOCATION_HUMAN_ZONE),
 		"allocation_robot_count": meta_progression.allocation_count(MetaProgression.ALLOCATION_ROBOT_MAINTENANCE),
@@ -2342,7 +2350,7 @@ func _session_progress_lines() -> Array[String]:
 	]
 
 func _r01_campaign_region_reaction_line() -> String:
-	var node_id := last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
+	var node_id: String = last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
 	return "지역 반응: %s" % R01CampaignMap.node_region_reaction(node_id)
 
 func _finale_recovery_lines() -> Array[String]:
@@ -2552,6 +2560,7 @@ func _apply_run_result_progression() -> void:
 	var signal_report := meta_progression.grant_signal_clue_candidates(Array(last_run_result.get("signal_clue_candidates", [])))
 	var run_flyer_bonus := meta_progression.grant_run_flyer_bonus(int(last_run_result.get("torn_ad_flyer_reward", 0)))
 	var ration_report := meta_progression.grant_ration_ticket_settlement(Dictionary(last_run_result.get("ration_ticket_settlement", {})))
+	meta_progression.record_recall_quality(String(last_run_result.get("recall_quality", "")), String(last_run_result.get("recall_quality_line", "")))
 	var contamination_report := Dictionary(ration_report.get("contamination_report", {}))
 	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
 	for line in _signal_clue_reward_lines(signal_report):
@@ -2746,6 +2755,7 @@ func _r01_campaign_map_data() -> Dictionary:
 		"last_completed_node_id": last_completed_r01_node_id,
 		"opened_node_ids": r01_campaign_new_signal_node_ids.duplicate(),
 		"change_banner": _r01_campaign_change_banner(),
+		"tag_context": meta_progression.tag_context(),
 	}
 
 func _r01_campaign_display_states() -> Dictionary:
@@ -2773,6 +2783,9 @@ func _r01_campaign_board_line() -> String:
 		R01CampaignMap.node_name(selected_r01_node_id),
 		R01CampaignMap.node_objective(selected_r01_node_id),
 	]
+	var tag_hint := R01CampaignMap.node_tag_hint(selected_r01_node_id, meta_progression.tag_context())
+	if tag_hint != "":
+		line = "%s / %s" % [line, tag_hint]
 	if not r01_campaign_new_signal_node_ids.is_empty():
 		line = "%s / %s" % [line, _r01_campaign_change_banner()]
 	return line
@@ -3230,6 +3243,12 @@ func _debug_info() -> Dictionary:
 		"outpost_selected_action_surface": outpost_blockout.selected_action_surface(outpost_state),
 		"outpost_ui_bounds_summary": hud.outpost_ui_bounds_summary(),
 		"outpost_debug_lines": outpost_blockout.debug_lines(outpost_state),
+		"recall_quality": String(last_run_result.get("recall_quality", "")),
+		"settlement_tag_ledger": JSON.stringify(last_run_result.get("settlement_tag_ledger", {})),
+		"settlement_tag_ledger_line": String(last_run_result.get("settlement_tag_ledger_line", "")),
+		"anti_farm_reason": String(last_run_result.get("anti_farm_reason", "")),
+		"tag_access_hints": R01CampaignMap.all_tag_hint_summary(meta_progression.tag_context()),
+		"current_node_tag_context": R01CampaignMap.node_tag_hint(current_r01_node_id, meta_progression.tag_context()),
 		"enemy_role_summary": enemies.role_summary(),
 		"threat_count": active_threats.size(),
 		"last_threat_label": last_threat_label,

@@ -128,6 +128,9 @@ func _probe_supply_panel(main) -> void:
 		"regional_clause_short": "오픈하우스 방문 약관 강화와 가족 적합성 검수",
 		"allocation_summary": "식량태그는 인간 구역, 충전태그는 정비대, 수신태그는 출격 게시판에 임시 배분됨",
 		"allocation_reaction_summary": "보급소 정비대가 수신태그를 보고 차징 조율표를 다시 붙였습니다",
+		"tag_rights_summary": "식량태그=생존권 / 충전태그=정비권 / 수신태그=접근권",
+		"tag_ledger_summary": "보유 식량태그 +3, 충전태그 +2, 수신태그 +2 | 후보 수신태그 +1 | 보류 없음",
+		"tag_facility_response": "출격 게시판이 수신태그를 위험 구역 접근권으로 묶습니다.",
 		"next_objective_short": "오픈하우스 거리에서 수신태그 후보를 고정하고 모델하우스 접근로를 확인",
 		"outpost_event_log": [
 			"세븐: 수신태그는 승인됐지만 광고 시스템은 아직 이 실수를 모릅니다.",
@@ -166,6 +169,7 @@ func _probe_supply_panel(main) -> void:
 	_record("supply event log compact", event_text.length() <= 58 and _line_count(event_text) <= 1, "%d chars - %s" % [event_text.length(), event_text])
 	_record("supply hint compact", hint_text.length() <= 65 and _line_count(hint_text) <= 1, "%d chars - %s" % [hint_text.length(), hint_text])
 	_record("supply place anchors visible", visible_text.find("시설:") != -1 and visible_text.find("출격 게시판") != -1 and visible_text.find("출격 게이트") != -1)
+	_record("supply tag rights visible", visible_text.find("생존권") != -1 or visible_text.find("접근권") != -1)
 	_record("supply general UI hides internal outpost ids", visible_text.find("recovery_platform") == -1 and visible_text.find("hard_blocker") == -1 and visible_text.find("anchor=(") == -1)
 
 	var visible_buttons := 0
@@ -193,6 +197,9 @@ func _probe_r03_supply_panel(main) -> void:
 		"regional_clause_short": "수취/반송 판정 보류와 보관 기한 재검사",
 		"allocation_summary": "보급태그는 물자 칸, 통행태그는 레일 우회 기록, 진료태그 기록은 보류함",
 		"allocation_reaction_summary": "미나가 물자와 목적지 기록을 따로 묶었습니다",
+		"tag_rights_summary": "식량태그=생존권 / 충전태그=정비권 / 수신태그=접근권",
+		"tag_ledger_summary": "보유 식량태그 +3, 충전태그 +2, 수신태그 +2 | 보류 진료태그 기록",
+		"tag_facility_response": "정산 카운터가 보류 표식을 먼저 펼칩니다.",
 		"next_objective_short": "R03-L02에서 드론 재검사 회피",
 		"outpost_event_log": [
 			"윤서: 이름이랑 주소는 따로 둬.",

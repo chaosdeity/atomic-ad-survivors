@@ -50,6 +50,7 @@ const NODE_DEFS := {
 		"spawn_bias": "wide_edge",
 		"spawn_axis_label": "외곽 회수선 너머에서 느리게 접근",
 		"operation_role": "외곽 진입 작전권",
+		"tag_hint": "태그 없이 진입 가능 / 식량태그는 긴 체류 보험",
 		"region_reaction": "침묵 가장자리의 회수선이 한 번 더 고정됩니다.",
 		"blockout_variant": "first_visit",
 		"blockout_phrase": "낮은 광고 밀도, 보급소 회수선의 가장자리",
@@ -75,6 +76,7 @@ const NODE_DEFS := {
 		"spawn_bias": "mailbox_pincer",
 		"spawn_axis_label": "우편함과 현관 양쪽에서 포위",
 		"operation_role": "반복 주택가 안쪽 작전권",
+		"tag_hint": "식량태그와 충전태그가 있으면 포위 진입이 안정됩니다.",
 		"region_reaction": "우편함들이 같은 주소를 다시 인쇄합니다.",
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "우편함, 입주 문구, 쿠폰 밀도가 올라가는 반복 주택가",
@@ -100,6 +102,7 @@ const NODE_DEFS := {
 		"spawn_bias": "signal_converge",
 		"spawn_axis_label": "모델하우스 축에서 심사 신호 수렴",
 		"operation_role": "결절 접근 작전권",
+		"tag_hint": "수신태그와 송출 기록이 심사 접근 판단에 중요합니다.",
 		"region_reaction": "상담 부스가 윤서의 이름을 고객 명단에 올리려 합니다.",
 		"blockout_variant": "destroy_node",
 		"blockout_phrase": "모델하우스 방향의 결절 신호와 보스 심사 절차",
@@ -125,6 +128,7 @@ const NODE_DEFS := {
 		"spawn_bias": "quiet_pocket",
 		"spawn_axis_label": "낮은 배수로 흔적에서 느린 압박",
 		"operation_role": "우회/저신호 작전권",
+		"tag_hint": "식량태그가 부족하면 오래 버티기 어려운 우회로입니다.",
 		"region_reaction": "배수구 아래에서 회수되지 않은 표식이 남았습니다.",
 		"blockout_variant": "extract_memory",
 		"blockout_phrase": "위험은 낮지만 흔적이 진하게 남는 배수로 곁길",
@@ -150,6 +154,7 @@ const NODE_DEFS := {
 		"spawn_bias": "false_return_pincer",
 		"spawn_axis_label": "귀환처럼 보이는 화살표 뒤쪽에서 급습",
 		"operation_role": "위험 귀환/재방문 작전권",
+		"tag_hint": "수신태그가 부족하면 보급소가 회수선 출처를 의심합니다.",
 		"region_reaction": "보급소가 해당 회수선의 출처를 인정하지 않습니다.",
 		"blockout_variant": "broadcast_record_3",
 		"blockout_phrase": "귀환 UI를 흉내 내는 산책로, 혼동과 광고 스피커 위험",
@@ -176,6 +181,7 @@ var _current_node_id := NODE_L01
 var _last_completed_node_id := ""
 var _opened_node_ids: Array[String] = []
 var _change_banner := ""
+var _tag_context := {}
 var _node_buttons := {}
 var _title_label: Label
 var _hint_label: Label
@@ -221,6 +227,40 @@ static func node_combat_goal(node_id: String) -> String:
 
 static func node_operation_role(node_id: String) -> String:
 	return String(node_def(node_id).get("operation_role", "작전권"))
+
+static func node_tag_hint(node_id: String, tag_context: Dictionary = {}) -> String:
+	var base := String(node_def(node_id).get("tag_hint", "태그 힌트 없음"))
+	var food := int(tag_context.get("food", 0))
+	var power := int(tag_context.get("power", 0))
+	var signal_tags := int(tag_context.get("signal", 0))
+	var clues := int(tag_context.get("signal_clues", 0))
+	match node_id:
+		NODE_L01:
+			return base
+		NODE_L02:
+			if food > 0 or power > 0:
+				return "식량/충전 권리 보유: 반복 주택 진입 안정"
+			return base
+		NODE_L03:
+			if signal_tags > 0 or clues >= 3:
+				return "수신 권리/송출 기록 확인: 심사 접근 준비"
+			return base
+		NODE_L04:
+			if food <= 0:
+				return "식량태그 없음: 긴 우회 체류 주의"
+			return "식량 권리 보유: 배수로 체류 여유"
+		NODE_L05:
+			if signal_tags <= 0:
+				return "수신태그 부족: 회수선 출처 불인정 위험"
+			return "수신 권리 보유: 가짜 귀환 신호 대조 가능"
+		_:
+			return base
+
+static func all_tag_hint_summary(tag_context: Dictionary = {}) -> String:
+	var parts: Array[String] = []
+	for node_id in NODE_IDS:
+		parts.append("%s:%s" % [String(node_id), node_tag_hint(String(node_id), tag_context)])
+	return " | ".join(parts)
 
 static func node_region_reaction(node_id: String) -> String:
 	return String(node_def(node_id).get("region_reaction", "R01 지역 반응이 작전도에 남습니다."))
@@ -406,6 +446,7 @@ func update_map(data: Dictionary) -> void:
 	_current_node_id = String(data.get("current_node_id", _selected_node_id))
 	_last_completed_node_id = String(data.get("last_completed_node_id", ""))
 	_change_banner = String(data.get("change_banner", ""))
+	_tag_context = Dictionary(data.get("tag_context", {})).duplicate(true)
 	_opened_node_ids.clear()
 	for node_id in Array(data.get("opened_node_ids", [])):
 		_opened_node_ids.append(String(node_id))
@@ -458,8 +499,9 @@ func _refresh_controls() -> void:
 		String(selected_def["risk"]),
 		String(selected_def["recovery_line"]),
 	]
-	_objective_label.text = "목표\n%s\n\n스폰\n%s" % [
+	_objective_label.text = "목표 %s\n태그 %s\n스폰 %s" % [
 		String(selected_def["objective"]),
+		node_tag_hint(_selected_node_id, _tag_context),
 		node_spawn_axis_label(_selected_node_id),
 	]
 

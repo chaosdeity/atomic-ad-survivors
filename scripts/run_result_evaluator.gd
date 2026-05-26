@@ -9,6 +9,11 @@ const TIER_STABLE_90 := "stable_90"
 const TIER_SIGNAL_120 := "signal_120"
 const TIER_DEEP_180 := "deep_180"
 const TIER_BOSS_ROUTE_240 := "boss_route_240"
+const RECALL_STABLE := "stable_recall"
+const RECALL_EMERGENCY := "emergency_retrieval"
+const RECALL_UNSTABLE := "unstable_recall"
+const RECALL_BOSS_INTERRUPTED := "boss_interrupted"
+const RECALL_STORY := "story_recall"
 
 const TIER_LABELS := {
 	TIER_NONE: "정산 근거 없음",
@@ -26,6 +31,11 @@ const TICKET_LABELS := {
 	TICKET_FOOD: "식량태그",
 	TICKET_POWER: "충전태그",
 	TICKET_SIGNAL: "수신태그",
+}
+const TICKET_RIGHT_LABELS := {
+	TICKET_FOOD: "생존권",
+	TICKET_POWER: "정비권",
+	TICKET_SIGNAL: "접근권",
 }
 
 static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
@@ -62,7 +72,10 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 
 	var torn_ad_flyer_reward := _torn_ad_flyer_reward(reward_tier, effective_kills, level, peak_enemy_count) if general_reward_allowed else 0
 	var campaign_core_fragment_reward := _campaign_core_fragment_reward(match_state, boss_result_reason, boss_hp_ratio)
-	var signal_clue_candidates := _signal_clue_candidates(elapsed, boss_result_reason, boss_hp_ratio, open_house_time, open_house_signal_stage)
+	var signal_reward_allowed := general_reward_allowed or match_state == "boss_victory" or boss_result_reason == "boss_recall"
+	var signal_clue_candidates: Array[String] = []
+	if signal_reward_allowed:
+		signal_clue_candidates = _signal_clue_candidates(elapsed, boss_result_reason, boss_hp_ratio, open_house_time, open_house_signal_stage)
 	var ration_settlement := _ration_ticket_settlement(
 		elapsed,
 		match_state,
@@ -81,9 +94,13 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		terms_failure_risk,
 		general_reward_allowed
 	)
+	var recall_quality := _recall_quality(match_state, elapsed, first_sortie, boss_result_reason, fake_return_time, audit_pressure_level, terms_failure_risk, general_reward_allowed)
+	var tag_ledger := _settlement_tag_ledger(ration_settlement, recall_quality, anti_farm_reason)
 	var reward_lines := _reward_lines(
 		reward_tier,
 		general_reward_allowed,
+		recall_quality,
+		tag_ledger,
 		torn_ad_flyer_reward,
 		campaign_core_fragment_reward,
 		signal_clue_candidates,
@@ -119,6 +136,12 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"ration_ticket_settlement": ration_settlement,
 		"reward_lines": reward_lines,
 		"anti_farm_reason": anti_farm_reason,
+		"recall_quality": recall_quality,
+		"recall_quality_label": recall_quality_label(recall_quality),
+		"recall_quality_line": recall_quality_line(recall_quality),
+		"settlement_tag_ledger": tag_ledger,
+		"settlement_tag_ledger_line": settlement_tag_ledger_line(tag_ledger),
+		"tag_rights_line": tag_rights_line(),
 		"card_contributions": card_contributions,
 		"open_house_time": open_house_time,
 		"open_house_signal_stage": open_house_signal_stage,
@@ -133,6 +156,86 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"playtest_metrics": playtest_metrics,
 		"playtest_score": int(playtest_metrics.get("first_5_score", 0)),
 		"playtest_target_count": int(playtest_metrics.get("first_5_target_count", 7)),
+	}
+
+static func recall_quality_label(quality_id: String) -> String:
+	match quality_id:
+		RECALL_STABLE:
+			return "안정 회수"
+		RECALL_EMERGENCY:
+			return "긴급 인양"
+		RECALL_UNSTABLE:
+			return "불안정 회수"
+		RECALL_BOSS_INTERRUPTED:
+			return "심사 중단 회수"
+		RECALL_STORY:
+			return "첫 강제 회수"
+		_:
+			return "회수 판정 대기"
+
+static func recall_quality_line(quality_id: String) -> String:
+	match quality_id:
+		RECALL_STABLE:
+			return "회수 상태: 정산 근거가 충분해 다음 출격 조율이 안정적입니다."
+		RECALL_EMERGENCY:
+			return "회수 상태: 긴급 인양입니다. 보급소가 정산 근거를 엄격히 봅니다."
+		RECALL_UNSTABLE:
+			return "회수 상태: 회수선이 흔들려 후보와 보류 표식이 더 눈에 띕니다."
+		RECALL_BOSS_INTERRUPTED:
+			return "회수 상태: 심사 중단 기록이 이름 보관함과 조율대에 남습니다."
+		RECALL_STORY:
+			return "회수 상태: 첫 등록 직전 보급소가 강제로 윤서를 끌어왔습니다."
+		_:
+			return "회수 상태: 보급소가 정산표를 확인 중입니다."
+
+static func tag_rights_line() -> String:
+	return "태그 용도: 식량=생존권 / 충전=정비권 / 수신=접근권"
+
+static func settlement_tag_ledger_line(ledger: Dictionary) -> String:
+	return "태그 ledger: 확정 %s / 후보 %s / 승인 %s / 보류 %s / 오염 %s / 다음 %s" % [
+		_ticket_counts_text_or_none(Dictionary(ledger.get("confirmed", {}))),
+		_ticket_counts_text_or_none(Dictionary(ledger.get("candidates", {}))),
+		_ticket_counts_text_or_none(Dictionary(ledger.get("approved", {}))),
+		_ticket_counts_text_or_none(Dictionary(ledger.get("held", {}))),
+		_ticket_counts_text_or_none(Dictionary(ledger.get("contaminated", {}))),
+		_ticket_counts_text_or_none(Dictionary(ledger.get("next_run_tags", {}))),
+	]
+
+static func _recall_quality(match_state: String, elapsed: float, first_sortie: bool, boss_result_reason: String, fake_return_time: float, audit_pressure_level: int, terms_failure_risk: int, general_reward_allowed: bool) -> String:
+	if boss_result_reason == "boss_recall":
+		return RECALL_BOSS_INTERRUPTED
+	if match_state == "recalled" and first_sortie:
+		return RECALL_STORY
+	if not general_reward_allowed or fake_return_time >= 20.0 or audit_pressure_level >= 3 or terms_failure_risk > 0:
+		return RECALL_UNSTABLE
+	if match_state == "boss_victory" or match_state == "victory":
+		return RECALL_STABLE
+	if match_state == "game_over" or match_state == "recalled":
+		return RECALL_EMERGENCY
+	if elapsed >= 90.0:
+		return RECALL_STABLE
+	return RECALL_UNSTABLE
+
+static func _settlement_tag_ledger(settlement: Dictionary, recall_quality: String, anti_farm_reason: String) -> Dictionary:
+	var confirmed: Dictionary = settlement.get("confirmed", _empty_ticket_counts())
+	var candidates: Dictionary = settlement.get("candidates", _empty_ticket_counts())
+	var approved: Dictionary = settlement.get("approved", _empty_ticket_counts())
+	var held: Dictionary = settlement.get("held", _empty_ticket_counts())
+	var contaminated: Dictionary = settlement.get("contaminated", _empty_ticket_counts())
+	var next_run_tags := _empty_ticket_counts()
+	for ticket_id in [TICKET_FOOD, TICKET_POWER, TICKET_SIGNAL]:
+		next_run_tags[ticket_id] = int(confirmed.get(ticket_id, 0)) + int(approved.get(ticket_id, 0))
+	return {
+		"confirmed": confirmed.duplicate(true),
+		"candidates": candidates.duplicate(true),
+		"approved": approved.duplicate(true),
+		"held": held.duplicate(true),
+		"contaminated": contaminated.duplicate(true),
+		"consumed_or_reserved": _empty_ticket_counts(),
+		"next_run_tags": next_run_tags,
+		"recall_quality": recall_quality,
+		"anti_farm_reason": anti_farm_reason,
+		"rights": TICKET_RIGHT_LABELS.duplicate(true),
 	}
 
 static func _reward_tier(elapsed: float) -> String:
@@ -375,6 +478,8 @@ static func _append_unique(items: Array[String], item: String) -> void:
 static func _reward_lines(
 	reward_tier: String,
 	general_reward_allowed: bool,
+	recall_quality: String,
+	tag_ledger: Dictionary,
 	torn_ad_flyer_reward: int,
 	campaign_core_fragment_reward: int,
 	signal_clue_candidates: Array[String],
@@ -400,6 +505,7 @@ static func _reward_lines(
 ) -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
+	lines.append(recall_quality_line(recall_quality))
 	if anti_farm_reason != "":
 		lines.append("일반 정산 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
@@ -408,6 +514,8 @@ static func _reward_lines(
 		lines.append("결절 성과 후보(미반영): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
 	for line in _ration_ticket_lines(ration_settlement):
 		lines.append(line)
+	lines.append(tag_rights_line())
+	lines.append(settlement_tag_ledger_line(tag_ledger))
 	if boss_result_reason == "boss_recall":
 		lines.append("스마일 홈 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
 	if audit_pass_count > 0 or audit_fail_count > 0:
@@ -538,3 +646,7 @@ static func _ticket_counts_text(counts: Dictionary) -> String:
 		if count > 0:
 			parts.append("%s %d" % [String(TICKET_LABELS[ticket_id]), count])
 	return ", ".join(parts)
+
+static func _ticket_counts_text_or_none(counts: Dictionary) -> String:
+	var text := _ticket_counts_text(counts)
+	return "없음" if text == "" else text
