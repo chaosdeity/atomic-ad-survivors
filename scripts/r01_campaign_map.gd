@@ -181,6 +181,8 @@ var _current_node_id := NODE_L01
 var _last_completed_node_id := ""
 var _opened_node_ids: Array[String] = []
 var _change_banner := ""
+var _recommendation_line := ""
+var _recommendation_reason := ""
 var _tag_context := {}
 var _node_memory := {}
 var _node_buttons := {}
@@ -572,6 +574,8 @@ func update_map(data: Dictionary) -> void:
 	_current_node_id = String(data.get("current_node_id", _selected_node_id))
 	_last_completed_node_id = String(data.get("last_completed_node_id", ""))
 	_change_banner = String(data.get("change_banner", ""))
+	_recommendation_line = String(data.get("recommendation_line", ""))
+	_recommendation_reason = String(data.get("recommendation_reason", ""))
 	_tag_context = Dictionary(data.get("tag_context", {})).duplicate(true)
 	_node_memory = Dictionary(data.get("node_memory", {})).duplicate(true)
 	_opened_node_ids.clear()
@@ -626,9 +630,10 @@ func _refresh_controls() -> void:
 		String(selected_def["risk"]),
 		String(selected_def["recovery_line"]),
 	]
-	_objective_label.text = "목표 %s\n태그 %s\n스폰 %s" % [
+	_objective_label.text = "목표 %s\n태그 %s\n추천 %s\n스폰 %s" % [
 		String(selected_def["objective"]),
 		node_tag_hint(_selected_node_id, _tag_context),
+		_recommendation_reason if _recommendation_reason != "" else "현재 작전권 확인",
 		node_spawn_axis_label(_selected_node_id),
 	]
 
@@ -671,6 +676,8 @@ func _draw() -> void:
 func _current_change_banner() -> String:
 	if _change_banner != "":
 		return _change_banner
+	if _recommendation_line != "":
+		return _recommendation_line
 	if _last_completed_node_id != "":
 		return "%s 회수선 고정" % node_name(_last_completed_node_id)
 	return "작전도: 외곽 회수선 기준 설정"
@@ -681,7 +688,8 @@ func _bottom_map_line() -> String:
 	if not selected_memory.is_empty():
 		selected_note = node_map_memory_line(_selected_node_id, selected_memory)
 	var completed_name := "최근 회수 없음" if _last_completed_node_id == "" else "%s 회수선 고정" % node_name(_last_completed_node_id)
-	return "%s / %s" % [selected_note, completed_name]
+	var recommendation := _recommendation_line if _recommendation_line != "" else "다음 추천: 현재 작전권 확인"
+	return "%s / %s / %s" % [selected_note, completed_name, recommendation]
 
 func _draw_operation_district() -> void:
 	var area := Rect2(Vector2(18, 60), Vector2(280, 150))

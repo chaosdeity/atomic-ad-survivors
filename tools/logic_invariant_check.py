@@ -510,6 +510,24 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
         "campaign link",
         "F12 debug exposes R01 node memory summary",
     )
+    add(
+        results,
+        "PASS" if has_all(main + hud + campaign, ["_ten_minute_recommended_node_id", "next_recommendation_line", "recommendation_line", "다음 추천:"]) else "FAIL",
+        "10min loop",
+        "supply/result/campaign surfaces expose one natural next-operation recommendation",
+    )
+    add(
+        results,
+        "PASS" if has_all(main, ["_combat_timebox_hint", "_update_ration_candidate_feedback", "120초 신호 후보", "240초 결절 접근"]) else "FAIL",
+        "10min loop",
+        "combat HUD and first tag/signal candidate feedback are timeboxed for the 10-minute loop",
+    )
+    add(
+        results,
+        "PASS" if has_all(hud, ['var max_lines := 7', '"다음 추천:"', "정산 기록 %d개 더 있음"]) else "FAIL",
+        "10min loop",
+        "result screen keeps the settlement summary compact and folds overflow details",
+    )
 
 
 def print_results(results: list[Check]) -> None:

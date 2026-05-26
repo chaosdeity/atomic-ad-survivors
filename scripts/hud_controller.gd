@@ -681,18 +681,21 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var place_allocation_line := _compact_ui_text("%s / %s" % ["시설: 회수/정산/정비/게시/게이트", rights_or_allocation], 48)
 	reaction_summary = _compact_ui_text(reaction_summary, 24)
 	board_text = _compact_ui_text(board_text, 30)
-	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
+	var recommendation_line := str(session_progress.get("next_recommendation_line", ""))
+	var recommendation_reason := str(session_progress.get("next_recommendation_reason", ""))
+	var objective_short := _compact_ui_text(recommendation_line if recommendation_line != "" else str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 28)
+	var recommendation_hint := _compact_ui_text(recommendation_reason, 26)
 	clause_short = _compact_ui_text(clause_short, 22)
 	var campaign_board := _compact_ui_text(str(session_progress.get("campaign_board_line", "")), 42)
 	if campaign_board != "":
 		board_text = _compact_ui_text(campaign_board, 42)
-	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n목표: %s\n약관: %s" % [
+	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n추천: %s\n이유: %s" % [
 		_supply_currency_text(meta_progression),
 		place_allocation_line,
 		reaction_summary,
 		board_text,
 		objective_short,
-		clause_short,
+		recommendation_hint if recommendation_hint != "" else clause_short,
 	]
 	var event_lines := Array(session_progress.get("outpost_event_log", []))
 	var event_text := str(session_progress.get("r01_outpost_phrase", "보급소 기록 대기"))
@@ -912,19 +915,19 @@ func _on_campaign_close_requested() -> void:
 		campaign_close_callback.call()
 
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
-	var max_lines := 6
+	var max_lines := 7
 	var priority_prefixes := [
 		"런 정산 기준:",
 		"회수 상태:",
 		"일반 정산 잠김:",
 		"작전권:",
 		"구역 사건:",
+		"다음 추천:",
 		"다음 작전도 변화:",
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
 		"후보 정산:",
-		"태그 용도:",
 		"보급소 보관:",
 		"지역 오염 기록:",
 		"다음 출격 변화:",
@@ -947,8 +950,14 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 		if line.begins_with("정산 사유:") or line.begins_with("카드 기여:") or line.begins_with("광고 감사 결과:"):
 			_append_unique_compact_line(chosen, line, 48)
 	var hidden_count := progress_lines.size() - chosen.size()
-	if hidden_count > 0 and chosen.size() < max_lines:
-		chosen.append("정산 기록 %d개 더 있음" % hidden_count)
+	if hidden_count > 0:
+		var folded_line := "정산 기록 %d개 더 있음" % hidden_count
+		if chosen.size() < max_lines:
+			chosen.append(folded_line)
+		elif not chosen.is_empty():
+			var last_line := String(chosen[chosen.size() - 1])
+			if not last_line.begins_with("다음 작전도 변화:") and not last_line.begins_with("다음 추천:"):
+				chosen[chosen.size() - 1] = folded_line
 	return chosen
 
 func _append_unique_compact_line(lines: Array[String], line: String, max_chars: int) -> void:

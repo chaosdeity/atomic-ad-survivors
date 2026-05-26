@@ -55,12 +55,12 @@ const BOSS_SIGNAL_LABELS := {
 const TERMINAL_STATES := ["game_over", "victory", "recalled", "boss_victory"]
 const AUDIT_SEGMENTS := [
 	{"time": 30.0, "name": "정상 고객 예비 감사", "threshold": 120.0, "pass": "첫 기준 통과", "fail": "검문 로봇 증원"},
-	{"time": 60.0, "name": "전단 확산 감사", "threshold": 260.0, "pass": "태그 후보 판정 안정", "fail": "적 밀도 상승"},
+	{"time": 60.0, "name": "전단 확산 감사", "threshold": 260.0, "pass": "우편함 후보 판정 안정", "fail": "좌우 전단 밀도 상승"},
 	{"time": 90.0, "name": "오픈하우스 방문 감사", "threshold": 520.0, "pass": "수신태그 후보 노출", "fail": "오픈하우스 압력 상승"},
-	{"time": 120.0, "name": "가족 적합성 감사", "threshold": 1000.0, "pass": "카드 시너지 안정", "fail": "빠른 검수 로봇 등장"},
+	{"time": 120.0, "name": "가족 적합성 감사", "threshold": 1000.0, "pass": "모델하우스 신호 고정", "fail": "빠른 검수 로봇 등장"},
 	{"time": 150.0, "name": "정산 예비 감사", "threshold": 1800.0, "pass": "후보 승인률 보정", "fail": "후보 보류율 상승"},
-	{"time": 180.0, "name": "모델하우스 신호 감사", "threshold": 3200.0, "pass": "신호 위치 표시", "fail": "회수선 안정도 감소"},
-	{"time": 240.0, "name": "재심사 절차", "threshold": 6000.0, "pass": "심층 귀환 보정", "fail": "포위형 웨이브"},
+	{"time": 180.0, "name": "모델하우스 신호 감사", "threshold": 3200.0, "pass": "심사선 위치 표시", "fail": "회수선 안정도 감소"},
+	{"time": 240.0, "name": "재심사 절차", "threshold": 6000.0, "pass": "결절 접근 근거 확보", "fail": "모델하우스 포위형 웨이브"},
 	{"time": 300.0, "name": "결절 예비 감사", "threshold": 10000.0, "pass": "모델하우스 접근 암시", "fail": "강제 인양 위험"},
 ]
 const ENEMY_DENSITY_UI_CULL_START := 115
@@ -111,6 +111,7 @@ var r01_campaign_new_signal_node_ids: Array[String] = []
 var r01_campaign_node_memory := {}
 var r01_zone_times := {}
 var open_house_signal_stage := 0
+var ration_candidate_notice_total := 0
 var audit_segment_index := 0
 var audit_processing := 0.0
 var audit_total_processing := 0.0
@@ -223,6 +224,7 @@ func _process(delta: float) -> void:
 	_update_r01_zone(delta)
 	_update_audit_director(delta)
 	_update_playtest_runtime_metrics()
+	_update_ration_candidate_feedback()
 	_update_first_recall_event(delta)
 	_update_preboss_signal_events()
 	_try_start_boss_encounter()
@@ -1435,6 +1437,31 @@ func _update_open_house_signal_candidate() -> void:
 		_set_boss_signal_state("near")
 		_show_wave_notice("오픈하우스 체류: 모델하우스 신호가 선명해집니다")
 
+func _update_ration_candidate_feedback() -> void:
+	if match_state != "playing":
+		return
+	var ration_data := _ration_hud_data()
+	var candidates: Dictionary = ration_data.get("candidates", {})
+	var confirmed: Dictionary = ration_data.get("confirmed", {})
+	var total := int(candidates.get("food", 0)) + int(candidates.get("power", 0)) + int(candidates.get("signal", 0)) + int(confirmed.get("food", 0))
+	if total <= ration_candidate_notice_total:
+		return
+	ration_candidate_notice_total = total
+	var label := "정산 근거 후보 감지"
+	var notice := "정산 후보: 행동 근거가 보급소 장부에 걸렸습니다"
+	if int(candidates.get("signal", 0)) > 0:
+		label = "수신 후보"
+		notice = "수신태그 후보: 신호가 출격 게시판으로 넘어갑니다"
+	elif int(candidates.get("power", 0)) > 0:
+		label = "충전 후보"
+		notice = "충전태그 후보: 정비대가 처리 기록을 붙잡습니다"
+	elif int(candidates.get("food", 0)) > 0 or int(confirmed.get("food", 0)) > 0:
+		label = "식량 후보"
+		notice = "식량태그 후보: 체류 근거가 정산 카운터에 남습니다"
+	effects.add_floater(player_pos + Vector2(0, -18), label, C.VITAMIN_YELLOW, 13)
+	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 50.0, 0.34)
+	_show_wave_notice(notice)
+
 func _open_house_signal_threshold(stage: int) -> float:
 	var reduction := float(player_stats.get("open_house_signal_threshold_reduction", 0.0))
 	match stage:
@@ -2010,16 +2037,16 @@ func _update_preboss_signal_events() -> void:
 	if preboss_signal_event_stage < 1 and elapsed >= 120.0:
 		preboss_signal_event_stage = 1
 		_set_boss_signal_state("faint")
-		_show_wave_notice("대형 광고 송출의 잔향이 감지됩니다")
+		_show_wave_notice("120초 신호 후보: 모델하우스 방향 잡음이 붙습니다")
 	elif preboss_signal_event_stage < 2 and elapsed >= 180.0:
 		preboss_signal_event_stage = 2
 		_set_boss_signal_state("detected")
-		_show_wave_notice("스마일 홈 검증 신호가 근처에서 회전합니다")
+		_show_wave_notice("180초 심사선: 상담 부스 송출이 선명해집니다")
 	elif preboss_signal_event_stage < 3 and elapsed >= 240.0:
 		preboss_signal_event_stage = 3
 		_set_boss_signal_state("near")
 		boss_signal_unlocked = meta_progression.has_all_signal_clues()
-		_show_wave_notice("스마일 홈 심사 절차가 노출됩니다")
+		_show_wave_notice("240초 결절 접근: 스마일 홈 심사 절차가 노출됩니다")
 
 func _try_start_boss_encounter() -> void:
 	if boss.active or boss.defeated or match_state != "playing":
@@ -2211,13 +2238,12 @@ func _r01_contamination_short_line() -> String:
 
 func _sortie_start_notice() -> String:
 	var parts: Array[String] = []
-	parts.append(R01CampaignMap.node_sortie_notice(current_r01_node_id))
 	parts.append(R01CampaignMap.node_entry_notice(current_r01_node_id))
-	parts.append("구역 상태: %s" % R01CampaignMap.node_blockout_phrase(current_r01_node_id))
-	parts.append("지역 변조: %s" % R01CampaignMap.node_modifier(current_r01_node_id))
+	parts.append("첫 목표: %s" % R01CampaignMap.node_combat_goal(current_r01_node_id))
+	parts.append("위험: %s" % R01CampaignMap.node_modifier_short(current_r01_node_id))
 	if meta_progression.signal_board_level() > 0:
 		parts.append(meta_progression.signal_board_guidance_line())
-	parts.append("지역 약관: %s" % _regional_clause_preview_line())
+	parts.append("다음: %s" % _combat_timebox_hint())
 	return " / ".join(parts)
 
 func _route_display_sortie_index() -> int:
@@ -2253,10 +2279,27 @@ func _combat_goal_label() -> String:
 	if boss.active:
 		return "심사관 대응"
 	if current_r01_node_id != "":
-		return "%s | 법칙: %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_modifier_short(current_r01_node_id)]
+		return "%s | %s | %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_combat_goal(current_r01_node_id), _combat_timebox_hint()]
 	if sortie_index <= 1:
 		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
+
+func _combat_timebox_hint() -> String:
+	if _first_recall_active():
+		return "108초 회수선까지 버티기"
+	match current_r01_node_id:
+		R01CampaignMap.NODE_L01:
+			return "60초: 첫 정산 근거"
+		R01CampaignMap.NODE_L02:
+			return "60~120초: 우편함 포위 읽기"
+		R01CampaignMap.NODE_L03:
+			return "120초+: 심사 신호 고정"
+		R01CampaignMap.NODE_L04:
+			return "20초+: 낮은 신호 흔적"
+		R01CampaignMap.NODE_L05:
+			return "60초 안에 가짜 회수선 대조"
+		_:
+			return "정산 근거 확보"
 
 func _boss_route_ready() -> bool:
 	if meta_progression.boss_clear_count > 0:
@@ -2286,6 +2329,9 @@ func _session_progress_data() -> Dictionary:
 		"campaign_last_incident_line": String(last_node_memory.get("node_last_event_line", "")),
 		"campaign_board_line": _r01_campaign_board_line(),
 		"campaign_new_signal_line": _r01_campaign_change_banner(),
+		"next_recommended_campaign_node_name": R01CampaignMap.node_name(_ten_minute_recommended_node_id()),
+		"next_recommendation_reason": _ten_minute_recommendation_reason(_ten_minute_recommended_node_id()),
+		"next_recommendation_line": _ten_minute_next_recommendation_line(),
 		"boss_signal_state": boss_signal_state,
 		"boss_signal_label": _boss_signal_label(),
 		"boss_signal_unlocked": boss_signal_unlocked,
@@ -2354,6 +2400,7 @@ func _session_progress_lines() -> Array[String]:
 		_next_goal_label(),
 		_r01_campaign_result_line(),
 		_r01_campaign_incident_line(),
+		_ten_minute_next_recommendation_line(),
 		_r01_campaign_region_reaction_line(),
 	]
 
@@ -2369,11 +2416,48 @@ func _r01_campaign_region_reaction_line() -> String:
 	var node_id: String = last_completed_r01_node_id if last_completed_r01_node_id != "" else current_r01_node_id
 	return "지역 반응: %s" % R01CampaignMap.node_region_reaction(node_id)
 
+func _ten_minute_recommended_node_id() -> String:
+	if _boss_route_ready() and R01CampaignMap.is_node_selectable(R01CampaignMap.NODE_L03, r01_campaign_node_states):
+		return R01CampaignMap.NODE_L03
+	if not first_recall_done:
+		return R01CampaignMap.NODE_L01
+	if last_completed_r01_node_id == R01CampaignMap.NODE_L01 and R01CampaignMap.is_node_selectable(R01CampaignMap.NODE_L02, r01_campaign_node_states):
+		return R01CampaignMap.NODE_L02
+	if last_completed_r01_node_id == R01CampaignMap.NODE_L02 and R01CampaignMap.is_node_selectable(R01CampaignMap.NODE_L03, r01_campaign_node_states):
+		return R01CampaignMap.NODE_L03
+	if last_completed_r01_node_id == R01CampaignMap.NODE_L03 and R01CampaignMap.is_node_selectable(R01CampaignMap.NODE_L04, r01_campaign_node_states):
+		return R01CampaignMap.NODE_L04
+	if last_completed_r01_node_id == R01CampaignMap.NODE_L05 and R01CampaignMap.is_node_selectable(R01CampaignMap.NODE_L02, r01_campaign_node_states):
+		return R01CampaignMap.NODE_L02
+	if R01CampaignMap.is_node_selectable(selected_r01_node_id, r01_campaign_node_states):
+		return selected_r01_node_id
+	return R01CampaignMap.first_selectable_node_id(r01_campaign_node_states)
+
+func _ten_minute_recommendation_reason(node_id: String) -> String:
+	match node_id:
+		R01CampaignMap.NODE_L01:
+			return "외곽 회수선과 첫 정산 근거를 확인"
+		R01CampaignMap.NODE_L02:
+			return "60~120초 우편함/현관 압력에서 태그 근거 확보"
+		R01CampaignMap.NODE_L03:
+			return "120초 이후 모델하우스 심사 신호 확인"
+		R01CampaignMap.NODE_L04:
+			return "낮은 신호 우회로에서 흔적 후보 확인"
+		R01CampaignMap.NODE_L05:
+			return "60초 안에 가짜 회수선만 대조"
+		_:
+			return "현재 열린 작전권을 짧게 확인"
+
+func _ten_minute_next_recommendation_line() -> String:
+	var node_id := _ten_minute_recommended_node_id()
+	return "다음 추천: %s - %s" % [R01CampaignMap.node_name(node_id), _ten_minute_recommendation_reason(node_id)]
+
 func _finale_recovery_lines() -> Array[String]:
 	var r01_state := _r01_phrase_state()
 	var lines: Array[String] = [
 		"외곽 주택가 정찰 완료",
 		RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
+		_ten_minute_next_recommendation_line(),
 	]
 	for line in _run_reward_lines():
 		lines.append(line)
@@ -2456,6 +2540,7 @@ func _result_data(result_state: String) -> Dictionary:
 				"결절 분석: %d/3" % meta_progression.boss_analysis_level,
 				meta_progression.smile_home_boss_outcome_label(),
 				"후속 선택 준비: 결절 파괴 또는 기억 추출",
+				_ten_minute_next_recommendation_line(),
 			] + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
@@ -2480,6 +2565,7 @@ func _result_data(result_state: String) -> Dictionary:
 					_boss_analysis_milestone_label(analysis_level),
 					meta_progression.boss_weakness_label(),
 					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
+					_ten_minute_next_recommendation_line(),
 				] + _run_reward_lines(),
 				"button_text": "보급소로 돌아가기",
 				"prompt": "스페이스 / 클릭으로 보급소 이동",
@@ -2858,6 +2944,8 @@ func _r01_campaign_map_data() -> Dictionary:
 		"change_banner": _r01_campaign_change_banner(),
 		"tag_context": meta_progression.tag_context(),
 		"node_memory": r01_campaign_node_memory.duplicate(true),
+		"recommendation_line": _ten_minute_next_recommendation_line(),
+		"recommendation_reason": _ten_minute_recommendation_reason(_ten_minute_recommended_node_id()),
 	}
 
 func _r01_campaign_display_states() -> Dictionary:
@@ -3314,6 +3402,7 @@ func _debug_info() -> Dictionary:
 		"r01_campaign_node_state_summary": R01CampaignMap.state_summary(r01_campaign_node_states),
 		"r01_campaign_node_memory_summary": R01CampaignMap.node_memory_debug_summary(r01_campaign_node_memory),
 		"r01_campaign_new_signal_summary": _r01_campaign_change_banner(),
+		"r01_loop_recommendation": _ten_minute_next_recommendation_line(),
 		"r01_campaign_current_phrase": R01CampaignMap.node_blockout_phrase(current_r01_node_id),
 		"r01_campaign_start_pos": "%d,%d" % [int(round(_r01_campaign_start_position(current_r01_node_id).x)), int(round(_r01_campaign_start_position(current_r01_node_id).y))],
 		"r01_campaign_spawn_bias": R01CampaignMap.node_spawn_bias(current_r01_node_id),
@@ -4301,6 +4390,7 @@ func _restart() -> void:
 	preboss_signal_event_stage = 0
 	recall_event_stage = 0
 	recall_pressure_spawn_timer = 0.0
+	ration_candidate_notice_total = 0
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
 	auto_timer = 0.0

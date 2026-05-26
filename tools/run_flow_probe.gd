@@ -18,6 +18,7 @@ func _run() -> void:
 	await _probe_tag_settlement_and_recall_quality()
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
+	await _probe_ten_minute_loop_readability()
 
 	if failures.is_empty():
 		print("RUN_FLOW_PROBE PASS")
@@ -266,6 +267,55 @@ func _probe_r01_campaign_map_flow() -> void:
 	var debug_preview_sortie_ok: bool = preview_main.match_state == "playing" and preview_main.current_r01_node_id == "R01-L03"
 	_record("Ctrl+1-5 debug preview unlocks sortie", debug_preview_unlock_ok and debug_preview_sortie_ok)
 	await _finish_main(preview_main)
+
+func _probe_ten_minute_loop_readability() -> void:
+	var main = await _new_main()
+	main._show_supply_depot()
+	var initial_supply_text: String = main.hud.supply_visible_text()
+	var initial_recommend_ok: bool = initial_supply_text.find("추천:") != -1 and initial_supply_text.find("이유:") != -1 and initial_supply_text.find("침묵 가장자리") != -1
+	main._open_r01_campaign_map()
+	var map_text: String = main.hud.campaign_map_visible_text()
+	var map_recommend_ok: bool = map_text.find("다음 추천:") != -1 and map_text.find("추천") != -1 and map_text.find("R01-L") == -1
+	main._select_r01_campaign_node("R01-L01")
+	main._sortie_selected_r01_campaign_node()
+	var l01_combat_goal_text := String(main.hud.route_goal_label.text)
+	var combat_goal_ok: bool = l01_combat_goal_text.find("침묵 가장자리") != -1 and (l01_combat_goal_text.find("60초") != -1 or l01_combat_goal_text.find("108초") != -1)
+	main._finish_match("recalled")
+	var l01_result_text: String = String(main.hud.result_label.text)
+	var result_recommend_ok: bool = l01_result_text.find("다음 추천:") != -1 and l01_result_text.find("분양 주택 루프") != -1
+	main._handle_terminal_action()
+	var post_l01_supply_text: String = main.hud.supply_visible_text()
+	var post_supply_recommend_ok: bool = post_l01_supply_text.find("추천:") != -1 and post_l01_supply_text.find("분양 주택 루프") != -1
+	main._open_r01_campaign_map()
+	main._select_r01_campaign_node("R01-L02")
+	main._sortie_selected_r01_campaign_node()
+	main.elapsed = 120.0
+	main.open_house_signal_stage = 1
+	main.ration_candidate_notice_total = 0
+	main._update_ration_candidate_feedback()
+	var candidate_feedback_ok: bool = main.ration_candidate_notice_total > 0 and main._active_notice_text().find("수신태그 후보") != -1
+	main._finish_match("victory")
+	var l02_result_text: String = String(main.hud.result_label.text)
+	var compact_result_ok: bool = l02_result_text.find("다음 추천:") != -1 and l02_result_text.find("정산 기록") != -1 and l02_result_text.split("\n").size() <= 13
+	main._handle_terminal_action()
+	var post_l02_supply_text: String = main.hud.supply_visible_text()
+	var l03_recommend_ok: bool = post_l02_supply_text.find("모델하우스 결절") != -1 and post_l02_supply_text.find("120초") != -1
+	main._open_r01_campaign_map()
+	var post_l02_map_text: String = main.hud.campaign_map_visible_text()
+	var next_map_state_ok: bool = post_l02_map_text.find("모델하우스 결절") != -1 and post_l02_map_text.find("다음 추천:") != -1 and post_l02_map_text.find("R01-L") == -1
+	main.debug_tools.detail_visible = true
+	var debug_ok: bool = main._debug_overlay_text().find("campaign loop recommendation") != -1 and main._debug_overlay_text().find("campaign node memory") != -1
+	_record("10min supply shows one recommended operation", initial_recommend_ok, initial_supply_text)
+	_record("10min campaign map shows recommendation without ids", map_recommend_ok, map_text)
+	_record("10min combat HUD keeps current objective", combat_goal_ok, l01_combat_goal_text)
+	_record("10min L01 result points to next operation", result_recommend_ok, l01_result_text)
+	_record("10min outpost return keeps next choice reason", post_supply_recommend_ok, post_l01_supply_text)
+	_record("10min first tag/signal candidate feedback appears once", candidate_feedback_ok, main._active_notice_text())
+	_record("10min result summary remains compact", compact_result_ok, l02_result_text)
+	_record("10min L02 return recommends L03", l03_recommend_ok, post_l02_supply_text)
+	_record("10min next campaign map carries result state", next_map_state_ok, post_l02_map_text)
+	_record("F12 keeps loop recommendation debug state", debug_ok)
+	await _finish_main(main)
 
 func _probe_r01_campaign_result_bridge_variants() -> void:
 	var checks := {
