@@ -37,6 +37,9 @@ const NODE_DEFS := {
 		"short_description": "회수선 외곽",
 		"risk": "낮음",
 		"enemy_hint": "낮은 광고 밀도 / 흩어진 쿠폰",
+		"threat_hint": "흩어진 기본 광고체, 낮은 포위 압력",
+		"modifier": "회수선 안정, 낮은 밀도",
+		"modifier_short": "회수선 안정 / 낮은 밀도",
 		"objective": "주택가 첫 광고 신호 확인",
 		"recovery_line": "안정",
 		"route_note": "보급소 회수선이 닿는 외곽입니다.",
@@ -54,6 +57,9 @@ const NODE_DEFS := {
 		"short_description": "반복 주택 루프",
 		"risk": "우편함/쿠폰 밀도 증가",
 		"enemy_hint": "스피커, 빠른 쿠폰, 반복 현관",
+		"threat_hint": "우편함/쿠폰 양쪽 발송, 빠른 전단 증가",
+		"modifier": "우편함과 쿠폰이 양쪽에서 끼어듦",
+		"modifier_short": "쿠폰/우편함 양쪽 발송",
 		"objective": "오픈하우스 신호를 추적한다",
 		"recovery_line": "흔들림",
 		"route_note": "외곽을 지나 같은 집들이 가격표만 바꿔 반복됩니다.",
@@ -71,6 +77,9 @@ const NODE_DEFS := {
 		"short_description": "심사 절차 접근",
 		"risk": "보스 신호 / 가족 심사 절차",
 		"enemy_hint": "신호체, 스피커, 모델하우스 축",
+		"threat_hint": "신호체와 확성기 압박, 심사 절차 강화",
+		"modifier": "심사 절차, 보스 신호 증가",
+		"modifier_short": "심사 신호 증가",
 		"objective": "가족 심사 절차의 입구를 찾는다",
 		"recovery_line": "불안정",
 		"route_note": "중심 루트 끝, 모델하우스 심사 절차가 열리는 결절입니다.",
@@ -88,6 +97,9 @@ const NODE_DEFS := {
 		"short_description": "낮은 침묵 통로",
 		"risk": "낮지만 흔적이 진함",
 		"enemy_hint": "신호 흔적, 무거운 검수 로봇",
+		"threat_hint": "광고음 감소, 무거운 흔적과 침묵 신호",
+		"modifier": "광고음 감소, 흔적/침묵 강조",
+		"modifier_short": "광고음 감소 / 흔적 강조",
 		"objective": "광고음이 끊기는 낮은 통로를 조사한다",
 		"recovery_line": "희미함",
 		"route_note": "중심 루트에서 빠지는 곁길, 소음이 잠깐 낮아집니다.",
@@ -105,6 +117,9 @@ const NODE_DEFS := {
 		"short_description": "회수선 흉내",
 		"risk": "혼동 / 귀환 신호 흉내",
 		"enemy_hint": "빠른 쿠폰, 스피커, 잘못된 화살표",
+		"threat_hint": "혼동 신호와 빠른 쿠폰, 회수선 흉내",
+		"modifier": "회수선 불안정, 혼동 신호",
+		"modifier_short": "혼동 신호 / 회수선 불안정",
 		"objective": "접근하지 말고 신호 패턴만 확인",
 		"recovery_line": "불안정",
 		"route_note": "보급소 방향처럼 보이는 가지지만 실제 회수선이 아닙니다.",
@@ -181,6 +196,15 @@ static func node_risk(node_id: String) -> String:
 
 static func node_enemy_hint(node_id: String) -> String:
 	return String(node_def(node_id).get("enemy_hint", "광고 신호 미확인"))
+
+static func node_threat_hint(node_id: String) -> String:
+	return String(node_def(node_id).get("threat_hint", node_enemy_hint(node_id)))
+
+static func node_modifier(node_id: String) -> String:
+	return String(node_def(node_id).get("modifier", "지역 변조 미확인"))
+
+static func node_modifier_short(node_id: String) -> String:
+	return String(node_def(node_id).get("modifier_short", node_modifier(node_id)))
 
 static func node_objective(node_id: String) -> String:
 	return String(node_def(node_id).get("objective", node_combat_goal(node_id)))
@@ -264,7 +288,7 @@ func build() -> void:
 	add_child(_title_label)
 
 	_hint_label = _make_label(Vector2(18, 30), Vector2(282, 22), 9, Color("#433227"))
-	_hint_label.text = "작전 구역: 외곽 회수선 -> 반복 주택 루프 -> 모델하우스 안쪽 / 숫자 노드 선택"
+	_hint_label.text = "작전 구역: 외곽 회수선 -> 분양 주택 루프 -> 모델하우스 결절 / 숫자 노드 선택"
 	_hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_hint_label)
 
@@ -276,11 +300,11 @@ func build() -> void:
 	_brief_title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	add_child(_brief_title_label)
 
-	_status_label = _make_label(Vector2(312, 72), Vector2(142, 38), 9, C.INK)
+	_status_label = _make_label(Vector2(312, 72), Vector2(142, 56), 9, C.INK)
 	_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_status_label)
 
-	_objective_label = _make_label(Vector2(312, 114), Vector2(142, 72), 9, C.INK)
+	_objective_label = _make_label(Vector2(312, 132), Vector2(142, 56), 9, C.INK)
 	_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_child(_objective_label)
 
@@ -297,12 +321,12 @@ func build() -> void:
 		var node_id := String(NODE_IDS[i])
 		var button := Button.new()
 		var pos: Vector2 = node_def(node_id).get("ui_pos", Vector2.ZERO)
-		button.position = pos - Vector2(19, 19)
-		button.size = Vector2(38, 38)
+		button.position = pos - Vector2(10, 10)
+		button.size = Vector2(20, 20)
 		button.clip_text = true
 		button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		button.alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.add_theme_font_size_override("font_size", 12)
+		button.add_theme_font_size_override("font_size", 8)
 		button.add_theme_color_override("font_color", C.INK)
 		button.add_theme_color_override("font_disabled_color", Color("#4f4135"))
 		button.pressed.connect(_on_node_button_pressed.bind(node_id))
@@ -372,7 +396,7 @@ func _refresh_controls() -> void:
 		var selectable := is_state_selectable(raw_state)
 		var definition := node_def(node_id)
 		button.disabled = not selectable
-		button.text = "%d\n%s" % [i + 1, _compact_state_label(display_state)]
+		button.text = str(i + 1) if selectable else ""
 		button.tooltip_text = "%s: %s" % [String(definition["name"]), String(definition["description"])]
 		_apply_button_state_style(button, display_state, selectable)
 
@@ -388,14 +412,15 @@ func _refresh_controls() -> void:
 	_apply_button_state_style(_close_button, STATE_AVAILABLE, true)
 
 	_brief_title_label.text = "선택 중: %s" % String(selected_def["name"])
-	_status_label.text = "상태: %s\n위험: %s\n회수선: %s" % [
+	_status_label.text = "상태: %s\n위험: %s\n회수선: %s\n지역 변조: %s" % [
 		state_brief(selected_display_state),
 		String(selected_def["risk"]),
 		String(selected_def["recovery_line"]),
+		node_modifier_short(_selected_node_id),
 	]
-	_objective_label.text = "목표\n%s\n\n힌트\n%s" % [
+	_objective_label.text = "목표\n%s\n\n위협\n%s" % [
 		String(selected_def["objective"]),
-		String(selected_def["enemy_hint"]),
+		node_threat_hint(_selected_node_id),
 	]
 
 func _compact_state_label(state: String) -> String:
@@ -428,10 +453,10 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2(16, 216), Vector2(442, 40)), Color(1.0, 0.97, 0.86, 0.88))
 	_draw_operation_district()
 	_draw_suburb_texture()
-	_draw_map_labels()
 	_draw_edges()
 	_draw_selected_route()
 	_draw_node_marks()
+	_draw_map_labels()
 	_draw_node_nameplates()
 
 func _current_change_banner() -> String:
@@ -526,20 +551,29 @@ func _draw_edges() -> void:
 		var b: Vector2 = node_def(to_id).get("ui_pos", Vector2.ZERO)
 		var state := String(_display_states.get(to_id, STATE_LOCKED))
 		var color := _state_color(state)
-		color.a = 0.24 if state == STATE_LOCKED else 0.50
-		var width := 7.0 if state != STATE_LOCKED else 4.0
+		var main_route := _edge_is_main_route(from_id, to_id)
+		color.a = 0.18 if state == STATE_LOCKED else (0.62 if main_route else 0.40)
+		var width := 5.2 if main_route else 3.4
+		if state == STATE_LOCKED:
+			width = 2.2
 		if to_id == NODE_L05:
-			color = Color(0.95, 0.54, 0.78, 0.28 if state != STATE_LOCKED else 0.12)
+			color = Color(0.95, 0.54, 0.78, 0.24 if state != STATE_LOCKED else 0.10)
 		if state == STATE_LOCKED:
 			_draw_dashed_line(a, b, color, width, 11.0, 8.0)
 		else:
 			draw_line(a, b, color, width)
-		draw_line(a, b, Color(0.28, 0.20, 0.17, 0.32), 1.4)
+		draw_line(a, b, Color(0.28, 0.20, 0.17, 0.34), 1.1)
 		if _last_completed_node_id == from_id or _opened_node_ids.has(to_id):
-			draw_line(a, b, Color(1.0, 0.91, 0.25, 0.64), 2.6)
+			draw_line(a, b, Color(1.0, 0.91, 0.25, 0.68), 2.0)
 		var dir := (b - a).normalized()
 		var mid := a.lerp(b, 0.54)
-		draw_line(mid - dir.rotated(PI * 0.5) * 7.0, mid + dir * 16.0, Color(1.0, 0.92, 0.48, 0.38), 1.8)
+		draw_line(mid - dir.rotated(PI * 0.5) * 5.0, mid + dir * 13.0, Color(1.0, 0.92, 0.48, 0.34), 1.4)
+
+func _edge_is_main_route(from_id: String, to_id: String) -> bool:
+	for i in range(MAIN_ROUTE.size() - 1):
+		if String(MAIN_ROUTE[i]) == from_id and String(MAIN_ROUTE[i + 1]) == to_id:
+			return true
+	return false
 
 func _draw_dashed_line(a: Vector2, b: Vector2, color: Color, width: float, dash: float, gap: float) -> void:
 	var delta := b - a
@@ -560,33 +594,36 @@ func _draw_node_marks() -> void:
 		var pos: Vector2 = node_def(id).get("ui_pos", Vector2.ZERO)
 		var state := String(_display_states.get(id, STATE_LOCKED))
 		var color := _state_color(state)
-		var pulse := 1.0 + 0.08 * sin(float(Time.get_ticks_msec()) * 0.006) if state == STATE_SELECTED or _opened_node_ids.has(id) else 1.0
-		var radius := 22.0
+		var pulse := 1.0 + 0.07 * sin(float(Time.get_ticks_msec()) * 0.006) if state == STATE_SELECTED or _opened_node_ids.has(id) else 1.0
+		var radius := 8.0
 		if state == STATE_LOCKED:
-			radius = 15.0
+			radius = 5.5
 		elif state == STATE_BOSS_READY:
-			radius = 27.0
+			radius = 10.5
 		elif state == STATE_DANGER:
-			radius = 24.0
-		draw_circle(pos, radius * pulse, Color(color.r, color.g, color.b, 0.10 if state == STATE_LOCKED else 0.20))
+			radius = 9.5
+		elif state == STATE_SELECTED:
+			radius = 11.0
+		draw_circle(pos + Vector2(2, 3), radius + 2.0, Color(0.08, 0.06, 0.05, 0.16 if state != STATE_LOCKED else 0.06))
+		draw_circle(pos, radius * pulse, Color(color.r, color.g, color.b, 0.07 if state == STATE_LOCKED else 0.18))
 		if state == STATE_DANGER:
-			_draw_ad_noise(pos, radius + 5.0)
+			_draw_ad_noise(pos, radius + 6.0)
 		if state == STATE_BOSS_READY:
-			draw_arc(pos, (radius + 8.0) * pulse, -PI * 0.18, PI * 1.18, 44, Color(1.0, 0.72, 0.18, 0.78), 3.0)
-			draw_rect(Rect2(pos - Vector2(16, 10), Vector2(32, 20)), Color(1.0, 0.72, 0.18, 0.10), false, 1.4)
+			draw_arc(pos, (radius + 5.0) * pulse, -PI * 0.18, PI * 1.18, 32, Color(1.0, 0.72, 0.18, 0.72), 2.2)
+			draw_rect(Rect2(pos - Vector2(9, 6), Vector2(18, 12)), Color(1.0, 0.72, 0.18, 0.10), false, 1.0)
 		if id == _last_completed_node_id:
-			draw_arc(pos, radius + 10.0, 0.0, TAU, 42, Color(0.62, 1.0, 0.36, 0.76), 2.0)
-			draw_line(pos + Vector2(-8, 0), pos + Vector2(-2, 6), Color(0.62, 1.0, 0.36, 0.90), 2.4)
-			draw_line(pos + Vector2(-2, 6), pos + Vector2(10, -8), Color(0.62, 1.0, 0.36, 0.90), 2.4)
+			draw_arc(pos, radius + 7.0, 0.0, TAU, 32, Color(0.62, 1.0, 0.36, 0.70), 1.6)
+			draw_line(pos + Vector2(-5, 0), pos + Vector2(-1, 4), Color(0.62, 1.0, 0.36, 0.90), 1.8)
+			draw_line(pos + Vector2(-1, 4), pos + Vector2(7, -6), Color(0.62, 1.0, 0.36, 0.90), 1.8)
 		if _opened_node_ids.has(id):
 			var open_pulse := 1.0 + 0.16 * sin(float(Time.get_ticks_msec()) * 0.009)
-			draw_arc(pos, (radius + 15.0) * open_pulse, -PI * 0.25, PI * 1.25, 46, C.VITAMIN_YELLOW, 2.2)
-		draw_arc(pos, radius * pulse, 0.0, TAU, 36, Color(color.r, color.g, color.b, 0.86), 2.0 if state != STATE_LOCKED else 1.2)
-		draw_circle(pos, 5.0 if state != STATE_LOCKED else 3.5, Color(color.r, color.g, color.b, 0.92 if state != STATE_LOCKED else 0.45))
+			draw_arc(pos, (radius + 9.0) * open_pulse, -PI * 0.25, PI * 1.25, 36, C.VITAMIN_YELLOW, 1.8)
+		draw_arc(pos, radius * pulse, 0.0, TAU, 28, Color(color.r, color.g, color.b, 0.88 if state != STATE_LOCKED else 0.34), 1.8 if state != STATE_LOCKED else 1.0)
+		draw_circle(pos, 2.9 if state != STATE_LOCKED else 2.1, Color(color.r, color.g, color.b, 0.95 if state != STATE_LOCKED else 0.32))
 		if state == STATE_VISITED:
-			draw_line(pos + Vector2(-6, 8), pos + Vector2(8, 12), Color(0.1, 0.08, 0.06, 0.52), 1.5)
+			draw_line(pos + Vector2(-4, 6), pos + Vector2(6, 9), Color(0.1, 0.08, 0.06, 0.52), 1.2)
 		elif state == STATE_CLEARED:
-			draw_arc(pos, radius - 5.0, PI * 0.1, PI * 0.9, 20, Color(0.62, 1.0, 0.36, 0.70), 2.0)
+			draw_arc(pos, radius - 2.0, PI * 0.1, PI * 0.9, 18, Color(0.62, 1.0, 0.36, 0.70), 1.5)
 
 func _draw_node_nameplates() -> void:
 	for i in range(NODE_IDS.size()):
@@ -597,29 +634,34 @@ func _draw_node_nameplates() -> void:
 		var selected := id == _selected_node_id
 		var name := String(definition["name"])
 		var label_pos := _node_label_position(id, pos)
-		var label_size := Vector2(92, 20)
-		var fill := Color(1.0, 0.97, 0.86, 0.92) if selected else Color(1.0, 0.97, 0.86, 0.72)
+		var label_size := Vector2(92, 15)
+		var fill := Color(1.0, 0.97, 0.86, 0.88) if selected else Color(1.0, 0.97, 0.86, 0.58)
 		if state == STATE_LOCKED:
-			fill = Color(0.80, 0.76, 0.68, 0.60)
+			fill = Color(0.80, 0.76, 0.68, 0.22)
+		var line_color := _state_color(state)
+		line_color.a = 0.72 if selected else (0.32 if state != STATE_LOCKED else 0.16)
+		var anchor := label_pos + Vector2(0, label_size.y * 0.5)
+		if label_pos.x < pos.x:
+			anchor = label_pos + Vector2(label_size.x, label_size.y * 0.5)
+		draw_line(pos, anchor, line_color, 1.0 if state != STATE_LOCKED else 0.7)
 		draw_rect(Rect2(label_pos, label_size), fill)
-		draw_rect(Rect2(label_pos, label_size), _state_color(state), false, 1.2 if selected else 0.8)
-		draw_string(UIFont.get_font(), label_pos + Vector2(4, 8), "%d %s" % [i + 1, name], HORIZONTAL_ALIGNMENT_LEFT, 84, 8, C.INK if state != STATE_LOCKED else Color("#5a4d3f"))
-		draw_string(UIFont.get_font(), label_pos + Vector2(4, 17), _status_map_label(state), HORIZONTAL_ALIGNMENT_LEFT, 84, 7, Color("#433227"))
+		draw_rect(Rect2(label_pos, label_size), _state_color(state), false, 1.0 if selected else 0.6)
+		draw_string(UIFont.get_font(), label_pos + Vector2(4, 10), "%d %s" % [i + 1, name], HORIZONTAL_ALIGNMENT_LEFT, 84, 8, C.INK if state != STATE_LOCKED else Color("#5a4d3f"))
 
 func _node_label_position(node_id: String, pos: Vector2) -> Vector2:
 	match node_id:
 		NODE_L01:
-			return pos + Vector2(-36, -33)
+			return pos + Vector2(-26, -32)
 		NODE_L02:
-			return pos + Vector2(-42, 27)
+			return pos + Vector2(-50, 24)
 		NODE_L03:
-			return pos + Vector2(-82, 28)
+			return pos + Vector2(-78, 22)
 		NODE_L04:
-			return pos + Vector2(-40, -45)
+			return pos + Vector2(-36, -36)
 		NODE_L05:
-			return pos + Vector2(28, -12)
+			return pos + Vector2(22, -18)
 		_:
-			return pos + Vector2(-44, 28)
+			return pos + Vector2(-44, 24)
 
 func _status_map_label(state: String) -> String:
 	match state:
@@ -645,17 +687,17 @@ func _draw_selected_route() -> void:
 	for i in range(path.size() - 1):
 		var a: Vector2 = node_def(String(path[i])).get("ui_pos", Vector2.ZERO)
 		var b: Vector2 = node_def(String(path[i + 1])).get("ui_pos", Vector2.ZERO)
-		draw_line(a, b, Color(1.0, 0.91, 0.25, 0.64), 6.0)
-		draw_line(a, b, C.NEON_RED, 1.8)
+		draw_line(a, b, Color(1.0, 0.91, 0.25, 0.56), 4.0)
+		draw_line(a, b, C.NEON_RED, 1.3)
 	var pos: Vector2 = node_def(_selected_node_id).get("ui_pos", Vector2.ZERO)
 	var pulse := 1.0 + 0.12 * sin(float(Time.get_ticks_msec()) * 0.008)
-	draw_circle(pos, 40.0 * pulse, Color(1.0, 0.91, 0.25, 0.08))
-	draw_arc(pos, 33.0 * pulse, -PI * 0.2, PI * 1.25, 44, C.NEON_RED, 2.4)
-	draw_arc(pos, 44.0 * pulse, PI * 0.05, PI * 1.05, 40, C.VITAMIN_YELLOW, 1.8)
-	draw_line(pos + Vector2(-42, 0), pos + Vector2(-25, 0), C.NEON_RED, 1.4)
-	draw_line(pos + Vector2(25, 0), pos + Vector2(42, 0), C.NEON_RED, 1.4)
-	draw_line(pos + Vector2(0, -42), pos + Vector2(0, -25), C.NEON_RED, 1.4)
-	draw_line(pos + Vector2(0, 25), pos + Vector2(0, 42), C.NEON_RED, 1.4)
+	draw_circle(pos, 18.0 * pulse, Color(1.0, 0.91, 0.25, 0.07))
+	draw_arc(pos, 17.0 * pulse, -PI * 0.2, PI * 1.25, 34, C.NEON_RED, 1.8)
+	draw_arc(pos, 23.0 * pulse, PI * 0.05, PI * 1.05, 32, C.VITAMIN_YELLOW, 1.2)
+	draw_line(pos + Vector2(-23, 0), pos + Vector2(-14, 0), C.NEON_RED, 1.2)
+	draw_line(pos + Vector2(14, 0), pos + Vector2(23, 0), C.NEON_RED, 1.2)
+	draw_line(pos + Vector2(0, -23), pos + Vector2(0, -14), C.NEON_RED, 1.2)
+	draw_line(pos + Vector2(0, 14), pos + Vector2(0, 23), C.NEON_RED, 1.2)
 
 func _draw_ad_noise(pos: Vector2, radius: float) -> void:
 	for i in range(5):
@@ -695,34 +737,34 @@ func _state_color(state: String) -> Color:
 			return Color("#8a7962")
 
 func _apply_button_state_style(button: Button, state: String, selectable: bool) -> void:
-	var fill := Color("#e4d9c3")
-	var border := Color("#6b5b4a")
+	var fill := Color(0.88, 0.84, 0.76, 0.20)
+	var border := Color(0.42, 0.36, 0.29, 0.28)
 	if selectable:
 		var state_color := _state_color(state)
-		fill = Color(state_color.r, state_color.g, state_color.b, 0.34)
+		fill = Color(state_color.r, state_color.g, state_color.b, 0.22)
 		border = Color(state_color.r, state_color.g, state_color.b, 0.90)
 		if state == STATE_SELECTED:
-			fill = Color(1.0, 0.91, 0.25, 0.52)
+			fill = Color(1.0, 0.91, 0.25, 0.42)
 			border = C.NEON_RED
 		elif state == STATE_DANGER:
-			fill = Color(1.0, 0.3, 0.36, 0.28)
+			fill = Color(1.0, 0.3, 0.36, 0.20)
 		elif state == STATE_BOSS_READY:
-			fill = Color(1.0, 0.72, 0.18, 0.40)
-	button.add_theme_stylebox_override("normal", _button_style(fill, border, 2 if selectable else 1))
+			fill = Color(1.0, 0.72, 0.18, 0.30)
+	button.add_theme_stylebox_override("normal", _button_style(fill, border, 1 if selectable else 0))
 	button.add_theme_stylebox_override("hover", _button_style(Color("#fff7df"), border, 2))
 	button.add_theme_stylebox_override("pressed", _button_style(C.LEMON_YELLOW, C.NEON_RED, 2))
-	button.add_theme_stylebox_override("disabled", _button_style(Color("#ddd2bf"), Color("#746653"), 1))
+	button.add_theme_stylebox_override("disabled", _button_style(Color(0.78, 0.73, 0.65, 0.10), Color(0.42, 0.36, 0.29, 0.14), 0))
 
 func _button_style(fill_color: Color, border_color: Color, border_width: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = fill_color
 	style.border_color = border_color
 	style.set_border_width_all(border_width)
-	style.set_corner_radius_all(3)
-	style.content_margin_left = 4
-	style.content_margin_right = 4
-	style.content_margin_top = 3
-	style.content_margin_bottom = 3
+	style.set_corner_radius_all(2)
+	style.content_margin_left = 1
+	style.content_margin_right = 1
+	style.content_margin_top = 1
+	style.content_margin_bottom = 1
 	return style
 
 func _make_label(position: Vector2, size: Vector2, font_size: int, color: Color) -> Label:

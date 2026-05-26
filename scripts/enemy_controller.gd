@@ -30,11 +30,11 @@ const DEFENSE_MULTIPLIERS := {
 	"exposed_core": {"auto": 0.82, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
 }
 const SIGNAL_AURA_RADIUS := 92.0
-const SIGNAL_AURA_SPEED_MULT := 1.13
-const SPEAKER_PULSE_RADIUS := 118.0
-const SPEAKER_PULSE_SPEED_MULT := 1.16
+const SIGNAL_AURA_SPEED_MULT := 1.15
+const SPEAKER_PULSE_RADIUS := 124.0
+const SPEAKER_PULSE_SPEED_MULT := 1.18
 const SPEAKER_PULSE_DURATION := 1.05
-const SPEAKER_PULSE_COOLDOWN := 4.4
+const SPEAKER_PULSE_COOLDOWN := 4.1
 const CHARGER_TRIGGER_MIN := 62.0
 const CHARGER_TRIGGER_MAX := 235.0
 const CHARGER_WINDUP_DURATION := 0.58
@@ -44,12 +44,18 @@ const CHARGER_DASH_SPEED_MULT := 4.25
 const CHARGER_DASH_CONTACT_MULT := 1.24
 const CHARGER_COOLDOWN := 4.2
 const PRESSURE_REPLACE_START := 150.0
+const SEPARATION_CELL_SIZE := 30.0
+const SEPARATION_PADDING := 3.5
+const SEPARATION_MAX_DISTANCE := 27.0
+const SEPARATION_PUSH_SPEED := 66.0
+const SEPARATION_MAX_STEP := 3.25
 
 var enemies: Array[Dictionary] = []
 var spawn_timer := 0.0
 var last_contact_hint := ""
 var movement_bounds := Rect2(-C.ARENA_HALF, C.ARENA_HALF * 2.0)
 var spawn_position_provider := Callable()
+var spawn_serial := 0
 
 func configure_world(bounds: Rect2, provider: Callable = Callable()) -> void:
 	movement_bounds = bounds
@@ -86,12 +92,13 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 	var role := "elite" if elite else _pick_role(rng, wave_params.get("role_weights", {"basic": 1.0}))
 	var role_stats: Dictionary = ROLE_STATS.get(role, ROLE_STATS["basic"])
 	var radius := 15.0 if elite else float(role_stats.get("radius", 8.0))
-	var pos := _spawn_position(elapsed, player_pos, rng, radius, role)
+	var pos := _spawn_position(elapsed, player_pos, rng, radius, role, wave_params)
 	var sprite_kind := "housewife"
 	if not elite:
 		sprite_kind = String(role_stats.get("sprite", TIER1_SPRITE_KINDS[rng.randi_range(0, TIER1_SPRITE_KINDS.size() - 1)]))
 	var base_hp := C.ELITE_HP if elite else C.ENEMY_HP * float(role_stats.get("hp", 1.0))
 	var base_speed := C.ELITE_SPEED if elite else C.ENEMY_SPEED * float(role_stats.get("speed", 1.0))
+	spawn_serial += 1
 	enemies.append({
 		"pos": pos,
 		"hp": base_hp * hp_mult,
@@ -114,11 +121,13 @@ func spawn_enemy(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator
 		"dash_dir": Vector2.ZERO,
 		"speaker_pulse": 0.0,
 		"speaker_cooldown": rng.randf_range(1.0, 3.8),
+		"separation_seed": rng.randf_range(0.0, TAU),
+		"spawn_serial": spawn_serial,
 	})
 
-func _spawn_position(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String) -> Vector2:
+func _spawn_position(elapsed: float, player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, wave_params: Dictionary = {}) -> Vector2:
 	if spawn_position_provider.is_valid():
-		var provided: Vector2 = spawn_position_provider.call(player_pos, rng, radius, role, elapsed)
+		var provided: Vector2 = spawn_position_provider.call(player_pos, rng, radius, role, elapsed, wave_params)
 		return _clamp_to_movement_bounds(provided, radius)
 	var side := rng.randi_range(0, 3)
 	var pos := Vector2.ZERO
@@ -212,6 +221,101 @@ func update_enemies(delta: float, player_pos: Vector2) -> float:
 			contact_damage += C.ENEMY_CONTACT_DPS * delta * contact_mult
 			_set_contact_hint(enemy)
 	return contact_damage
+
+func apply_separation(delta: float, position_resolver: Callable = Callable()) -> void:
+	var count := enemies.size()
+	if count < 2:
+		return
+	var grid := _build_separation_grid()
+	var pushes: Array[Vector2] = []
+	for i in range(count):
+		pushes.append(Vector2.ZERO)
+	for i in range(count):
+		var enemy := enemies[i]
+		var pos: Vector2 = enemy["pos"]
+		var cell := _separation_cell(pos)
+		for ox in range(-1, 2):
+			for oy in range(-1, 2):
+				var neighbor_cell := Vector2i(cell.x + ox, cell.y + oy)
+				if not grid.has(neighbor_cell):
+					continue
+				var bucket: Array = grid[neighbor_cell]
+				for raw_j in bucket:
+					var j := int(raw_j)
+					if j <= i or j >= count:
+						continue
+					_apply_pair_separation(i, j, pushes)
+	for i in range(count):
+		var push := pushes[i]
+		if push.length_squared() <= 0.0001:
+			continue
+		var enemy := enemies[i]
+		var old_pos: Vector2 = enemy["pos"]
+		var step := minf(SEPARATION_MAX_STEP, push.length() * SEPARATION_PUSH_SPEED * delta)
+		if step <= 0.0:
+			continue
+		var proposed := _clamp_to_movement_bounds(old_pos + push.normalized() * step, float(enemy.get("radius", 8.0)))
+		if position_resolver.is_valid():
+			var resolved: Vector2 = position_resolver.call(old_pos, proposed, enemy)
+			enemy["pos"] = _clamp_to_movement_bounds(resolved, float(enemy.get("radius", 8.0)))
+		else:
+			enemy["pos"] = proposed
+
+func _build_separation_grid() -> Dictionary:
+	var grid := {}
+	for i in range(enemies.size()):
+		var cell := _separation_cell(Vector2(enemies[i]["pos"]))
+		if not grid.has(cell):
+			grid[cell] = []
+		var bucket: Array = grid[cell]
+		bucket.append(i)
+	return grid
+
+func _separation_cell(pos: Vector2) -> Vector2i:
+	return Vector2i(floori(pos.x / SEPARATION_CELL_SIZE), floori(pos.y / SEPARATION_CELL_SIZE))
+
+func _apply_pair_separation(i: int, j: int, pushes: Array[Vector2]) -> void:
+	var a := enemies[i]
+	var b := enemies[j]
+	var pos_a: Vector2 = a["pos"]
+	var pos_b: Vector2 = b["pos"]
+	var desired := _separation_distance(a, b)
+	var delta_pos := pos_a - pos_b
+	var dist_sq := delta_pos.length_squared()
+	if dist_sq >= desired * desired:
+		return
+	var dist := sqrt(maxf(0.0001, dist_sq))
+	var dir := delta_pos / dist
+	if dist_sq <= 0.0004:
+		var seed := float(a.get("separation_seed", 0.0)) + float(b.get("separation_seed", 0.0)) * 0.37
+		dir = Vector2(cos(seed), sin(seed))
+	var pressure := clampf((desired - dist) / desired, 0.0, 1.0)
+	var mobility_a := _separation_mobility(a)
+	var mobility_b := _separation_mobility(b)
+	var mobility_total := maxf(0.001, mobility_a + mobility_b)
+	pushes[i] += dir * pressure * (mobility_a / mobility_total)
+	pushes[j] -= dir * pressure * (mobility_b / mobility_total)
+
+func _separation_distance(a: Dictionary, b: Dictionary) -> float:
+	var radius_sum := float(a.get("radius", 8.0)) + float(b.get("radius", 8.0)) + SEPARATION_PADDING
+	return clampf(radius_sum, 14.0, SEPARATION_MAX_DISTANCE)
+
+func _separation_mobility(enemy: Dictionary) -> float:
+	if bool(enemy.get("elite", false)):
+		return 0.42
+	match String(enemy.get("role", "basic")):
+		"tank":
+			return 0.46
+		"speaker", "signal":
+			return 0.55
+		"charger":
+			if String(enemy.get("action_state", "idle")) == "dash":
+				return 0.22
+			return 0.74
+		"fast":
+			return 1.08
+		_:
+			return 1.0
 
 func contact_hint() -> String:
 	return last_contact_hint
@@ -449,6 +553,7 @@ func clear() -> void:
 	enemies.clear()
 	spawn_timer = 0.0
 	last_contact_hint = ""
+	spawn_serial = 0
 
 func role_summary() -> String:
 	var counts := {}

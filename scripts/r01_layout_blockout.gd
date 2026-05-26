@@ -247,7 +247,7 @@ func configure_camera(camera: Camera2D) -> void:
 	camera.limit_right = int(WORLD_BOUNDS.position.x + WORLD_BOUNDS.size.x)
 	camera.limit_bottom = int(WORLD_BOUNDS.position.y + WORLD_BOUNDS.size.y)
 
-func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, elapsed: float) -> Vector2:
+func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, elapsed: float, wave_params: Dictionary = {}) -> Vector2:
 	var view_half := C.VIEWPORT_SIZE * 0.5
 	var near_rect := Rect2(player_pos - view_half - Vector2(42, 42), C.VIEWPORT_SIZE + Vector2(84, 84))
 	var preferred_center := player_pos
@@ -258,6 +258,9 @@ func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radiu
 		preferred_center = anchor_position("open_house_street_anchor")
 	if elapsed > 240.0 and player_pos.distance_to(anchor_position("model_house_node_anchor")) < 1180.0 and rng.randf() < 0.24:
 		preferred_center = anchor_position("model_house_node_anchor")
+	var biased := _biased_enemy_spawn_position(player_pos, rng, radius, role, elapsed, wave_params, near_rect)
+	if biased.x < INF * 0.5:
+		return biased
 	for i in range(28):
 		var side := rng.randi_range(0, 3)
 		var offset := Vector2.ZERO
@@ -279,6 +282,39 @@ func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radiu
 		if is_spawn_position_valid(candidate, radius, role):
 			return candidate
 	return _nearest_open_position(_clamp_world_position(player_pos + Vector2(view_half.x + 140.0, 0.0), radius), radius, role)
+
+func _biased_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, elapsed: float, wave_params: Dictionary, near_rect: Rect2) -> Vector2:
+	var bias := String(wave_params.get("spawn_bias", ""))
+	var chance := float(wave_params.get("spawn_pincer_chance", 0.0))
+	if bias == "" or chance <= 0.0 or rng.randf() > chance:
+		return Vector2(INF, INF)
+	var view_half := C.VIEWPORT_SIZE * 0.5
+	var axis := Vector2.RIGHT.rotated(float(wave_params.get("spawn_axis_angle", 0.0)))
+	var side := -1.0 if rng.randi_range(0, 1) == 0 else 1.0
+	var distance := rng.randf_range(view_half.x + 86.0, view_half.x + 238.0)
+	var spread := rng.randf_range(-view_half.y * 0.58, view_half.y * 0.58)
+	var center := player_pos
+	if bias == "signal_converge" and rng.randf() < 0.42:
+		center = anchor_position("model_house_node_anchor").lerp(player_pos, 0.68)
+	elif bias == "quiet_pocket" and rng.randf() < 0.36:
+		center = anchor_position("drain_pocket_anchor").lerp(player_pos, 0.64)
+	elif bias == "mailbox_pincer" and rng.randf() < 0.34:
+		center = anchor_position("subdivision_loop_center").lerp(player_pos, 0.70)
+	elif bias == "false_return_pincer" and rng.randf() < 0.40:
+		center = anchor_position("fake_return_route_anchor").lerp(player_pos, 0.66)
+	var role_distance_mult := 0.86 if role == "fast" or role == "coupon" else 1.0
+	if role == "speaker" or role == "signal":
+		role_distance_mult = 1.08
+	var candidate := _clamp_world_position(center + axis * side * distance * role_distance_mult + axis.rotated(PI * 0.5) * spread, radius)
+	if not near_rect.has_point(candidate) and is_spawn_position_valid(candidate, radius, role):
+		return candidate
+	for i in range(10):
+		var angle := float(wave_params.get("spawn_axis_angle", 0.0)) + (PI if i % 2 == 0 else 0.0) + rng.randf_range(-0.42, 0.42)
+		var ring := rng.randf_range(320.0, 520.0)
+		candidate = _clamp_world_position(player_pos + Vector2(cos(angle), sin(angle)) * ring, radius)
+		if not near_rect.has_point(candidate) and is_spawn_position_valid(candidate, radius, role):
+			return candidate
+	return Vector2(INF, INF)
 
 func is_spawn_position_valid(pos: Vector2, radius: float, role: String = "basic") -> bool:
 	if not WORLD_BOUNDS.grow(-radius).has_point(pos):

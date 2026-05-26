@@ -62,6 +62,12 @@ const AUDIT_SEGMENTS := [
 	{"time": 240.0, "name": "재심사 절차", "threshold": 6000.0, "pass": "심층 귀환 보정", "fail": "포위형 웨이브"},
 	{"time": 300.0, "name": "결절 예비 감사", "threshold": 10000.0, "pass": "모델하우스 접근 암시", "fail": "강제 인양 위험"},
 ]
+const ENEMY_DENSITY_UI_CULL_START := 115
+const ENEMY_DENSITY_UI_HEAVY := 170
+const DAMAGE_NUMBER_DENSE_START := 145
+const DAMAGE_NUMBER_DENSE_NEAR_RADIUS := 18.0
+const NODE_PRESSURE_CUE_START := 22.0
+const NODE_PRESSURE_CUE_INTERVAL := 26.0
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -134,6 +140,7 @@ var active_threats: Array[Dictionary] = []
 var pressure_ring_timer := 0.0
 var flyer_drop_timer := 0.0
 var last_threat_label := ""
+var node_pressure_cue_timer := 0.0
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -227,6 +234,7 @@ func _process(delta: float) -> void:
 	if not boss.active:
 		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
 		_update_wave_events(wave_params)
+		_update_campaign_node_pressure_cues(delta, wave_params)
 	_update_enemies(delta)
 	_update_charge_marks(delta)
 	_update_threats(delta)
@@ -483,7 +491,9 @@ func _update_enemies(delta: float) -> void:
 			old_positions.append(Vector2(enemy["pos"]))
 	var contact_damage := enemies.update_enemies(delta, player_pos)
 	if R01LayoutBlockout.ENABLED:
-		_apply_r01_enemy_navigation(old_positions)
+		_apply_r01_enemy_navigation(old_positions, delta)
+	else:
+		enemies.apply_separation(delta)
 	_update_special_enemy_sfx()
 	if contact_damage <= 0.0:
 		return
@@ -504,16 +514,24 @@ func _update_enemies(delta: float) -> void:
 		else:
 			_finish_match("recalled" if _first_recall_active() else "game_over")
 
-func _apply_r01_enemy_navigation(old_positions: Array[Vector2]) -> void:
+func _apply_r01_enemy_navigation(old_positions: Array[Vector2], delta: float) -> void:
 	var count := mini(old_positions.size(), enemies.enemies.size())
 	for i in range(count):
 		var enemy := enemies.enemies[i]
-		var role := "elite" if bool(enemy.get("elite", false)) else String(enemy.get("role", "basic"))
-		if String(enemy.get("sprite_kind", "")) == "coupon":
-			role = "coupon" if role == "basic" or role == "fast" else role
-		elif String(enemy.get("sprite_kind", "")) == "appliance":
-			role = "robot" if role == "basic" else role
+		var role := _enemy_navigation_role(enemy)
 		enemy["pos"] = r01_blockout.resolve_enemy_position(old_positions[i], Vector2(enemy["pos"]), role, float(enemy.get("radius", 8.0)))
+	enemies.apply_separation(delta, Callable(self, "_resolve_enemy_separation_position"))
+
+func _resolve_enemy_separation_position(old_pos: Vector2, proposed_pos: Vector2, enemy: Dictionary) -> Vector2:
+	return r01_blockout.resolve_enemy_position(old_pos, proposed_pos, _enemy_navigation_role(enemy), float(enemy.get("radius", 8.0)))
+
+func _enemy_navigation_role(enemy: Dictionary) -> String:
+	var role := "elite" if bool(enemy.get("elite", false)) else String(enemy.get("role", "basic"))
+	if String(enemy.get("sprite_kind", "")) == "coupon":
+		role = "coupon" if role == "basic" or role == "fast" else role
+	elif String(enemy.get("sprite_kind", "")) == "appliance":
+		role = "robot" if role == "basic" else role
+	return role
 
 func _update_special_enemy_sfx() -> void:
 	for enemy in enemies.enemies:
@@ -617,7 +635,7 @@ func _resolve_threat_hit(threat: Dictionary) -> void:
 	player_hp = maxf(0.0, player_hp - damage)
 	last_threat_label = label
 	effects.add_floater(player_pos + Vector2(0, -16), label, C.NEON_RED, 13)
-	effects.add_damage_number(player_pos + Vector2(0, -12), damage, "hit")
+	_show_damage_number(player_pos + Vector2(0, -12), damage, "hit")
 	effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.28)
 	effects.add_impact_shake(0.18, 4.6)
 	if String(threat.get("type", "")) == THREAT_PRESSURE_RING:
@@ -669,7 +687,7 @@ func _update_boss(delta: float) -> void:
 		if result.has("knockback"):
 			player_pos += Vector2(result["knockback"])
 			_clamp_player_to_world()
-		effects.add_damage_number(player_pos + Vector2(0, -16), final_damage, "hit")
+		_show_damage_number(player_pos + Vector2(0, -16), final_damage, "hit")
 		var heavy_hit := result.has("knockback")
 		effects.add_impact_shake(0.28 if heavy_hit else 0.18, 7.2 if heavy_hit else 5.2)
 		effects.add_status_ring(player_pos, C.NEON_RED, 32.0 if heavy_hit else 24.0, 0.38 if heavy_hit else 0.30)
@@ -702,7 +720,7 @@ func _update_auto_fire(delta: float) -> void:
 		damage *= 1.12
 	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
 	if not hit.is_empty():
-		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_show_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_add_audit_processing(float(hit["damage"]) * 1.4, "auto_hit", target_pos)
 		_register_attack_pose(target_pos - player_pos, 0.14)
 		_apply_hit_knockback(target_idx, player_pos, 5.5)
@@ -766,9 +784,9 @@ func _update_charge_puddles(delta: float) -> void:
 		if float(puddle["display_tick"]) >= 0.32:
 			puddle["display_tick"] = 0.0
 			for n in range(mini(6, hit_enemies.size())):
-				effects.add_damage_number(Vector2(hit_enemies[n]["pos"]), float(hit_enemies[n]["damage"]), "puddle", String(hit_enemies[n]["effectiveness"]))
+				_show_damage_number(Vector2(hit_enemies[n]["pos"]), float(hit_enemies[n]["damage"]), "puddle", String(hit_enemies[n]["effectiveness"]))
 			if not boss_hit.is_empty():
-				effects.add_damage_number(Vector2(boss_hit["pos"]), float(boss_hit["damage"]), "puddle", String(boss_hit["effectiveness"]))
+				_show_damage_number(Vector2(boss_hit["pos"]), float(boss_hit["damage"]), "puddle", String(boss_hit["effectiveness"]))
 		_handle_dead_positions(_cleanup_dead_positions())
 	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
@@ -836,7 +854,7 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 			continue
 		_apply_return_stamp(idx, perfect)
 		effects.spawn_hit_spark(hit_pos, true, rng)
-		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
+		_show_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
 		_add_audit_processing(28.0 + float(hit["damage"]) * 2.2, "charge_hit", hit_pos)
 		var heavy_target := bool(enemies.enemies[idx].get("elite", false)) or String(enemies.enemies[idx].get("role", "basic")) in ["tank", "signal", "speaker", "charger"]
 		effects.add_impact_line(line_start, hit_pos, C.NEON_RED, 3.5 if heavy_target else 2.5, 0.16)
@@ -1059,7 +1077,7 @@ func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bo
 	_play_sfx("boss_hit")
 	_add_audit_processing(36.0 + float(hit.get("damage", 0.0)) * 1.6, "terms_boss_hit", Vector2(hit["pos"]))
 	if show_number:
-		effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
+		_show_damage_number(Vector2(hit["pos"]), float(hit["damage"]), damage_type, String(hit["effectiveness"]))
 	if float(hit.get("shield_damage", 0.0)) > 0.0:
 		effects.add_status_ring(boss.pos, C.LEMON_YELLOW, BossController.BODY_RADIUS + 18.0, 0.24)
 	if bool(hit.get("distorted_charge", false)):
@@ -1093,7 +1111,7 @@ func _try_split_shot(primary_idx: int) -> void:
 		split_damage *= 1.12
 	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
-		effects.add_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
+		_show_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_add_audit_processing(float(hit["damage"]) * 1.25, "auto_hit", target_pos)
 		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
 		_play_sfx("enemy_hit")
@@ -1134,7 +1152,7 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	if hit_enemies.size() > 0:
 		var burst_processing := 0.0
 		for hit in hit_enemies:
-			effects.add_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
+			_show_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "burst", String(hit["effectiveness"]))
 			burst_processing += float(hit.get("damage", 0.0)) * 1.35
 			_apply_hit_knockback(int(hit["index"]), pos, 13.0)
 		_add_audit_processing(burst_processing, "burst", pos)
@@ -1192,7 +1210,7 @@ func _try_charge_followthrough(hit_indices: Array[int], limit: int, damage: floa
 	var follow_damage := damage * 0.28
 	var hit := enemies.apply_damage(idx, _enemy_meta_damage(follow_damage, idx), "focused")
 	if not hit.is_empty():
-		effects.add_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
+		_show_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
 		_apply_hit_knockback(idx, player_pos, 10.0)
 		effects.add_impact_line(player_pos + aim_dir * 18.0, hit_pos, C.TOXIC_GREEN)
 		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 16.0, 0.26)
@@ -1254,7 +1272,7 @@ func _try_charge_heal(hit_count: int) -> void:
 	if survival_combo:
 		heal_amount += 3.0
 	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
-	effects.add_damage_number(player_pos, heal_amount, "heal")
+	_show_damage_number(player_pos, heal_amount, "heal")
 	effects.add_floater(player_pos + Vector2(-16, -8), "생존 회복!" if survival_combo else "회복!", C.TOXIC_GREEN, 14)
 
 func _is_perfect_charge() -> bool:
@@ -1443,32 +1461,63 @@ func _trigger_audit_failure_pressure(segment: Dictionary) -> void:
 func _wave_params_for_elapsed(value: float) -> Dictionary:
 	var params := WaveDirector.params_for_time(value, sortie_index, r01_map.current_zone_id())
 	params = _apply_r01_contamination_spawn_pressure(params)
-	params = _apply_r01_campaign_node_spawn_hint(params)
+	params = _apply_r01_campaign_node_spawn_hint(params, value)
 	return _apply_audit_spawn_pressure(params)
 
-func _apply_r01_campaign_node_spawn_hint(params: Dictionary) -> Dictionary:
+func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Dictionary:
 	var result := params.duplicate(true)
 	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
 	match current_r01_node_id:
 		R01CampaignMap.NODE_L01:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.96
 			weights["basic"] = float(weights.get("basic", 0.0)) + 0.03
+			result["spawn_bias"] = "wide_edge"
+			result["spawn_pincer_chance"] = 0.10
+			result["spawn_axis_angle"] = -0.15
+			result["node_pressure_label"] = "회수선 안정"
 		R01CampaignMap.NODE_L02:
-			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.02
-			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.02
-			weights["fast"] = float(weights.get("fast", 0.0)) + 0.01
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.08
+			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * (1.025 if value >= 36.0 else 1.0)
+			weights["basic"] = maxf(0.10, float(weights.get("basic", 0.0)) - 0.03)
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.035
+			weights["fast"] = float(weights.get("fast", 0.0)) + 0.055
+			weights["charger"] = float(weights.get("charger", 0.0)) + (0.018 if value >= 72.0 else 0.0)
+			result["spawn_bias"] = "mailbox_pincer"
+			result["spawn_pincer_chance"] = 0.46 if value >= 36.0 else 0.24
+			result["spawn_axis_angle"] = 0.34
+			result["node_pressure_label"] = "우편함 양쪽 발송"
 		R01CampaignMap.NODE_L03:
-			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.04
-			weights["signal"] = float(weights.get("signal", 0.0)) + 0.03
-			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.02
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.07
+			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 1.02
+			weights["basic"] = maxf(0.10, float(weights.get("basic", 0.0)) - 0.025)
+			weights["signal"] = float(weights.get("signal", 0.0)) + 0.055
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.035
+			weights["charger"] = float(weights.get("charger", 0.0)) + 0.012
+			result["spawn_bias"] = "signal_converge"
+			result["spawn_pincer_chance"] = 0.34
+			result["spawn_axis_angle"] = -0.62
+			result["node_pressure_label"] = "심사 신호 증폭"
 		R01CampaignMap.NODE_L04:
-			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.98
-			weights["signal"] = float(weights.get("signal", 0.0)) + 0.02
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.94
+			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 0.98
+			weights["basic"] = float(weights.get("basic", 0.0)) + 0.02
+			weights["signal"] = float(weights.get("signal", 0.0)) + 0.025
 			weights["tank"] = float(weights.get("tank", 0.0)) + 0.01
+			result["spawn_bias"] = "quiet_pocket"
+			result["spawn_pincer_chance"] = 0.14
+			result["spawn_axis_angle"] = 1.12
+			result["node_pressure_label"] = "침묵 흔적 접근"
 		R01CampaignMap.NODE_L05:
-			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.05
-			weights["fast"] = float(weights.get("fast", 0.0)) + 0.03
-			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.03
+			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.09
+			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 1.035
+			weights["basic"] = maxf(0.10, float(weights.get("basic", 0.0)) - 0.03)
+			weights["fast"] = float(weights.get("fast", 0.0)) + 0.055
+			weights["speaker"] = float(weights.get("speaker", 0.0)) + 0.045
+			weights["charger"] = float(weights.get("charger", 0.0)) + 0.016
+			result["spawn_bias"] = "false_return_pincer"
+			result["spawn_pincer_chance"] = 0.42
+			result["spawn_axis_angle"] = -0.95
+			result["node_pressure_label"] = "가짜 귀환 신호"
 	result["role_weights"] = weights
 	return result
 
@@ -1506,6 +1555,50 @@ func _apply_audit_spawn_pressure(params: Dictionary) -> Dictionary:
 	weights["signal"] = float(weights.get("signal", 0.0)) + 0.012 * float(pressure)
 	result["role_weights"] = weights
 	return result
+
+func _update_campaign_node_pressure_cues(delta: float, wave_params: Dictionary) -> void:
+	if current_r01_node_id == R01CampaignMap.NODE_L01 or elapsed < NODE_PRESSURE_CUE_START:
+		node_pressure_cue_timer = maxf(0.0, node_pressure_cue_timer - delta)
+		return
+	node_pressure_cue_timer = maxf(0.0, node_pressure_cue_timer - delta)
+	if node_pressure_cue_timer > 0.0:
+		return
+	var label := String(wave_params.get("node_pressure_label", ""))
+	if label == "":
+		return
+	node_pressure_cue_timer = NODE_PRESSURE_CUE_INTERVAL + rng.randf_range(-4.0, 5.0)
+	var cue_color := C.NEON_RED
+	if current_r01_node_id == R01CampaignMap.NODE_L04:
+		cue_color = Color(0.35, 0.70, 0.95)
+	effects.add_floater(player_pos + Vector2(rng.randf_range(-32.0, 32.0), rng.randf_range(-14.0, 6.0)), label, cue_color, 12)
+	if current_r01_node_id == R01CampaignMap.NODE_L02 or current_r01_node_id == R01CampaignMap.NODE_L05:
+		effects.add_status_ring(player_pos, cue_color, 46.0, 0.26)
+	_show_wave_notice("%s: %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_modifier_short(current_r01_node_id)])
+
+func _show_damage_number(pos: Vector2, amount: float, kind: String, effectiveness: String = "normal") -> void:
+	if _damage_number_visible(pos, kind, effectiveness):
+		effects.add_damage_number(pos, amount, kind, effectiveness)
+
+func _damage_number_visible(pos: Vector2, kind: String, effectiveness: String) -> bool:
+	if debug_tools.detail_debug_visible():
+		return true
+	if kind == "hit" or kind == "heal" or kind == "focused" or effectiveness == "weak":
+		return true
+	if enemies.enemies.size() < DAMAGE_NUMBER_DENSE_START:
+		return true
+	if kind == "auto" and effects.damage_numbers.size() >= 44:
+		return false
+	if kind == "puddle" and effects.damage_numbers.size() >= 34:
+		return false
+	var near_count := 0
+	var radius_sq := DAMAGE_NUMBER_DENSE_NEAR_RADIUS * DAMAGE_NUMBER_DENSE_NEAR_RADIUS
+	var near_limit := 1 if _enemy_heavy_density_ui() else 2
+	for number in effects.damage_numbers:
+		if pos.distance_squared_to(Vector2(number.get("pos", Vector2.ZERO))) <= radius_sq:
+			near_count += 1
+			if near_count >= near_limit:
+				return false
+	return true
 
 func _add_audit_processing(base_value: float, reason: String, pos: Vector2 = Vector2(-999999.0, -999999.0)) -> void:
 	if match_state != "playing" or base_value <= 0.0:
@@ -2050,6 +2143,7 @@ func _sortie_start_notice() -> String:
 	var parts: Array[String] = []
 	parts.append(R01CampaignMap.node_sortie_notice(current_r01_node_id))
 	parts.append("구역 상태: %s" % R01CampaignMap.node_blockout_phrase(current_r01_node_id))
+	parts.append("지역 변조: %s" % R01CampaignMap.node_modifier(current_r01_node_id))
 	if meta_progression.signal_board_level() > 0:
 		parts.append(meta_progression.signal_board_guidance_line())
 	parts.append("지역 약관: %s" % _regional_clause_preview_line())
@@ -2088,7 +2182,7 @@ func _combat_goal_label() -> String:
 	if boss.active:
 		return "심사관 대응"
 	if current_r01_node_id != "":
-		return "%s | %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_combat_goal(current_r01_node_id)]
+		return "%s | 법칙: %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_modifier_short(current_r01_node_id)]
 	if sortie_index <= 1:
 		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
@@ -3570,7 +3664,8 @@ func _draw_enemy(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
 	draw_circle(pos + Vector2(2, 3), radius + 1.5, Color(0, 0, 0, 0.18))
-	draw_arc(pos, radius + 3.0, 0.0, TAU, 24, Color(1.0, 0.96, 0.72, 0.18), 1.4)
+	if _enemy_base_ring_visible(enemy):
+		draw_arc(pos, radius + 3.0, 0.0, TAU, 24, Color(1.0, 0.96, 0.72, _enemy_base_ring_alpha(enemy)), 1.4)
 	_draw_enemy_role_marker(enemy)
 	_draw_enemy_defense_marker(enemy)
 	var enemy_frame := int(float(enemy.get("age", elapsed)) * 5.0) % 2
@@ -3579,6 +3674,62 @@ func _draw_enemy(enemy: Dictionary) -> void:
 	_draw_charge_weapon_markers(enemy)
 	_draw_enemy_nameplate(enemy)
 	_draw_enemy_hit_feedback(enemy)
+
+func _enemy_high_density_ui() -> bool:
+	return enemies.enemies.size() >= ENEMY_DENSITY_UI_CULL_START and not debug_tools.detail_debug_visible()
+
+func _enemy_heavy_density_ui() -> bool:
+	return enemies.enemies.size() >= ENEMY_DENSITY_UI_HEAVY and not debug_tools.detail_debug_visible()
+
+func _enemy_priority_visual(enemy: Dictionary) -> bool:
+	if bool(enemy.get("elite", false)):
+		return true
+	var role := String(enemy.get("role", "basic"))
+	return role == "speaker" or role == "charger" or role == "signal"
+
+func _enemy_near_player_visual(enemy: Dictionary, distance: float = 155.0) -> bool:
+	var pos: Vector2 = enemy.get("pos", Vector2.ZERO)
+	return pos.distance_squared_to(player_pos) <= distance * distance
+
+func _enemy_base_ring_visible(enemy: Dictionary) -> bool:
+	if debug_tools.detail_debug_visible():
+		return true
+	if not _enemy_high_density_ui():
+		return true
+	if _enemy_priority_visual(enemy):
+		return true
+	return not _enemy_heavy_density_ui() and _enemy_near_player_visual(enemy, 132.0)
+
+func _enemy_base_ring_alpha(enemy: Dictionary) -> float:
+	if not _enemy_high_density_ui():
+		return 0.18
+	if _enemy_priority_visual(enemy):
+		return 0.16
+	return 0.08
+
+func _enemy_role_marker_local_visible(enemy: Dictionary) -> bool:
+	if debug_tools.detail_debug_visible():
+		return true
+	if not _enemy_high_density_ui():
+		return true
+	if _enemy_priority_visual(enemy):
+		return true
+	return not _enemy_heavy_density_ui() and _enemy_near_player_visual(enemy, 150.0)
+
+func _enemy_defense_marker_visible(enemy: Dictionary) -> bool:
+	if debug_tools.detail_debug_visible():
+		return true
+	var defense := String(enemy.get("defense_type", "normal"))
+	if defense == "normal":
+		return false
+	if not _enemy_high_density_ui():
+		return true
+	if _enemy_priority_visual(enemy):
+		return true
+	var role := String(enemy.get("role", "basic"))
+	if role == "tank" and not _enemy_heavy_density_ui():
+		return true
+	return _enemy_near_player_visual(enemy, 168.0)
 
 func _draw_charge_weapon_markers(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
@@ -3629,6 +3780,9 @@ func _draw_enemy_nameplate(enemy: Dictionary) -> void:
 	var role := String(enemy.get("role", "basic"))
 	if role == "basic":
 		return
+	if _enemy_high_density_ui() and not _enemy_priority_visual(enemy):
+		if role != "tank" or not _enemy_near_player_visual(enemy, 132.0):
+			return
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
 	var label := "ELITE" if bool(enemy.get("elite", false)) else _enemy_role_label(role)
@@ -3656,26 +3810,31 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
 	var role := String(enemy.get("role", "basic"))
+	var local_marker_visible := _enemy_role_marker_local_visible(enemy)
 	if bool(enemy.get("elite", false)):
 		var pulse := 0.82 + 0.10 * sin(elapsed * 7.0)
 		draw_circle(pos, radius + 9.0, Color(1.0, 0.3, 0.36, 0.16))
 		draw_arc(pos, (radius + 10.0) * pulse, 0.0, TAU, 36, C.NEON_RED, 3.0)
 		draw_arc(pos, radius + 16.0, -PI * 0.22, PI * 1.22, 28, C.VITAMIN_YELLOW, 2.5)
-	if bool(enemy.get("aura_boosted", false)):
+	if bool(enemy.get("aura_boosted", false)) and local_marker_visible:
 		draw_arc(pos, radius + 5.0, 0.0, TAU, 24, Color(1.0, 0.3, 0.36, 0.45), 1.5)
-	if bool(enemy.get("speaker_boosted", false)):
+	if bool(enemy.get("speaker_boosted", false)) and local_marker_visible:
 		draw_arc(pos, radius + 8.0, PI * 0.1, PI * 1.1, 20, C.VITAMIN_YELLOW, 2.0)
 	match role:
 		"fast":
+			if not local_marker_visible:
+				return
 			draw_arc(pos, radius + 3.0, -0.8, 0.8, 12, C.NEON_RED, 2.0)
 			draw_line(pos + Vector2(-radius, -radius), pos + Vector2(-radius - 7.0, -radius - 2.0), C.NEON_RED, 2.0)
 		"tank":
+			if not local_marker_visible:
+				return
 			draw_arc(pos, radius + 4.0, 0.0, TAU, 28, C.COCOA, 2.5)
 			draw_circle(pos, radius + 2.0, Color(0.0, 0.0, 0.0, 0.08))
 		"signal":
-			var aura_alpha := 0.16 + 0.06 * sin(elapsed * 5.0)
+			var aura_alpha := (0.10 if _enemy_high_density_ui() else 0.16) + 0.04 * sin(elapsed * 5.0)
 			draw_circle(pos, 92.0, Color(1.0, 0.91, 0.25, aura_alpha))
-			draw_arc(pos, 92.0, 0.0, TAU, 42, Color(1.0, 0.3, 0.36, 0.38), 2.0)
+			draw_arc(pos, 92.0, 0.0, TAU, 42, Color(1.0, 0.3, 0.36, 0.30 if _enemy_high_density_ui() else 0.38), 2.0)
 			draw_arc(pos, radius + 5.0, 0.0, TAU, 24, C.VITAMIN_YELLOW, 2.5)
 		"speaker":
 			var pulse_left := float(enemy.get("speaker_pulse", 0.0))
@@ -3704,6 +3863,8 @@ func _draw_enemy_role_marker(enemy: Dictionary) -> void:
 				draw_arc(pos, radius + 5.0, -0.65, 0.65, 14, C.NEON_RED, 2.0)
 
 func _draw_enemy_defense_marker(enemy: Dictionary) -> void:
+	if not _enemy_defense_marker_visible(enemy):
+		return
 	var pos: Vector2 = enemy["pos"]
 	var radius := float(enemy["radius"])
 	var defense := String(enemy.get("defense_type", "normal"))
@@ -3830,6 +3991,7 @@ func _restart() -> void:
 	pressure_ring_timer = 0.0
 	flyer_drop_timer = 0.0
 	last_threat_label = ""
+	node_pressure_cue_timer = 0.0
 	hud.reset()
 	var blockout_variant := R01CampaignMap.node_blockout_variant(current_r01_node_id)
 	if R01LayoutBlockout.ENABLED:
