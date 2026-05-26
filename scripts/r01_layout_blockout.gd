@@ -211,6 +211,8 @@ var _collision_records_cache_variant := ""
 var _collision_records_cache: Array[Dictionary] = []
 var _pathing_probe_cache_variant := ""
 var _pathing_probe_cache := {}
+var _last_source_spawn_debug := {}
+var _last_hazard_source_debug := {}
 var map_assembly := R01MapAssembly.new()
 
 func reset() -> void:
@@ -250,6 +252,9 @@ func configure_camera(camera: Camera2D) -> void:
 func enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, elapsed: float, wave_params: Dictionary = {}) -> Vector2:
 	var view_half := C.VIEWPORT_SIZE * 0.5
 	var near_rect := Rect2(player_pos - view_half - Vector2(42, 42), C.VIEWPORT_SIZE + Vector2(84, 84))
+	var source_biased := _source_enemy_spawn_position(player_pos, rng, radius, role, wave_params, near_rect)
+	if source_biased.x < INF * 0.5:
+		return source_biased
 	var preferred_center := player_pos
 	var nearest_anchor := nearest_zone_id(player_pos)
 	if elapsed > 72.0 and rng.randf() < 0.28:
@@ -316,6 +321,52 @@ func _biased_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerato
 			return candidate
 	return Vector2(INF, INF)
 
+func _source_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, wave_params: Dictionary, near_rect: Rect2) -> Vector2:
+	_last_source_spawn_debug = {"used": false, "role": role}
+	var chance := float(wave_params.get("source_spawn_chance", 0.0))
+	if chance <= 0.0 or rng.randf() > chance:
+		return Vector2(INF, INF)
+	var zone_id := String(wave_params.get("source_zone_id", nearest_zone_id(player_pos)))
+	var sources := source_objects_for_spawn_role(role, zone_id)
+	if sources.is_empty() and role == "elite":
+		sources = source_objects_for_spawn_role("signal", zone_id)
+	if sources.is_empty() and role == "robot":
+		sources = source_objects_for_spawn_role("tank", zone_id)
+	if sources.is_empty():
+		sources = source_objects_for_spawn_role(role)
+	if sources.is_empty():
+		return Vector2(INF, INF)
+	var source: Dictionary = sources[rng.randi_range(0, sources.size() - 1)]
+	var source_pos := Vector2(source.get("pos", player_pos))
+	var view_half := C.VIEWPORT_SIZE * 0.5
+	var dir := source_pos - player_pos
+	if dir.length_squared() <= 1.0:
+		dir = Vector2.RIGHT.rotated(rng.randf_range(-PI, PI))
+	dir = dir.normalized()
+	var source_is_offscreen := not near_rect.has_point(source_pos)
+	for i in range(16):
+		var candidate := source_pos
+		if source_is_offscreen and rng.randf() < 0.72:
+			candidate += Vector2.RIGHT.rotated(rng.randf_range(-PI, PI)) * rng.randf_range(26.0, 118.0)
+		else:
+			var distance := rng.randf_range(maxf(view_half.x, view_half.y) + 84.0, maxf(view_half.x, view_half.y) + 260.0)
+			var lateral := dir.rotated(PI * 0.5) * rng.randf_range(-view_half.y * 0.52, view_half.y * 0.52)
+			candidate = player_pos + dir * distance + lateral
+		candidate = _clamp_world_position(candidate, radius)
+		if not near_rect.has_point(candidate) and is_spawn_position_valid(candidate, radius, role):
+			_last_source_spawn_debug = {
+				"used": true,
+				"role": role,
+				"source_id": String(source.get("id", "")),
+				"source_role": String(source.get("source_role", "")),
+				"zone_id": String(source.get("zone_id", "")),
+				"source_pos": source_pos,
+				"spawn_pos": candidate,
+				"bias": String(wave_params.get("source_spawn_label", "")),
+			}
+			return candidate
+	return Vector2(INF, INF)
+
 func is_spawn_position_valid(pos: Vector2, radius: float, role: String = "basic") -> bool:
 	if not WORLD_BOUNDS.grow(-radius).has_point(pos):
 		return false
@@ -371,6 +422,76 @@ func active_collision_records(variant: String = state_variant) -> Array[Dictiona
 		_collision_records_cache_variant = variant
 		_collision_records_cache = records
 	return records
+
+func source_objects_for_spawn_role(spawn_role: String, zone_id: String = "", variant: String = state_variant) -> Array[Dictionary]:
+	return map_assembly.source_objects_for_spawn_role(spawn_role, zone_id, variant)
+
+func source_objects_for_hazard_role(hazard_role: String, zone_id: String = "", variant: String = state_variant) -> Array[Dictionary]:
+	return map_assembly.source_objects_for_hazard_role(hazard_role, zone_id, variant)
+
+func source_summary_by_zone(variant: String = state_variant) -> Dictionary:
+	return map_assembly.source_summary_by_zone(variant)
+
+func source_summary_line(zone_id: String = "", variant: String = state_variant) -> String:
+	return map_assembly.source_summary_line(zone_id, variant)
+
+func hazard_summary_line(zone_id: String = "", variant: String = state_variant) -> String:
+	return map_assembly.hazard_summary_line(zone_id, variant)
+
+func active_source_count(variant: String = state_variant) -> int:
+	return map_assembly.active_source_count(variant)
+
+func last_source_spawn_debug() -> Dictionary:
+	return _last_source_spawn_debug.duplicate(true)
+
+func last_hazard_source_debug() -> Dictionary:
+	return _last_hazard_source_debug.duplicate(true)
+
+func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: RandomNumberGenerator, fallback_pos: Vector2, zone_id: String = "") -> Dictionary:
+	var selected_zone := zone_id if zone_id != "" else nearest_zone_id(player_pos)
+	var sources := source_objects_for_hazard_role(hazard_role, selected_zone)
+	if sources.is_empty() and hazard_role == "pressure_ring":
+		sources = source_objects_for_hazard_role("warning_line", selected_zone)
+	if sources.is_empty() and hazard_role == "flyer_drop":
+		sources = source_objects_for_hazard_role("sprinkler_ink", selected_zone)
+	if sources.is_empty() and hazard_role == "fake_return":
+		sources = source_objects_for_hazard_role("rear_pincer", selected_zone)
+	if sources.is_empty():
+		sources = source_objects_for_hazard_role(hazard_role)
+	if sources.is_empty():
+		_last_hazard_source_debug = {"used": false, "hazard_role": hazard_role, "zone_id": selected_zone}
+		return {"pos": fallback_pos, "used": false}
+	var source: Dictionary = sources[rng.randi_range(0, sources.size() - 1)]
+	var source_pos := Vector2(source.get("pos", fallback_pos))
+	var dir := source_pos - player_pos
+	if dir.length_squared() <= 1.0:
+		dir = Vector2.RIGHT.rotated(rng.randf_range(-PI, PI))
+	dir = dir.normalized()
+	var side := dir.rotated(PI * 0.5)
+	var target_distance := rng.randf_range(48.0, 126.0)
+	if hazard_role == "fake_return" or hazard_role == "rear_pincer":
+		target_distance = rng.randf_range(88.0, 152.0)
+	elif hazard_role == "low_signal" or hazard_role == "silence_leak":
+		target_distance = rng.randf_range(28.0, 92.0)
+	var candidate := player_pos + dir * target_distance + side * rng.randf_range(-38.0, 38.0)
+	candidate = _clamp_world_position(candidate, 8.0)
+	_last_hazard_source_debug = {
+		"used": true,
+		"hazard_role": hazard_role,
+		"source_id": String(source.get("id", "")),
+		"source_role": String(source.get("source_role", "")),
+		"zone_id": String(source.get("zone_id", "")),
+		"source_pos": source_pos,
+		"pos": candidate,
+	}
+	return {
+		"pos": candidate,
+		"used": true,
+		"source_id": String(source.get("id", "")),
+		"source_role": String(source.get("source_role", "")),
+		"source_pos": source_pos,
+		"story_function": String(source.get("story_function", "")),
+	}
 
 func _clear_collision_cache() -> void:
 	_collision_records_cache_variant = ""
@@ -456,6 +577,7 @@ func print_probe() -> void:
 	for variant in STATE_VARIANTS:
 		print("R01_BLOCKOUT_STATE ", variant, " prop_counts=", prop_counts_for_state(variant))
 		print("R01_COLLISION_NAV_STATE ", variant, " collision_counts=", collision_summary(variant))
+		print("R01_SOURCE_STATE ", variant, " sources=", source_summary_line("", variant), " hazards=", hazard_summary_line("", variant))
 	print("R01_BLOCKOUT_DENSITY ", density_counts())
 	print("R01_COLLISION_NAV_PREVIEW ", pathing_probe_results())
 
@@ -896,6 +1018,8 @@ func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: f
 	var prop_id := String(object.get("id", kind))
 	var asset_key := String(object.get("asset_key", prop_id))
 	_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
+	if not show_debug_labels:
+		_draw_source_feedback(canvas, object, elapsed)
 
 func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, asset_key: String, elapsed: float, show_debug_labels: bool) -> void:
 	match kind:
@@ -969,6 +1093,42 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 			canvas.draw_circle(pos, 10.0, Color(1.0, 0.91, 0.25, 0.55))
 	if show_debug_labels:
 		_draw_prop_label(canvas, pos, "%s\n%s" % [prop_id, asset_key])
+
+func _draw_source_feedback(canvas: CanvasItem, object: Dictionary, elapsed: float) -> void:
+	var source_role := String(object.get("source_role", "environmental_readability"))
+	if source_role == "environmental_readability":
+		return
+	var pos := Vector2(object.get("pos", Vector2.ZERO))
+	var pulse := 0.5 + 0.5 * sin(elapsed * 3.2 + pos.x * 0.013)
+	match source_role:
+		"mailbox_coupon":
+			canvas.draw_arc(pos + Vector2(0, -10), 22.0 + pulse * 5.0, -0.35, PI + 0.35, 24, Color(1.0, 0.91, 0.25, 0.22 + pulse * 0.20), 2.0)
+			canvas.draw_line(pos + Vector2(8, -15), pos + Vector2(28 + pulse * 4.0, -24), Color(1.0, 0.91, 0.25, 0.36), 2.0)
+		"doorbell_sensor":
+			canvas.draw_line(pos, pos + Vector2(54.0 + pulse * 16.0, -10.0), Color(1.0, 0.62, 0.78, 0.34 + pulse * 0.18), 2.0)
+			canvas.draw_circle(pos, 11.0 + pulse * 3.0, Color(1.0, 0.62, 0.78, 0.12))
+		"sprinkler_ink":
+			canvas.draw_circle(pos, 36.0 + pulse * 9.0, Color(0.35, 0.70, 0.95, 0.06 + pulse * 0.07))
+			canvas.draw_arc(pos, 38.0 + pulse * 8.0, 0.0, TAU, 36, Color(0.35, 0.70, 0.95, 0.28), 1.8)
+		"drain_silence":
+			canvas.draw_circle(pos, 46.0 + pulse * 10.0, Color(0.08, 0.20, 0.12, 0.08 + pulse * 0.06))
+			canvas.draw_arc(pos, 30.0 + pulse * 13.0, 0.2, PI * 1.45, 28, Color(0.62, 1.0, 0.36, 0.22), 1.8)
+		"model_sign", "street_speaker", "model_house_contract_node":
+			canvas.draw_line(pos, pos + Vector2(86.0 + pulse * 24.0, -34.0), Color(1.0, 0.91, 0.25, 0.22 + pulse * 0.18), 2.0)
+			canvas.draw_arc(pos, 48.0 + pulse * 8.0, -0.7, 0.7, 22, Color(1.0, 0.30, 0.36, 0.28), 2.0)
+		"fake_return_sign":
+			var jitter := Vector2(sin(elapsed * 9.0) * 3.0, cos(elapsed * 7.0) * 2.0)
+			canvas.draw_rect(Rect2(pos - Vector2(34, 21) + jitter, Vector2(68, 42)), Color(0.95, 0.54, 0.78, 0.05 + pulse * 0.10), false, 2.0)
+			canvas.draw_line(pos + Vector2(-28, 16), pos + Vector2(34, -18), Color(0.95, 0.54, 0.78, 0.26 + pulse * 0.18), 2.2)
+		"homecare_robot":
+			canvas.draw_line(pos + Vector2(-28, 22), pos + Vector2(30, 22), Color(0.35, 0.70, 0.95, 0.18 + pulse * 0.18), 2.0)
+			canvas.draw_circle(pos + Vector2(0, 22), 8.0 + pulse * 3.0, Color(0.35, 0.70, 0.95, 0.12))
+		"consultation_kiosk":
+			canvas.draw_line(pos, pos + Vector2(-62.0, -36.0), Color(1.0, 0.30, 0.36, 0.24 + pulse * 0.20), 2.0)
+			canvas.draw_line(pos, pos + Vector2(68.0, -28.0), Color(1.0, 0.30, 0.36, 0.20 + pulse * 0.20), 2.0)
+		"repeated_house_front":
+			canvas.draw_circle(pos + Vector2(30, 18), 9.0 + pulse * 4.0, Color(1.0, 0.62, 0.78, 0.08 + pulse * 0.10))
+			canvas.draw_line(pos + Vector2(30, 18), pos + Vector2(58 + pulse * 8.0, 8), Color(1.0, 0.62, 0.78, 0.22), 1.8)
 
 func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
 	_draw_blocker_shadow(canvas, pos, Vector2(126, 44))
@@ -1157,8 +1317,11 @@ func _draw_collision_label(canvas: CanvasItem, record: Dictionary) -> void:
 		_:
 			label = "NONE"
 	var color := _collision_color(collision_class)
-	canvas.draw_rect(Rect2(pos + Vector2(-30, -36), Vector2(60, 11)), Color(0.08, 0.06, 0.05, 0.58))
-	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, -28), label, HORIZONTAL_ALIGNMENT_CENTER, 60, 7, color)
+	var source_role := String(record.get("source_role", ""))
+	if source_role != "" and source_role != "environmental_readability":
+		label = "%s/%s" % [label, source_role]
+	canvas.draw_rect(Rect2(pos + Vector2(-48, -36), Vector2(96, 11)), Color(0.08, 0.06, 0.05, 0.58))
+	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, -28), label, HORIZONTAL_ALIGNMENT_CENTER, 96, 7, color)
 
 func _draw_world_bounds(canvas: CanvasItem, show_debug_labels: bool) -> void:
 	canvas.draw_rect(WORLD_BOUNDS, Color(0.34, 0.20, 0.16, 0.65), false, 4.0)

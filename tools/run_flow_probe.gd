@@ -154,6 +154,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	main.debug_tools.detail_visible = true
 	var debug_text: String = main._debug_overlay_text()
 	var debug_hud_ids_ok: bool = debug_text.find("campaign current=R01-L02") != -1 and debug_text.find("selected=R01-L05") != -1 and debug_text.find("bias=mailbox_pincer") != -1
+	var debug_source_ok: bool = debug_text.find("r01 sources zone=") != -1 and debug_text.find("r01 hazard sources") != -1
 
 	_record("campaign map opens from supply", open_ok)
 	_record("campaign map has readable legend and instruction", readability_text_ok)
@@ -168,6 +169,7 @@ func _probe_r01_campaign_map_flow() -> void:
 	_record("L05 displayed as false route", l05_false_route_ok)
 	_record("debug unlock all campaign nodes", unlock_all_ok)
 	_record("debug HUD exposes campaign ids", debug_hud_ids_ok)
+	_record("debug HUD exposes source summaries", debug_source_ok)
 	_probe_r01_campaign_node_entry_profiles(main)
 	main._close_r01_campaign_map()
 	await _finish_main(main)
@@ -184,6 +186,7 @@ func _probe_r01_campaign_node_entry_profiles(main) -> void:
 	main._debug_r01_campaign_unlock_all()
 	var starts := {}
 	var spawn_bias := {}
+	var source_summary := {}
 	var objective_ok := true
 	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
 		main.selected_r01_node_id = node_id
@@ -193,6 +196,7 @@ func _probe_r01_campaign_node_entry_profiles(main) -> void:
 		var wave_params: Dictionary = main._wave_params_for_elapsed(90.0)
 		starts[node_id] = main.player_pos
 		spawn_bias[node_id] = String(wave_params.get("spawn_bias", ""))
+		source_summary[node_id] = main.r01_blockout.source_summary_line(R01CampaignMap.node_zone_id(node_id))
 		objective_ok = objective_ok and main._combat_goal_label().find(R01CampaignMap.node_name(node_id)) != -1
 	var distinct_starts := true
 	for a in starts.keys():
@@ -220,3 +224,65 @@ func _probe_r01_campaign_node_entry_profiles(main) -> void:
 	_record("L01-L05 spawn bias profiles differ", bias_ok, JSON.stringify(spawn_bias))
 	_record("L01-L05 objective phrase follows selected operation zone", objective_ok)
 	_record("R01 pathing probe keeps 30/100/300 and route checks", pathing_ok, pathing_label)
+	_probe_r01_source_profiles(main, source_summary)
+
+func _probe_r01_source_profiles(main, source_summary: Dictionary) -> void:
+	var summary_ok := true
+	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
+		var line := String(source_summary.get(node_id, ""))
+		summary_ok = summary_ok and line.find("{") != -1 and line.find(":") != -1
+	var distinct_source_profiles := true
+	for a in source_summary.keys():
+		for b in source_summary.keys():
+			if String(a) >= String(b):
+				continue
+			distinct_source_profiles = distinct_source_profiles and String(source_summary[a]) != String(source_summary[b])
+	var roles_ok := true
+	var role_checks := {
+		"coupon": R01CampaignMap.NODE_L02,
+		"basic": R01CampaignMap.NODE_L01,
+		"speaker": R01CampaignMap.NODE_L03,
+		"signal": R01CampaignMap.NODE_L03,
+		"charger": R01CampaignMap.NODE_L05,
+		"elite": R01CampaignMap.NODE_L03,
+	}
+	for role in role_checks.keys():
+		var zone_id := R01CampaignMap.node_zone_id(String(role_checks[role]))
+		roles_ok = roles_ok and not main.r01_blockout.source_objects_for_spawn_role(String(role), zone_id).is_empty()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260526
+	var source_spawn_ok := true
+	var source_spawn_debug := {}
+	for node_id in ["R01-L01", "R01-L02", "R01-L03", "R01-L04", "R01-L05"]:
+		main.current_r01_node_id = node_id
+		var params: Dictionary = main._wave_params_for_elapsed(90.0)
+		params["source_spawn_chance"] = 1.0
+		var role := "basic"
+		if node_id == R01CampaignMap.NODE_L02:
+			role = "coupon"
+		elif node_id == R01CampaignMap.NODE_L03:
+			role = "elite"
+		elif node_id == R01CampaignMap.NODE_L04:
+			role = "signal"
+		elif node_id == R01CampaignMap.NODE_L05:
+			role = "charger"
+		var pos: Vector2 = main.r01_blockout.enemy_spawn_position(main._r01_campaign_start_position(node_id), rng, 9.0, role, 90.0, params)
+		var debug: Dictionary = main.r01_blockout.last_source_spawn_debug()
+		source_spawn_debug[node_id] = "%s/%s" % [String(debug.get("source_role", "")), String(debug.get("source_id", ""))]
+		source_spawn_ok = source_spawn_ok and bool(debug.get("used", false)) and main.r01_blockout.is_spawn_position_valid(pos, 9.0, role)
+	var hazard_ok := true
+	var hazard_checks := {
+		"flyer_drop": R01CampaignMap.NODE_L02,
+		"pressure_ring": R01CampaignMap.NODE_L03,
+		"low_signal": R01CampaignMap.NODE_L04,
+		"fake_return": R01CampaignMap.NODE_L05,
+	}
+	for hazard_role in hazard_checks.keys():
+		var node_id := String(hazard_checks[hazard_role])
+		var result: Dictionary = main.r01_blockout.hazard_source_position(String(hazard_role), main._r01_campaign_start_position(node_id), rng, main._r01_campaign_start_position(node_id), R01CampaignMap.node_zone_id(node_id))
+		hazard_ok = hazard_ok and bool(result.get("used", false))
+	_record("L01-L05 source summaries exist", summary_ok, JSON.stringify(source_summary))
+	_record("L01-L05 source profiles differ", distinct_source_profiles, JSON.stringify(source_summary))
+	_record("spawn roles have matching source objects", roles_ok)
+	_record("source-biased enemy spawns are valid", source_spawn_ok, JSON.stringify(source_spawn_debug))
+	_record("hazard roles resolve to source objects", hazard_ok)

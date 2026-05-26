@@ -181,6 +181,16 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("r01_campaign_spawn_bias", "")),
 			str(info.get("r01_campaign_spawn_axis", "")),
 		],
+		"r01 sources zone=%s active=%d %s" % [
+			str(info.get("r01_source_zone_id", "")),
+			int(info.get("r01_active_source_count", 0)),
+			str(info.get("r01_source_summary", "")),
+		],
+		"r01 hazard sources %s last_spawn=%s last_hazard=%s" % [
+			str(info.get("r01_hazard_source_summary", "")),
+			str(info.get("r01_source_spawn_bias", "")),
+			str(info.get("r01_hazard_source_bias", "")),
+		],
 		"r01 collision: hard=%d soft=%d hazard=%d trigger=%d" % [
 			int(info.get("r01_collision_hard", 0)),
 			int(info.get("r01_collision_soft", 0)),

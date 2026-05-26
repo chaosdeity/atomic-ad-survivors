@@ -607,9 +607,11 @@ func _schedule_flyer_drop(delta: float) -> void:
 
 func _spawn_pressure_ring() -> void:
 	var offset := _threat_offset(88.0, 46.0)
+	var hazard_role := _r01_pressure_hazard_role()
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id)) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
 	active_threats.append({
 		"type": THREAT_PRESSURE_RING,
-		"pos": player_pos + offset,
+		"pos": Vector2(source_info.get("pos", player_pos + offset)),
 		"radius": PRESSURE_RING_RADIUS,
 		"timer": PRESSURE_RING_WARNING,
 		"duration": PRESSURE_RING_WARNING,
@@ -617,15 +619,20 @@ func _spawn_pressure_ring() -> void:
 		"damage": PRESSURE_RING_DAMAGE,
 		"label": "압박 링",
 		"hit_checked": false,
+		"source_used": bool(source_info.get("used", false)),
+		"source_pos": Vector2(source_info.get("source_pos", Vector2(INF, INF))),
+		"source_label": _hazard_source_label(hazard_role),
 	})
-	last_threat_label = "압박 링 예고"
+	last_threat_label = "%s 예고" % _hazard_source_label(hazard_role)
 	_play_sfx("pressure_ring")
 
 func _spawn_flyer_drop() -> void:
 	var offset := _threat_offset(118.0, 32.0)
+	var hazard_role := _r01_flyer_hazard_role()
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id)) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
 	active_threats.append({
 		"type": THREAT_FLYER_DROP,
-		"pos": player_pos + offset,
+		"pos": Vector2(source_info.get("pos", player_pos + offset)),
 		"radius": FLYER_DROP_RADIUS,
 		"timer": FLYER_DROP_WARNING,
 		"duration": FLYER_DROP_WARNING,
@@ -633,8 +640,11 @@ func _spawn_flyer_drop() -> void:
 		"damage": FLYER_DROP_DAMAGE,
 		"label": "위험 전단 낙하",
 		"hit_checked": false,
+		"source_used": bool(source_info.get("used", false)),
+		"source_pos": Vector2(source_info.get("source_pos", Vector2(INF, INF))),
+		"source_label": _hazard_source_label(hazard_role),
 	})
-	last_threat_label = "위험 전단 낙하 예고"
+	last_threat_label = "%s 예고" % _hazard_source_label(hazard_role)
 	_play_sfx("danger_flyer_drop")
 
 func _resolve_threat_hit(threat: Dictionary) -> void:
@@ -677,6 +687,39 @@ func _has_threat_caller() -> bool:
 		if role == "speaker" or role == "signal":
 			return true
 	return false
+
+func _r01_pressure_hazard_role() -> String:
+	match current_r01_node_id:
+		R01CampaignMap.NODE_L04:
+			return "low_signal"
+		R01CampaignMap.NODE_L05:
+			return "fake_return"
+		_:
+			return "pressure_ring"
+
+func _r01_flyer_hazard_role() -> String:
+	match current_r01_node_id:
+		R01CampaignMap.NODE_L04:
+			return "silence_leak"
+		R01CampaignMap.NODE_L05:
+			return "rear_pincer"
+		_:
+			return "flyer_drop"
+
+func _hazard_source_label(hazard_role: String) -> String:
+	match hazard_role:
+		"low_signal", "silence_leak":
+			return "낮은 신호 오염"
+		"fake_return", "rear_pincer":
+			return "가짜 귀환 신호"
+		"pressure_ring":
+			return "심사 압박 링"
+		"flyer_drop":
+			return "우편함 전단 낙하"
+		"sprinkler_ink":
+			return "광고 잉크 분사"
+		_:
+			return "광고 위험"
 
 func _threat_offset(max_radius: float, min_radius: float) -> Vector2:
 	var angle := rng.randf_range(-PI, PI)
@@ -1479,6 +1522,7 @@ func _wave_params_for_elapsed(value: float) -> Dictionary:
 func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Dictionary:
 	var result := params.duplicate(true)
 	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
+	result["source_zone_id"] = R01CampaignMap.node_zone_id(current_r01_node_id)
 	match current_r01_node_id:
 		R01CampaignMap.NODE_L01:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.96
@@ -1487,6 +1531,8 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			result["spawn_pincer_chance"] = 0.10
 			result["spawn_axis_angle"] = -0.15
 			result["node_pressure_label"] = "회수선 안정"
+			result["source_spawn_chance"] = 0.22
+			result["source_spawn_label"] = "흩어진 우편함과 외곽 표지"
 		R01CampaignMap.NODE_L02:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.08
 			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * (1.025 if value >= 36.0 else 1.0)
@@ -1498,6 +1544,8 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			result["spawn_pincer_chance"] = 0.46 if value >= 36.0 else 0.24
 			result["spawn_axis_angle"] = 0.34
 			result["node_pressure_label"] = "우편함 양쪽 발송"
+			result["source_spawn_chance"] = 0.52
+			result["source_spawn_label"] = "우편함/현관 장치 양쪽 발송"
 		R01CampaignMap.NODE_L03:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.07
 			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 1.02
@@ -1509,6 +1557,8 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			result["spawn_pincer_chance"] = 0.34
 			result["spawn_axis_angle"] = -0.62
 			result["node_pressure_label"] = "심사 신호 증폭"
+			result["source_spawn_chance"] = 0.58
+			result["source_spawn_label"] = "모델하우스 안내판과 상담 부스"
 		R01CampaignMap.NODE_L04:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 0.94
 			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 0.98
@@ -1519,6 +1569,8 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			result["spawn_pincer_chance"] = 0.14
 			result["spawn_axis_angle"] = 1.12
 			result["node_pressure_label"] = "침묵 흔적 접근"
+			result["source_spawn_chance"] = 0.34
+			result["source_spawn_label"] = "배수구 아래 낮은 신호"
 		R01CampaignMap.NODE_L05:
 			result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * 1.09
 			result["speed_mult"] = float(result.get("speed_mult", 1.0)) * 1.035
@@ -1530,6 +1582,8 @@ func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Di
 			result["spawn_pincer_chance"] = 0.42
 			result["spawn_axis_angle"] = -0.95
 			result["node_pressure_label"] = "가짜 귀환 신호"
+			result["source_spawn_chance"] = 0.56
+			result["source_spawn_label"] = "가짜 귀환 표지 뒤쪽 포위"
 	result["role_weights"] = weights
 	result["operation_zone"] = R01CampaignMap.node_name(current_r01_node_id)
 	result["operation_spawn_axis"] = R01CampaignMap.node_spawn_axis_label(current_r01_node_id)
@@ -3033,6 +3087,9 @@ func _debug_info() -> Dictionary:
 	var r01_summary := _r01_phrase_state()
 	var r01_collision_summary := r01_blockout.collision_summary() if R01LayoutBlockout.ENABLED else {}
 	var r01_layer_summary := r01_blockout.layer_summary() if R01LayoutBlockout.ENABLED else {}
+	var r01_source_zone := R01CampaignMap.node_zone_id(current_r01_node_id)
+	var r01_last_source_spawn := r01_blockout.last_source_spawn_debug() if R01LayoutBlockout.ENABLED else {}
+	var r01_last_hazard_source := r01_blockout.last_hazard_source_debug() if R01LayoutBlockout.ENABLED else {}
 	var outpost_state := outpost_blockout.state_from_progress(_session_progress_data(), meta_progression)
 	var outpost_collision_summary := outpost_blockout.collision_summary(outpost_state)
 	return {
@@ -3053,6 +3110,20 @@ func _debug_info() -> Dictionary:
 		"r01_campaign_start_pos": "%d,%d" % [int(round(_r01_campaign_start_position(current_r01_node_id).x)), int(round(_r01_campaign_start_position(current_r01_node_id).y))],
 		"r01_campaign_spawn_bias": R01CampaignMap.node_spawn_bias(current_r01_node_id),
 		"r01_campaign_spawn_axis": R01CampaignMap.node_spawn_axis_label(current_r01_node_id),
+		"r01_source_zone_id": r01_source_zone,
+		"r01_active_source_count": r01_blockout.active_source_count() if R01LayoutBlockout.ENABLED else 0,
+		"r01_source_summary": r01_blockout.source_summary_line(r01_source_zone) if R01LayoutBlockout.ENABLED else "",
+		"r01_hazard_source_summary": r01_blockout.hazard_summary_line(r01_source_zone) if R01LayoutBlockout.ENABLED else "",
+		"r01_source_spawn_bias": "%s/%s/%s" % [
+			str(r01_last_source_spawn.get("role", "")),
+			str(r01_last_source_spawn.get("source_role", "")),
+			str(r01_last_source_spawn.get("source_id", "")),
+		],
+		"r01_hazard_source_bias": "%s/%s/%s" % [
+			str(r01_last_hazard_source.get("hazard_role", "")),
+			str(r01_last_hazard_source.get("source_role", "")),
+			str(r01_last_hazard_source.get("source_id", "")),
+		],
 		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
 		"r01_blockout_variant": r01_blockout.state_variant,
 		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
@@ -3614,6 +3685,15 @@ func _draw_threats() -> void:
 		var timer := float(threat.get("timer", 0.0))
 		var duration := maxf(0.001, float(threat.get("duration", 1.0)))
 		var type := String(threat.get("type", ""))
+		if bool(threat.get("source_used", false)):
+			var source_pos := Vector2(threat.get("source_pos", Vector2(INF, INF)))
+			if source_pos.x < INF * 0.5:
+				var source_alpha := 0.20 + 0.12 * sin(elapsed * 8.0)
+				var source_color := Color(1.0, 0.91, 0.25, source_alpha)
+				if type == THREAT_PRESSURE_RING:
+					source_color = Color(1.0, 0.30, 0.36, source_alpha)
+				draw_line(source_pos, pos, source_color, 2.0)
+				draw_circle(source_pos, 10.0 + 3.0 * sin(elapsed * 6.0), Color(source_color.r, source_color.g, source_color.b, 0.12))
 		if timer > 0.0:
 			var progress := 1.0 - clampf(timer / duration, 0.0, 1.0)
 			if type == THREAT_PRESSURE_RING:

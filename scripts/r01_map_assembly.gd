@@ -184,7 +184,7 @@ func reset_cache() -> void:
 	_object_cache.clear()
 
 func object_field_names() -> Array[String]:
-	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role"]
+	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role", "spawn_roles", "hazard_roles", "pressure_tags", "story_function"]
 
 func art_inbox_paths() -> Dictionary:
 	return ART_INBOX_PATHS.duplicate(true)
@@ -217,6 +217,64 @@ func collision_records(variant: String = STATE_ALL) -> Array[Dictionary]:
 		records.append(collision_record_from_object(object))
 	return records
 
+func source_objects_for_spawn_role(spawn_role: String, zone_id: String = "", variant: String = STATE_ALL) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for object in objects_for_state(variant):
+		if zone_id != "" and String(object.get("zone_id", "")) != zone_id:
+			continue
+		if Array(object.get("spawn_roles", [])).has(spawn_role):
+			result.append(object)
+	return result
+
+func source_objects_for_hazard_role(hazard_role: String, zone_id: String = "", variant: String = STATE_ALL) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for object in objects_for_state(variant):
+		if zone_id != "" and String(object.get("zone_id", "")) != zone_id:
+			continue
+		if Array(object.get("hazard_roles", [])).has(hazard_role):
+			result.append(object)
+	return result
+
+func source_summary_by_zone(variant: String = STATE_ALL) -> Dictionary:
+	var summary := {}
+	for zone_id in ZONE_ANCHORS.keys():
+		summary[zone_id] = {}
+	for object in objects_for_state(variant):
+		if not _is_pressure_source(object):
+			continue
+		var zone_id := String(object.get("zone_id", ""))
+		var source_role := String(object.get("source_role", "environmental_readability"))
+		var zone_summary: Dictionary = summary.get(zone_id, {})
+		zone_summary[source_role] = int(zone_summary.get(source_role, 0)) + 1
+		summary[zone_id] = zone_summary
+	return summary
+
+func active_source_count(variant: String = STATE_ALL) -> int:
+	var count := 0
+	for object in objects_for_state(variant):
+		if _is_pressure_source(object):
+			count += 1
+	return count
+
+func source_summary_line(zone_id: String = "", variant: String = STATE_ALL) -> String:
+	var summary := source_summary_by_zone(variant)
+	var parts: Array[String] = []
+	if zone_id != "":
+		parts = _source_summary_parts(summary.get(zone_id, {}))
+		return "%s{%s}" % [zone_id, ", ".join(parts)]
+	for key in summary.keys():
+		parts.append("%s{%s}" % [String(key), ", ".join(_source_summary_parts(summary[key]))])
+	return " ".join(parts)
+
+func hazard_summary_line(zone_id: String = "", variant: String = STATE_ALL) -> String:
+	var counts := {}
+	for object in objects_for_state(variant):
+		if zone_id != "" and String(object.get("zone_id", "")) != zone_id:
+			continue
+		for hazard_role in Array(object.get("hazard_roles", [])):
+			counts[String(hazard_role)] = int(counts.get(String(hazard_role), 0)) + 1
+	return ", ".join(_source_summary_parts(counts))
+
 func collision_record_from_object(object: Dictionary) -> Dictionary:
 	return {
 		"asset_id": String(object.get("id", "")),
@@ -233,6 +291,10 @@ func collision_record_from_object(object: Dictionary) -> Dictionary:
 		"spawn_influence": String(object.get("spawn_influence", "neutral")),
 		"story_role": String(object.get("story_role", "surface")),
 		"source_role": String(object.get("source_role", "ambient")),
+		"spawn_roles": Array(object.get("spawn_roles", [])),
+		"hazard_roles": Array(object.get("hazard_roles", [])),
+		"pressure_tags": Array(object.get("pressure_tags", [])),
+		"story_function": String(object.get("story_function", "")),
 		"layer": String(object.get("layer", LAYER_PROP_MID)),
 		"tags": Array(object.get("tags", [])),
 		"debug_label": "%s/%s/%s" % [String(object.get("layer", "")), String(object.get("zone_id", "")), String(object.get("id", ""))],
@@ -326,6 +388,10 @@ func _build_object(placement: Dictionary) -> Dictionary:
 	object["spawn_influence"] = String(placement.get("spawn_influence", defaults.get("spawn_influence", _spawn_influence_for_kind(kind))))
 	object["story_role"] = String(placement.get("story_role", defaults.get("story_role", _story_role_for_zone(zone_id))))
 	object["source_role"] = String(placement.get("source_role", defaults.get("source_role", _source_role_for_kind(kind))))
+	object["spawn_roles"] = Array(placement.get("spawn_roles", defaults.get("spawn_roles", _spawn_roles_for_kind(kind, String(object["source_role"]))))).duplicate()
+	object["hazard_roles"] = Array(placement.get("hazard_roles", defaults.get("hazard_roles", _hazard_roles_for_kind(kind, String(object["source_role"]))))).duplicate()
+	object["pressure_tags"] = Array(placement.get("pressure_tags", defaults.get("pressure_tags", _pressure_tags_for_kind(kind, String(object["source_role"]))))).duplicate()
+	object["story_function"] = String(placement.get("story_function", defaults.get("story_function", _story_function_for_source_role(String(object["source_role"]), zone_id))))
 	var tags: Array = Array(defaults.get("tags", [])).duplicate()
 	for tag in Array(placement.get("tags", [])):
 		if not tags.has(tag):
@@ -370,20 +436,147 @@ func _story_role_for_zone(zone_id: String) -> String:
 func _source_role_for_kind(kind: String) -> String:
 	match kind:
 		"mailbox":
-			return "mailbox_broadcast"
+			return "mailbox_coupon"
 		"speaker":
 			return "street_speaker"
+		"sign":
+			return "model_sign"
+		"ad_device":
+			return "homecare_robot"
 		"kiosk":
-			return "open_house_checkin"
+			return "consultation_kiosk"
 		"projector", "photo":
-			return "family_review_projection"
+			return "doorbell_sensor"
+		"flyer", "scraps":
+			return "mailbox_coupon"
+		"floor_plan":
+			return "sprinkler_ink"
 		"drain":
-			return "drain_silence_leak"
+			return "drain_silence"
+		"trace":
+			return "drain_silence"
 		"fake_recovery":
-			return "fake_recovery_signal"
+			return "fake_return_sign"
 		"node", "model_house":
 			return "model_house_contract_node"
 		"house":
 			return "repeated_house_front"
+		"road_barrier":
+			return "homecare_robot"
+		"residue":
+			return "model_sign"
 		_:
 			return "environmental_readability"
+
+func _spawn_roles_for_kind(kind: String, source_role: String) -> Array[String]:
+	match source_role:
+		"mailbox_coupon":
+			return ["basic", "coupon", "fast"]
+		"doorbell_sensor":
+			return ["charger", "signal"]
+		"sprinkler_ink":
+			return ["basic", "charger"]
+		"drain_silence":
+			return ["basic", "tank", "signal"]
+		"model_sign", "street_speaker":
+			return ["speaker", "signal", "charger"]
+		"fake_return_sign":
+			return ["fast", "charger", "speaker"]
+		"homecare_robot":
+			return ["robot", "tank", "basic"]
+		"consultation_kiosk", "model_house_contract_node":
+			return ["elite", "signal", "speaker"]
+		"repeated_house_front":
+			return ["basic", "charger"]
+		_:
+			if kind == "trace":
+				return ["signal", "basic"]
+			return []
+
+func _hazard_roles_for_kind(kind: String, source_role: String) -> Array[String]:
+	match source_role:
+		"mailbox_coupon":
+			return ["flyer_drop"]
+		"doorbell_sensor":
+			return ["warning_line"]
+		"sprinkler_ink":
+			return ["sprinkler_ink", "flyer_drop"]
+		"drain_silence":
+			return ["low_signal", "silence_leak"]
+		"model_sign", "street_speaker", "consultation_kiosk", "model_house_contract_node":
+			return ["pressure_ring", "warning_line"]
+		"fake_return_sign":
+			return ["fake_return", "rear_pincer", "warning_line"]
+		"homecare_robot":
+			return ["soft_blocker_route"]
+		"repeated_house_front":
+			return ["warning_line"]
+		_:
+			if kind == "trace":
+				return ["low_signal"]
+			return []
+
+func _pressure_tags_for_kind(kind: String, source_role: String) -> Array[String]:
+	match source_role:
+		"mailbox_coupon":
+			return ["coupon_print", "side_pincer", "paper_noise"]
+		"doorbell_sensor":
+			return ["review_ping", "short_warning_line"]
+		"sprinkler_ink":
+			return ["ink_slow", "passable_hazard"]
+		"drain_silence":
+			return ["low_signal", "side_route", "trace_candidate"]
+		"model_sign":
+			return ["broadcast_line", "signal_amplifier"]
+		"street_speaker":
+			return ["speaker_pulse", "signal_amplifier"]
+		"fake_return_sign":
+			return ["false_recovery", "rear_pincer", "unstable_arrow"]
+		"homecare_robot":
+			return ["infrastructure_robot", "road_pref"]
+		"consultation_kiosk":
+			return ["review_line", "elite_review"]
+		"model_house_contract_node":
+			return ["boss_signal", "contract_review"]
+		"repeated_house_front":
+			return ["doorbell_ping", "repeated_address"]
+		_:
+			return []
+
+func _story_function_for_source_role(source_role: String, zone_id: String) -> String:
+	match source_role:
+		"mailbox_coupon":
+			return "우편함이 쿠폰과 소형 광고체를 재발송합니다."
+		"doorbell_sensor":
+			return "현관 센서가 윤서를 방문 심사 대상으로 등록합니다."
+		"sprinkler_ink":
+			return "스프링클러가 광고 잉크와 경고 바닥을 흩뿌립니다."
+		"drain_silence":
+			return "배수구가 낮은 신호와 회수되지 않은 흔적을 새깁니다."
+		"model_sign":
+			return "모델하우스 안내 신호가 스피커와 심사선을 증폭합니다."
+		"street_speaker":
+			return "가로등 스피커가 혼동 신호를 다시 송출합니다."
+		"fake_return_sign":
+			return "가짜 귀환 표지가 회수선처럼 보이는 잘못된 경로를 켭니다."
+		"homecare_robot":
+			return "홈케어 장치가 생활 인프라 로봇의 진입로를 엽니다."
+		"consultation_kiosk":
+			return "상담 부스가 윤서를 고객 명단에 올리려 합니다."
+		"model_house_contract_node":
+			return "모델하우스 결절이 보스 심사 절차와 연결됩니다."
+		"repeated_house_front":
+			return "반복 주택 현관이 같은 주소의 방문 심사를 다시 울립니다."
+		_:
+			return "%s의 배경 가독성을 보강합니다." % zone_id
+
+func _is_pressure_source(object: Dictionary) -> bool:
+	return not Array(object.get("spawn_roles", [])).is_empty() or not Array(object.get("hazard_roles", [])).is_empty() or not Array(object.get("pressure_tags", [])).is_empty()
+
+func _source_summary_parts(counts: Dictionary) -> Array[String]:
+	var keys := counts.keys()
+	keys.sort()
+	var parts: Array[String] = []
+	for key in keys:
+		parts.append("%s:%d" % [String(key), int(counts[key])])
+	return parts
