@@ -640,7 +640,7 @@ def boss_victory_reward_table() -> str:
             "smile home node clear",
             "campaign_core_fragment +2",
             "boss analysis set to 3/3",
-            "returns to Silence Outpost instead of plain victory",
+            "returns to Silence Outpost as a node-processing result",
         ],
         [
             "repeat node clear",
@@ -654,7 +654,7 @@ def boss_victory_reward_table() -> str:
 
 def smile_home_outcome_table() -> str:
     rows = [
-        ["none", "스마일 홈 결절 처리 방식 선택 대기", "post-victory hook is open; no hidden state shown"],
+        ["none", "스마일 홈 결절 처리 방식 선택 대기", "post-node hook is open; no hidden state shown"],
         ["destroy_node", "결절 파괴", "스마일 홈의 결절을 끊어냈습니다."],
         ["extract_memory", "기억 추출", "가족사진 뒤편의 기억을 보급소로 가져왔습니다."],
     ]
@@ -682,10 +682,10 @@ def route_phrase_preview_table() -> str:
         ["records=0 / outcome=none", "외곽 주택가의 신호 이벤트를 추적한다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
         ["records=1 / outcome=none", "첫 잡음 영수증을 보급소 기록판에 고정했다. 다음 신호는 더 긴 광고 뒤에 숨어 있다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
         ["records=2 / outcome=none", "길 잃은 카탈로그가 주택가 루프의 방향을 맞추기 시작했다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
-        ["records=3 / outcome=none", "개장 전 점검표가 송출관 접근 절차를 확정했다. 중심 결절을 노출시킨다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
+        ["records=3 / outcome=none", "개장 전 점검표가 스마일 홈 심사관 접근 절차를 확정했다. 중심 결절을 노출시킨다.", "외곽 주택가 신호는 아직 가족 광고의 외피를 유지 중이다."],
         ["records=3 / outcome=destroy_node", "스마일 홈의 낮아진 광고음 사이로 남은 결절 잔향을 확인한다.", "스마일 홈의 광고음이 한 겹 낮아졌다."],
-        ["records=3 / outcome=extract_memory", "가족사진 뒤편의 송출관 접근 절차를 대조한다.", "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다."],
-        ["post-boss followup", "스마일 홈 결절 처리 기록을 바탕으로 캠페인 송출관의 후속 신호를 추적한다.", "캠페인 송출관은 후속 신호 문맥으로만 표시"],
+        ["records=3 / outcome=extract_memory", "가족사진 뒤편의 상위 송출 잔향을 대조한다.", "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다."],
+        ["post-boss followup", "스마일 홈 결절 처리 기록을 바탕으로 상위 송출 잔향을 추적한다.", "캠페인 송출관은 후속 신호 문맥으로만 표시"],
     ]
     return markdown_table(["state", "sortie board / next goal", "outpost phrase note"], rows)
 
@@ -696,7 +696,7 @@ def finale_recovery_phrase_preview_table() -> str:
         ["records=1", "정상 회수", "첫 잡음 영수증이 끊기기 전에 회수됐습니다. 다음 광고는 더 긴 문장 뒤에 숨어 있습니다.", "다음 출격: 두 번째 신호 기록 추적"],
         ["records=2", "정상 회수", "길 잃은 카탈로그가 모델하우스 쪽으로 접혔습니다. 아직 마지막 절차가 빠져 있습니다.", "다음 출격: 모델하우스 접근 신호 확인"],
         ["records=3", "정상 회수", "개장 전 점검표가 완성됐습니다. 외곽 주택가 중앙의 모델하우스 결절이 다음 출격을 기다립니다.", "다음 출격: 모델하우스 결절 접근 준비"],
-        ["first forced recall", "신호 과부하 강제 회수", "캠페인 신호가 윤서의 이름을 끝까지 읽기 전에, 침묵 보급소가 회수선을 당겼습니다.", "first sortie only"],
+        ["first forced recall", "신호 과부하 긴급 인양", "캠페인이 윤서의 이름과 주소를 등록하기 직전, 침묵 보급소가 회수선을 당겼습니다.", "first sortie only"],
     ]
     return markdown_table(["state", "result title", "description preview", "progress note"], rows)
 
@@ -851,7 +851,7 @@ def main() -> None:
     print()
     print(boss_analysis_upgrade_table(config))
     print()
-    print("## Boss Victory Reward Preview")
+    print("## Boss Node Result Preview")
     print()
     print(boss_victory_reward_table())
     print()

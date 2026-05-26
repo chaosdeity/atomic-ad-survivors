@@ -555,7 +555,7 @@ func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: 
 	boss_status_label.text = "%d%%\n%s" % [int(round(hp_ratio * 100.0)), status_text]
 
 func show_game_over() -> void:
-	prompt_label.text = "게임 오버  -  스페이스 / 클릭으로 다시 시작"
+	prompt_label.text = "긴급 인양  -  스페이스 / 클릭으로 다시 시작"
 	prompt_label.visible = true
 
 func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> void:
@@ -622,7 +622,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
 	result_label.add_theme_font_size_override("font_size", FONT_TINY)
-	result_label.text = "%s\n생존 %03d/%03d | Lv%d | 처치 %d\n카드 %d | 적 최고/최종 %d/%d%s" % [
+	result_label.text = "%s\n체류 %03d/%03d | Lv%d | 처리 %d\n카드 %d | 적 최고/최종 %d/%d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
 		int(C.MATCH_DURATION),
@@ -650,7 +650,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var selected_route := str(session_progress.get("selected_campaign_node_name", "현재 지점"))
 	supply_restart_button.text = "바로 출격: %s" % _compact_ui_text(selected_route, 8)
 	supply_campaign_button.text = "R01 작전도"
-	var board_text := "%s / 보스 신호 %s" % [
+	var board_text := "%s / 결절 신호 %s" % [
 		str(session_progress.get("route_stage_label", "출격 기록: %d회" % int(session_progress.get("sortie_index", 1)))),
 		str(session_progress.get("boss_signal_label", "없음")),
 	]
@@ -659,7 +659,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		board_text = "%s / %s" % [board_text, signal_guidance.replace("게시판: ", "")]
 	var clause_preview := str(session_progress.get("regional_clause_preview", ""))
 	var clause_short := str(session_progress.get("regional_clause_short", clause_preview))
-	var route_ready_text := "스마일 홈 중심 결절 노출\n송출관 접근 절차가 열리고 있습니다" if bool(session_progress.get("boss_route_ready", false)) else ""
+	var route_ready_text := "스마일 홈 심사관 노출\n상위 송출 잔향이 감지됩니다" if bool(session_progress.get("boss_route_ready", false)) else ""
 	var boss_hint: String = meta_progression.boss_hint()
 	if route_ready_text != "":
 		boss_hint = route_ready_text
@@ -702,10 +702,10 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
 		var last_reaction := str(session_progress.get("last_supply_reaction", ""))
-		supply_feedback_label.text = _compact_ui_text("적용 완료: %s" % applied_upgrade_name if last_reaction == "" else "적용 완료: %s - %s" % [applied_upgrade_name, last_reaction], 44)
+		supply_feedback_label.text = _compact_ui_text("조율 완료: %s" % applied_upgrade_name if last_reaction == "" else "조율 완료: %s - %s" % [applied_upgrade_name, last_reaction], 44)
 	elif _has_usable_supply_action(actions):
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
-		supply_feedback_label.text = "선택 가능: 보급/강화"
+		supply_feedback_label.text = "선택 가능: 배분/정비"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
 		supply_feedback_label.text = "R01 작전도 확인 가능"
@@ -829,7 +829,7 @@ func _update_ration_panel(ration_data: Dictionary, paused_for_card: bool, game_o
 	var confirmed: Dictionary = ration_data.get("confirmed", {})
 	var candidates: Dictionary = ration_data.get("candidates", {})
 	var risk := str(ration_data.get("risk", ""))
-	var text := "정산 밥%d+%d 전%d 신%d" % [
+	var text := "정산 식%d+후%d 충%d 수%d" % [
 		int(confirmed.get("food", 0)),
 		int(candidates.get("food", 0)),
 		int(candidates.get("power", 0)),

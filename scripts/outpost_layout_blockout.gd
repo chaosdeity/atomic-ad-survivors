@@ -252,9 +252,9 @@ func natural_summary_lines(state: Dictionary = {}) -> Array[String]:
 	elif variant == STATE_EXTRACT_MEMORY:
 		state_line = "보급소 상태: 사진과 영수증 잔향이 보관함 뒤에서 흔들립니다."
 	elif variant == STATE_BOSS_CLEARED:
-		state_line = "보급소 상태: 코어 파편 쟁반과 후속 송출관 잔향이 보입니다."
+		state_line = "보급소 상태: 코어 파편 쟁반과 상위 송출 잔향이 보입니다."
 	elif analysis > 0:
-		state_line = "보급소 상태: 보스 분석 %d단계가 이름 보관함과 조율대에 남았습니다." % analysis
+		state_line = "보급소 상태: 결절 분석 %d단계가 이름 보관함과 조율대에 남았습니다." % analysis
 	elif records > 0:
 		state_line = "보급소 상태: 송출 기록 %d장이 출격 게시판에 고정되었습니다." % records
 	elif variant == STATE_FIRST_RECALL:

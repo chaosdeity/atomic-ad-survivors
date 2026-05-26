@@ -1949,7 +1949,7 @@ func _update_preboss_signal_events() -> void:
 		preboss_signal_event_stage = 3
 		_set_boss_signal_state("near")
 		boss_signal_unlocked = meta_progression.has_all_signal_clues()
-		_show_wave_notice("송출관 접근 절차가 열리고 있습니다")
+		_show_wave_notice("스마일 홈 심사 절차가 노출됩니다")
 
 func _try_start_boss_encounter() -> void:
 	if boss.active or boss.defeated or match_state != "playing":
@@ -1977,8 +1977,8 @@ func _on_boss_defeated() -> void:
 	boss_signal_unlocked = false
 	boss_result_reason = "boss_defeated"
 	wave_notice_timer = 5.0
-	wave_notice_text = "스마일 홈 결절 침묵"
-	effects.show_combat_banner("스마일 홈 결절 침묵", C.TOXIC_GREEN)
+	wave_notice_text = "스마일 홈 결절 처리"
+	effects.show_combat_banner("스마일 홈 결절 처리", C.TOXIC_GREEN)
 	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
 	effects.add_impact_shake(0.34, 7.0)
 	_finish_match("boss_victory")
@@ -1991,7 +1991,7 @@ func _set_boss_signal_state(state: String) -> void:
 	if state == "detected" or state == "near":
 		color = C.NEON_RED
 	effects.add_status_ring(player_pos, color, 72.0, 0.50)
-	effects.add_floater(player_pos, "보스 신호 %s" % _boss_signal_label(), color, 14)
+	effects.add_floater(player_pos, "심사 신호 %s" % _boss_signal_label(), color, 14)
 
 func _boss_signal_rank(state: String) -> int:
 	match state:
@@ -2046,7 +2046,7 @@ func _preboss_stage_label() -> String:
 	if clue_count == 1:
 		return "신호 압력"
 	if clue_count == 2:
-		return "보스 신호 근접"
+		return "심사 신호 근접"
 	return "스마일 홈 결절 노출"
 
 func _next_objective_label() -> String:
@@ -2334,12 +2334,12 @@ func _result_data(result_state: String) -> Dictionary:
 		var fragments := int(last_boss_victory_report.get("fragments_awarded", 0))
 		var clear_count := int(last_boss_victory_report.get("clear_count", meta_progression.boss_clear_count))
 		return {
-			"result": "스마일 홈 결절 침묵",
-			"description": "스마일 홈의 결절이 침묵했습니다. 시어머니의 뒤편에서 더 큰 송출관 신호가 들립니다.",
+			"result": "결절 처리 결과",
+			"description": "스마일 홈 심사관의 절차를 멈췄습니다. 지역은 조용해졌지만 상위 송출 잔향은 아직 남아 있습니다.",
 			"trace": "캠페인 코어 파편 +%d" % fragments,
 			"progress_lines": [
-				"처리 성공: %d회" % clear_count,
-				"보스 분석: %d/3" % meta_progression.boss_analysis_level,
+				"결절 처리: %d회" % clear_count,
+				"결절 분석: %d/3" % meta_progression.boss_analysis_level,
 				meta_progression.smile_home_boss_outcome_label(),
 				"후속 선택 준비: 결절 파괴 또는 기억 추출",
 			] + _run_reward_lines(),
@@ -2358,11 +2358,11 @@ func _result_data(result_state: String) -> Dictionary:
 			var fragments := int(last_boss_recall_report.get("fragments_awarded", 0))
 			var trace_text := "캠페인 코어 파편 +%d" % fragments if fragments > 0 else "없음"
 			return {
-				"result": "신호 과부하 회수",
-				"description": "스마일 홈 심사관의 검증 절차에서 회수되었습니다.",
+				"result": "심사 중단 회수",
+				"description": "스마일 홈 심사관의 절차를 일부 벗기고 보급소로 복귀했습니다.",
 				"trace": trace_text,
 				"progress_lines": [
-					"보스 분석: %d/3" % analysis_level,
+					"결절 분석: %d/3" % analysis_level,
 					_boss_analysis_milestone_label(analysis_level),
 					meta_progression.boss_weakness_label(),
 					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
@@ -2377,8 +2377,8 @@ func _result_data(result_state: String) -> Dictionary:
 				"final_enemy_count": enemies.enemies.size(),
 			}
 		return {
-			"result": "신호 과부하 강제 회수",
-			"description": "캠페인 신호가 윤서의 이름을 끝까지 읽기 전에, 침묵 보급소가 회수선을 당겼습니다.",
+			"result": "신호 과부하 긴급 인양",
+			"description": "캠페인이 윤서의 이름과 주소를 등록하기 직전, 침묵 보급소가 회수선을 당겼습니다.",
 			"trace": "찢어진 광고 전단",
 			"progress_lines": _session_progress_lines() + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
@@ -2406,7 +2406,8 @@ func _result_data(result_state: String) -> Dictionary:
 			"final_enemy_count": enemies.enemies.size(),
 		}
 	return {
-		"result": "GAME OVER",
+		"result": "긴급 인양",
+		"description": "회수선이 끊기기 전 보급소로 복귀했습니다. 일부 후보는 정산 실패로 보류됩니다.",
 		"progress_lines": _session_progress_lines() + _run_reward_lines(),
 		"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
 		"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
@@ -2732,7 +2733,7 @@ func _build_supply_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
 	actions.append(_allocation_action(
 		MetaProgression.ALLOCATION_HUMAN_ZONE,
-		"식량태그 -> 인간 구역",
+		"식량태그 배분: 인간 구역",
 		"다음 출격 최대 HP +8 / 인간 구역 안정 +1",
 		MetaProgression.TICKET_FOOD,
 		"식량태그 1",
@@ -2740,7 +2741,7 @@ func _build_supply_actions() -> Array[Dictionary]:
 	))
 	actions.append(_allocation_action(
 		MetaProgression.ALLOCATION_ROBOT_MAINTENANCE,
-		"충전태그 -> 정비대",
+		"충전태그 배분: 정비대",
 		"다음 출격 차징 피해 +1, 쿨다운 -0.15초",
 		MetaProgression.TICKET_POWER,
 		"충전태그 1",
@@ -2748,7 +2749,7 @@ func _build_supply_actions() -> Array[Dictionary]:
 	))
 	actions.append(_allocation_action(
 		MetaProgression.ALLOCATION_SIGNAL_BOARD,
-		"수신태그 -> 출격 게시판",
+		"수신태그 배분: 출격 게시판",
 		"오픈하우스 신호 기준 완화 / 목표 표시 강화",
 		MetaProgression.TICKET_SIGNAL,
 		"수신태그 1",
@@ -2946,9 +2947,9 @@ func _apply_charge_weapon_card_hints(cards: Array[Dictionary]) -> void:
 func _charge_weapon_card_hint(card_id: String) -> String:
 	match card_id:
 		"tool_return_label":
-			return "표식 처치가 감사 처리량을 더 만듭니다."
+			return "표식 처리가 감사 처리량을 더 만듭니다."
 		"tool_flyer_pop":
-			return "표식 처치와 전단 폭발이 이어집니다."
+			return "표식 처리와 전단 폭발이 이어집니다."
 		"tool_broadcast_residue":
 			return "차징 흔적이 바닥에 남아 구역을 장악합니다."
 		"tool_robot_command_flip":

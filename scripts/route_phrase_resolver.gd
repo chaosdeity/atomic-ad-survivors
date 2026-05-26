@@ -12,8 +12,8 @@ static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 	var visit_index := maxi(0, int(state.get("r01_revisit_count", 0)) - 1)
 	if bool(state.get("r01_followup_ready", false)) and outcome != "":
 		return _pick([
-			"스마일 홈 결절 처리 기록을 바탕으로 캠페인 송출관의 후속 신호를 추적한다.",
-			"외곽 주택가는 조용해졌지만, 송출관 쪽 신호는 아직 끊기지 않았다.",
+			"스마일 홈 결절 처리 기록을 바탕으로 상위 송출 잔향을 추적한다.",
+			"외곽 주택가는 조용해졌지만, 상위 송출 신호는 아직 끊기지 않았다.",
 		], visit_index)
 	if outcome == OUTCOME_DESTROY_NODE:
 		return _pick([
@@ -22,7 +22,7 @@ static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 		], visit_index)
 	if outcome == OUTCOME_EXTRACT_MEMORY:
 		return _pick([
-			"가족사진 뒤편의 송출관 접근 절차를 대조한다.",
+			"가족사진 뒤편의 상위 송출 잔향을 대조한다.",
 			"윤서의 이름을 부르는 광고 문구의 출처를 확인한다.",
 		], visit_index)
 	if int(state.get("r01_contamination_total", 0)) > 0:
@@ -45,7 +45,7 @@ static func r01_sortie_goal_phrase(state: Dictionary) -> String:
 			], visit_index)
 		_:
 			return _pick([
-				"개장 전 점검표가 송출관 접근 절차를 확정했다. 중심 결절을 노출시킨다.",
+				"개장 전 점검표가 스마일 홈 심사관 접근 절차를 확정했다. 중심 결절을 노출시킨다.",
 				"외곽 주택가 중앙의 모델하우스 결절에 접근할 수 있다.",
 			], visit_index)
 
@@ -55,8 +55,8 @@ static func r01_sortie_goal_short_phrase(state: Dictionary) -> String:
 	var visit_index := maxi(0, int(state.get("r01_revisit_count", 0)) - 1)
 	if bool(state.get("r01_followup_ready", false)) and outcome != "":
 		return _pick([
-			"후속 송출관 신호 추적",
-			"남은 송출관 신호 확인",
+			"상위 송출 잔향 추적",
+			"남은 송출 신호 확인",
 		], visit_index)
 	if outcome == OUTCOME_DESTROY_NODE:
 		return _pick([
@@ -65,7 +65,7 @@ static func r01_sortie_goal_short_phrase(state: Dictionary) -> String:
 		], visit_index)
 	if outcome == OUTCOME_EXTRACT_MEMORY:
 		return _pick([
-			"송출관 접근 절차 대조",
+			"상위 송출 잔향 대조",
 			"윤서를 부르는 광고 출처 확인",
 		], visit_index)
 	if int(state.get("r01_contamination_total", 0)) > 0:
@@ -98,7 +98,7 @@ static func r01_outpost_phrase(state: Dictionary) -> String:
 		OUTCOME_DESTROY_NODE:
 			return "스마일 홈의 광고음이 한 겹 낮아졌다. 정비대 위 전단들이 덜 떨린다."
 		OUTCOME_EXTRACT_MEMORY:
-			return "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다. 출격 게시판에 송출관 접근 절차가 더 선명해졌다."
+			return "이름 보관함 뒤편에서 낡은 가족사진 냄새가 난다. 출격 게시판에 상위 송출 잔향이 더 선명해졌다."
 		_:
 			if int(state.get("r01_contamination_total", 0)) > 0:
 				return _contamination_outpost_phrase(state)
@@ -126,7 +126,7 @@ static func r01_finale_recovery_description(state: Dictionary) -> String:
 		_:
 			return _pick([
 				"개장 전 점검표가 완성됐습니다. 외곽 주택가 중앙의 모델하우스 결절이 다음 출격을 기다립니다.",
-				"송출관 접근 절차가 끊기지 않고 보급소까지 넘어왔습니다. 스마일 홈 심사관의 검증 신호가 가까워졌습니다.",
+				"상위 송출 잔향이 끊기지 않고 보급소까지 넘어왔습니다. 스마일 홈 심사관의 검증 신호가 가까워졌습니다.",
 			], visit_index)
 
 static func r01_finale_recovery_progress_phrase(state: Dictionary) -> String:

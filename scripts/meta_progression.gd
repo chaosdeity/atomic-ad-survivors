@@ -151,7 +151,7 @@ const UPGRADES := [
 		"name": "현장 학습 기록",
 		"cost": 2,
 		"trace": TRACE_TORN_AD_FLYER,
-		"effect_text": "처치 XP +8%",
+		"effect_text": "처리 XP +8%",
 		"category": "성장/XP",
 		"max_level": 2,
 		"xp_gain_mult": 0.08,
@@ -161,7 +161,7 @@ const UPGRADES := [
 		"name": "회수 후 복기 루틴",
 		"cost": 1,
 		"trace": TRACE_TORN_AD_FLYER,
-		"effect_text": "첫 회수 이후 처치 XP +10%",
+		"effect_text": "첫 회수 이후 처리 XP +10%",
 		"category": "성장/XP",
 		"max_level": 1,
 		"xp_gain_mult": 0.10,
@@ -183,7 +183,7 @@ const UPGRADES := [
 		"name": "전단 회수 동선",
 		"cost": 2,
 		"trace": TRACE_TORN_AD_FLYER,
-		"effect_text": "일반 전단 보상 후보가 있으면 전단 +1",
+		"effect_text": "일반 전단 정산 후보가 있으면 전단 +1",
 		"category": "신호 분석",
 		"max_level": 1,
 		"run_flyer_bonus": 1,
@@ -291,7 +291,7 @@ func record_boss_recall(boss_hp_ratio: float) -> Dictionary:
 	var before := boss_analysis_level
 	boss_analysis_level = maxi(boss_analysis_level, target_level)
 	if boss_analysis_level > before:
-		_record_outpost_event(NPC_DOYUN, "boss_recall", "시어머니 검증 절차가 한 겹 벗겨졌어. 다음엔 더 아프게 찌를 수 있다.", "charging_tuner")
+		_record_outpost_event(NPC_DOYUN, "boss_recall", "스마일 홈 심사관 절차가 한 겹 벗겨졌어. 다음엔 더 정확히 찌를 수 있다.", "charging_tuner")
 	return {
 		"fragments_awarded": fragments_awarded,
 		"analysis_before": before,
@@ -336,7 +336,7 @@ func has_smile_home_boss_outcome() -> bool:
 func smile_home_boss_outcome_label() -> String:
 	match smile_home_boss_outcome:
 		SMILE_HOME_OUTCOME_DESTROY_NODE:
-			return "결절 파괴: 스마일 홈의 결절을 끊어냈습니다."
+			return "결절 파열: 스마일 홈 심사 절차를 끊어냈습니다."
 		SMILE_HOME_OUTCOME_EXTRACT_MEMORY:
 			return "기억 추출: 가족사진 뒤편의 기억을 보급소로 가져왔습니다."
 		_:
@@ -550,7 +550,7 @@ func _allocation_facility_id(allocation_id: String) -> String:
 func _signal_clue_event_line() -> String:
 	var count := signal_clue_count()
 	if count >= SIGNAL_CLUES.size():
-		return "송출관 접근 절차가 완성됐습니다. 삭제 권고는 보류합니다."
+		return "스마일 홈 심사관 접근 절차가 완성됐습니다. 삭제 권고는 보류합니다."
 	if count >= 2:
 		return "두 번째 신호가 첫 번째 신호와 같은 방향을 가리킵니다. 우연 판정은 취소합니다."
 	return "첫 신호 기록을 게시판에 고정합니다. 버리면 안 되는 잡음입니다."
@@ -723,9 +723,9 @@ func unlock_condition_label(condition: String) -> String:
 		"all_signal_clues":
 			return "신호 단서 3개"
 		"boss_analysis_1":
-			return "보스 분석 1/3"
+			return "결절 분석 1/3"
 		"boss_analysis_2":
-			return "보스 분석 2/3"
+			return "결절 분석 2/3"
 		"boss_clear_1":
 			return "결절 처리 1회"
 		_:
@@ -820,7 +820,7 @@ func has_any_upgrade() -> bool:
 	return false
 
 func boss_analysis_summary() -> String:
-	return "보스 분석: %d/3   처리 횟수: %d   캠페인 코어 파편: %d   %s" % [
+	return "결절 분석: %d/3   처리 횟수: %d   캠페인 코어 파편: %d   %s" % [
 		boss_analysis_level,
 		boss_clear_count,
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
@@ -829,7 +829,7 @@ func boss_analysis_summary() -> String:
 
 func boss_hint() -> String:
 	if boss_clear_count > 0:
-		return "다음 조우 힌트: 시어머니 뒤편의 송출관 신호를 추적하세요"
+		return "다음 조우 힌트: 스마일 홈 심사관 뒤편의 상위 송출 잔향을 추적하세요"
 	if has_all_signal_clues():
 		return "다음 조우 힌트: 세 단서가 겹쳤습니다. 240초 이후 스마일 홈 결절이 드러납니다"
 	if boss_analysis_level <= 0:

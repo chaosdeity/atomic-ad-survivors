@@ -59,7 +59,7 @@ func _probe_result_panel(main) -> void:
 		"광고 감사 결과: 정상 고객 예비 감사와 가족 적합성 감사 통과",
 	]
 	await _show_and_record_result_panel(main, {
-		"result": "신호 과부하 강제 회수",
+		"result": "신호 과부하 긴급 인양",
 		"survival_time": 287,
 		"level": 12,
 		"kills": 582,

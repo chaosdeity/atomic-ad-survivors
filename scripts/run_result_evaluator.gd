@@ -11,13 +11,13 @@ const TIER_DEEP_180 := "deep_180"
 const TIER_BOSS_ROUTE_240 := "boss_route_240"
 
 const TIER_LABELS := {
-	TIER_NONE: "보상 없음",
+	TIER_NONE: "정산 근거 없음",
 	TIER_WARMUP: "45초 회수 후보",
-	TIER_SURVIVED_60: "60초 생존",
+	TIER_SURVIVED_60: "60초 회수 근거",
 	TIER_STABLE_90: "90초 안정",
 	TIER_SIGNAL_120: "120초 신호",
 	TIER_DEEP_180: "180초 심층",
-	TIER_BOSS_ROUTE_240: "240초 송출관 접근 절차",
+	TIER_BOSS_ROUTE_240: "240초 심사 접근 절차",
 }
 const TICKET_FOOD := "food"
 const TICKET_POWER := "power"
@@ -58,7 +58,7 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var special_reward_allowed := match_state == "boss_victory" or boss_result_reason == "boss_recall" or (match_state == "recalled" and first_sortie)
 	var anti_farm_reason := ""
 	if not general_reward_allowed:
-		anti_farm_reason = "%.0f초 미만 런은 일반 보상 후보가 열리지 않습니다." % MIN_GENERAL_REWARD_SECONDS
+		anti_farm_reason = "%.0f초 미만 런은 일반 정산 후보가 열리지 않습니다." % MIN_GENERAL_REWARD_SECONDS
 
 	var torn_ad_flyer_reward := _torn_ad_flyer_reward(reward_tier, effective_kills, level, peak_enemy_count) if general_reward_allowed else 0
 	var campaign_core_fragment_reward := _campaign_core_fragment_reward(match_state, boss_result_reason, boss_hp_ratio)
@@ -204,7 +204,7 @@ static func _ration_ticket_settlement(
 	var reasons: Array[String] = []
 	if elapsed >= 90.0:
 		confirmed[TICKET_FOOD] += 1
-		reasons.append("90초 이상 생존: 식량태그 1장 확정")
+		reasons.append("90초 이상 체류: 식량태그 1장 확정")
 	if not general_reward_allowed:
 		return {
 			"confirmed": confirmed,
@@ -220,7 +220,7 @@ static func _ration_ticket_settlement(
 
 	if elapsed >= 120.0 or int(card_counts.get("earn_overtime_sheet", 0)) > 0:
 		candidates[TICKET_FOOD] += 1
-		reasons.append("생존/야근 정산: 식량태그 후보 +1")
+		reasons.append("체류/야근 정산: 식량태그 후보 +1")
 	if int(card_counts.get("earn_overtime_sheet", 0)) > 0 and audit_pass_count >= 2:
 		candidates[TICKET_FOOD] += 1
 		reasons.append("야근 정산표 + 감사 통과: 식량태그 후보 +1")
@@ -401,11 +401,11 @@ static func _reward_lines(
 	var lines: Array[String] = []
 	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	if anti_farm_reason != "":
-		lines.append("일반 보상 잠김: %s" % anti_farm_reason)
+		lines.append("일반 정산 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
-		lines.append("일반 보상 후보(미지급): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
+		lines.append("일반 정산 후보(미반영): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
 	if campaign_core_fragment_reward > 0:
-		lines.append("보스 성과 후보(미지급): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
+		lines.append("결절 성과 후보(미반영): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
 	for line in _ration_ticket_lines(ration_settlement):
 		lines.append(line)
 	if boss_result_reason == "boss_recall":
@@ -419,7 +419,7 @@ static func _reward_lines(
 	for line in _card_contribution_lines(card_contributions, card_counts, ration_settlement, open_house_time, audit_pass_count, terms_failure_risk):
 		lines.append(line)
 	if open_house_processing_mult > 1.0:
-		lines.append("오픈하우스 처리량 보정: x%.2f (처치 %d -> %d 판정)" % [open_house_processing_mult, kills, effective_kills])
+		lines.append("오픈하우스 처리량 보정: x%.2f (처리 %d -> %d 판정)" % [open_house_processing_mult, kills, effective_kills])
 	if open_house_signal_stage >= 3 or open_house_time >= 75.0:
 		lines.append("오픈하우스 체류 정산: %.0f초 - 모델하우스 신호가 선명해졌습니다." % open_house_time)
 	elif open_house_signal_stage >= 2 or open_house_time >= 50.0:
