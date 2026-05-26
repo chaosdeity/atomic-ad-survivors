@@ -550,6 +550,52 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
     )
 
 
+def check_manual_combat_input(t: dict[str, str], results: list[Check]) -> None:
+    main = t.get("main", "")
+    config = t.get("config", "")
+    hud = t.get("hud", "")
+    debug = t.get("debug", "")
+    balance = t.get("balance", "")
+    enemy = read_text(ROOT / "scripts" / "enemy_controller.gd")
+
+    add(
+        results,
+        "PASS" if has_all(config, ["AUTO_ASSIST_DAMAGE_MULT", "AUTO_MARKED_DAMAGE_MULT", "MANUAL_STAMP_COOLDOWN", "MANUAL_STAMP_DAMAGE", "MANUAL_STAMP_RANGE"]) else "FAIL",
+        "manual combat",
+        "config declares auto-assist and manual stamp tuning constants",
+    )
+    add(
+        results,
+        "PASS" if has_all(main, ['"manual_stamp"', "_try_manual_stamp", "_apply_manual_stamp_enemy_hit", "_apply_manual_stamp_story_reaction", "manual_stamped_story_counts"]) else "FAIL",
+        "manual combat",
+        "main supports J/LMB manual stamp with sortie-local source repeat tracking",
+    )
+    add(
+        results,
+        "PASS" if has_all(main, ["MOUSE_BUTTON_LEFT", "MOUSE_BUTTON_RIGHT", 'action_erase_event("charge"', 'action_add_event("manual_stamp"', 'action_add_event("charge"']) else "FAIL",
+        "manual combat",
+        "input map separates LMB/J manual stamp from SPACE/RMB charge",
+    )
+    add(
+        results,
+        "PASS" if has_all(main, ["manual_stamp_uses", "manual_stamp_hits", "manual_stamp_whiffs", "manual_stamp_source_hits", "first_manual_stamp_time"]) else "FAIL",
+        "manual combat",
+        "playtest metrics track manual stamp use/hit/whiff/source timing",
+    )
+    add(
+        results,
+        "PASS" if has_all(hud + debug, ["J/좌클릭 현장 도장", "SPACE/우클릭", "r01 manual stamp count"]) else "FAIL",
+        "manual combat",
+        "HUD/debug surfaces expose manual-vs-charge controls without general internal ids",
+    )
+    add(
+        results,
+        "PASS" if has_all(enemy + balance, ['"manual"', "manual_stamp_damage", "manual_first_input_table", "auto_marked_damage"]) else "FAIL",
+        "manual combat",
+        "enemy defenses and balance sim include manual stamp and marked auto assist",
+    )
+
+
 def print_results(results: list[Check]) -> None:
     print("# Logic Invariant Check\n")
     width_status = max(len(r.status) for r in results)
@@ -580,6 +626,7 @@ def main() -> int:
     check_level_card_separation(texts, results)
     check_boss_reward(texts, results)
     check_ui_debug_boundary(texts, results)
+    check_manual_combat_input(texts, results)
     print_results(results)
     return 1 if any(r.status == "FAIL" for r in results) else 0
 

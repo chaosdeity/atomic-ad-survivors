@@ -73,6 +73,7 @@ const FIELD_INTERACTION_RADIUS := 74.0
 const FIELD_INTERACTION_NOTICE_TIME := 3.0
 const FIELD_INTERACTION_REVEAL_DURATION := 4.2
 const FIELD_INTERACTION_REVEAL_LIMIT := 4
+const MANUAL_STAMP_NOTICE_TIME := 1.45
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -128,6 +129,13 @@ var card_contribution_log := {}
 var playtest_metrics := {}
 
 var auto_timer := 0.0
+var manual_stamp_timer := 0.0
+var manual_stamp_notice_timer := 0.0
+var manual_stamp_notice_text := ""
+var manual_stamped_story_counts := {}
+var manual_stamp_total_story_counts := {}
+var last_manual_stamp_object_id := ""
+var last_manual_stamp_display_name := ""
 var charge_timer := 0.0
 var charge_window_left := 0.0
 var charge_ready_flash := 0.0
@@ -215,6 +223,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	entry_camera_timer = maxf(0.0, entry_camera_timer - delta)
 	_update_field_interaction_runtime(delta)
+	_update_manual_stamp_runtime(delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
@@ -300,18 +309,26 @@ func _input(event: InputEvent) -> void:
 			_handle_terminal_action()
 			return
 
+	if event.is_action_pressed("manual_stamp") and (match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory"):
+		_handle_terminal_action()
+		return
+
 	if match_state == "playing" and not paused_for_card and event.is_action_pressed("interact"):
 		if _try_field_interaction():
 			return
 
+	if match_state == "playing" and not paused_for_card and event.is_action_pressed("manual_stamp"):
+		if _try_manual_stamp():
+			return
+
 	var pressed_charge := event.is_action_pressed("charge")
-	if event is InputEventScreenTouch and event.pressed:
-		pressed_charge = true
 	if pressed_charge:
 		if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
+		elif match_state == "playing":
+			_show_wave_notice("차징 도장 준비 중 %.1f초" % maxf(0.0, _charge_period() - charge_timer))
 
 func _campaign_map_open_key(event: InputEvent) -> bool:
 	if not event is InputEventKey or not event.pressed or event.echo:
@@ -792,7 +809,7 @@ func _update_auto_fire(delta: float) -> void:
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
 	if priority_target:
-		damage *= 1.12
+		damage *= C.AUTO_MARKED_DAMAGE_MULT
 	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
 	if not hit.is_empty():
 		_show_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
@@ -967,13 +984,14 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 		_play_sfx("return_stamp_whiff")
 	return hit_count
 
-func _apply_return_stamp(index: int, perfect: bool = false) -> void:
+func _apply_return_stamp(index: int, perfect: bool = false, duration_override: float = -1.0) -> void:
 	if index < 0 or index >= enemies.enemies.size():
 		return
-	var duration := RETURN_STAMP_DURATION
-	duration += 0.45 * float(player_stats.get("return_label_level", 0))
-	if perfect and int(player_stats["perfect_charge_level"]) > 0:
-		duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
+	var duration := duration_override if duration_override > 0.0 else RETURN_STAMP_DURATION
+	if duration_override <= 0.0:
+		duration += 0.45 * float(player_stats.get("return_label_level", 0))
+		if perfect and int(player_stats["perfect_charge_level"]) > 0:
+			duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
 	enemies.enemies[index]["return_stamp_flash"] = 0.30
 	_play_sfx("return_stamp_mark")
@@ -1183,7 +1201,7 @@ func _try_split_shot(primary_idx: int) -> void:
 	if auto_damage_synergy:
 		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
 	if priority_target:
-		split_damage *= 1.12
+		split_damage *= C.AUTO_MARKED_DAMAGE_MULT
 	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
 	if not hit.is_empty():
 		_show_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
@@ -1409,11 +1427,16 @@ func _reset_r01_run_tracking() -> void:
 	r01_zone_times = {}
 	open_house_signal_stage = 0
 	field_interacted_counts.clear()
+	manual_stamped_story_counts.clear()
 	field_interaction_reveals.clear()
 	field_interaction_notice_timer = 0.0
 	field_interaction_notice_text = ""
+	manual_stamp_notice_timer = 0.0
+	manual_stamp_notice_text = ""
 	last_field_interaction_object_id = ""
 	last_field_interaction_display_name = ""
+	last_manual_stamp_object_id = ""
+	last_manual_stamp_display_name = ""
 
 func _record_r01_zone_time(delta: float) -> void:
 	var zone_id := r01_map.current_zone_id()
@@ -1674,6 +1697,211 @@ func _apply_field_interaction_small_combat_link(object: Dictionary) -> void:
 		_:
 			pass
 
+func _update_manual_stamp_runtime(delta: float) -> void:
+	manual_stamp_timer = maxf(0.0, manual_stamp_timer - delta)
+	manual_stamp_notice_timer = maxf(0.0, manual_stamp_notice_timer - delta)
+
+func _try_manual_stamp() -> bool:
+	var aim_data := _charge_aim_data()
+	return _try_manual_stamp_with_aim(Vector2(aim_data["dir"]))
+
+func _try_manual_stamp_with_aim(aim_dir: Vector2) -> bool:
+	if manual_stamp_timer > 0.0:
+		_show_manual_stamp_notice("현장 도장 재정렬 %.1f초" % manual_stamp_timer)
+		return true
+	manual_stamp_timer = C.MANUAL_STAMP_COOLDOWN
+	if aim_dir.length_squared() <= 0.01:
+		aim_dir = _fallback_aim_dir()
+	aim_dir = aim_dir.normalized()
+	var line_start := player_pos + aim_dir * 12.0
+	var trace_end := player_pos + aim_dir * C.MANUAL_STAMP_RANGE
+	_register_attack_pose(aim_dir, 0.18)
+
+	var enemy_hits := _apply_manual_stamp_enemy_hit(aim_dir, line_start)
+	var boss_hit := false
+	if enemy_hits <= 0 and _charge_line_hits_boss(aim_dir, C.MANUAL_STAMP_RANGE, C.MANUAL_STAMP_WIDTH):
+		var boss_result := _apply_boss_damage(_manual_stamp_damage() * 0.55, "manual")
+		boss_hit = not boss_result.is_empty()
+		if boss_hit:
+			effects.add_return_stamp_hit(boss.pos, aim_dir, false, true)
+			effects.add_impact_line(line_start, boss.pos, C.NEON_RED, 2.5, 0.14)
+			effects.add_floater(boss.pos + Vector2(0, -8), "현장 도장", C.NEON_RED, 11)
+
+	var source_result := _apply_manual_stamp_story_reaction(aim_dir)
+	var source_contact := bool(source_result.get("hit", false))
+	var source_first_hit := bool(source_result.get("source_hit", false))
+	var hit_any := enemy_hits > 0 or boss_hit or source_contact
+	if hit_any:
+		effects.add_impact_line(line_start, trace_end, C.NEON_RED, 2.2, 0.13)
+		effects.add_status_ring(trace_end, C.NEON_RED, 8.0, 0.16)
+		_play_sfx("return_stamp_hit", 0.88)
+		var phrase := String(source_result.get("phrase", ""))
+		if phrase == "":
+			phrase = "현장 도장: 반품 표식을 남겼습니다"
+		_show_manual_stamp_notice(phrase)
+	else:
+		effects.add_return_stamp_whiff(line_start, trace_end)
+		_play_sfx("return_stamp_whiff", 0.86)
+		_show_manual_stamp_notice("현장 도장 빗나감")
+	_record_playtest_manual_stamp(hit_any, source_first_hit)
+	_handle_dead_positions(_cleanup_dead_positions())
+	return true
+
+func _apply_manual_stamp_enemy_hit(aim_dir: Vector2, line_start: Vector2) -> int:
+	var hit_indices := _charge_line_hit_indices(aim_dir, C.MANUAL_STAMP_RANGE, C.MANUAL_STAMP_WIDTH)
+	if hit_indices.is_empty():
+		return 0
+	var idx: int = hit_indices[0]
+	if idx < 0 or idx >= enemies.enemies.size():
+		return 0
+	var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
+	var hit := enemies.apply_damage(idx, _enemy_meta_damage(_manual_stamp_damage(), idx), "manual")
+	if hit.is_empty():
+		return 0
+	_apply_return_stamp(idx, false, C.MANUAL_STAMP_MARK_DURATION)
+	effects.spawn_hit_spark(hit_pos, true, rng)
+	_show_damage_number(hit_pos, float(hit["damage"]), "manual", String(hit["effectiveness"]))
+	_add_audit_processing(16.0 + float(hit["damage"]) * 1.35, "manual_stamp_hit", hit_pos)
+	effects.add_impact_line(line_start, hit_pos, C.NEON_RED, 2.4, 0.14)
+	effects.add_return_stamp_hit(hit_pos, aim_dir, false, false)
+	effects.add_floater(hit_pos + Vector2(0, -4), "도장", C.NEON_RED, 11)
+	_apply_hit_knockback(idx, player_pos, 8.0)
+	var role := String(enemies.enemies[idx].get("role", "basic"))
+	if role in ["speaker", "charger", "signal"]:
+		last_threat_label = "현장 도장: %s source 경고" % role
+	return 1
+
+func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
+	var object := _manual_stamp_story_object(aim_dir)
+	if object.is_empty():
+		return {"hit": false, "source_hit": false, "phrase": ""}
+	var object_id := String(object.get("id", ""))
+	if object_id == "":
+		return {"hit": false, "source_hit": false, "phrase": ""}
+	var display_name := String(object.get("display_name", "흔적"))
+	var object_pos := Vector2(object.get("pos", player_pos))
+	last_manual_stamp_object_id = object_id
+	last_manual_stamp_display_name = display_name
+	manual_stamp_total_story_counts[object_id] = int(manual_stamp_total_story_counts.get(object_id, 0)) + 1
+	var already_this_sortie := int(manual_stamped_story_counts.get(object_id, 0)) > 0
+	manual_stamped_story_counts[object_id] = int(manual_stamped_story_counts.get(object_id, 0)) + 1
+	if already_this_sortie:
+		effects.add_floater(object_pos + Vector2(0, -16), "이미 도장됨", Color(0.35, 0.70, 0.95), 10)
+		effects.add_status_ring(object_pos, Color(0.35, 0.70, 0.95), 34.0, 0.22)
+		return {
+			"hit": true,
+			"source_hit": false,
+			"phrase": "%s: 도장 흔적은 이미 남았습니다" % display_name,
+		}
+	_apply_manual_stamp_node_memory(object)
+	_record_manual_stamp_outpost_event(object)
+	_add_field_interaction_reveals(object)
+	_apply_manual_stamp_small_combat_link(object)
+	effects.add_floater(object_pos + Vector2(0, -16), "도장 확인", C.NEON_RED, 11)
+	effects.add_status_ring(object_pos, C.NEON_RED, 44.0, 0.28)
+	return {
+		"hit": true,
+		"source_hit": true,
+		"phrase": _manual_stamp_story_reaction_phrase(object),
+	}
+
+func _manual_stamp_story_object(aim_dir: Vector2) -> Dictionary:
+	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+		return {}
+	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	var near_object := r01_blockout.nearest_story_object(player_pos, C.MANUAL_STAMP_SOURCE_RADIUS, zone_id)
+	if near_object.is_empty():
+		near_object = r01_blockout.nearest_story_object(player_pos, C.MANUAL_STAMP_SOURCE_RADIUS)
+	if not near_object.is_empty():
+		return near_object
+	var best := {}
+	var best_score := INF
+	for object in r01_blockout.story_objects_for_state():
+		var object_pos := Vector2(object.get("pos", Vector2.ZERO))
+		var to_object := object_pos - player_pos
+		var forward := to_object.dot(aim_dir)
+		if forward < -8.0 or forward > C.MANUAL_STAMP_RANGE + 18.0:
+			continue
+		var lateral_sq := maxf(0.0, to_object.length_squared() - forward * forward)
+		var radius := C.MANUAL_STAMP_WIDTH + 22.0
+		if lateral_sq > radius * radius:
+			continue
+		var score := maxf(0.0, forward) + sqrt(lateral_sq) * 0.45
+		if score < best_score:
+			best_score = score
+			best = object
+	return best
+
+func _apply_manual_stamp_node_memory(object: Dictionary) -> void:
+	var zone_id := String(object.get("zone_id", ""))
+	var node_id := _r01_node_id_for_zone(zone_id)
+	var memory := _r01_campaign_node_memory(node_id)
+	var names := Array(memory.get("node_manual_stamp_object_names", [])).duplicate()
+	var display_name := String(object.get("display_name", "흔적"))
+	if not names.has(display_name):
+		names.append(display_name)
+	var effects_seen := Array(memory.get("node_manual_stamp_effects", [])).duplicate()
+	var effect_id := String(object.get("campaign_effect", "manual_stamp_memory"))
+	if not effects_seen.has(effect_id):
+		effects_seen.append(effect_id)
+	var phrase := _manual_stamp_memory_phrase(object)
+	memory["node_manual_stamp_object_names"] = names
+	memory["node_manual_stamp_effects"] = effects_seen
+	memory["node_manual_stamp_count"] = names.size()
+	memory["node_last_manual_stamp_name"] = display_name
+	memory["node_last_manual_stamp_phrase"] = phrase
+	memory["node_last_event_line"] = "현장 도장: %s source 확인" % display_name
+	memory["node_last_outpost_reaction"] = _manual_stamp_outpost_reaction(object)
+	memory["node_last_field_outpost_reaction"] = _manual_stamp_outpost_reaction(object)
+	memory["node_last_tag_summary"] = String(object.get("tag_hint", "태그 힌트 없음"))
+	r01_campaign_node_memory[node_id] = memory
+
+func _record_manual_stamp_outpost_event(object: Dictionary) -> void:
+	var npc_id := String(object.get("npc_id", "seven"))
+	var facility_id := String(object.get("facility_id", "sortie_board"))
+	meta_progression.record_outpost_event(npc_id, "manual_stamp", _manual_stamp_outpost_reaction(object), facility_id)
+
+func _apply_manual_stamp_small_combat_link(object: Dictionary) -> void:
+	_apply_field_interaction_small_combat_link(object)
+	match String(object.get("campaign_effect", "")):
+		"mailbox_address_duplicate":
+			last_threat_label = "현장 도장: 우편함 source 약화"
+		"front_sensor_warning":
+			last_threat_label = "현장 도장: 현관 센서 source 흔들림"
+		"fake_return_verified":
+			last_threat_label = "현장 도장: 가짜 귀환 source 표시"
+		"model_house_access_warning":
+			_set_boss_signal_state("faint")
+			last_threat_label = "현장 도장: 모델하우스 심사 신호 표시"
+		_:
+			pass
+
+func _manual_stamp_story_reaction_phrase(object: Dictionary) -> String:
+	match String(object.get("campaign_effect", "")):
+		"mailbox_address_duplicate":
+			return "현장 도장: 우편함 source 발송이 잠깐 끊깁니다"
+		"front_sensor_warning":
+			return "현장 도장: 현관 센서 ping이 흔들립니다"
+		"fake_return_verified":
+			return "현장 도장: 가짜 회수선 표지가 묶였습니다"
+		"model_house_access_warning":
+			return "현장 도장: 모델하우스 심사선에 반려 흔적이 남았습니다"
+		_:
+			return "현장 도장: %s에 확인 흔적이 남았습니다" % String(object.get("display_name", "source"))
+
+func _manual_stamp_memory_phrase(object: Dictionary) -> String:
+	return "도장 확인: %s" % String(object.get("node_memory_phrase", object.get("display_name", "현장 source")))
+
+func _manual_stamp_outpost_reaction(object: Dictionary) -> String:
+	return "현장 도장 기록: %s - %s" % [
+		String(object.get("display_name", "source")),
+		String(object.get("node_memory_phrase", "반품 확인")),
+	]
+
+func _show_manual_stamp_notice(text: String) -> void:
+	manual_stamp_notice_text = text
+	manual_stamp_notice_timer = MANUAL_STAMP_NOTICE_TIME
+
 func _r01_node_id_for_zone(zone_id: String) -> String:
 	match zone_id:
 		"silence_edge_start", "outer_recovery_lane_anchor":
@@ -1916,7 +2144,7 @@ func _show_damage_number(pos: Vector2, amount: float, kind: String, effectivenes
 func _damage_number_visible(pos: Vector2, kind: String, effectiveness: String) -> bool:
 	if debug_tools.detail_debug_visible():
 		return true
-	if kind == "hit" or kind == "heal" or kind == "focused" or effectiveness == "weak":
+	if kind == "hit" or kind == "heal" or kind == "focused" or kind == "manual" or effectiveness == "weak":
 		return true
 	if enemies.enemies.size() < DAMAGE_NUMBER_DENSE_START:
 		return true
@@ -2138,6 +2366,11 @@ func _live_open_house_processing_mult() -> float:
 
 func _reset_playtest_metrics() -> void:
 	playtest_metrics = {
+		"manual_stamp_uses": 0,
+		"manual_stamp_hits": 0,
+		"manual_stamp_whiffs": 0,
+		"manual_stamp_source_hits": 0,
+		"first_manual_stamp_time": -1.0,
 		"charge_uses": 0,
 		"charge_hits": 0,
 		"charge_whiffs": 0,
@@ -2177,6 +2410,16 @@ func _record_playtest_charge(hit_count: int, perfect: bool) -> void:
 		playtest_metrics["charge_whiffs"] = int(playtest_metrics.get("charge_whiffs", 0)) + 1
 	if perfect:
 		playtest_metrics["perfect_charges"] = int(playtest_metrics.get("perfect_charges", 0)) + 1
+
+func _record_playtest_manual_stamp(hit: bool, source_hit: bool) -> void:
+	playtest_metrics["manual_stamp_uses"] = int(playtest_metrics.get("manual_stamp_uses", 0)) + 1
+	_mark_playtest_time_once("first_manual_stamp_time")
+	if hit:
+		playtest_metrics["manual_stamp_hits"] = int(playtest_metrics.get("manual_stamp_hits", 0)) + 1
+	else:
+		playtest_metrics["manual_stamp_whiffs"] = int(playtest_metrics.get("manual_stamp_whiffs", 0)) + 1
+	if source_hit:
+		playtest_metrics["manual_stamp_source_hits"] = int(playtest_metrics.get("manual_stamp_source_hits", 0)) + 1
 
 func _record_playtest_zone_entry(zone_id: String) -> void:
 	if not _playtest_is_danger_zone(zone_id):
@@ -2225,6 +2468,9 @@ func _playtest_metrics_snapshot() -> Dictionary:
 	var charge_uses := int(snapshot.get("charge_uses", 0))
 	var charge_hits := int(snapshot.get("charge_hits", 0))
 	var charge_hit_targets := int(snapshot.get("charge_hit_targets", 0))
+	var manual_uses := int(snapshot.get("manual_stamp_uses", 0))
+	var manual_hits := int(snapshot.get("manual_stamp_hits", 0))
+	snapshot["manual_stamp_hit_rate"] = float(manual_hits) / maxf(1.0, float(manual_uses))
 	snapshot["charge_hit_rate"] = float(charge_hits) / maxf(1.0, float(charge_uses))
 	snapshot["charge_avg_targets"] = float(charge_hit_targets) / maxf(1.0, float(charge_hits))
 	var flags := _playtest_core_flags(snapshot)
@@ -2257,13 +2503,17 @@ func _playtest_metrics_summary(metrics: Dictionary = {}) -> String:
 	var score := int(data.get("first_5_score", 0))
 	var target_count := int(data.get("first_5_target_count", 7))
 	var hit_rate := float(data.get("charge_hit_rate", 0.0)) * 100.0
+	var manual_rate := float(data.get("manual_stamp_hit_rate", 0.0)) * 100.0
 	var first_card := float(data.get("first_card_time", -1.0))
 	var first_candidate := float(data.get("first_ration_candidate_time", -1.0))
 	var card_text := "%.0fs" % first_card if first_card >= 0.0 else "--"
 	var candidate_text := "%.0fs" % first_candidate if first_candidate >= 0.0 else "--"
-	return "핵심 %d/%d | 차징 %.0f%%(%d/%d) | 카드 %s | 후보 %s | 위험 %.0fs" % [
+	return "핵심 %d/%d | 도장 %.0f%%(%d/%d) | 차징 %.0f%%(%d/%d) | 카드 %s | 후보 %s | 위험 %.0fs" % [
 		score,
 		target_count,
+		manual_rate,
+		int(data.get("manual_stamp_hits", 0)),
+		int(data.get("manual_stamp_uses", 0)),
 		hit_rate,
 		int(data.get("charge_hits", 0)),
 		int(data.get("charge_uses", 0)),
@@ -2486,6 +2736,7 @@ func _sortie_start_notice() -> String:
 	parts.append(R01CampaignMap.node_entry_notice(current_r01_node_id))
 	parts.append("첫 목표: %s" % R01CampaignMap.node_combat_goal(current_r01_node_id))
 	parts.append("위험: %s" % R01CampaignMap.node_modifier_short(current_r01_node_id))
+	parts.append("J/좌클릭 현장 도장, SPACE/우클릭 차징, E 조사, 자동 견제는 표식 우선")
 	if meta_progression.signal_board_level() > 0:
 		parts.append(meta_progression.signal_board_guidance_line())
 	parts.append("다음: %s" % _combat_timebox_hint())
@@ -2970,6 +3221,11 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_last_story_object_phrase": "",
 			"node_last_field_result_phrase": "",
 			"node_last_field_outpost_reaction": "",
+			"node_manual_stamp_object_names": [],
+			"node_manual_stamp_effects": [],
+			"node_manual_stamp_count": 0,
+			"node_last_manual_stamp_name": "",
+			"node_last_manual_stamp_phrase": "",
 		}
 	return memory
 
@@ -3611,6 +3867,8 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _active_notice_text() -> String:
+	if manual_stamp_notice_timer > 0.0 and manual_stamp_notice_text != "":
+		return manual_stamp_notice_text
 	if field_interaction_notice_timer > 0.0 and field_interaction_notice_text != "":
 		return field_interaction_notice_text
 	if wave_notice_timer > 0.0:
@@ -3622,7 +3880,7 @@ func _active_notice_text() -> String:
 
 func _update_hud() -> void:
 	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name(), _audit_hud_data(), _ration_hud_data())
+	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), manual_stamp_timer, C.MANUAL_STAMP_COOLDOWN, elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name(), _audit_hud_data(), _ration_hud_data())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -3704,6 +3962,9 @@ func _debug_info() -> Dictionary:
 		"r01_field_interaction_target": "%s/%s" % [last_field_interaction_object_id, last_field_interaction_display_name],
 		"r01_field_interaction_sortie_counts": _field_interaction_counts_summary(field_interacted_counts),
 		"r01_field_interaction_total_counts": _field_interaction_counts_summary(field_interaction_total_counts),
+		"r01_manual_stamp_target": "%s/%s" % [last_manual_stamp_object_id, last_manual_stamp_display_name],
+		"r01_manual_stamp_sortie_counts": _field_interaction_counts_summary(manual_stamped_story_counts),
+		"r01_manual_stamp_total_counts": _field_interaction_counts_summary(manual_stamp_total_story_counts),
 		"r01_field_interaction_reveals": field_interaction_reveals.size(),
 		"r01_layer_ground_patch": int(r01_layer_summary.get("ground_patch", 0)),
 		"r01_layer_ground_decal": int(r01_layer_summary.get("ground_decal", 0)),
@@ -3746,6 +4007,8 @@ func _debug_info() -> Dictionary:
 		"charge_timer": charge_timer,
 		"charge_period": _charge_period(),
 		"charge_window_left": charge_window_left,
+		"manual_stamp_timer": manual_stamp_timer,
+		"manual_stamp_cooldown": C.MANUAL_STAMP_COOLDOWN,
 		"selected_card_count": selected_card_count,
 		"audit_segment_index": audit_segment_index,
 		"audit_processing": audit_processing,
@@ -4625,14 +4888,19 @@ func _ensure_input_map() -> void:
 	_add_key_action("move_right", [KEY_D, KEY_RIGHT])
 	_add_key_action("move_up", [KEY_W, KEY_UP])
 	_add_key_action("move_down", [KEY_S, KEY_DOWN])
+	_add_key_action("manual_stamp", [KEY_J])
 	_add_key_action("charge", [KEY_SPACE])
 	_add_key_action("interact", [KEY_E])
-	if not InputMap.has_action("charge"):
-		InputMap.add_action("charge")
-	var mouse := InputEventMouseButton.new()
-	mouse.button_index = MOUSE_BUTTON_LEFT
-	if not InputMap.action_has_event("charge", mouse):
-		InputMap.action_add_event("charge", mouse)
+	var left_mouse := InputEventMouseButton.new()
+	left_mouse.button_index = MOUSE_BUTTON_LEFT
+	var right_mouse := InputEventMouseButton.new()
+	right_mouse.button_index = MOUSE_BUTTON_RIGHT
+	if InputMap.action_has_event("charge", left_mouse):
+		InputMap.action_erase_event("charge", left_mouse)
+	if not InputMap.action_has_event("charge", right_mouse):
+		InputMap.action_add_event("charge", right_mouse)
+	if not InputMap.action_has_event("manual_stamp", left_mouse):
+		InputMap.action_add_event("manual_stamp", left_mouse)
 
 func _add_key_action(action: StringName, keys: Array[int]) -> void:
 	if not InputMap.has_action(action):
@@ -4685,6 +4953,9 @@ func _restart() -> void:
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
 	auto_timer = 0.0
+	manual_stamp_timer = 0.0
+	manual_stamp_notice_timer = 0.0
+	manual_stamp_notice_text = ""
 	auto_shot_counter = 0
 	attack_pose_timer = 0.0
 	attack_pose_dir = Vector2.RIGHT
@@ -4780,7 +5051,11 @@ func _auto_range() -> float:
 	return C.AUTO_RANGE + float(player_stats["auto_range_bonus"])
 
 func _auto_damage_per_tick() -> float:
-	return C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK + float(player_stats["auto_damage_bonus"])
+	var base_damage := C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK + float(player_stats["auto_damage_bonus"])
+	return base_damage * C.AUTO_ASSIST_DAMAGE_MULT
+
+func _manual_stamp_damage() -> float:
+	return C.MANUAL_STAMP_DAMAGE + float(player_stats["charge_damage_bonus"]) * 0.35
 
 func _charge_period() -> float:
 	var emergency_bonus := -0.45 * float(player_stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0

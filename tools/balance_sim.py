@@ -26,11 +26,11 @@ ENEMY_ORDER = ["basic", "fast", "tank", "signal", "elite"]
 SPECIAL_ENEMY_ORDER = ["speaker", "charger"]
 
 DEFENSE_TYPES = {
-    "normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
-    "anti_auto": {"auto": 0.58, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
-    "anti_charge": {"auto": 1.00, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
-    "plated": {"auto": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
-    "exposed_core": {"auto": 0.82, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
+    "normal": {"auto": 1.00, "manual": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
+    "anti_auto": {"auto": 0.58, "manual": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
+    "anti_charge": {"auto": 1.00, "manual": 0.78, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
+    "plated": {"auto": 0.76, "manual": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
+    "exposed_core": {"auto": 0.82, "manual": 1.15, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
 }
 
 
@@ -38,6 +38,10 @@ DEFENSE_TYPES = {
 class BalanceConfig:
     auto_damage: float
     auto_tick: float
+    auto_marked_damage: float
+    auto_assist_mult: float
+    manual_stamp_damage: float
+    manual_stamp_cooldown: float
     charge_damage: float
     focused_charge_damage: float
     charge_period: float
@@ -138,6 +142,10 @@ def load_config() -> BalanceConfig:
 
     base_dps = parse_const(game_config, "BASE_DPS")
     auto_tick = parse_const(game_config, "AUTO_TICK")
+    auto_assist_mult = parse_const(game_config, "AUTO_ASSIST_DAMAGE_MULT")
+    auto_marked_mult = parse_const(game_config, "AUTO_MARKED_DAMAGE_MULT")
+    manual_stamp_damage = parse_const(game_config, "MANUAL_STAMP_DAMAGE")
+    manual_stamp_cooldown = parse_const(game_config, "MANUAL_STAMP_COOLDOWN")
     enemy_base_hp = parse_const(game_config, "ENEMY_HP")
     elite_hp = parse_const(game_config, "ELITE_HP")
     player_max_hp = parse_const(game_config, "PLAYER_MAX_HP")
@@ -151,8 +159,12 @@ def load_config() -> BalanceConfig:
     enemy_hp["elite"] = elite_hp
 
     return BalanceConfig(
-        auto_damage=base_dps * auto_tick,
+        auto_damage=base_dps * auto_tick * auto_assist_mult,
         auto_tick=auto_tick,
+        auto_marked_damage=base_dps * auto_tick * auto_assist_mult * auto_marked_mult,
+        auto_assist_mult=auto_assist_mult,
+        manual_stamp_damage=manual_stamp_damage,
+        manual_stamp_cooldown=manual_stamp_cooldown,
         charge_damage=charge_damage,
         focused_charge_damage=charge_damage * directed_bonus,
         charge_period=charge_period,
@@ -219,9 +231,13 @@ def base_ttk_table(config: BalanceConfig) -> str:
     for enemy in ENEMY_ORDER:
         hp = config.enemy_hp[enemy]
         auto_damage = effective_damage(config, enemy, "auto", config.auto_damage)
+        marked_auto_damage = effective_damage(config, enemy, "auto", config.auto_marked_damage)
+        manual_damage = effective_damage(config, enemy, "manual", config.manual_stamp_damage)
         charge_damage = effective_damage(config, enemy, "charge", config.charge_damage)
         focused_damage = effective_damage(config, enemy, "focused", config.focused_charge_damage)
         auto_shots = shots_to_kill(hp, auto_damage)
+        manual_hits = shots_to_kill(hp, manual_damage)
+        after_manual = max(0.0, hp - manual_damage)
         after_charge = max(0.0, hp - charge_damage)
         after_focus = max(0.0, hp - focused_damage)
         rows.append(
@@ -230,15 +246,19 @@ def base_ttk_table(config: BalanceConfig) -> str:
                 config.enemy_defense.get(enemy, "normal"),
                 fmt_num(hp),
                 fmt_num(auto_damage),
+                fmt_num(marked_auto_damage),
+                fmt_num(manual_damage),
                 fmt_num(focused_damage),
                 auto_shots,
                 fmt_sec(ttk_for_auto(auto_shots, config.auto_tick)),
+                manual_hits,
+                shots_to_kill(after_manual, marked_auto_damage),
                 shots_to_kill(after_charge, auto_damage),
                 shots_to_kill(after_focus, auto_damage),
             ]
         )
     return markdown_table(
-        ["enemy", "defense", "hp", "auto dmg", "focused dmg", "auto shots", "auto ttk", "normal charge + shots", "focused charge + shots"],
+        ["enemy", "defense", "hp", "auto assist", "marked auto", "manual stamp", "focused dmg", "auto shots", "auto ttk", "manual hits", "manual + marked shots", "normal charge + shots", "focused charge + shots"],
         rows,
     )
 
@@ -281,6 +301,7 @@ def special_enemy_role_table(config: BalanceConfig) -> str:
         if hp is None:
             continue
         auto_damage = effective_damage(config, enemy, "auto", config.auto_damage)
+        manual_damage = effective_damage(config, enemy, "manual", config.manual_stamp_damage)
         focused_damage = effective_damage(config, enemy, "focused", config.focused_charge_damage)
         rows.append(
             [
@@ -288,12 +309,13 @@ def special_enemy_role_table(config: BalanceConfig) -> str:
                 config.enemy_defense.get(enemy, "normal"),
                 fmt_num(hp),
                 fmt_num(auto_damage),
+                fmt_num(manual_damage),
                 fmt_num(focused_damage),
                 behavior_notes.get(enemy, ""),
             ]
         )
     return markdown_table(
-        ["role", "defense", "hp", "auto dmg", "focused dmg", "behavior note"],
+        ["role", "defense", "hp", "auto assist", "manual stamp", "focused dmg", "behavior note"],
         rows,
     )
 
@@ -305,6 +327,35 @@ def battlefield_threat_table() -> str:
         ["finale pressure", "270s+", "shorter intervals", "same damage", "frequency rises without changing boss route or rewards"],
     ]
     return markdown_table(["threat", "starts", "telegraph", "hit effect", "fairness note"], rows)
+
+
+def manual_first_input_table(config: BalanceConfig) -> str:
+    rows: list[list[object]] = []
+    for enemy in ["basic", "fast", "speaker", "charger"]:
+        hp = config.enemy_hp[enemy]
+        auto_damage = effective_damage(config, enemy, "auto", config.auto_damage)
+        marked_auto = effective_damage(config, enemy, "auto", config.auto_marked_damage)
+        manual_damage = effective_damage(config, enemy, "manual", config.manual_stamp_damage)
+        auto_only_shots = shots_to_kill(hp, auto_damage)
+        manual_only_hits = shots_to_kill(hp, manual_damage)
+        one_stamp_cleanup = shots_to_kill(max(0.0, hp - manual_damage), marked_auto)
+        mixed_time = config.manual_stamp_cooldown + ttk_for_auto(one_stamp_cleanup, config.auto_tick)
+        rows.append(
+            [
+                enemy,
+                fmt_num(hp),
+                fmt_num(auto_damage),
+                fmt_sec(ttk_for_auto(auto_only_shots, config.auto_tick)),
+                fmt_num(manual_damage),
+                manual_only_hits,
+                f"1 stamp + {one_stamp_cleanup} marked auto",
+                fmt_sec(mixed_time),
+            ]
+        )
+    return markdown_table(
+        ["enemy", "hp", "auto assist", "auto-only ttk", "manual stamp", "manual hits", "manual+assist expectation", "mixed time"],
+        rows,
+    )
 
 
 def growth_stage_table(config: BalanceConfig) -> str:
@@ -357,6 +408,7 @@ def defense_type_table(config: BalanceConfig) -> str:
     rows: list[list[object]] = []
     for defense, mults in DEFENSE_TYPES.items():
         auto_damage = config.auto_damage * mults["auto"]
+        manual_damage = config.manual_stamp_damage * mults["manual"]
         normal_charge = config.charge_damage * mults["charge"]
         focused_charge = config.focused_charge_damage * mults["focused"]
         burst_damage = 30.0 * mults["burst"]
@@ -366,17 +418,19 @@ def defense_type_table(config: BalanceConfig) -> str:
             [
                 defense,
                 fmt_num(auto_damage),
+                fmt_num(manual_damage),
                 fmt_num(normal_charge),
                 fmt_num(focused_charge),
                 fmt_num(burst_damage),
                 fmt_num(puddle_tick),
                 shots_to_kill(basic_hp, auto_damage),
+                shots_to_kill(basic_hp, manual_damage),
                 shots_to_kill(max(0.0, basic_hp - focused_charge), auto_damage),
                 casts_to_kill(basic_hp, focused_charge),
             ]
         )
     return markdown_table(
-        ["defense", "auto dmg", "normal charge", "focused charge", "burst", "puddle", "basic auto shots", "focus + shots", "focus casts"],
+        ["defense", "auto assist", "manual stamp", "normal charge", "focused charge", "burst", "puddle", "basic auto shots", "basic manual hits", "focus + shots", "focus casts"],
         rows,
     )
 
@@ -390,11 +444,13 @@ def meta_progression_table(config: BalanceConfig) -> str:
         ("hp +5", 0.0, 0.0, 5.0, "보급소 응급처치; TTK unchanged"),
     ]
     for label, auto_bonus, charge_bonus, hp_bonus, note in stages:
-        auto_damage = config.auto_damage + auto_bonus
+        auto_damage = config.auto_damage + auto_bonus * config.auto_assist_mult
+        manual_damage = config.manual_stamp_damage + charge_bonus * 0.35
         charge_damage = config.charge_damage + charge_bonus
         focused_damage = charge_damage * (config.focused_charge_damage / config.charge_damage)
 
         basic_auto = effective_damage(config, "basic", "auto", auto_damage)
+        basic_manual = effective_damage(config, "basic", "manual", manual_damage)
         tank_auto = effective_damage(config, "tank", "auto", auto_damage)
         signal_auto = effective_damage(config, "signal", "auto", auto_damage)
         signal_focus = effective_damage(config, "signal", "focused", focused_damage)
@@ -405,9 +461,11 @@ def meta_progression_table(config: BalanceConfig) -> str:
                 label,
                 fmt_num(100.0 + hp_bonus),
                 fmt_num(auto_damage),
+                fmt_num(manual_damage),
                 fmt_num(charge_damage),
                 fmt_num(focused_damage),
                 fmt_sec(ttk_for_auto(shots_to_kill(config.enemy_hp["basic"], basic_auto), config.auto_tick)),
+                shots_to_kill(config.enemy_hp["basic"], basic_manual),
                 fmt_sec(ttk_for_auto(shots_to_kill(config.enemy_hp["tank"], tank_auto), config.auto_tick)),
                 shots_to_kill(max(0.0, config.enemy_hp["signal"] - signal_focus), signal_auto),
                 casts_to_kill(config.enemy_hp["elite"], elite_focus),
@@ -415,7 +473,7 @@ def meta_progression_table(config: BalanceConfig) -> str:
             ]
         )
     return markdown_table(
-        ["meta stage", "max hp", "auto dmg", "charge dmg", "focused dmg", "basic auto ttk", "tank auto ttk", "signal focus cleanup", "elite focus casts", "note"],
+        ["meta stage", "max hp", "auto assist", "manual stamp", "charge dmg", "focused dmg", "basic auto ttk", "basic manual hits", "tank auto ttk", "signal focus cleanup", "elite focus casts", "note"],
         rows,
     )
 
@@ -461,8 +519,9 @@ def meta_upgrade_effect_preview(config: BalanceConfig) -> str:
     rows = [
         ["upgrade count", len(upgrades), "target >= 12"],
         ["max hp", fmt_num(config.player_max_hp + totals["max_hp_bonus"]), f"+{fmt_num(totals['max_hp_bonus'])} if fully bought"],
-        ["auto damage", fmt_num(config.auto_damage + totals["auto_damage_bonus"]), "flat meta only; card multipliers remain run-local"],
+        ["auto assist damage", fmt_num(config.auto_damage + totals["auto_damage_bonus"] * config.auto_assist_mult), "flat meta is scaled by assist role"],
         ["auto range", f"+{fmt_num(totals['auto_range_bonus'])}", "range gain is utility, not raw DPS"],
+        ["manual stamp damage", fmt_num(config.manual_stamp_damage + totals["charge_damage_bonus"] * 0.35), "charge meta gives a small stamp bump"],
         ["charge damage", fmt_num(config.charge_damage + totals["charge_damage_bonus"]), "flat meta only"],
         ["charge period", f"{fmt_sec(config.charge_period)} -> {fmt_sec(capped_charge_period)}", "floor remains 1.2s"],
         ["charge window", f"+{fmt_sec(totals['charge_window_bonus'])}", "input leniency only"],
@@ -486,6 +545,13 @@ def build_preview_table(config: BalanceConfig) -> str:
     residue_total = (10.0 + 3.0) * 1.05
 
     rows = [
+        [
+            "Manual",
+            "field stamp baseline",
+            "%s dmg / %ss cd" % (fmt_num(config.manual_stamp_damage), fmt_num(config.manual_stamp_cooldown)),
+            "%s basic hit(s)" % shots_to_kill(config.enemy_hp["basic"], effective_damage(config, "basic", "manual", config.manual_stamp_damage)),
+            "primary rhythm; applies return mark so assist fire has a clear target",
+        ],
         [
             "Auto",
             "auto damage x2 + split shot",
@@ -778,14 +844,20 @@ def r01_collision_nav_preview_table() -> str:
 def findings(config: BalanceConfig) -> str:
     basic_hp = config.enemy_hp["basic"]
     basic_auto = effective_damage(config, "basic", "auto", config.auto_damage)
+    basic_marked_auto = effective_damage(config, "basic", "auto", config.auto_marked_damage)
+    basic_manual = effective_damage(config, "basic", "manual", config.manual_stamp_damage)
     basic_focus = effective_damage(config, "basic", "focused", config.focused_charge_damage)
     basic_survives_focus = basic_focus < basic_hp
+    basic_auto_only_ttk = ttk_for_auto(shots_to_kill(basic_hp, basic_auto), config.auto_tick)
+    basic_manual_cleanup_time = config.manual_stamp_cooldown + ttk_for_auto(shots_to_kill(max(0.0, basic_hp - basic_manual), basic_marked_auto), config.auto_tick)
     focused_followup = shots_to_kill(basic_hp - basic_focus, basic_auto)
     tank_auto = shots_to_kill(config.enemy_hp["tank"], effective_damage(config, "tank", "auto", config.auto_damage))
     signal_focus_cleanup = shots_to_kill(max(0.0, config.enemy_hp["signal"] - effective_damage(config, "signal", "focused", config.focused_charge_damage)), effective_damage(config, "signal", "auto", config.auto_damage))
     elite_focus = casts_to_kill(config.enemy_hp["elite"], effective_damage(config, "elite", "focused", config.focused_charge_damage))
 
     rows = [
+        ["auto-only basic ttk", fmt_sec(basic_auto_only_ttk), "target: slower than direct manual rhythm"],
+        ["manual+marked basic ttk", fmt_sec(basic_manual_cleanup_time), "target: clearly faster than auto assist alone"],
         ["focused charge deletes basic?", "no" if basic_survives_focus else "yes", "target: no for weak first sortie"],
         ["basic follow-up after focus", f"{focused_followup} auto shot(s)", "keeps auto-fire relevant"],
         ["tank auto shots", tank_auto, "anti-auto armor pushes players toward charge, burst, or puddle"],
@@ -814,6 +886,10 @@ def main() -> None:
     print("## Battlefield Threat Preview")
     print()
     print(battlefield_threat_table())
+    print()
+    print("## Manual-first Input Preview")
+    print()
+    print(manual_first_input_table(config))
     print()
     print("## Growth Stages")
     print()

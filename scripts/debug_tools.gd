@@ -133,6 +133,7 @@ func help_text() -> String:
 	return "\n".join([
 		"DEBUG KEYS",
 		"F1 Help  F12 HUD",
+		"J/LMB Manual stamp  SPACE/RMB Charge",
 		"E Field interact",
 		"F2 Cards  F3 Charge",
 		"F4 HP=20",
@@ -218,6 +219,15 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("r01_field_interaction_sortie_counts", "")),
 			str(info.get("r01_field_interaction_total_counts", "")),
 		],
+		"r01 manual stamp target=%s cooldown=%.2f/%.2f" % [
+			str(info.get("r01_manual_stamp_target", "")),
+			float(info.get("manual_stamp_timer", 0.0)),
+			float(info.get("manual_stamp_cooldown", 0.0)),
+		],
+		"r01 manual stamp count sortie=%s total=%s" % [
+			str(info.get("r01_manual_stamp_sortie_counts", "")),
+			str(info.get("r01_manual_stamp_total_counts", "")),
+		],
 		"r01 story object zones %s" % str(info.get("r01_story_object_summary", "")),
 		"r01 asset keys: %s" % str(info.get("r01_asset_key_sample", "")),
 		"outpost: %s %s facilities=%d" % [
@@ -245,12 +255,13 @@ func detail_text(info: Dictionary) -> String:
 		],
 		"tag ledger %s" % str(info.get("settlement_tag_ledger_line", "")),
 		"tag access current=%s" % str(info.get("current_node_tag_context", "")),
-		"hp %.0f/%.0f  enemies %d/%d  charge %s" % [
+		"hp %.0f/%.0f  enemies %d/%d  charge %s  manual %.2fs" % [
 			float(info.get("player_hp", 0.0)),
 			float(info.get("max_hp", 0.0)),
 			int(info.get("enemy_count", 0)),
 			int(info.get("enemy_cap", 0)),
 			str(info.get("charge_state", "")),
+			float(info.get("manual_stamp_timer", 0.0)),
 		],
 		"audit %.0f ratio=%.2f pass=%d fail=%d pressure=%d" % [
 			float(info.get("audit_processing", 0.0)),

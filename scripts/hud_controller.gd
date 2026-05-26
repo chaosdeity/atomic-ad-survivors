@@ -9,6 +9,7 @@ var hud: CanvasLayer
 var hp_bar: ColorRect
 var charge_bar: ColorRect
 var charge_weapon_label: Label
+var manual_stamp_label: Label
 var charge_button: Label
 var prompt_label: Label
 var stat_label: Label
@@ -141,6 +142,19 @@ func build(parent: Node) -> void:
 	charge_weapon_label.add_theme_constant_override("shadow_offset_y", 1)
 	_apply_font(charge_weapon_label)
 	root.add_child(charge_weapon_label)
+
+	manual_stamp_label = Label.new()
+	manual_stamp_label.position = Vector2(128, 45)
+	manual_stamp_label.size = Vector2(176, 13)
+	manual_stamp_label.clip_text = true
+	manual_stamp_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	manual_stamp_label.add_theme_font_size_override("font_size", FONT_TINY)
+	manual_stamp_label.add_theme_color_override("font_color", C.NEON_RED)
+	manual_stamp_label.add_theme_color_override("font_shadow_color", C.AD_PAPER)
+	manual_stamp_label.add_theme_constant_override("shadow_offset_x", 1)
+	manual_stamp_label.add_theme_constant_override("shadow_offset_y", 1)
+	_apply_font(manual_stamp_label)
+	root.add_child(manual_stamp_label)
 
 	charge_button = Label.new()
 	charge_button.position = Vector2(362, 208)
@@ -485,7 +499,7 @@ func build(parent: Node) -> void:
 	_apply_font(debug_label)
 	debug_panel.add_child(debug_label)
 
-func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "", charge_weapon_name: String = "", audit_data: Dictionary = {}, ration_data: Dictionary = {}) -> void:
+func update(player_hp: float, max_hp: float, charge_window_left: float, charge_timer: float, charge_period: float, charge_window_duration: float, charge_state: String, manual_stamp_timer: float, manual_stamp_cooldown: float, elapsed: float, match_duration: float, level: int, kills: int, enemy_count: int, paused_for_card: bool, game_over: bool, notice_text: String, route_stage_text: String = "", route_goal_text: String = "", charge_weapon_name: String = "", audit_data: Dictionary = {}, ration_data: Dictionary = {}) -> void:
 	hp_bar.size.x = 110.0 * clampf(player_hp / max_hp, 0.0, 1.0)
 	var charge_ratio := charge_window_left / charge_window_duration if charge_window_left > 0.0 else charge_timer / charge_period
 	charge_bar.size.x = clampf(charge_ratio, 0.0, 1.0) * 110.0
@@ -501,7 +515,7 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 	charge_button.modulate = Color.WHITE
 	match charge_state:
 		"open":
-			charge_button.text = "지금!\n클릭/스페이스"
+			charge_button.text = "차징!\nSPACE/우클릭"
 			charge_button.add_theme_color_override("font_color", C.NEON_RED)
 			charge_button.modulate = Color(1.0, 0.96, 0.72, 1.0)
 		"warning":
@@ -516,6 +530,12 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 			charge_button.add_theme_color_override("font_color", C.INK)
 	charge_weapon_label.text = "무기 %s" % charge_weapon_name
 	charge_weapon_label.visible = charge_weapon_name != "" and not _blocking_panel_visible()
+	var manual_ready := manual_stamp_timer <= 0.0
+	var manual_ratio := 1.0 - clampf(manual_stamp_timer / maxf(0.001, manual_stamp_cooldown), 0.0, 1.0)
+	manual_stamp_label.visible = not paused_for_card and not game_over and not _blocking_panel_visible()
+	manual_stamp_label.text = "J/좌클릭 현장 도장 READY" if manual_ready else "J/좌클릭 현장 도장 %.1fs" % maxf(0.0, manual_stamp_timer)
+	manual_stamp_label.add_theme_color_override("font_color", C.NEON_RED if manual_ready else Color(0.58, 0.28, 0.22))
+	manual_stamp_label.modulate = Color(1.0, 1.0, 1.0, 0.72 + manual_ratio * 0.28)
 	stat_label.text = "%03d/%03d  Lv%d  K%d  E%d" % [int(elapsed), int(match_duration), level, kills, enemy_count]
 	var route_text := route_stage_text
 	if route_goal_text != "":
@@ -529,10 +549,10 @@ func update(player_hp: float, max_hp: float, charge_window_left: float, charge_t
 		prompt_label.text = notice_text
 	elif charge_state == "open" and not paused_for_card and not _blocking_panel_visible():
 		prompt_label.visible = true
-		prompt_label.text = "차징 윈도우: 포인터로 조준하고 클릭/탭"
+		prompt_label.text = "SPACE/우클릭 차징 도장"
 	elif charge_state == "warning" and not paused_for_card and not _blocking_panel_visible():
 		prompt_label.visible = true
-		prompt_label.text = "차징 준비: 곧 누를 타이밍"
+		prompt_label.text = "차징 준비: SPACE/우클릭"
 	elif charge_state == "missed" and not paused_for_card and not _blocking_panel_visible():
 		prompt_label.visible = true
 		prompt_label.text = "차징 만료"

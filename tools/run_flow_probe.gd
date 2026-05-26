@@ -19,6 +19,7 @@ func _run() -> void:
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
 	await _probe_r01_field_interactions()
+	await _probe_manual_combat_input()
 	await _probe_ten_minute_loop_readability()
 
 	if failures.is_empty():
@@ -379,6 +380,68 @@ func _probe_r01_field_interactions() -> void:
 	_record("R01 field interactions bridge to campaign map without ids", map_ok, map_text)
 	_record("F12 exposes R01 interaction ids/counts", debug_ok, debug_text)
 	await _finish_main(bridge_main)
+
+func _probe_manual_combat_input() -> void:
+	var main = await _new_main()
+	_start_r01_story_probe(main, R01CampaignMap.NODE_L02)
+	main.player_pos = main.r01_blockout.anchor_position("subdivision_loop_center")
+	main.r01_map.update(0.0, main.elapsed, false, main.r01_blockout.nearest_zone_id(main.player_pos))
+	main.enemies.enemies.append({
+		"pos": main.player_pos + Vector2(44, 0),
+		"hp": 45.0,
+		"max_hp": 45.0,
+		"radius": 8.0,
+		"elite": false,
+		"role": "basic",
+		"defense_type": "normal",
+		"sprite_kind": "billboard",
+		"hit_flash": 0.0,
+		"hit_flash_duration": 0.12,
+	})
+	var manual_hit_ok: bool = main._try_manual_stamp_with_aim(Vector2.RIGHT)
+	var metrics: Dictionary = main._playtest_metrics_snapshot()
+	var enemy_stamp_ok := manual_hit_ok and int(metrics.get("manual_stamp_uses", 0)) == 1 and int(metrics.get("manual_stamp_hits", 0)) == 1 and float(main.enemies.enemies[0].get("return_stamp_timer", 0.0)) > 0.0
+	var auto_damage_before := float(main.enemies.enemies[0].get("hp", 0.0))
+	main.auto_timer = 0.0
+	main._update_auto_fire(1.0)
+	var auto_priority_ok := float(main.enemies.enemies[0].get("hp", 0.0)) < auto_damage_before
+
+	main.manual_stamp_timer = 0.0
+	main.enemies.clear()
+	var source_object := _move_to_story_object(main, "r01_story_l02_front_sensor")
+	var source_ok: bool = main._try_manual_stamp_with_aim(Vector2.RIGHT)
+	var source_metrics: Dictionary = main._playtest_metrics_snapshot()
+	var source_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	var source_reaction_ok := source_ok and int(source_metrics.get("manual_stamp_source_hits", 0)) == 1 and String(source_memory.get("node_last_manual_stamp_phrase", "")).find("현관 센서") != -1 and String(main._active_notice_text()).find("현관 센서") != -1
+	main.manual_stamp_timer = 0.0
+	var repeat_memory_count := int(source_memory.get("node_manual_stamp_count", 0))
+	var repeat_ok: bool = main._try_manual_stamp_with_aim(Vector2.RIGHT)
+	var repeat_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	repeat_ok = repeat_ok and String(main._active_notice_text()).find("이미") != -1 and int(repeat_memory.get("node_manual_stamp_count", 0)) == repeat_memory_count
+
+	var input_map_ok := InputMap.has_action("manual_stamp") and InputMap.has_action("charge")
+	var left_mouse := InputEventMouseButton.new()
+	left_mouse.button_index = MOUSE_BUTTON_LEFT
+	var right_mouse := InputEventMouseButton.new()
+	right_mouse.button_index = MOUSE_BUTTON_RIGHT
+	input_map_ok = input_map_ok and InputMap.action_has_event("manual_stamp", left_mouse)
+	input_map_ok = input_map_ok and InputMap.action_has_event("charge", right_mouse)
+	input_map_ok = input_map_ok and not InputMap.action_has_event("charge", left_mouse)
+	var hud_text_ok := String(main.hud.manual_stamp_label.text).find("현장 도장") != -1 or String(main._sortie_start_notice()).find("현장 도장") != -1
+	main.debug_tools.detail_visible = true
+	var debug_text: String = main._debug_overlay_text()
+	var debug_ok := debug_text.find("r01 manual stamp count") != -1 and debug_text.find("r01_story_l02_front_sensor") != -1
+	var ui_clean_ok := String(main._active_notice_text()).find("r01_story") == -1 and String(source_object.get("id", "")).find("r01_story") != -1
+
+	_record("manual stamp hits enemy and marks auto priority", enemy_stamp_ok)
+	_record("auto assist damages marked target", auto_priority_ok)
+	_record("manual stamp source reaction updates memory", source_reaction_ok)
+	_record("manual stamp repeat does not farm node memory", repeat_ok)
+	_record("manual/charge input map separated", input_map_ok)
+	_record("manual stamp HUD/tutorial text exists", hud_text_ok)
+	_record("manual stamp general UI hides ids", ui_clean_ok)
+	_record("F12 exposes manual stamp ids/counts", debug_ok, debug_text)
+	await _finish_main(main)
 
 func _start_r01_story_probe(main, node_id: String) -> void:
 	main.first_sortie = false

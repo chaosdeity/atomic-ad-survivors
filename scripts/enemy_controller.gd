@@ -4,6 +4,7 @@ const C := preload("res://scripts/game_config.gd")
 
 const TIER1_SPRITE_KINDS := ["billboard", "appliance", "coupon"]
 const DAMAGE_TYPE_AUTO := "auto"
+const DAMAGE_TYPE_MANUAL := "manual"
 const DAMAGE_TYPE_CHARGE := "charge"
 const DAMAGE_TYPE_FOCUSED := "focused"
 const DAMAGE_TYPE_BURST := "burst"
@@ -23,11 +24,11 @@ const ROLE_STATS := {
 }
 const ELITE_DEFENSE_TYPE := DEFENSE_TYPE_PLATED
 const DEFENSE_MULTIPLIERS := {
-	"normal": {"auto": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
-	"anti_auto": {"auto": 0.58, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
-	"anti_charge": {"auto": 1.00, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
-	"plated": {"auto": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
-	"exposed_core": {"auto": 0.82, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
+	"normal": {"auto": 1.00, "manual": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.00, "puddle": 1.00},
+	"anti_auto": {"auto": 0.58, "manual": 1.00, "charge": 1.00, "focused": 1.00, "burst": 1.08, "puddle": 1.08},
+	"anti_charge": {"auto": 1.00, "manual": 0.78, "charge": 0.62, "focused": 0.62, "burst": 1.00, "puddle": 1.00},
+	"plated": {"auto": 0.76, "manual": 0.76, "charge": 0.76, "focused": 0.76, "burst": 0.76, "puddle": 0.76},
+	"exposed_core": {"auto": 0.82, "manual": 1.15, "charge": 1.00, "focused": 1.35, "burst": 1.00, "puddle": 1.00},
 }
 const SIGNAL_AURA_RADIUS := 92.0
 const SIGNAL_AURA_SPEED_MULT := 1.15

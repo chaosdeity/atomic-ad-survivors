@@ -386,6 +386,8 @@ func _damage_number_style(kind: String, effectiveness: String = "normal") -> Dic
 	match kind:
 		"auto":
 			return {"color": Color(1.0, 0.96, 0.72, 0.98), "size": 11, "life": 0.48, "drift": Vector2(-5, -28), "x_offset": -5.0, "y_offset": -14.0}
+		"manual":
+			return {"color": C.NEON_RED, "size": 15, "life": 0.60, "drift": Vector2(4, -34), "x_offset": 4.0, "y_offset": -18.0}
 		"charge":
 			return {"color": C.VITAMIN_YELLOW, "size": 14, "life": 0.62, "drift": Vector2(0, -34), "x_offset": 0.0, "y_offset": -18.0}
 		"focused":
