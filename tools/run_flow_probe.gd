@@ -3,6 +3,7 @@ extends SceneTree
 const MainScene := preload("res://scenes/main.tscn")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 const R01SourceState := preload("res://scripts/r01_source_state.gd")
+const R01MicroLocations := preload("res://scripts/r01_micro_locations.gd")
 const NPCPresence := preload("res://scripts/npc_presence.gd")
 
 var failures: Array[String] = []
@@ -400,11 +401,21 @@ func _probe_r01_micro_locations() -> void:
 	main.debug_tools.detail_visible = true
 	debug_before_exit = main._debug_overlay_text()
 	var debug_ok := debug_before_exit.find("r01 micro location current=l02_porch_gap") != -1 and debug_before_exit.find("entry=r01_story_l02_closed_door") != -1 and debug_before_exit.find("points=3") != -1
+	debug_ok = debug_ok and debug_before_exit.find("r01 micro visual style=porch") != -1 and debug_before_exit.find("focus=") != -1 and debug_before_exit.find("alpha=") != -1
 	main.debug_tools.detail_visible = false
+	var overlay_rect: Rect2 = main._micro_location_overlay_rect(main._current_micro_location())
+	var visual_info: Dictionary = main._debug_info()
+	var overlay_visible_ok: bool = main.micro_location_overlay_alpha > 0.5 and overlay_rect.size.x >= 150.0 and overlay_rect.size.y >= 100.0
+	overlay_visible_ok = overlay_visible_ok and String(visual_info.get("r01_micro_visual_style", "")) == "porch"
+	overlay_visible_ok = overlay_visible_ok and String(visual_info.get("r01_micro_camera_focus_offset", "")) != "0,0"
+	var visual_catalog_ok := _micro_visual_catalog_ok()
 
 	var inspect_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
 	var l02_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
 	inspect_ok = inspect_ok and String(main._active_notice_text()).find("문틈") != -1 and int(l02_memory.get("node_micro_point_count", 0)) == 1
+	var completed_point_marker_ok: bool = main._micro_location_point_completed("l02_porch_gap", "door_voice")
+	var door_point := R01MicroLocations.point_by_id(main._current_micro_location(), "door_voice")
+	completed_point_marker_ok = completed_point_marker_ok and main._micro_location_point_position(main._current_micro_location(), door_point).distance_squared_to(overlay_rect.get_center()) > 4.0
 	var count_before := int(l02_memory.get("node_micro_point_count", 0))
 	main.current_micro_point_id = "door_voice"
 	var repeat_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
@@ -448,6 +459,7 @@ func _probe_r01_micro_locations() -> void:
 	var active_threats_before: int = main.active_threats.size()
 	main._update_micro_location_runtime(0.2)
 	var risk_ok: bool = main.micro_location_active and (main.active_threats.size() > active_threats_before or String(main.last_threat_label).find("마이크로 장소") != -1)
+	var risk_debug_ok: bool = bool(main._debug_info().get("r01_micro_risk_pulse_active", false))
 	main._handle_micro_location_input(_key_event(KEY_ESCAPE))
 
 	main._finish_match("victory")
@@ -462,20 +474,50 @@ func _probe_r01_micro_locations() -> void:
 	main.debug_tools.detail_visible = true
 	var debug_after: String = main._debug_overlay_text()
 	var debug_memory_ok := debug_after.find("r01 micro memory") != -1 and debug_after.find("l05_fake_shelter") != -1
+	debug_memory_ok = debug_memory_ok and debug_after.find("r01 micro visual") != -1
 
 	_record("R01 micro location entry prompt hides ids", prompt_ok, entry_prompt)
 	_record("L02 porch micro location enters with E", enter_ok)
+	_record("micro location overlay visual state is present", overlay_visible_ok, JSON.stringify(visual_info))
+	_record("micro location visual catalog has distinct markers", visual_catalog_ok)
 	_record("L02 porch micro point inspect records node memory", inspect_ok)
+	_record("micro completed point marker has placed state", completed_point_marker_ok)
 	_record("micro point repeat does not farm node memory", repeat_ok)
 	_record("micro J stamp suppresses linked source", stamp_ok)
 	_record("micro SPACE charge overloads linked source", charge_ok)
 	_record("micro location exits after completed points", all_done_ok)
 	_record("L02/L03/L04/L05 micro locations inspect points", location_flow_ok)
-	_record("micro location dwell keeps source risk active", risk_ok)
+	_record("micro location dwell keeps source risk active", risk_ok and risk_debug_ok)
 	_record("micro location bridges to outpost without ids", supply_ok, supply_text)
 	_record("micro location bridges to campaign map without ids", map_ok, map_text)
 	_record("F12 exposes micro location debug state", debug_ok and debug_memory_ok, "%s\n%s" % [debug_before_exit, debug_after])
 	await _finish_main(main)
+
+func _micro_visual_catalog_ok() -> bool:
+	var expected := {
+		"l02_porch_gap": ["door_frame", "door_gap_light", "sensor_line", "address_sticker", "warning_lamp"],
+		"l02_family_window": ["window_frame", "photo_afterimage", "inside_shadow", "smile_review_check"],
+		"l03_model_lobby": ["lobby_threshold", "reception_silhouette", "family_form_panel", "name_device", "consultation_light"],
+		"l04_drain_entrance": ["drain_frame", "water_lines", "wet_flyer", "broken_request", "low_signal_ripple"],
+		"l05_fake_shelter": ["outpost_like_mark", "wrong_recovery_line", "rear_ad_pillar", "broken_guide", "unstable_flicker"],
+	}
+	var seen_styles := {}
+	for location in R01MicroLocations.locations():
+		var location_id := String(location.get("location_id", ""))
+		var style := String(location.get("visual_style", ""))
+		if location_id == "" or style == "":
+			return false
+		seen_styles[style] = true
+		var markers := Array(location.get("visual_markers", []))
+		for marker in Array(expected.get(location_id, [])):
+			if not markers.has(marker):
+				return false
+		if Vector2(location.get("overlay_size", Vector2.ZERO)).length() <= 0.0:
+			return false
+		for point in R01MicroLocations.inspection_points(location):
+			if not point.has("overlay_pos"):
+				return false
+	return seen_styles.size() == 5
 
 func _probe_npc_presence_layer() -> void:
 	var main = await _new_main()

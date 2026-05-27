@@ -241,6 +241,13 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("r01_micro_risk_state", "")),
 			float(info.get("r01_micro_elapsed", 0.0)),
 		],
+		"r01 micro visual style=%s alpha=%.2f focus=%s risk_pulse=%s markers=%s" % [
+			str(info.get("r01_micro_visual_style", "")),
+			float(info.get("r01_micro_overlay_alpha", 0.0)),
+			str(info.get("r01_micro_camera_focus_offset", "")),
+			str(info.get("r01_micro_risk_pulse_active", false)),
+			str(info.get("r01_micro_visual_markers", "")),
+		],
 		"r01 micro memory %s last=%s catalog=%d" % [
 			str(info.get("r01_micro_location_memory", "")),
 			str(info.get("r01_last_micro_location_action", "")),

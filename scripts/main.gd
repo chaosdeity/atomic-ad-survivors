@@ -83,6 +83,9 @@ const MICRO_LOCATION_NOTICE_TIME := 2.6
 const MICRO_LOCATION_REVEAL_DURATION := 4.8
 const MICRO_LOCATION_RISK_BASE_INTERVAL := 4.4
 const MICRO_LOCATION_ZOOM := 1.08
+const MICRO_LOCATION_DIM_ALPHA := 0.20
+const MICRO_LOCATION_FOCUS_LERP := 0.56
+const MICRO_LOCATION_FOCUS_LIMIT := 72.0
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -194,6 +197,9 @@ var micro_location_completed_points := {}
 var micro_location_total_counts := {}
 var micro_location_memory := {}
 var last_micro_location_action := "none"
+var micro_location_overlay_alpha := 0.0
+var micro_location_camera_focus_offset := Vector2.ZERO
+var micro_location_focus_world_pos := Vector2.ZERO
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -466,7 +472,9 @@ func _camera_target_position() -> Vector2:
 	if entry_camera_timer > 0.0:
 		var ratio := clampf(entry_camera_timer / ENTRY_CAMERA_PAN_DURATION, 0.0, 1.0)
 		entry_offset = entry_camera_offset * ratio * ratio
-	return player_pos + entry_offset + effects.shake_offset(rng)
+	if micro_location_active:
+		_refresh_micro_location_visual_state()
+	return player_pos + entry_offset + micro_location_camera_focus_offset + effects.shake_offset(rng)
 
 func _sync_camera() -> void:
 	camera.global_position = _camera_target_position().round()
@@ -1652,10 +1660,14 @@ func _update_field_interaction_runtime(delta: float) -> void:
 func _update_micro_location_runtime(delta: float) -> void:
 	micro_location_notice_timer = maxf(0.0, micro_location_notice_timer - delta)
 	if not micro_location_active:
+		micro_location_overlay_alpha = move_toward(micro_location_overlay_alpha, 0.0, delta * 5.0)
+		micro_location_camera_focus_offset = micro_location_camera_focus_offset.lerp(Vector2.ZERO, 0.24)
 		return
 	if match_state != "playing" or paused_for_card:
 		_clear_micro_location_focus(false)
 		return
+	micro_location_overlay_alpha = move_toward(micro_location_overlay_alpha, 1.0, delta * 7.0)
+	_refresh_micro_location_visual_state()
 	var entry := _micro_location_entry_object(_current_micro_location())
 	if not entry.is_empty():
 		var entry_pos := Vector2(entry.get("pos", player_pos))
@@ -1739,6 +1751,50 @@ func _micro_location_source_object(location: Dictionary, point: Dictionary) -> D
 			return source
 	return _micro_location_entry_object(location)
 
+func _refresh_micro_location_visual_state() -> void:
+	var location := _current_micro_location()
+	if location.is_empty():
+		micro_location_camera_focus_offset = Vector2.ZERO
+		micro_location_focus_world_pos = player_pos
+		return
+	var entry := _micro_location_entry_object(location)
+	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var camera_offset := Vector2(location.get("camera_offset", Vector2.ZERO))
+	var desired_focus := player_pos.lerp(entry_pos + camera_offset, MICRO_LOCATION_FOCUS_LERP)
+	micro_location_focus_world_pos = desired_focus
+	micro_location_camera_focus_offset = (desired_focus - player_pos).limit_length(MICRO_LOCATION_FOCUS_LIMIT)
+
+func _micro_location_overlay_center(location: Dictionary) -> Vector2:
+	var entry := _micro_location_entry_object(location)
+	return Vector2(entry.get("pos", player_pos)) + Vector2(location.get("overlay_offset", Vector2.ZERO))
+
+func _micro_location_overlay_rect(location: Dictionary) -> Rect2:
+	var size := Vector2(location.get("overlay_size", Vector2(176, 116)))
+	return Rect2(_micro_location_overlay_center(location) - size * 0.5, size)
+
+func _micro_location_point_position(location: Dictionary, point: Dictionary) -> Vector2:
+	return _micro_location_overlay_center(location) + Vector2(point.get("overlay_pos", Vector2.ZERO))
+
+func _micro_location_point_completed(location_id: String, point_id: String) -> bool:
+	return bool(micro_location_completed_points.get(R01MicroLocations.point_key(location_id, point_id), false))
+
+func _micro_location_accent_color(location: Dictionary) -> Color:
+	match String(location.get("visual_style", "")):
+		"window":
+			return Color(0.86, 0.74, 1.0, 0.92)
+		"model_lobby":
+			return Color(1.0, 0.76, 0.42, 0.94)
+		"drain":
+			return Color(0.42, 0.82, 0.88, 0.92)
+		"fake_shelter":
+			return Color(1.0, 0.48, 0.76, 0.94)
+		_:
+			return Color(1.0, 0.91, 0.25, 0.94)
+
+func _micro_location_marker_summary(location: Dictionary) -> String:
+	var markers := Array(location.get("visual_markers", []))
+	return ",".join(markers)
+
 func _current_micro_location() -> Dictionary:
 	return R01MicroLocations.location_by_id(current_micro_location_id)
 
@@ -1760,6 +1816,8 @@ func _enter_micro_location(location: Dictionary) -> void:
 	micro_location_elapsed = 0.0
 	micro_location_risk_timer = _micro_location_risk_interval(location)
 	micro_location_risk_state = "watching"
+	micro_location_overlay_alpha = 1.0
+	_refresh_micro_location_visual_state()
 	last_micro_location_action = "enter %s" % current_micro_location_id
 	var entry := _micro_location_entry_object(location)
 	var entry_pos := Vector2(entry.get("pos", player_pos))
@@ -1785,6 +1843,9 @@ func _clear_micro_location_focus(clear_memory: bool) -> void:
 	micro_location_elapsed = 0.0
 	micro_location_risk_timer = 0.0
 	micro_location_risk_state = "idle"
+	micro_location_overlay_alpha = 0.0
+	micro_location_camera_focus_offset = Vector2.ZERO
+	micro_location_focus_world_pos = player_pos
 	if clear_memory:
 		micro_location_completed_points.clear()
 		micro_location_total_counts.clear()
@@ -4918,7 +4979,13 @@ func _debug_info() -> Dictionary:
 		"r01_micro_total_counts": _field_interaction_counts_summary(micro_location_total_counts),
 		"r01_micro_location_memory": R01MicroLocations.memory_debug_summary(micro_location_memory),
 		"r01_micro_risk_state": micro_location_risk_state,
+		"r01_micro_risk_pulse_active": String(micro_location_risk_state).begins_with("warning"),
 		"r01_micro_elapsed": micro_location_elapsed,
+		"r01_micro_overlay_alpha": micro_location_overlay_alpha,
+		"r01_micro_camera_focus_offset": "%.0f,%.0f" % [micro_location_camera_focus_offset.x, micro_location_camera_focus_offset.y],
+		"r01_micro_focus_world_pos": "%.0f,%.0f" % [micro_location_focus_world_pos.x, micro_location_focus_world_pos.y],
+		"r01_micro_visual_style": String(_current_micro_location().get("visual_style", "")),
+		"r01_micro_visual_markers": _micro_location_marker_summary(_current_micro_location()),
 		"r01_last_micro_location_action": last_micro_location_action,
 		"r01_manual_stamp_target": "%s/%s" % [last_manual_stamp_object_id, last_manual_stamp_display_name],
 		"r01_manual_stamp_sortie_counts": _field_interaction_counts_summary(manual_stamped_story_counts),
@@ -5371,22 +5438,189 @@ func _draw_micro_location_overlay() -> void:
 	var location := _current_micro_location()
 	if location.is_empty():
 		return
-	var entry := _micro_location_entry_object(location)
-	var entry_pos := Vector2(entry.get("pos", player_pos))
+	_refresh_micro_location_visual_state()
 	var point := _current_micro_point()
 	var completed := R01MicroLocations.completed_count(current_micro_location_id, micro_location_completed_points)
 	var total := R01MicroLocations.inspection_point_count(location)
-	var focus_color := Color(1.0, 0.91, 0.25, 0.18)
-	if int(location.get("risk_level", 1)) >= 3:
-		focus_color = Color(1.0, 0.30, 0.36, 0.16)
-	draw_rect(Rect2(entry_pos - Vector2(88, 58), Vector2(176, 116)), focus_color)
-	draw_rect(Rect2(entry_pos - Vector2(88, 58), Vector2(176, 116)), Color(1.0, 0.91, 0.25, 0.62), false, 2.0)
-	draw_arc(entry_pos, 62.0 + 3.0 * sin(elapsed * 4.0), -PI * 0.18, PI * 1.18, 36, Color(1.0, 0.91, 0.25, 0.68), 2.0)
+	var alpha := clampf(micro_location_overlay_alpha, 0.0, 1.0)
+	var rect := _micro_location_overlay_rect(location)
+	var accent := _micro_location_accent_color(location)
+	_draw_micro_location_dim(rect, accent, alpha)
+	_draw_micro_location_frame(location, rect, accent, alpha)
+	_draw_micro_location_identity(location, rect, accent, alpha)
+	_draw_micro_location_points(location, accent, alpha)
 	var label := "%s %d/%d" % [String(location.get("display_name", "장소")), completed, total]
-	draw_rect(Rect2(entry_pos + Vector2(-74, -76), Vector2(148, 15)), Color(0.08, 0.06, 0.05, 0.52))
-	draw_string(UIFont.get_font(), entry_pos + Vector2(0, -65), label, HORIZONTAL_ALIGNMENT_CENTER, 148, 9, C.VITAMIN_YELLOW)
+	draw_rect(Rect2(rect.position + Vector2(10, -18), Vector2(rect.size.x - 20, 15)), Color(0.08, 0.06, 0.05, 0.56 * alpha))
+	draw_string(UIFont.get_font(), rect.position + Vector2(rect.size.x * 0.5, -7), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 20, 9, Color(accent.r, accent.g, accent.b, 0.96 * alpha))
 	if not point.is_empty():
-		draw_string(UIFont.get_font(), entry_pos + Vector2(0, 76), String(point.get("display_name", "조사 지점")), HORIZONTAL_ALIGNMENT_CENTER, 148, 8, C.INK)
+		draw_string(UIFont.get_font(), rect.position + Vector2(rect.size.x * 0.5, rect.size.y + 13), String(point.get("display_name", "조사 지점")), HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 12, 8, Color(0.18, 0.12, 0.10, 0.82 * alpha))
+	draw_string(UIFont.get_font(), rect.position + Vector2(rect.size.x * 0.5, rect.size.y + 25), "E/Esc 나가기", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 20, 7, Color(0.18, 0.12, 0.10, 0.48 * alpha))
+
+func _draw_micro_location_dim(rect: Rect2, accent: Color, alpha: float) -> void:
+	var zoom := maxf(0.001, camera.zoom.x)
+	var visible_size := C.VIEWPORT_SIZE / zoom
+	var visible_rect := Rect2(camera.global_position - visible_size * 0.5, visible_size)
+	draw_rect(visible_rect, Color(0.04, 0.03, 0.03, MICRO_LOCATION_DIM_ALPHA * alpha))
+	draw_circle(player_pos, 118.0, Color(1.0, 0.96, 0.82, 0.035 * alpha))
+	draw_circle(rect.get_center(), maxf(rect.size.x, rect.size.y) * 0.58, Color(accent.r, accent.g, accent.b, 0.045 * alpha))
+
+func _draw_micro_location_frame(location: Dictionary, rect: Rect2, accent: Color, alpha: float) -> void:
+	var risk_level := int(location.get("risk_level", 1))
+	var edge := Color(accent.r, accent.g, accent.b, 0.56 * alpha)
+	if risk_level >= 3:
+		edge = Color(1.0, 0.30, 0.36, 0.52 * alpha)
+	draw_rect(rect, Color(0.08, 0.06, 0.05, 0.34 * alpha))
+	draw_rect(rect.grow(-4.0), Color(accent.r, accent.g, accent.b, 0.055 * alpha))
+	draw_rect(rect, edge, false, 2.0)
+	draw_rect(rect.grow(-6.0), Color(1.0, 0.96, 0.82, 0.16 * alpha), false, 1.0)
+	var pulse := 0.5 + 0.5 * sin(elapsed * 5.5)
+	draw_arc(rect.get_center(), maxf(rect.size.x, rect.size.y) * 0.54 + pulse * 3.0, -PI * 0.18, PI * 1.18, 42, Color(accent.r, accent.g, accent.b, 0.34 * alpha), 1.6)
+	if String(micro_location_risk_state).begins_with("warning"):
+		draw_arc(rect.get_center(), maxf(rect.size.x, rect.size.y) * 0.61 + pulse * 5.0, 0.0, TAU, 48, Color(1.0, 0.30, 0.36, 0.42 * alpha), 2.0)
+
+func _draw_micro_location_identity(location: Dictionary, rect: Rect2, accent: Color, alpha: float) -> void:
+	match String(location.get("visual_style", "")):
+		"window":
+			_draw_micro_window_identity(rect, accent, alpha)
+		"model_lobby":
+			_draw_micro_lobby_identity(rect, accent, alpha)
+		"drain":
+			_draw_micro_drain_identity(rect, accent, alpha)
+		"fake_shelter":
+			_draw_micro_fake_shelter_identity(rect, accent, alpha)
+		_:
+			_draw_micro_porch_identity(rect, accent, alpha)
+
+func _draw_micro_porch_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	var door := Rect2(c + Vector2(-46, -43), Vector2(62, 84))
+	draw_rect(door, Color(0.32, 0.20, 0.16, 0.60 * alpha))
+	draw_rect(door, Color(0.12, 0.07, 0.06, 0.62 * alpha), false, 2.0)
+	draw_line(door.position + Vector2(31, 4), door.position + Vector2(31, 80), Color(accent.r, accent.g, accent.b, 0.56 * alpha), 2.0)
+	draw_rect(Rect2(c + Vector2(24, -34), Vector2(26, 16)), Color(0.35, 0.70, 0.95, 0.23 * alpha))
+	draw_circle(c + Vector2(57, -28), 5.0 + sin(elapsed * 9.0) * 1.2, Color(1.0, 0.30, 0.36, 0.62 * alpha))
+	var sensor_color := Color(0.35, 0.70, 0.95, 0.42 * alpha)
+	if _micro_location_point_completed(current_micro_location_id, "front_sensor"):
+		draw_line(c + Vector2(14, -10), c + Vector2(36, 5), sensor_color, 2.0)
+		draw_line(c + Vector2(48, 12), c + Vector2(70, 27), sensor_color, 2.0)
+	else:
+		draw_line(c + Vector2(14, -10), c + Vector2(70, 27), sensor_color, 2.0)
+	var sticker := Rect2(c + Vector2(22, 18), Vector2(42, 16))
+	draw_rect(sticker, Color(1.0, 0.96, 0.82, 0.30 * alpha))
+	draw_rect(sticker, Color(0.44, 0.25, 0.20, 0.42 * alpha), false, 1.2)
+	if _micro_location_point_completed(current_micro_location_id, "address_sticker"):
+		_draw_micro_completion_stamp(sticker.get_center(), alpha)
+
+func _draw_micro_window_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	var window := Rect2(c + Vector2(-68, -42), Vector2(136, 72))
+	draw_rect(window, Color(0.12, 0.08, 0.07, 0.46 * alpha))
+	draw_rect(window, Color(accent.r, accent.g, accent.b, 0.45 * alpha), false, 2.0)
+	draw_line(window.position + Vector2(window.size.x * 0.5, 0), window.position + Vector2(window.size.x * 0.5, window.size.y), Color(accent.r, accent.g, accent.b, 0.24 * alpha), 1.2)
+	draw_line(window.position + Vector2(0, window.size.y * 0.5), window.position + Vector2(window.size.x, window.size.y * 0.5), Color(accent.r, accent.g, accent.b, 0.24 * alpha), 1.2)
+	var photo := Rect2(c + Vector2(-48, -22), Vector2(42, 31))
+	draw_rect(photo, Color(1.0, 0.96, 0.82, 0.16 * alpha))
+	draw_rect(photo, Color(accent.r, accent.g, accent.b, 0.38 * alpha), false, 1.2)
+	if _micro_location_point_completed(current_micro_location_id, "photo_afterimage"):
+		_draw_micro_completion_stamp(photo.get_center(), alpha)
+	var shadow_shift := sin(elapsed * 3.2) * 5.0
+	draw_rect(Rect2(c + Vector2(20 + shadow_shift, -16), Vector2(22, 44)), Color(0.05, 0.04, 0.05, 0.26 * alpha))
+	if _micro_location_point_completed(current_micro_location_id, "inside_movement"):
+		draw_line(c + Vector2(20, 33), c + Vector2(56, 33), Color(0.35, 0.70, 0.95, 0.36 * alpha), 2.0)
+	var check := c + Vector2(48, -28)
+	draw_line(check + Vector2(-8, 0), check + Vector2(-1, 7), Color(1.0, 0.30, 0.36, 0.58 * alpha), 2.0)
+	draw_line(check + Vector2(-1, 7), check + Vector2(12, -8), Color(1.0, 0.30, 0.36, 0.58 * alpha), 2.0)
+
+func _draw_micro_lobby_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	draw_line(c + Vector2(-84, 42), c + Vector2(88, 42), Color(accent.r, accent.g, accent.b, 0.46 * alpha), 4.0)
+	draw_line(c + Vector2(-68, -42), c + Vector2(-20, 42), Color(0.24, 0.15, 0.13, 0.48 * alpha), 3.0)
+	draw_line(c + Vector2(68, -42), c + Vector2(20, 42), Color(0.24, 0.15, 0.13, 0.48 * alpha), 3.0)
+	var desk := Rect2(c + Vector2(-72, 8), Vector2(56, 28))
+	draw_rect(desk, Color(0.30, 0.20, 0.16, 0.58 * alpha))
+	draw_rect(desk, Color(0.08, 0.05, 0.04, 0.42 * alpha), false, 1.6)
+	var form := Rect2(c + Vector2(-9, -40), Vector2(42, 54))
+	draw_rect(form, Color(1.0, 0.96, 0.82, 0.18 * alpha))
+	draw_rect(form, Color(accent.r, accent.g, accent.b, 0.38 * alpha), false, 1.2)
+	for i in range(3):
+		draw_line(form.position + Vector2(7, 13 + i * 12), form.position + Vector2(34, 13 + i * 12), Color(0.44, 0.25, 0.20, 0.36 * alpha), 1.0)
+	var device := c + Vector2(58, 16)
+	draw_rect(Rect2(device - Vector2(14, 22), Vector2(28, 44)), Color(0.11, 0.08, 0.07, 0.52 * alpha))
+	draw_circle(device + Vector2(0, -6), 9.0, Color(0.35, 0.70, 0.95, 0.24 * alpha))
+	if _micro_location_point_completed(current_micro_location_id, "name_device"):
+		draw_line(device + Vector2(-18, -16), device + Vector2(19, 14), Color(1.0, 0.30, 0.36, 0.52 * alpha), 2.0)
+		draw_line(device + Vector2(-16, 15), device + Vector2(18, -15), Color(1.0, 0.91, 0.25, 0.40 * alpha), 1.5)
+	for x in [-54.0, 54.0]:
+		draw_circle(c + Vector2(x, -46), 18.0 + sin(elapsed * 4.0 + x) * 2.0, Color(accent.r, accent.g, accent.b, 0.10 * alpha))
+
+func _draw_micro_drain_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	var drain_rect := Rect2(c + Vector2(-72, -14), Vector2(144, 38))
+	draw_rect(drain_rect, Color(0.05, 0.08, 0.08, 0.54 * alpha))
+	draw_rect(drain_rect, Color(accent.r, accent.g, accent.b, 0.36 * alpha), false, 2.0)
+	for i in range(5):
+		var x := drain_rect.position.x + 18 + i * 26
+		draw_line(Vector2(x, drain_rect.position.y + 3), Vector2(x - 8, drain_rect.position.y + 33), Color(0.30, 0.46, 0.46, 0.34 * alpha), 1.2)
+	var wave_alpha := 0.26 if _micro_location_point_completed(current_micro_location_id, "rescue_request") else 0.46
+	for i in range(3):
+		var y := c.y + 30 + i * 8
+		var phase := sin(elapsed * 3.5 + i)
+		draw_arc(Vector2(c.x + phase * 8.0, y), 44.0 + i * 12.0, PI * 0.08, PI * 0.92, 24, Color(accent.r, accent.g, accent.b, wave_alpha * alpha), 1.5)
+	var flyer := Rect2(c + Vector2(-62, 16), Vector2(36, 19))
+	draw_rect(flyer, Color(1.0, 0.96, 0.82, 0.23 * alpha))
+	draw_line(flyer.position + Vector2(4, 14), flyer.position + Vector2(30, 7), Color(0.42, 0.25, 0.20, 0.32 * alpha), 1.0)
+	if _micro_location_point_completed(current_micro_location_id, "wet_flyer"):
+		_draw_micro_completion_stamp(flyer.get_center(), alpha)
+	draw_string(UIFont.get_font(), c + Vector2(-12, -28), "SOS", HORIZONTAL_ALIGNMENT_CENTER, 52, 8, Color(0.35, 0.70, 0.95, 0.36 * alpha))
+
+func _draw_micro_fake_shelter_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	var sign := Rect2(c + Vector2(-76, -36), Vector2(48, 32))
+	draw_rect(sign, Color(1.0, 0.96, 0.82, 0.20 * alpha))
+	draw_rect(sign, Color(accent.r, accent.g, accent.b, 0.44 * alpha), false, 1.5)
+	draw_line(sign.position + Vector2(10, 16), sign.position + Vector2(38, 16), Color(0.35, 0.70, 0.95, 0.42 * alpha), 2.0)
+	if _micro_location_point_completed(current_micro_location_id, "outpost_like_mark"):
+		_draw_micro_completion_stamp(sign.get_center(), alpha)
+	var jitter := Vector2(sin(elapsed * 18.0) * 2.0, cos(elapsed * 14.0) * 1.5)
+	var line_a := c + Vector2(-46, 18) + jitter
+	var line_b := c + Vector2(48, 34) - jitter
+	draw_line(line_a, line_b, Color(1.0, 0.30, 0.36, 0.46 * alpha), 4.0)
+	draw_line(line_a + Vector2(30, -18), line_b + Vector2(-28, -16), Color(accent.r, accent.g, accent.b, 0.34 * alpha), 2.0)
+	if _micro_location_point_completed(current_micro_location_id, "wrong_recovery_line"):
+		draw_line(c + Vector2(-8, 22), c + Vector2(10, 42), Color(1.0, 0.91, 0.25, 0.54 * alpha), 2.0)
+	var pillar := Rect2(c + Vector2(54, -44), Vector2(22, 78))
+	draw_rect(pillar, Color(0.18, 0.11, 0.14, 0.58 * alpha))
+	draw_rect(pillar, Color(accent.r, accent.g, accent.b, 0.42 * alpha), false, 1.4)
+	var board := Rect2(c + Vector2(-12, -44), Vector2(44, 24))
+	draw_rect(board, Color(0.20, 0.13, 0.16, 0.32 * alpha), false, 1.5)
+	draw_line(board.position + Vector2(4, 19), board.position + Vector2(39, 4), Color(1.0, 0.48, 0.76, 0.36 * alpha), 2.0)
+
+func _draw_micro_location_points(location: Dictionary, accent: Color, alpha: float) -> void:
+	var location_id := String(location.get("location_id", ""))
+	var selected_id := current_micro_point_id
+	for point in R01MicroLocations.inspection_points(location):
+		var point_id := String(point.get("point_id", ""))
+		var pos := _micro_location_point_position(location, point)
+		var completed := _micro_location_point_completed(location_id, point_id)
+		var selected := selected_id == point_id and not completed
+		var point_alpha := alpha * (0.42 if completed else 0.72)
+		var radius := 8.0
+		if selected:
+			point_alpha = alpha
+			radius = 10.0 + sin(elapsed * 6.5) * 1.2
+		draw_circle(pos, radius + 4.0, Color(accent.r, accent.g, accent.b, 0.10 * point_alpha))
+		draw_arc(pos, radius + 5.0, 0.0, TAU, 28, Color(accent.r, accent.g, accent.b, 0.52 * point_alpha), 1.8 if selected else 1.2)
+		draw_circle(pos, 3.2, Color(1.0, 0.96, 0.82, 0.58 * point_alpha))
+		if completed:
+			_draw_micro_completion_stamp(pos + Vector2(9, -8), alpha)
+		draw_rect(Rect2(pos + Vector2(-38, 13), Vector2(76, 10)), Color(0.08, 0.06, 0.05, 0.34 * alpha))
+		draw_string(UIFont.get_font(), pos + Vector2(0, 21), String(point.get("display_name", "지점")), HORIZONTAL_ALIGNMENT_CENTER, 76, 7, Color(0.18, 0.12, 0.10, 0.78 * alpha if selected else 0.54 * alpha))
+
+func _draw_micro_completion_stamp(pos: Vector2, alpha: float) -> void:
+	var stamp := Rect2(pos - Vector2(8, 5), Vector2(16, 10))
+	draw_rect(stamp, Color(1.0, 0.96, 0.82, 0.22 * alpha))
+	draw_rect(stamp, Color(1.0, 0.30, 0.36, 0.58 * alpha), false, 1.2)
+	draw_line(stamp.position + Vector2(3, 7), stamp.position + Vector2(13, 3), Color(1.0, 0.30, 0.36, 0.70 * alpha), 1.2)
 
 func _draw_r01_source_state_marks() -> void:
 	if r01_source_states.is_empty():
