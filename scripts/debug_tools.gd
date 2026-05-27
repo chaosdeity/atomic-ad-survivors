@@ -215,6 +215,15 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("r01_field_interaction_target", "")),
 			int(info.get("r01_field_interaction_reveals", 0)),
 		],
+		"r01 npc traces catalog=%d %s" % [
+			int(info.get("r01_field_trace_catalog_count", 0)),
+			str(info.get("r01_field_trace_catalog_summary", "")),
+		],
+		"r01 npc trace seen=%s remote=%s last=%s" % [
+			str(info.get("r01_field_npc_trace_counts", "")),
+			str(info.get("r01_field_remote_comment_seen", "")),
+			str(info.get("r01_last_field_remote_comment", "")),
+		],
 		"r01 interacted count sortie=%s total=%s" % [
 			str(info.get("r01_field_interaction_sortie_counts", "")),
 			str(info.get("r01_field_interaction_total_counts", "")),
@@ -258,6 +267,8 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("outpost_result_route_target", "")),
 			str(info.get("outpost_selected_action_surface", "")),
 		],
+		"outpost npc active %s" % str(info.get("outpost_npc_active", "")),
+		"outpost npc assignments %s" % str(info.get("outpost_npc_assignments", "")),
 		"outpost ui bounds %s" % str(info.get("outpost_ui_bounds_summary", "")),
 		"recall quality %s anti_farm=%s" % [
 			str(info.get("recall_quality", "")),

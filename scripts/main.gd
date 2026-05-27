@@ -18,6 +18,7 @@ const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 const R01SourceState := preload("res://scripts/r01_source_state.gd")
+const NPCPresence := preload("res://scripts/npc_presence.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
@@ -168,6 +169,9 @@ var field_interaction_notice_text := ""
 var field_interacted_counts := {}
 var field_interaction_total_counts := {}
 var field_interaction_reveals: Array[Dictionary] = []
+var field_npc_trace_counts := {}
+var field_remote_comment_seen := {}
+var last_field_remote_comment := "none"
 var last_field_interaction_object_id := ""
 var last_field_interaction_display_name := ""
 
@@ -1518,6 +1522,9 @@ func _reset_r01_run_tracking() -> void:
 	field_interacted_counts.clear()
 	manual_stamped_story_counts.clear()
 	r01_source_states.clear()
+	field_npc_trace_counts.clear()
+	field_remote_comment_seen.clear()
+	last_field_remote_comment = "none"
 	field_interaction_reveals.clear()
 	field_interaction_notice_timer = 0.0
 	field_interaction_notice_text = ""
@@ -1644,7 +1651,7 @@ func _try_field_interaction() -> bool:
 	field_interaction_total_counts[object_id] = int(field_interaction_total_counts.get(object_id, 0)) + 1
 	var object_pos := Vector2(object.get("pos", player_pos))
 	if already_this_sortie:
-		_show_field_interaction_notice(String(object.get("repeat_phrase", "이미 확인한 흔적입니다.")))
+		_show_field_interaction_notice(_field_interaction_repeat_line(object))
 		effects.add_floater(object_pos + Vector2(0, -18), "반복 확인", Color(0.35, 0.70, 0.95), 11)
 		effects.add_status_ring(object_pos, Color(0.35, 0.70, 0.95), 34.0, 0.22)
 		return true
@@ -1654,9 +1661,13 @@ func _try_field_interaction() -> bool:
 func _apply_field_story_object_effect(object: Dictionary) -> void:
 	var object_pos := Vector2(object.get("pos", player_pos))
 	var display_name := String(object.get("display_name", "흔적"))
-	var result_phrase := String(object.get("result_phrase", "흔적이 작전도에 남았습니다."))
+	var result_phrase := _field_interaction_result_line(object)
 	var hint_line := _field_interaction_hint_line(object)
 	var notice := result_phrase if hint_line == "" else "%s / %s" % [result_phrase, hint_line]
+	last_field_remote_comment = "none"
+	var remote_comment := _consume_field_remote_comment(object)
+	if remote_comment != "":
+		notice = "%s / %s" % [notice, remote_comment]
 	_show_field_interaction_notice(notice)
 	effects.add_floater(object_pos + Vector2(0, -18), "%s 완료" % String(object.get("interaction_type", "조사")), C.VITAMIN_YELLOW, 12)
 	effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 48.0, 0.32)
@@ -1667,7 +1678,24 @@ func _apply_field_story_object_effect(object: Dictionary) -> void:
 	_apply_field_interaction_small_combat_link(object)
 	_record_playtest_event("field_interaction_%s" % String(object.get("campaign_effect", display_name)))
 
+func _field_interaction_result_line(object: Dictionary) -> String:
+	var base_line := String(object.get("result_phrase", "흔적이 작전도에 남았습니다."))
+	var trace_line := String(object.get("human_trace_first_line", ""))
+	if trace_line != "":
+		return "%s / %s" % [base_line, trace_line]
+	return base_line
+
+func _field_interaction_repeat_line(object: Dictionary) -> String:
+	var base_line := String(object.get("repeat_phrase", "이미 확인한 흔적입니다."))
+	var trace_line := String(object.get("human_trace_repeat_line", ""))
+	if trace_line != "":
+		return "%s / %s" % [base_line, trace_line]
+	return base_line
+
 func _field_interaction_hint_line(object: Dictionary) -> String:
+	var trace_type := String(object.get("human_trace_type", ""))
+	if trace_type != "":
+		return "%s이 보급소 반응 후보로 남습니다." % trace_type
 	var effect := String(object.get("campaign_effect", ""))
 	var tag_hint := String(object.get("tag_hint", ""))
 	var signal_hint := String(object.get("signal_hint", ""))
@@ -1696,23 +1724,64 @@ func _apply_field_interaction_node_memory(object: Dictionary) -> void:
 	var effect_id := String(object.get("campaign_effect", "story_object_memory"))
 	if not effects_seen.has(effect_id):
 		effects_seen.append(effect_id)
+	var trace_id := String(object.get("field_trace_id", ""))
 	memory["node_story_object_names"] = names
 	memory["node_story_effects"] = effects_seen
 	memory["node_story_object_count"] = names.size()
 	memory["node_last_story_object_name"] = display_name
 	memory["node_last_story_object_phrase"] = String(object.get("node_memory_phrase", display_name))
-	memory["node_last_field_result_phrase"] = String(object.get("result_phrase", ""))
-	memory["node_last_field_outpost_reaction"] = String(object.get("outpost_reaction", ""))
+	memory["node_last_field_result_phrase"] = _field_interaction_result_line(object)
+	memory["node_last_field_outpost_reaction"] = _field_outpost_reaction_line(object)
 	memory["node_last_event_line"] = "구역 행동: %s %s" % [display_name, String(object.get("interaction_type", "조사"))]
-	memory["node_last_outpost_reaction"] = String(object.get("outpost_reaction", ""))
+	memory["node_last_outpost_reaction"] = _field_outpost_reaction_line(object)
 	memory["node_last_tag_summary"] = String(object.get("tag_hint", "태그 힌트 없음"))
+	if trace_id != "":
+		var trace_names := Array(memory.get("node_npc_trace_names", [])).duplicate()
+		var trace_name := String(object.get("human_trace_type", display_name))
+		if not trace_names.has(trace_name):
+			trace_names.append(trace_name)
+		memory["node_npc_trace_names"] = trace_names
+		memory["node_npc_trace_count"] = trace_names.size()
+		memory["node_last_npc_trace_name"] = trace_name
+		memory["node_last_npc_trace_phrase"] = String(object.get("human_trace_node_memory_phrase", trace_name))
+		memory["node_last_npc_trace_remote"] = last_field_remote_comment
+		field_npc_trace_counts[trace_id] = int(field_npc_trace_counts.get(trace_id, 0)) + 1
 	r01_campaign_node_memory[node_id] = memory
 
 func _record_field_interaction_outpost_event(object: Dictionary) -> void:
-	var npc_id := String(object.get("npc_id", "seven"))
-	var facility_id := String(object.get("facility_id", "sortie_board"))
-	var line := String(object.get("outpost_reaction", "R01 현장 흔적이 보급소 기록으로 넘어왔습니다."))
-	meta_progression.record_outpost_event(npc_id, "field_interaction", line, facility_id)
+	var npc_id := String(object.get("human_trace_remote_npc_id", object.get("npc_id", "seven")))
+	var facility_id := String(object.get("human_trace_facility_id", object.get("facility_id", "sortie_board")))
+	var line := _field_outpost_reaction_line(object)
+	var event_kind := "field_trace" if String(object.get("field_trace_id", "")) != "" else "field_interaction"
+	meta_progression.record_outpost_event(npc_id, event_kind, line, facility_id)
+
+func _field_node_memory_phrase(object: Dictionary) -> String:
+	var trace_phrase := String(object.get("human_trace_node_memory_phrase", ""))
+	if trace_phrase != "":
+		return trace_phrase
+	return String(object.get("node_memory_phrase", object.get("display_name", "흔적")))
+
+func _field_outpost_reaction_line(object: Dictionary) -> String:
+	var trace_reaction := String(object.get("human_trace_outpost_reaction", ""))
+	if trace_reaction != "":
+		return trace_reaction
+	return String(object.get("outpost_reaction", "R01 현장 흔적이 보급소 기록으로 넘어왔습니다."))
+
+func _consume_field_remote_comment(object: Dictionary) -> String:
+	var trace_id := String(object.get("field_trace_id", ""))
+	if trace_id == "":
+		return ""
+	var remote_tag := String(object.get("human_trace_remote_tag", trace_id))
+	if bool(field_remote_comment_seen.get(remote_tag, false)):
+		return ""
+	var trace := NPCPresence.field_trace_for_object(object)
+	var remote_comment := NPCPresence.remote_comment_for_trace(trace)
+	if remote_comment == "":
+		return ""
+	field_remote_comment_seen[remote_tag] = true
+	last_field_remote_comment = remote_comment
+	effects.add_floater(player_pos + Vector2(0, -42), remote_comment, Color(0.35, 0.70, 0.95), 9)
+	return remote_comment
 
 func _add_field_interaction_reveals(object: Dictionary) -> void:
 	var zone_id := String(object.get("zone_id", r01_blockout.nearest_zone_id(player_pos)))
@@ -3662,6 +3731,11 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_last_story_object_phrase": "",
 			"node_last_field_result_phrase": "",
 			"node_last_field_outpost_reaction": "",
+			"node_npc_trace_names": [],
+			"node_npc_trace_count": 0,
+			"node_last_npc_trace_name": "",
+			"node_last_npc_trace_phrase": "",
+			"node_last_npc_trace_remote": "",
 			"node_manual_stamp_object_names": [],
 			"node_manual_stamp_effects": [],
 			"node_manual_stamp_count": 0,
@@ -3805,6 +3879,9 @@ func _reset_r01_campaign_state() -> void:
 	field_interacted_counts.clear()
 	field_interaction_total_counts.clear()
 	field_interaction_reveals.clear()
+	field_npc_trace_counts.clear()
+	field_remote_comment_seen.clear()
+	last_field_remote_comment = "none"
 
 func _open_r01_campaign_map() -> void:
 	if match_state != "supply":
@@ -4404,9 +4481,14 @@ func _debug_info() -> Dictionary:
 		"r01_object_count": r01_blockout.object_count() if R01LayoutBlockout.ENABLED else 0,
 		"r01_story_object_count": r01_blockout.story_object_count() if R01LayoutBlockout.ENABLED else 0,
 		"r01_story_object_summary": r01_blockout.story_object_summary_line() if R01LayoutBlockout.ENABLED else "",
+		"r01_field_trace_catalog_count": r01_blockout.field_trace_count() if R01LayoutBlockout.ENABLED else 0,
+		"r01_field_trace_catalog_summary": r01_blockout.field_trace_summary_line() if R01LayoutBlockout.ENABLED else "",
 		"r01_field_interaction_target": "%s/%s" % [last_field_interaction_object_id, last_field_interaction_display_name],
 		"r01_field_interaction_sortie_counts": _field_interaction_counts_summary(field_interacted_counts),
 		"r01_field_interaction_total_counts": _field_interaction_counts_summary(field_interaction_total_counts),
+		"r01_field_npc_trace_counts": _field_interaction_counts_summary(field_npc_trace_counts),
+		"r01_field_remote_comment_seen": _field_interaction_counts_summary(field_remote_comment_seen),
+		"r01_last_field_remote_comment": last_field_remote_comment,
 		"r01_manual_stamp_target": "%s/%s" % [last_manual_stamp_object_id, last_manual_stamp_display_name],
 		"r01_manual_stamp_sortie_counts": _field_interaction_counts_summary(manual_stamped_story_counts),
 		"r01_manual_stamp_total_counts": _field_interaction_counts_summary(manual_stamp_total_story_counts),
@@ -4436,6 +4518,8 @@ func _debug_info() -> Dictionary:
 		"outpost_tag_allocation_summary": outpost_blockout.tag_allocation_summary(outpost_state),
 		"outpost_result_route_target": outpost_blockout.result_route_target(outpost_state),
 		"outpost_selected_action_surface": outpost_blockout.selected_action_surface(outpost_state),
+		"outpost_npc_assignments": NPCPresence.outpost_npc_debug_line(),
+		"outpost_npc_active": NPCPresence.active_npc_summary_line(outpost_state),
 		"outpost_ui_bounds_summary": hud.outpost_ui_bounds_summary(),
 		"outpost_debug_lines": outpost_blockout.debug_lines(outpost_state),
 		"recall_quality": String(last_run_result.get("recall_quality", "")),

@@ -451,10 +451,20 @@ static func node_map_memory_line(node_id: String, memory: Dictionary = {}) -> St
 	var contamination_hint := String(memory.get("node_contamination_hint", ""))
 	var story_count := int(memory.get("node_story_object_count", 0))
 	var story_phrase := String(memory.get("node_last_story_object_phrase", ""))
+	var npc_trace_count := int(memory.get("node_npc_trace_count", 0))
+	var npc_trace_phrase := String(memory.get("node_last_npc_trace_phrase", ""))
 	var manual_count := int(memory.get("node_manual_stamp_count", 0))
 	var manual_phrase := String(memory.get("node_last_manual_stamp_phrase", ""))
 	var source_count := int(memory.get("node_source_action_count", 0))
 	var source_phrase := String(memory.get("node_last_source_action_phrase", ""))
+	if npc_trace_count > 0 and npc_trace_phrase != "":
+		if story_count > 0 and story_phrase != "" and source_count > 0 and source_phrase != "":
+			return "흔적: %s / %s / %s / 사람 흔적 %d개" % [story_phrase, npc_trace_phrase, source_phrase, npc_trace_count]
+		if story_count > 0 and story_phrase != "":
+			return "흔적: %s / %s / 사람 흔적 %d개" % [story_phrase, npc_trace_phrase, npc_trace_count]
+		if source_count > 0 and source_phrase != "":
+			return "흔적: %s / %s / 사람 흔적 %d개" % [npc_trace_phrase, source_phrase, npc_trace_count]
+		return "흔적: %s / 사람 흔적 %d개" % [npc_trace_phrase, npc_trace_count]
 	if source_count > 0 and source_phrase != "" and story_count > 0 and story_phrase != "":
 		return "흔적: %s / %s / 현장 처리 %d개" % [story_phrase, source_phrase, story_count + manual_count + source_count]
 	if source_count > 0 and source_phrase != "":
@@ -486,16 +496,18 @@ static func node_memory_debug_summary(memories: Dictionary) -> String:
 		if memory.is_empty():
 			parts.append("%s=none" % String(node_id))
 			continue
-		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,manual=%d,source=%d,last_story=%s,last_manual=%s,last_source=%s,contam=%s,unlock=%s,tags=%s}" % [
+		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,npc_trace=%d,manual=%d,source=%d,last_story=%s,last_npc_trace=%s,last_manual=%s,last_source=%s,contam=%s,unlock=%s,tags=%s}" % [
 			String(node_id),
 			int(memory.get("node_visit_count", 0)),
 			String(memory.get("last_node_result", "")),
 			String(memory.get("node_recall_quality", "")),
 			int(memory.get("node_signal_level", 0)),
 			int(memory.get("node_story_object_count", 0)),
+			int(memory.get("node_npc_trace_count", 0)),
 			int(memory.get("node_manual_stamp_count", 0)),
 			int(memory.get("node_source_action_count", 0)),
 			String(memory.get("node_last_story_object_phrase", "")),
+			String(memory.get("node_last_npc_trace_phrase", "")),
 			String(memory.get("node_last_manual_stamp_phrase", "")),
 			String(memory.get("node_last_source_action_phrase", "")),
 			String(memory.get("node_contamination_hint", "")),

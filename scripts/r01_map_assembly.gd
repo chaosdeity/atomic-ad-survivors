@@ -1,5 +1,7 @@
 extends RefCounted
 
+const NPCPresence := preload("res://scripts/npc_presence.gd")
+
 const COLLISION_HARD := "hard_blocker"
 const COLLISION_SOFT := "soft_blocker"
 const COLLISION_HAZARD := "passable_hazard"
@@ -578,7 +580,7 @@ func reset_cache() -> void:
 	_story_object_cache.clear()
 
 func object_field_names() -> Array[String]:
-	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role", "spawn_roles", "hazard_roles", "pressure_tags", "story_function", "display_name", "interaction_type", "interaction_prompt", "result_phrase", "repeat_phrase", "campaign_effect", "tag_hint", "signal_hint", "risk_hint"]
+	return ["id", "asset_key", "kind", "zone_id", "pos", "offset", "size", "pivot", "layer", "collision_class", "nav_behavior", "state", "state_variant", "placement", "tags", "spawn_influence", "story_role", "source_role", "spawn_roles", "hazard_roles", "pressure_tags", "story_function", "display_name", "interaction_type", "interaction_prompt", "result_phrase", "repeat_phrase", "campaign_effect", "tag_hint", "signal_hint", "risk_hint", "field_trace_id", "human_trace_type"]
 
 func art_inbox_paths() -> Dictionary:
 	return ART_INBOX_PATHS.duplicate(true)
@@ -640,6 +642,12 @@ func story_object_summary_line(variant: String = STATE_ALL) -> String:
 		var zone_id := String(object.get("zone_id", ""))
 		by_zone[zone_id] = int(by_zone.get(zone_id, 0)) + 1
 	return ", ".join(_source_summary_parts(by_zone))
+
+func field_trace_count(variant: String = STATE_ALL) -> int:
+	return NPCPresence.field_trace_count_for_objects(story_objects_for_state(variant))
+
+func field_trace_summary_line(variant: String = STATE_ALL) -> String:
+	return NPCPresence.field_trace_summary_for_objects(story_objects_for_state(variant))
 
 func objects_for_layer(layer: String, variant: String = STATE_ALL) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
@@ -854,9 +862,25 @@ func _build_story_object(placement: Dictionary) -> Dictionary:
 	object["node_memory_phrase"] = String(placement.get("node_memory_phrase", object["display_name"]))
 	object["reveal_spawn_roles"] = Array(placement.get("reveal_spawn_roles", [])).duplicate()
 	object["reveal_hazard_roles"] = Array(placement.get("reveal_hazard_roles", [])).duplicate()
+	var field_trace := NPCPresence.field_trace_for_object(object)
+	if not field_trace.is_empty():
+		object["field_trace_id"] = String(field_trace.get("trace_id", ""))
+		object["human_trace_type"] = String(field_trace.get("display_name", ""))
+		object["human_trace_prompt"] = String(field_trace.get("prompt", ""))
+		object["human_trace_first_line"] = String(field_trace.get("first_line", ""))
+		object["human_trace_repeat_line"] = String(field_trace.get("repeat_line", ""))
+		object["human_trace_node_memory_phrase"] = String(field_trace.get("node_memory_phrase", ""))
+		object["human_trace_outpost_reaction"] = String(field_trace.get("outpost_reaction", ""))
+		object["human_trace_outpost_tag"] = String(field_trace.get("outpost_reaction_tag", ""))
+		object["human_trace_remote_tag"] = String(field_trace.get("remote_comment_tag", ""))
+		object["human_trace_remote_npc_id"] = String(field_trace.get("remote_npc_id", ""))
+		object["human_trace_facility_id"] = String(field_trace.get("facility_id", object.get("facility_id", "sortie_board")))
+		object["human_trace_source_object_type"] = String(field_trace.get("source_object_type", object.get("kind", "")))
 	var tags: Array = Array(object.get("tags", [])).duplicate()
 	if not tags.has("story_object"):
 		tags.append("story_object")
+	if String(object.get("field_trace_id", "")) != "" and not tags.has("field_npc_trace"):
+		tags.append("field_npc_trace")
 	object["tags"] = tags
 	return object
 

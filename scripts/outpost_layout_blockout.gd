@@ -2,6 +2,7 @@ extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
+const NPCPresence := preload("res://scripts/npc_presence.gd")
 
 const WORLD_BOUNDS := Rect2(Vector2(0, 0), Vector2(1440, 810))
 const EXPANSION_BOUNDS_NOTE := "0.2 preview uses 1440x810; later hub scenes can expand to 1920x1080+."
@@ -243,6 +244,8 @@ func debug_lines(state: Dictionary = {}) -> Array[String]:
 		"outpost tags: %s" % tag_allocation_summary(state),
 		"outpost route target: %s surface=%s" % [result_route_target(state), selected_action_surface(state)],
 		"outpost recall quality: %s ledger=%s" % [String(state.get("recall_quality", "")), String(state.get("tag_ledger_summary", ""))],
+		"outpost npc assignments: %s" % NPCPresence.outpost_npc_debug_line(),
+		"outpost npc active: %s" % NPCPresence.active_npc_summary_line(state),
 	]
 	for facility in FACILITIES:
 		var bounds: Rect2 = facility["bounds"]
@@ -540,34 +543,41 @@ func _draw_platform_priority(parent: Control, offset: Vector2, scale: float, sta
 	_add_rect(parent, center + Vector2(-width * 0.34, 11), Vector2(width * 0.68, 3), Color(1.0, 0.91, 0.25, alpha * 0.8))
 
 func _draw_npc_markers(parent: Control, offset: Vector2, scale: float, state: Dictionary) -> void:
-	var first_recall_seen := bool(state.get("first_recall_seen", false))
-	var focus_npc := String(state.get("last_outpost_npc_id", ""))
-	var markers := [
-		{"id": "mina", "name": "미나", "pos": Vector2(282, 655), "color": Color(1.0, 0.60, 0.45, 0.70), "active": first_recall_seen or int(state.get("allocation_human_count", 0)) > 0},
-		{"id": "doyun", "name": "도윤", "pos": Vector2(1112, 548), "color": Color(0.62, 1.0, 0.36, 0.66), "active": first_recall_seen},
-		{"id": "popsy", "name": "팝시", "pos": Vector2(1038, 632), "color": Color(0.78, 0.58, 1.0, 0.68), "active": first_recall_seen or int(state.get("allocation_robot_count", 0)) > 0},
-		{"id": "seven", "name": "세븐", "pos": Vector2(665, 250), "color": Color(0.35, 0.70, 0.95, 0.70), "active": int(state.get("signal_record_count", 0)) > 0 or int(state.get("allocation_signal_count", 0)) > 0},
-		{"id": "bokhee", "name": "복희", "pos": Vector2(1080, 358), "color": Color(0.96, 0.82, 0.54, 0.64), "active": int(state.get("boss_analysis_level", 0)) > 0 or String(state.get("outcome", "")) == STATE_EXTRACT_MEMORY},
-	]
+	var markers := NPCPresence.outpost_npc_markers(state)
 	for marker in markers:
-		var marker_id := String(marker["id"])
-		var focused := focus_npc == marker_id
+		var marker_id := String(marker["npc_id"])
+		var focused := bool(marker.get("focused", false))
 		var active := bool(marker.get("active", false)) or focused
 		var pos := _to_preview(Vector2(marker["pos"]), offset, scale)
 		var color: Color = marker["color"]
 		var alpha_scale := 1.0 if active else 0.38
 		var size := 7.0 if not focused else 10.0
+		var facility_anchor := _facility_anchor_position(String(marker.get("facility", "")))
+		if facility_anchor.x >= 0.0:
+			_add_line(parent, pos, _to_preview(facility_anchor, offset, scale), Color(color.r, color.g, color.b, 0.12 if active else 0.045), 1.4 if active else 0.8)
 		_add_rect(parent, pos - Vector2(size * 0.5, size * 0.5), Vector2(size, size), Color(color.r, color.g, color.b, color.a * alpha_scale))
 		if focused:
 			_add_rect(parent, pos - Vector2(size * 0.5 + 3.0, size * 0.5 + 3.0), Vector2(size + 6.0, 1.5), Color(1.0, 0.91, 0.25, 0.35))
 			_add_rect(parent, pos - Vector2(size * 0.5 + 3.0, size * 0.5 - 3.0), Vector2(size + 6.0, 1.5), Color(1.0, 0.91, 0.25, 0.35))
-			_add_label(parent, String(marker["name"]), pos + Vector2(-18, 7), Vector2(36, 10), Color(0.18, 0.12, 0.09, 0.72), 7)
+			_add_label(parent, String(marker["display_name"]), pos + Vector2(-18, 7), Vector2(36, 10), Color(0.18, 0.12, 0.09, 0.72), 7)
 		elif active:
-			_add_label(parent, String(marker["name"]), pos + Vector2(-16, 6), Vector2(32, 9), Color(0.18, 0.12, 0.09, 0.42), 7)
+			_add_label(parent, String(marker["display_name"]), pos + Vector2(-16, 6), Vector2(32, 9), Color(0.18, 0.12, 0.09, 0.42), 7)
+	for marker in NPCPresence.active_reaction_markers(state, 2):
+		var reaction := String(marker.get("reaction_line", ""))
+		if reaction == "":
+			continue
+		var pos := _to_preview(Vector2(marker["pos"]), offset, scale)
+		_add_label(parent, reaction, pos + Vector2(-42, 17), Vector2(86, 10), Color(0.18, 0.12, 0.09, 0.46), 6, HORIZONTAL_ALIGNMENT_CENTER)
 	if int(state.get("r01_contamination_total", 0)) > 0:
 		var counter_pos := _to_preview(Vector2(365, 605), offset, scale)
 		_add_rect(parent, counter_pos, Vector2(52, 4), Color(1.0, 0.18, 0.16, 0.16))
 		_add_rect(parent, counter_pos + Vector2(8, 8), Vector2(42, 3), Color(1.0, 0.18, 0.16, 0.12))
+
+func _facility_anchor_position(facility_id: String) -> Vector2:
+	for facility in FACILITIES:
+		if String(facility.get("id", "")) == facility_id:
+			return Vector2(facility.get("interaction_anchor", Vector2(-1, -1)))
+	return Vector2(-1, -1)
 
 func _facility_fill(facility_id: String, state: Dictionary) -> Color:
 	var variant := facility_variant(facility_id, state)

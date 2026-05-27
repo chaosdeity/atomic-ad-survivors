@@ -271,6 +271,7 @@ func grant_first_recall_trace() -> bool:
 	awarded_flags["first_recall"] = true
 	traces[TRACE_TORN_AD_FLYER] = int(traces.get(TRACE_TORN_AD_FLYER, 0)) + 1
 	_record_outpost_event(NPC_MINA, "first_recall", "네 이름, 아직 멀쩡하지? 그럼 오늘은 충분히 이긴 거야.", "recovery_platform")
+	_record_outpost_event(NPC_BOKHEE, "first_recall", "돌아왔으면 이름부터 안쪽에 놓자. 전단보다 먼저.", "recovery_platform")
 	return true
 
 func record_boss_recall(boss_hp_ratio: float) -> Dictionary:

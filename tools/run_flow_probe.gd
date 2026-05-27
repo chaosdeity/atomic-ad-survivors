@@ -3,6 +3,7 @@ extends SceneTree
 const MainScene := preload("res://scenes/main.tscn")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 const R01SourceState := preload("res://scripts/r01_source_state.gd")
+const NPCPresence := preload("res://scripts/npc_presence.gd")
 
 var failures: Array[String] = []
 
@@ -20,6 +21,7 @@ func _run() -> void:
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
 	await _probe_r01_field_interactions()
+	await _probe_npc_presence_layer()
 	await _probe_manual_combat_input()
 	await _probe_r01_source_state_handling()
 	await _probe_ten_minute_loop_readability()
@@ -382,6 +384,77 @@ func _probe_r01_field_interactions() -> void:
 	_record("R01 field interactions bridge to campaign map without ids", map_ok, map_text)
 	_record("F12 exposes R01 interaction ids/counts", debug_ok, debug_text)
 	await _finish_main(bridge_main)
+
+func _probe_npc_presence_layer() -> void:
+	var main = await _new_main()
+	main.meta_progression.grant_first_recall_trace()
+	main._show_supply_depot()
+	var outpost_state: Dictionary = main.outpost_blockout.state_from_progress(main._session_progress_data(), main.meta_progression)
+	var markers := NPCPresence.outpost_npc_markers(outpost_state)
+	var marker_names := {}
+	var marker_facilities := {}
+	for marker in markers:
+		marker_names[String(marker.get("display_name", ""))] = true
+		marker_facilities[String(marker.get("npc_id", ""))] = String(marker.get("facility", ""))
+	var marker_ok := markers.size() == 5 and marker_names.has("미나") and marker_names.has("도윤") and marker_names.has("팝시") and marker_names.has("세븐") and marker_names.has("복희")
+	var facility_ok: bool = marker_facilities.get("mina", "") == "settlement_counter" and marker_facilities.get("doyun", "") == "maintenance_bench" and marker_facilities.get("popsy", "") == "trace_storage_room" and marker_facilities.get("seven", "") == "sortie_board" and marker_facilities.get("bokhee", "") == "name_archive"
+	var active_reactions := NPCPresence.active_reaction_markers(outpost_state, 2)
+	var sparse_reaction_ok := active_reactions.size() <= 2
+	var first_recall_lines: String = main.meta_progression.outpost_event_log_summary(3)
+	var first_recall_ok: bool = first_recall_lines.find("미나") != -1 and first_recall_lines.find("복희") != -1
+
+	_start_r01_story_probe(main, R01CampaignMap.NODE_L01)
+	var trace_catalog_ok: bool = main.r01_blockout.field_trace_count() >= 7
+	var trace_summary: String = main.r01_blockout.field_trace_summary_line()
+	trace_catalog_ok = trace_catalog_ok and trace_summary.find("unnamed_mail") != -1 and trace_summary.find("door_voice_residue") != -1 and trace_summary.find("missing_person_register") != -1 and trace_summary.find("outpost_remote_echo") != -1
+
+	var trace_checks := {
+		"r01_story_l01_mailbox": {"node": R01CampaignMap.NODE_L01, "expect": "우편물", "memory": "우편물"},
+		"r01_story_l02_closed_door": {"node": R01CampaignMap.NODE_L02, "expect": "문틈", "memory": "문틈"},
+		"r01_story_l03_model_entry": {"node": R01CampaignMap.NODE_L03, "expect": "실종", "memory": "실종자"},
+		"r01_story_l04_drain_trace": {"node": R01CampaignMap.NODE_L04, "expect": "구조 요청", "memory": "구조 요청"},
+		"r01_story_l05_fake_return_sign": {"node": R01CampaignMap.NODE_L05, "expect": "보급소 호출", "memory": "가짜 회수선"},
+	}
+	var trace_interaction_ok := true
+	for object_id in trace_checks.keys():
+		var expected: Dictionary = trace_checks[object_id]
+		_move_to_story_object(main, String(object_id))
+		trace_interaction_ok = trace_interaction_ok and main._try_field_interaction()
+		trace_interaction_ok = trace_interaction_ok and String(main._active_notice_text()).find(String(expected["expect"])) != -1
+		var memory: Dictionary = main._r01_campaign_node_memory(String(expected["node"]))
+		trace_interaction_ok = trace_interaction_ok and int(memory.get("node_npc_trace_count", 0)) > 0
+		trace_interaction_ok = trace_interaction_ok and String(memory.get("node_last_npc_trace_phrase", "")).find(String(expected["memory"])) != -1
+
+	var remote_count_before: int = main.field_remote_comment_seen.size()
+	_move_to_story_object(main, "r01_story_l05_fake_return_sign")
+	var repeat_ok: bool = main._try_field_interaction()
+	repeat_ok = repeat_ok and main.field_remote_comment_seen.size() == remote_count_before
+	var repeat_notice := String(main._active_notice_text())
+	repeat_ok = repeat_ok and (repeat_notice.find("이미") != -1 or repeat_notice.find("인증 아님") != -1)
+
+	main._finish_match("recalled")
+	main._handle_terminal_action()
+	var supply_text: String = main.hud.supply_visible_text()
+	var supply_bridge_ok := supply_text.find("세븐") != -1 or supply_text.find("팝시") != -1 or supply_text.find("복희") != -1
+	supply_bridge_ok = supply_bridge_ok and supply_text.find("field_trace_id") == -1 and supply_text.find("r01_story") == -1
+	main._open_r01_campaign_map()
+	main._select_r01_campaign_node(R01CampaignMap.NODE_L05)
+	var map_text: String = main.hud.campaign_map_visible_text()
+	var map_trace_ok := map_text.find("사람 흔적") != -1 and map_text.find("field_trace_id") == -1 and map_text.find("r01_story") == -1
+	main.debug_tools.detail_visible = true
+	var debug_text: String = main._debug_overlay_text()
+	var debug_ok := debug_text.find("outpost npc active") != -1 and debug_text.find("outpost npc assignments") != -1 and debug_text.find("r01 npc traces catalog") != -1 and debug_text.find("r01 npc trace seen") != -1
+
+	_record("outpost NPC five markers and assigned facilities exist", marker_ok and facility_ok, JSON.stringify(marker_facilities))
+	_record("outpost NPC reactions stay sparse", sparse_reaction_ok, str(active_reactions))
+	_record("first recall records Mina and Bokhee presence", first_recall_ok, first_recall_lines)
+	_record("R01 field has seven-plus NPC trace types", trace_catalog_ok, trace_summary)
+	_record("R01 NPC traces interact through E and node memory", trace_interaction_ok)
+	_record("field remote comments are one-time per tag", repeat_ok)
+	_record("NPC trace bridges back to outpost without ids", supply_bridge_ok, supply_text)
+	_record("campaign map carries NPC trace memory without ids", map_trace_ok, map_text)
+	_record("F12 exposes NPC/trace debug state", debug_ok, debug_text)
+	await _finish_main(main)
 
 func _probe_manual_combat_input() -> void:
 	var main = await _new_main()

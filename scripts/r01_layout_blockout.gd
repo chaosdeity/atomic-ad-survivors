@@ -4,6 +4,7 @@ const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
 const R01SourceState := preload("res://scripts/r01_source_state.gd")
+const NPCPresence := preload("res://scripts/npc_presence.gd")
 
 const ENABLED := true
 const WORLD_BOUNDS := Rect2(Vector2(-2640, -1485), Vector2(5280, 2970))
@@ -458,6 +459,12 @@ func story_object_count(variant: String = state_variant) -> int:
 
 func story_object_summary_line(variant: String = state_variant) -> String:
 	return map_assembly.story_object_summary_line(variant)
+
+func field_trace_count(variant: String = state_variant) -> int:
+	return map_assembly.field_trace_count(variant)
+
+func field_trace_summary_line(variant: String = state_variant) -> String:
+	return map_assembly.field_trace_summary_line(variant)
 
 func source_summary_by_zone(variant: String = state_variant) -> Dictionary:
 	return map_assembly.source_summary_by_zone(variant)
@@ -1062,6 +1069,7 @@ func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: f
 	_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
 	if not show_debug_labels:
 		_draw_source_feedback(canvas, object, elapsed, source_states)
+		_draw_npc_trace_feedback(canvas, object, elapsed)
 
 func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, asset_key: String, elapsed: float, show_debug_labels: bool) -> void:
 	match kind:
@@ -1184,6 +1192,27 @@ func _draw_source_feedback(canvas: CanvasItem, object: Dictionary, elapsed: floa
 		canvas.draw_line(pos + Vector2(-18, -18), pos + Vector2(18, 18), Color(0.35, 0.70, 0.95, 0.36), 2.0)
 	elif state_id == R01SourceState.STATE_OVERLOADED:
 		canvas.draw_arc(pos, 55.0 + pulse * 12.0, 0.0, TAU, 42, Color(1.0, 0.91, 0.25, 0.58), 3.0)
+
+func _draw_npc_trace_feedback(canvas: CanvasItem, object: Dictionary, elapsed: float) -> void:
+	var trace_type := String(object.get("human_trace_type", ""))
+	if trace_type == "":
+		return
+	var pos := Vector2(object.get("pos", Vector2.ZERO))
+	var trace_id := String(object.get("field_trace_id", ""))
+	var pulse := 0.5 + 0.5 * sin(elapsed * 2.1 + pos.x * 0.01)
+	var color := Color(0.72, 1.0, 0.68, 0.18 + pulse * 0.08)
+	match trace_id:
+		"door_voice_residue", "broken_life_broadcast":
+			color = Color(0.35, 0.70, 0.95, 0.16 + pulse * 0.08)
+		"family_photo_afterimage", "closed_window_movement":
+			color = Color(0.95, 0.52, 0.62, 0.14 + pulse * 0.08)
+		"outpost_remote_echo":
+			color = Color(0.95, 0.72, 1.0, 0.15 + pulse * 0.08)
+		"missing_person_register":
+			color = Color(1.0, 0.91, 0.25, 0.16 + pulse * 0.08)
+	canvas.draw_arc(pos, 32.0 + pulse * 5.0, 0.0, TAU, 32, color, 1.6)
+	canvas.draw_line(pos + Vector2(-12, -24), pos + Vector2(12, -24), Color(color.r, color.g, color.b, color.a * 1.25), 1.4)
+	canvas.draw_line(pos + Vector2(0, -32), pos + Vector2(0, -16), Color(color.r, color.g, color.b, color.a * 0.92), 1.2)
 
 func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
 	_draw_blocker_shadow(canvas, pos, Vector2(126, 44))

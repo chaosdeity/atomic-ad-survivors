@@ -26,6 +26,7 @@ PATHS = {
     "hud": ROOT / "scripts" / "hud_controller.gd",
     "campaign": ROOT / "scripts" / "r01_campaign_map.gd",
     "r01_map": ROOT / "scripts" / "r01_map_assembly.gd",
+    "npc_presence": ROOT / "scripts" / "npc_presence.gd",
     "outpost": ROOT / "scripts" / "outpost_layout_blockout.gd",
     "boss": ROOT / "scripts" / "boss_controller.gd",
     "visible_terms": ROOT / "story" / "01_bible" / "visible_terminology_rules_0_2.md",
@@ -437,6 +438,7 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
     hud = t.get("hud", "")
     campaign = t.get("campaign", "")
     r01_map = t.get("r01_map", "")
+    npc_presence = t.get("npc_presence", "")
     outpost = t.get("outpost", "")
 
     add(results, "PASS" if "DEBUG_TOOLS_ENABLED" in config else "FAIL", "ui/debug", "DEBUG_TOOLS_ENABLED exists")
@@ -529,6 +531,30 @@ def check_ui_debug_boundary(t: dict[str, str], results: list[Check]) -> None:
         "PASS" if has_all(main + debug, ["r01 field interactions", "r01 interacted count", "r01_story_object_count", "r01_field_interaction_total_counts"]) else "FAIL",
         "field interaction",
         "F12 debug exposes R01 interaction ids/counts separately from general UI",
+    )
+    add(
+        results,
+        "PASS" if has_all(npc_presence, ["OUTPOST_NPCS", "mina", "doyun", "popsy", "seven", "bokhee", "facility", "field_remote_lines"]) else "FAIL",
+        "npc presence",
+        "outpost NPC five-person presence data exists",
+    )
+    add(
+        results,
+        "PASS" if has_all(outpost + debug, ["outpost_npc_markers", "active_reaction_markers", "outpost npc active", "outpost npc assignments"]) else "FAIL",
+        "npc presence",
+        "outpost NPC markers and debug assignments are exposed",
+    )
+    add(
+        results,
+        "PASS" if has_all(npc_presence + r01_map + main, ["FIELD_TRACE_BY_OBJECT", "field_trace_id", "human_trace_type", "human_trace_first_line", "node_npc_trace_count", "field_remote_comment_seen"]) else "FAIL",
+        "npc presence",
+        "R01 field human traces connect to E interaction and node memory",
+    )
+    add(
+        results,
+        "PASS" if has_all(debug + main, ["r01 npc traces catalog", "r01 npc trace seen", "r01_field_trace_catalog_count", "r01_last_field_remote_comment"]) else "FAIL",
+        "npc presence",
+        "F12 debug exposes NPC trace and remote-comment state",
     )
     add(
         results,
