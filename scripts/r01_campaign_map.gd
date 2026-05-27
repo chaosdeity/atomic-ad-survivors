@@ -457,6 +457,14 @@ static func node_map_memory_line(node_id: String, memory: Dictionary = {}) -> St
 	var manual_phrase := String(memory.get("node_last_manual_stamp_phrase", ""))
 	var source_count := int(memory.get("node_source_action_count", 0))
 	var source_phrase := String(memory.get("node_last_source_action_phrase", ""))
+	var micro_count := int(memory.get("node_micro_point_count", 0))
+	var micro_phrase := String(memory.get("node_last_micro_phrase", ""))
+	if micro_count > 0 and micro_phrase != "":
+		if npc_trace_count > 0 and npc_trace_phrase != "":
+			return "흔적: %s / %s / 짧은 장소 %d곳" % [micro_phrase, npc_trace_phrase, micro_count]
+		if source_count > 0 and source_phrase != "":
+			return "흔적: %s / %s / 짧은 장소 %d곳" % [micro_phrase, source_phrase, micro_count]
+		return "흔적: %s / 짧은 장소 %d곳" % [micro_phrase, micro_count]
 	if npc_trace_count > 0 and npc_trace_phrase != "":
 		if story_count > 0 and story_phrase != "" and source_count > 0 and source_phrase != "":
 			return "흔적: %s / %s / %s / 사람 흔적 %d개" % [story_phrase, npc_trace_phrase, source_phrase, npc_trace_count]
@@ -496,7 +504,7 @@ static func node_memory_debug_summary(memories: Dictionary) -> String:
 		if memory.is_empty():
 			parts.append("%s=none" % String(node_id))
 			continue
-		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,npc_trace=%d,manual=%d,source=%d,last_story=%s,last_npc_trace=%s,last_manual=%s,last_source=%s,contam=%s,unlock=%s,tags=%s}" % [
+		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,npc_trace=%d,manual=%d,source=%d,micro=%d,last_story=%s,last_npc_trace=%s,last_manual=%s,last_source=%s,last_micro=%s,contam=%s,unlock=%s,tags=%s}" % [
 			String(node_id),
 			int(memory.get("node_visit_count", 0)),
 			String(memory.get("last_node_result", "")),
@@ -506,10 +514,12 @@ static func node_memory_debug_summary(memories: Dictionary) -> String:
 			int(memory.get("node_npc_trace_count", 0)),
 			int(memory.get("node_manual_stamp_count", 0)),
 			int(memory.get("node_source_action_count", 0)),
+			int(memory.get("node_micro_point_count", 0)),
 			String(memory.get("node_last_story_object_phrase", "")),
 			String(memory.get("node_last_npc_trace_phrase", "")),
 			String(memory.get("node_last_manual_stamp_phrase", "")),
 			String(memory.get("node_last_source_action_phrase", "")),
+			String(memory.get("node_last_micro_phrase", "")),
 			String(memory.get("node_contamination_hint", "")),
 			String(memory.get("node_unlocked_by", "")),
 			String(memory.get("node_last_tag_summary", "")),

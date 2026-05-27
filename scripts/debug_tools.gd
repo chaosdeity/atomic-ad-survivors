@@ -134,7 +134,7 @@ func help_text() -> String:
 		"DEBUG KEYS",
 		"F1 Help  F12 HUD",
 		"J/LMB Manual stamp  SPACE/RMB Charge",
-		"E Field interact",
+		"E Field interact / Micro location",
 		"F2 Cards  F3 Charge",
 		"F4 HP=20",
 		"F5 175s  F6 270s  F7 299s",
@@ -227,6 +227,24 @@ func detail_text(info: Dictionary) -> String:
 		"r01 interacted count sortie=%s total=%s" % [
 			str(info.get("r01_field_interaction_sortie_counts", "")),
 			str(info.get("r01_field_interaction_total_counts", "")),
+		],
+		"r01 micro location current=%s active=%s entry=%s point=%s points=%d" % [
+			str(info.get("r01_current_micro_location", "")),
+			str(info.get("r01_micro_location_active", false)),
+			str(info.get("r01_current_micro_entry_object_id", "")),
+			str(info.get("r01_current_micro_point", "")),
+			int(info.get("r01_micro_inspection_point_count", 0)),
+		],
+		"r01 micro completed=%s total=%s risk=%s elapsed=%.1f" % [
+			str(info.get("r01_micro_completed_points", "")),
+			str(info.get("r01_micro_total_counts", "")),
+			str(info.get("r01_micro_risk_state", "")),
+			float(info.get("r01_micro_elapsed", 0.0)),
+		],
+		"r01 micro memory %s last=%s catalog=%d" % [
+			str(info.get("r01_micro_location_memory", "")),
+			str(info.get("r01_last_micro_location_action", "")),
+			int(info.get("r01_micro_location_catalog_count", 0)),
 		],
 		"r01 manual stamp target=%s cooldown=%.2f/%.2f" % [
 			str(info.get("r01_manual_stamp_target", "")),

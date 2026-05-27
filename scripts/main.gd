@@ -18,6 +18,7 @@ const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
 const R01SourceState := preload("res://scripts/r01_source_state.gd")
+const R01MicroLocations := preload("res://scripts/r01_micro_locations.gd")
 const NPCPresence := preload("res://scripts/npc_presence.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
@@ -76,6 +77,12 @@ const FIELD_INTERACTION_NOTICE_TIME := 3.0
 const FIELD_INTERACTION_REVEAL_DURATION := 4.2
 const FIELD_INTERACTION_REVEAL_LIMIT := 4
 const MANUAL_STAMP_NOTICE_TIME := 1.45
+const MICRO_LOCATION_ENTRY_RADIUS := 88.0
+const MICRO_LOCATION_EXIT_RADIUS := 172.0
+const MICRO_LOCATION_NOTICE_TIME := 2.6
+const MICRO_LOCATION_REVEAL_DURATION := 4.8
+const MICRO_LOCATION_RISK_BASE_INTERVAL := 4.4
+const MICRO_LOCATION_ZOOM := 1.08
 
 var player_pos := Vector2.ZERO
 var player_hp := C.PLAYER_MAX_HP
@@ -174,6 +181,19 @@ var field_remote_comment_seen := {}
 var last_field_remote_comment := "none"
 var last_field_interaction_object_id := ""
 var last_field_interaction_display_name := ""
+var micro_location_active := false
+var current_micro_location_id := ""
+var current_micro_point_id := ""
+var micro_location_entry_object_id := ""
+var micro_location_notice_timer := 0.0
+var micro_location_notice_text := ""
+var micro_location_elapsed := 0.0
+var micro_location_risk_timer := 0.0
+var micro_location_risk_state := "idle"
+var micro_location_completed_points := {}
+var micro_location_total_counts := {}
+var micro_location_memory := {}
+var last_micro_location_action := "none"
 
 var rng := RandomNumberGenerator.new()
 var camera: Camera2D
@@ -197,6 +217,7 @@ var meta_progression := MetaProgression.new()
 var boss := BossController.new()
 var r01_map := R01MapController.new()
 var r01_blockout := R01LayoutBlockout.new()
+var r01_micro_locations := R01MicroLocations.new()
 var outpost_blockout := OutpostLayoutBlockout.new()
 
 func _ready() -> void:
@@ -232,12 +253,13 @@ func _process(delta: float) -> void:
 	entry_camera_timer = maxf(0.0, entry_camera_timer - delta)
 	_update_field_interaction_runtime(delta)
 	_update_manual_stamp_runtime(delta)
+	_update_micro_location_runtime(delta)
 	_update_r01_source_states(delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = _camera_target_position().round()
+		_sync_camera()
 		queue_redraw()
 		if match_state != "supply" and Input.is_action_just_pressed("charge"):
 			_handle_terminal_action()
@@ -246,7 +268,7 @@ func _process(delta: float) -> void:
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = _camera_target_position().round()
+		_sync_camera()
 		queue_redraw()
 		return
 
@@ -262,7 +284,7 @@ func _process(delta: float) -> void:
 	if match_state == "victory" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = _camera_target_position().round()
+		_sync_camera()
 		queue_redraw()
 		return
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
@@ -280,7 +302,7 @@ func _process(delta: float) -> void:
 	if match_state == "game_over" or match_state == "recalled" or match_state == "boss_victory":
 		effects.update(delta)
 		_update_hud()
-		camera.global_position = _camera_target_position().round()
+		_sync_camera()
 		queue_redraw()
 		return
 	_update_boss(delta)
@@ -290,7 +312,7 @@ func _process(delta: float) -> void:
 	_update_charge_puddles(delta)
 	effects.update(delta)
 	_update_hud()
-	camera.global_position = _camera_target_position().round()
+	_sync_camera()
 	queue_redraw()
 
 func _input(event: InputEvent) -> void:
@@ -320,6 +342,9 @@ func _input(event: InputEvent) -> void:
 
 	if event.is_action_pressed("manual_stamp") and (match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory"):
 		_handle_terminal_action()
+		return
+
+	if match_state == "playing" and not paused_for_card and _handle_micro_location_input(event):
 		return
 
 	if match_state == "playing" and not paused_for_card and event.is_action_pressed("interact"):
@@ -442,6 +467,11 @@ func _camera_target_position() -> Vector2:
 		var ratio := clampf(entry_camera_timer / ENTRY_CAMERA_PAN_DURATION, 0.0, 1.0)
 		entry_offset = entry_camera_offset * ratio * ratio
 	return player_pos + entry_offset + effects.shake_offset(rng)
+
+func _sync_camera() -> void:
+	camera.global_position = _camera_target_position().round()
+	var target_zoom := MICRO_LOCATION_ZOOM if micro_location_active else 1.0
+	camera.zoom = camera.zoom.lerp(Vector2.ONE * target_zoom, 0.24)
 
 func _build_audio() -> void:
 	var sfx_rng := RandomNumberGenerator.new()
@@ -1536,6 +1566,9 @@ func _reset_r01_run_tracking() -> void:
 	last_manual_stamp_display_name = ""
 	last_r01_source_action = "none"
 	last_r01_source_effect_summary = "none"
+	_clear_micro_location_focus(false)
+	micro_location_notice_timer = 0.0
+	micro_location_notice_text = ""
 
 func _record_r01_zone_time(delta: float) -> void:
 	var zone_id := r01_map.current_zone_id()
@@ -1615,6 +1648,376 @@ func _update_field_interaction_runtime(delta: float) -> void:
 			field_interaction_reveals.remove_at(i)
 		else:
 			field_interaction_reveals[i] = cue
+
+func _update_micro_location_runtime(delta: float) -> void:
+	micro_location_notice_timer = maxf(0.0, micro_location_notice_timer - delta)
+	if not micro_location_active:
+		return
+	if match_state != "playing" or paused_for_card:
+		_clear_micro_location_focus(false)
+		return
+	var entry := _micro_location_entry_object(_current_micro_location())
+	if not entry.is_empty():
+		var entry_pos := Vector2(entry.get("pos", player_pos))
+		if player_pos.distance_squared_to(entry_pos) > MICRO_LOCATION_EXIT_RADIUS * MICRO_LOCATION_EXIT_RADIUS:
+			_exit_micro_location("위치가 멀어져 장소 조사에서 빠져나왔습니다.")
+			return
+	micro_location_elapsed += delta
+	micro_location_risk_timer -= delta
+	var location := _current_micro_location()
+	var risk_level := int(location.get("risk_level", 1))
+	_add_audit_processing((1.2 + float(risk_level) * 0.45) * delta, "micro_location_stay")
+	if micro_location_risk_timer <= 0.0:
+		_trigger_micro_location_risk_pulse(location)
+
+func _handle_micro_location_input(event: InputEvent) -> bool:
+	if micro_location_active:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			_exit_micro_location()
+			return true
+		if event.is_action_pressed("interact"):
+			var location := _current_micro_location()
+			if R01MicroLocations.all_points_completed(location, micro_location_completed_points):
+				_exit_micro_location()
+			else:
+				_apply_micro_location_point("inspect")
+			return true
+		if event.is_action_pressed("manual_stamp"):
+			_apply_micro_location_point("stamp")
+			return true
+		if event.is_action_pressed("charge"):
+			_apply_micro_location_point("charge")
+			return true
+		return false
+	if event.is_action_pressed("interact"):
+		var nearest := _nearest_micro_location_entry()
+		if nearest.is_empty():
+			return false
+		_enter_micro_location(nearest)
+		return true
+	return false
+
+func _nearest_micro_location_entry() -> Dictionary:
+	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+		return {}
+	var best := {}
+	var best_distance := MICRO_LOCATION_ENTRY_RADIUS * MICRO_LOCATION_ENTRY_RADIUS
+	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	for location in R01MicroLocations.locations():
+		if String(location.get("zone_id", "")) != zone_id:
+			continue
+		var entry := _micro_location_entry_object(location)
+		if entry.is_empty():
+			continue
+		var distance := player_pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
+		if distance <= best_distance:
+			best_distance = distance
+			best = location
+	if not best.is_empty():
+		return best
+	for location in R01MicroLocations.locations():
+		var entry := _micro_location_entry_object(location)
+		if entry.is_empty():
+			continue
+		var distance := player_pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
+		if distance <= best_distance:
+			best_distance = distance
+			best = location
+	return best
+
+func _micro_location_entry_object(location: Dictionary) -> Dictionary:
+	var entry_object_id := String(location.get("entry_object_id", ""))
+	if entry_object_id == "" or not R01LayoutBlockout.ENABLED:
+		return {}
+	return r01_blockout.story_object_by_id(entry_object_id)
+
+func _micro_location_source_object(location: Dictionary, point: Dictionary) -> Dictionary:
+	var source_object_id := String(point.get("source_object_id", ""))
+	if source_object_id != "" and R01LayoutBlockout.ENABLED:
+		var source := r01_blockout.story_object_by_id(source_object_id)
+		if not source.is_empty():
+			return source
+	return _micro_location_entry_object(location)
+
+func _current_micro_location() -> Dictionary:
+	return R01MicroLocations.location_by_id(current_micro_location_id)
+
+func _current_micro_point() -> Dictionary:
+	var location := _current_micro_location()
+	if location.is_empty():
+		return {}
+	if current_micro_point_id != "":
+		var point := R01MicroLocations.point_by_id(location, current_micro_point_id)
+		if not point.is_empty():
+			return point
+	return R01MicroLocations.first_incomplete_point(location, micro_location_completed_points)
+
+func _enter_micro_location(location: Dictionary) -> void:
+	current_micro_location_id = String(location.get("location_id", ""))
+	micro_location_entry_object_id = String(location.get("entry_object_id", ""))
+	current_micro_point_id = String(R01MicroLocations.first_incomplete_point(location, micro_location_completed_points).get("point_id", ""))
+	micro_location_active = current_micro_location_id != ""
+	micro_location_elapsed = 0.0
+	micro_location_risk_timer = _micro_location_risk_interval(location)
+	micro_location_risk_state = "watching"
+	last_micro_location_action = "enter %s" % current_micro_location_id
+	var entry := _micro_location_entry_object(location)
+	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var phrase := String(location.get("entry_phrase", "짧은 장소 조사를 시작했습니다."))
+	_show_micro_location_notice(phrase)
+	effects.add_floater(entry_pos + Vector2(0, -22), String(location.get("display_name", "장소")), C.VITAMIN_YELLOW, 12)
+	effects.add_status_ring(entry_pos, C.VITAMIN_YELLOW, 54.0, 0.30)
+
+func _exit_micro_location(phrase: String = "") -> void:
+	var location := _current_micro_location()
+	var exit_phrase := phrase
+	if exit_phrase == "":
+		exit_phrase = String(location.get("exit_phrase", "장소 조사에서 빠져나왔습니다."))
+	_show_micro_location_notice(exit_phrase)
+	last_micro_location_action = "exit %s" % current_micro_location_id
+	_clear_micro_location_focus(false)
+
+func _clear_micro_location_focus(clear_memory: bool) -> void:
+	micro_location_active = false
+	current_micro_location_id = ""
+	current_micro_point_id = ""
+	micro_location_entry_object_id = ""
+	micro_location_elapsed = 0.0
+	micro_location_risk_timer = 0.0
+	micro_location_risk_state = "idle"
+	if clear_memory:
+		micro_location_completed_points.clear()
+		micro_location_total_counts.clear()
+		micro_location_memory.clear()
+
+func _apply_micro_location_point(action: String) -> bool:
+	var location := _current_micro_location()
+	var point := _current_micro_point()
+	if location.is_empty() or point.is_empty():
+		_exit_micro_location()
+		return false
+	var location_id := String(location.get("location_id", ""))
+	var point_id := String(point.get("point_id", ""))
+	var point_key := R01MicroLocations.point_key(location_id, point_id)
+	var already_completed := bool(micro_location_completed_points.get(point_key, false))
+	micro_location_total_counts[point_key] = int(micro_location_total_counts.get(point_key, 0)) + 1
+	var source := _micro_location_source_object(location, point)
+	var source_pos := Vector2(source.get("pos", player_pos))
+	if already_completed:
+		_show_micro_location_notice(String(point.get("repeat_phrase", "이미 확인한 지점입니다.")))
+		effects.add_floater(source_pos + Vector2(0, -18), "반복 확인", Color(0.35, 0.70, 0.95), 10)
+		effects.add_status_ring(source_pos, Color(0.35, 0.70, 0.95), 34.0, 0.22)
+		last_micro_location_action = "repeat %s/%s" % [location_id, point_id]
+		return true
+	micro_location_completed_points[point_key] = true
+	var phrase := _micro_location_action_phrase(location, point, action)
+	_show_micro_location_notice(phrase)
+	_apply_micro_location_source_effect(location, point, source, action, phrase)
+	_apply_micro_location_node_memory(location, point, action, phrase)
+	_record_micro_location_outpost_event(location, point, action)
+	_apply_micro_location_small_combat_link(location, point, action)
+	_record_playtest_event("micro_location_%s" % String(location.get("campaign_memory_tag", location_id)))
+	effects.add_floater(source_pos + Vector2(0, -20), _micro_location_action_label(action), C.VITAMIN_YELLOW if action == "charge" else C.NEON_RED if action == "stamp" else C.VITAMIN_YELLOW, 11)
+	effects.add_status_ring(source_pos, C.VITAMIN_YELLOW if action == "charge" else C.NEON_RED if action == "stamp" else C.VITAMIN_YELLOW, 48.0 if action != "charge" else 64.0, 0.32)
+	var next_point := R01MicroLocations.first_incomplete_point(location, micro_location_completed_points)
+	current_micro_point_id = String(next_point.get("point_id", ""))
+	if R01MicroLocations.all_points_completed(location, micro_location_completed_points):
+		current_micro_point_id = ""
+		_show_micro_location_notice("%s / E 또는 Esc로 나가기" % phrase)
+	return true
+
+func _apply_micro_location_source_effect(location: Dictionary, point: Dictionary, source: Dictionary, action: String, phrase: String) -> void:
+	if source.is_empty():
+		return
+	var result := {}
+	if action == "charge":
+		result = R01SourceState.overload(r01_source_states, source, phrase)
+		_apply_source_overload_combat_effect(source, Vector2.ZERO)
+	elif action == "stamp":
+		result = R01SourceState.suppress(r01_source_states, source, phrase)
+		_apply_source_suppression_combat_effect(source)
+	else:
+		result = R01SourceState.reveal(r01_source_states, source, "micro_reveal", phrase)
+	var state_label := String(result.get("state", R01SourceState.STATE_ACTIVE))
+	last_r01_source_action = "micro %s %s -> %s" % [action, String(point.get("display_name", "")), state_label]
+	last_r01_source_effect_summary = _source_kind_effect_summary(source, "micro_%s" % action)
+	last_micro_location_action = "%s %s/%s" % [action, String(location.get("location_id", "")), String(point.get("point_id", ""))]
+	_append_field_interaction_reveal(source, _micro_location_source_label(point), Color(1.0, 0.91, 0.25, 0.58) if action != "charge" else Color(1.0, 0.30, 0.36, 0.56), MICRO_LOCATION_REVEAL_DURATION)
+
+func _apply_micro_location_node_memory(location: Dictionary, point: Dictionary, action: String, phrase: String) -> void:
+	var node_id := _r01_node_id_for_zone(String(location.get("zone_id", "")))
+	var memory := _r01_campaign_node_memory(node_id)
+	var location_name := String(location.get("display_name", "장소"))
+	var point_name := String(point.get("display_name", "조사 지점"))
+	var names := Array(memory.get("node_micro_location_names", [])).duplicate()
+	if not names.has(location_name):
+		names.append(location_name)
+	var points := Array(memory.get("node_micro_point_names", [])).duplicate()
+	if not points.has(point_name):
+		points.append(point_name)
+	memory["node_micro_location_names"] = names
+	memory["node_micro_point_names"] = points
+	memory["node_micro_location_count"] = names.size()
+	memory["node_micro_point_count"] = points.size()
+	memory["node_last_micro_location_name"] = location_name
+	memory["node_last_micro_point_name"] = point_name
+	memory["node_last_micro_phrase"] = _micro_location_memory_phrase(location, point, action)
+	memory["node_last_event_line"] = "짧은 장소 조사: %s / %s" % [location_name, point_name]
+	memory["node_last_outpost_reaction"] = _micro_location_outpost_line(location, point, action)
+	memory["node_last_field_outpost_reaction"] = _micro_location_outpost_line(location, point, action)
+	memory["node_last_tag_summary"] = String(point.get("tag_hint", location.get("campaign_memory_tag", "장소 흔적")))
+	r01_campaign_node_memory[node_id] = memory
+	_update_micro_location_memory(location, point, action, phrase)
+
+func _update_micro_location_memory(location: Dictionary, point: Dictionary, action: String, phrase: String) -> void:
+	var location_id := String(location.get("location_id", ""))
+	var memory := Dictionary(micro_location_memory.get(location_id, {})).duplicate(true)
+	memory["display_name"] = String(location.get("display_name", "장소"))
+	memory["entry_object_id"] = String(location.get("entry_object_id", ""))
+	memory["point_count"] = R01MicroLocations.inspection_point_count(location)
+	memory["completed_count"] = R01MicroLocations.completed_count(location_id, micro_location_completed_points)
+	memory["last_point_name"] = String(point.get("display_name", "조사 지점"))
+	memory["last_phrase"] = phrase
+	memory["last_action"] = action
+	memory["risk_state"] = micro_location_risk_state
+	memory["outpost_reaction"] = _micro_location_outpost_line(location, point, action)
+	micro_location_memory[location_id] = memory
+
+func _record_micro_location_outpost_event(location: Dictionary, point: Dictionary, action: String) -> void:
+	var npc_id := String(location.get("npc_id", "seven"))
+	var facility_id := String(location.get("facility_id", "sortie_board"))
+	meta_progression.record_outpost_event(npc_id, "micro_location_%s" % action, _micro_location_outpost_line(location, point, action), facility_id)
+
+func _apply_micro_location_small_combat_link(location: Dictionary, point: Dictionary, action: String) -> void:
+	var source := _micro_location_source_object(location, point)
+	var key := String(point.get("source_effect_hint", _source_effect_key(source)))
+	match key:
+		"doorbell":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.8)
+			last_threat_label = "마이크로 장소: 현관 센서 source 경고"
+		"mailbox":
+			flyer_drop_timer = maxf(flyer_drop_timer, 1.4)
+			last_threat_label = "마이크로 장소: 주소 전단 source 표시"
+		"drain":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.6)
+			flyer_drop_timer = maxf(flyer_drop_timer, 1.3)
+			last_threat_label = "마이크로 장소: 배수로 hazard 표시"
+		"fake_return":
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.2)
+			last_threat_label = "마이크로 장소: 가짜 귀환 trigger 표시"
+		"model_house":
+			_set_boss_signal_state("faint")
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.0)
+			last_threat_label = "마이크로 장소: 모델하우스 심사 신호 표시"
+		"speaker":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.8)
+			last_threat_label = "마이크로 장소: 스피커 source 표시"
+		_:
+			last_threat_label = "마이크로 장소 source 표시"
+	if action == "charge" and not source.is_empty():
+		_delay_or_cancel_source_threats(Vector2(source.get("pos", player_pos)), true)
+
+func _trigger_micro_location_risk_pulse(location: Dictionary) -> void:
+	var risk_level := int(location.get("risk_level", 1))
+	micro_location_risk_timer = _micro_location_risk_interval(location)
+	micro_location_risk_state = "warning_%d" % maxi(1, risk_level)
+	var entry := _micro_location_entry_object(location)
+	var entry_pos := Vector2(entry.get("pos", player_pos))
+	if risk_level >= 3:
+		_spawn_pressure_ring()
+	else:
+		pressure_ring_timer = 0.0
+		_spawn_flyer_drop()
+	_show_micro_location_notice("source 경고: 오래 머문 흔적이 주변 압박을 부릅니다")
+	effects.add_status_ring(entry_pos, C.NEON_RED, 72.0, 0.34)
+	last_threat_label = "마이크로 장소 체류 경고"
+
+func _micro_location_risk_interval(location: Dictionary) -> float:
+	var risk_level := int(location.get("risk_level", 1))
+	return maxf(2.4, MICRO_LOCATION_RISK_BASE_INTERVAL - float(risk_level) * 0.45)
+
+func _micro_location_prompt_text() -> String:
+	if paused_for_card:
+		return ""
+	if micro_location_active:
+		var location := _current_micro_location()
+		var point := _current_micro_point()
+		if location.is_empty():
+			return ""
+		if R01MicroLocations.all_points_completed(location, micro_location_completed_points):
+			return "E/Esc 나가기: %s" % String(location.get("display_name", "장소"))
+		return "E %s: %s / J 도장 / SPACE 강한 도장" % [
+			String(point.get("interaction_type", "조사")),
+			String(point.get("display_name", "조사 지점")),
+		]
+	var nearest := _nearest_micro_location_entry()
+	if nearest.is_empty():
+		return ""
+	return "E 진입: %s" % String(nearest.get("display_name", "장소"))
+
+func _show_micro_location_notice(text: String) -> void:
+	micro_location_notice_text = text
+	micro_location_notice_timer = MICRO_LOCATION_NOTICE_TIME
+	wave_notice_timer = maxf(wave_notice_timer, 0.0)
+
+func _micro_location_action_phrase(location: Dictionary, point: Dictionary, action: String) -> String:
+	var base := String(point.get("first_phrase", "짧은 장소 흔적이 남았습니다."))
+	var hint := String(point.get("risk_hint", ""))
+	if action == "stamp":
+		return "현장 도장: %s / %s" % [String(point.get("display_name", "조사 지점")), hint if hint != "" else base]
+	if action == "charge":
+		return "강한 도장: %s source가 흔들립니다" % String(point.get("display_name", "조사 지점"))
+	return "%s / %s" % [base, hint] if hint != "" else base
+
+func _micro_location_action_label(action: String) -> String:
+	match action:
+		"stamp":
+			return "현장 도장"
+		"charge":
+			return "강한 도장"
+		_:
+			return "조사 완료"
+
+func _micro_location_source_label(point: Dictionary) -> String:
+	match String(point.get("source_effect_hint", "")):
+		"doorbell":
+			return "현관 source"
+		"mailbox":
+			return "주소 source"
+		"drain":
+			return "낮은 신호"
+		"fake_return":
+			return "가짜 귀환"
+		"model_house":
+			return "심사 source"
+		"speaker":
+			return "스피커 source"
+		_:
+			return "장소 source"
+
+func _micro_location_memory_phrase(location: Dictionary, point: Dictionary, action: String) -> String:
+	return "%s: %s %s" % [
+		String(location.get("display_name", "장소")),
+		String(point.get("display_name", "조사 지점")),
+		"도장" if action == "stamp" else "강한 도장" if action == "charge" else "조사",
+	]
+
+func _micro_location_outpost_line(location: Dictionary, point: Dictionary, action: String) -> String:
+	var location_id := String(location.get("location_id", ""))
+	var point_name := String(point.get("display_name", "조사 지점"))
+	match location_id:
+		"l02_porch_gap":
+			return "도윤이 현관 센서와 문틈 음성을 정비대 주파수표에 나란히 둡니다."
+		"l02_family_window":
+			return "팝시가 사진 속 사람 수와 미소 검수 표시를 다시 세어 둡니다."
+		"l03_model_lobby":
+			return "세븐이 모델하우스 로비의 %s 기록을 결절 경고에 붙입니다." % point_name
+		"l04_drain_entrance":
+			return "흔적 보관실이 배수로의 %s 흔적을 말리지 않고 분리합니다." % point_name
+		"l05_fake_shelter":
+			return "세븐이 가짜 쉼터의 %s 표식을 회수선 경고로 유지합니다." % point_name
+		_:
+			return "보급소가 %s의 짧은 장소 조사를 보상 대신 기록으로 묶습니다." % String(location.get("display_name", "장소"))
 
 func _nearest_field_story_object() -> Dictionary:
 	if not R01LayoutBlockout.ENABLED or match_state != "playing":
@@ -1824,7 +2227,7 @@ func _field_reveal_label(role: String) -> String:
 		_:
 			return "위험 출처"
 
-func _append_field_interaction_reveal(source: Dictionary, label: String, color: Color) -> bool:
+func _append_field_interaction_reveal(source: Dictionary, label: String, color: Color, duration: float = FIELD_INTERACTION_REVEAL_DURATION) -> bool:
 	var source_id := String(source.get("id", ""))
 	if source_id == "":
 		return false
@@ -1836,8 +2239,8 @@ func _append_field_interaction_reveal(source: Dictionary, label: String, color: 
 		"source_id": source_id,
 		"pos": Vector2(source.get("pos", player_pos)),
 		"label": label,
-		"timer": FIELD_INTERACTION_REVEAL_DURATION,
-		"duration": FIELD_INTERACTION_REVEAL_DURATION,
+		"timer": duration,
+		"duration": duration,
 		"color": color,
 	})
 	return true
@@ -3745,6 +4148,13 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_source_action_count": 0,
 			"node_last_source_action_name": "",
 			"node_last_source_action_phrase": "",
+			"node_micro_location_names": [],
+			"node_micro_point_names": [],
+			"node_micro_location_count": 0,
+			"node_micro_point_count": 0,
+			"node_last_micro_location_name": "",
+			"node_last_micro_point_name": "",
+			"node_last_micro_phrase": "",
 		}
 	return memory
 
@@ -3882,6 +4292,10 @@ func _reset_r01_campaign_state() -> void:
 	field_npc_trace_counts.clear()
 	field_remote_comment_seen.clear()
 	last_field_remote_comment = "none"
+	_clear_micro_location_focus(true)
+	micro_location_notice_timer = 0.0
+	micro_location_notice_text = ""
+	last_micro_location_action = "none"
 
 func _open_r01_campaign_map() -> void:
 	if match_state != "supply":
@@ -4049,7 +4463,7 @@ func _arm_entry_camera_for_node(node_id: String) -> void:
 	entry_camera_offset = R01CampaignMap.node_entry_camera_offset(node_id)
 	entry_camera_timer = ENTRY_CAMERA_PAN_DURATION
 	if camera != null:
-		camera.global_position = _camera_target_position().round()
+		_sync_camera()
 
 func _sync_r01_map_to_player_zone(show_entry_notice: bool) -> void:
 	if not R01LayoutBlockout.ENABLED:
@@ -4389,12 +4803,17 @@ func _fire_feedback(directed: bool) -> void:
 	effects.fire_feedback(directed)
 
 func _active_notice_text() -> String:
+	if micro_location_notice_timer > 0.0 and micro_location_notice_text != "":
+		return micro_location_notice_text
 	if manual_stamp_notice_timer > 0.0 and manual_stamp_notice_text != "":
 		return manual_stamp_notice_text
 	if field_interaction_notice_timer > 0.0 and field_interaction_notice_text != "":
 		return field_interaction_notice_text
 	if wave_notice_timer > 0.0:
 		return wave_notice_text
+	var micro_prompt := _micro_location_prompt_text()
+	if micro_prompt != "":
+		return micro_prompt
 	var prompt := _field_interaction_prompt_text()
 	if prompt != "":
 		return prompt
@@ -4489,6 +4908,18 @@ func _debug_info() -> Dictionary:
 		"r01_field_npc_trace_counts": _field_interaction_counts_summary(field_npc_trace_counts),
 		"r01_field_remote_comment_seen": _field_interaction_counts_summary(field_remote_comment_seen),
 		"r01_last_field_remote_comment": last_field_remote_comment,
+		"r01_micro_location_catalog_count": R01MicroLocations.location_count(),
+		"r01_current_micro_location": current_micro_location_id,
+		"r01_current_micro_entry_object_id": micro_location_entry_object_id,
+		"r01_current_micro_point": current_micro_point_id,
+		"r01_micro_location_active": micro_location_active,
+		"r01_micro_inspection_point_count": R01MicroLocations.inspection_point_count(_current_micro_location()),
+		"r01_micro_completed_points": _field_interaction_counts_summary(micro_location_completed_points),
+		"r01_micro_total_counts": _field_interaction_counts_summary(micro_location_total_counts),
+		"r01_micro_location_memory": R01MicroLocations.memory_debug_summary(micro_location_memory),
+		"r01_micro_risk_state": micro_location_risk_state,
+		"r01_micro_elapsed": micro_location_elapsed,
+		"r01_last_micro_location_action": last_micro_location_action,
 		"r01_manual_stamp_target": "%s/%s" % [last_manual_stamp_object_id, last_manual_stamp_display_name],
 		"r01_manual_stamp_sortie_counts": _field_interaction_counts_summary(manual_stamped_story_counts),
 		"r01_manual_stamp_total_counts": _field_interaction_counts_summary(manual_stamp_total_story_counts),
@@ -4807,6 +5238,7 @@ func _draw() -> void:
 	_draw_r01_contamination_marks()
 	_draw_r01_source_state_marks()
 	_draw_field_interaction_reveals()
+	_draw_micro_location_overlay()
 	_draw_charge_puddles()
 	_draw_threats()
 	effects.draw_behind(self)
@@ -4932,6 +5364,29 @@ func _draw_field_interaction_reveals() -> void:
 		draw_line(pos + Vector2(0, -16), pos + Vector2(0, 16), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
 		if debug_tools.blockout_debug_labels_visible() or player_pos.distance_squared_to(pos) < 180.0 * 180.0:
 			draw_string(UIFont.get_font(), pos + Vector2(-54, 36), String(cue.get("label", "source")), HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.18, 0.12, 0.10, 0.62 * ratio))
+
+func _draw_micro_location_overlay() -> void:
+	if not micro_location_active:
+		return
+	var location := _current_micro_location()
+	if location.is_empty():
+		return
+	var entry := _micro_location_entry_object(location)
+	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var point := _current_micro_point()
+	var completed := R01MicroLocations.completed_count(current_micro_location_id, micro_location_completed_points)
+	var total := R01MicroLocations.inspection_point_count(location)
+	var focus_color := Color(1.0, 0.91, 0.25, 0.18)
+	if int(location.get("risk_level", 1)) >= 3:
+		focus_color = Color(1.0, 0.30, 0.36, 0.16)
+	draw_rect(Rect2(entry_pos - Vector2(88, 58), Vector2(176, 116)), focus_color)
+	draw_rect(Rect2(entry_pos - Vector2(88, 58), Vector2(176, 116)), Color(1.0, 0.91, 0.25, 0.62), false, 2.0)
+	draw_arc(entry_pos, 62.0 + 3.0 * sin(elapsed * 4.0), -PI * 0.18, PI * 1.18, 36, Color(1.0, 0.91, 0.25, 0.68), 2.0)
+	var label := "%s %d/%d" % [String(location.get("display_name", "장소")), completed, total]
+	draw_rect(Rect2(entry_pos + Vector2(-74, -76), Vector2(148, 15)), Color(0.08, 0.06, 0.05, 0.52))
+	draw_string(UIFont.get_font(), entry_pos + Vector2(0, -65), label, HORIZONTAL_ALIGNMENT_CENTER, 148, 9, C.VITAMIN_YELLOW)
+	if not point.is_empty():
+		draw_string(UIFont.get_font(), entry_pos + Vector2(0, 76), String(point.get("display_name", "조사 지점")), HORIZONTAL_ALIGNMENT_CENTER, 148, 8, C.INK)
 
 func _draw_r01_source_state_marks() -> void:
 	if r01_source_states.is_empty():

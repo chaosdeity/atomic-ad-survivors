@@ -20,6 +20,7 @@ func _run() -> void:
 	await _probe_tag_settlement_and_recall_quality()
 	await _probe_outpost_place_surfaces()
 	await _probe_r01_campaign_map_flow()
+	await _probe_r01_micro_locations()
 	await _probe_r01_field_interactions()
 	await _probe_npc_presence_layer()
 	await _probe_manual_combat_input()
@@ -385,6 +386,97 @@ func _probe_r01_field_interactions() -> void:
 	_record("F12 exposes R01 interaction ids/counts", debug_ok, debug_text)
 	await _finish_main(bridge_main)
 
+func _probe_r01_micro_locations() -> void:
+	var main = await _new_main()
+	_start_r01_story_probe(main, R01CampaignMap.NODE_L02)
+	_move_to_story_object(main, "r01_story_l02_closed_door")
+	main.wave_notice_timer = 0.0
+	main.micro_location_notice_timer = 0.0
+	var entry_prompt: String = main._active_notice_text()
+	var prompt_ok := entry_prompt.find("E 진입: 현관 앞") != -1 and entry_prompt.find("l02_") == -1 and entry_prompt.find("r01_story") == -1
+	var enter_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
+	enter_ok = enter_ok and main.micro_location_active and main.current_micro_location_id == "l02_porch_gap" and main.micro_location_entry_object_id == "r01_story_l02_closed_door"
+	var debug_before_exit := ""
+	main.debug_tools.detail_visible = true
+	debug_before_exit = main._debug_overlay_text()
+	var debug_ok := debug_before_exit.find("r01 micro location current=l02_porch_gap") != -1 and debug_before_exit.find("entry=r01_story_l02_closed_door") != -1 and debug_before_exit.find("points=3") != -1
+	main.debug_tools.detail_visible = false
+
+	var inspect_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
+	var l02_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	inspect_ok = inspect_ok and String(main._active_notice_text()).find("문틈") != -1 and int(l02_memory.get("node_micro_point_count", 0)) == 1
+	var count_before := int(l02_memory.get("node_micro_point_count", 0))
+	main.current_micro_point_id = "door_voice"
+	var repeat_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
+	var repeat_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	repeat_ok = repeat_ok and String(main._active_notice_text()).find("같은 숫자") != -1 and int(repeat_memory.get("node_micro_point_count", 0)) == count_before
+
+	main.current_micro_point_id = "front_sensor"
+	var stamp_ok: bool = main._handle_micro_location_input(_key_event(KEY_J))
+	var sensor_state: Dictionary = main.r01_source_states.get("r01_story_l02_front_sensor", {})
+	stamp_ok = stamp_ok and R01SourceState.current_state(sensor_state) == R01SourceState.STATE_SUPPRESSED and String(main._active_notice_text()).find("현장 도장") != -1
+	main.current_micro_point_id = "address_sticker"
+	var charge_ok: bool = main._handle_micro_location_input(_key_event(KEY_SPACE))
+	var mailbox_state: Dictionary = main.r01_source_states.get("r01_story_l02_mailbox", {})
+	charge_ok = charge_ok and R01SourceState.current_state(mailbox_state) == R01SourceState.STATE_OVERLOADED and String(main._active_notice_text()).find("강한 도장") != -1
+	var all_done_ok: bool = main._handle_micro_location_input(_key_event(KEY_E)) and not main.micro_location_active
+
+	var location_checks := {
+		"r01_story_l02_family_window": {"location": "가족사진 창문 앞", "node": R01CampaignMap.NODE_L02, "memory": "가족사진"},
+		"r01_story_l03_model_entry": {"location": "모델하우스 로비 앞", "node": R01CampaignMap.NODE_L03, "memory": "모델하우스"},
+		"r01_story_l04_drain_trace": {"location": "배수로 입구", "node": R01CampaignMap.NODE_L04, "memory": "배수로"},
+		"r01_story_l05_fake_return_sign": {"location": "가짜 표지 뒤 쉼터", "node": R01CampaignMap.NODE_L05, "memory": "가짜"},
+	}
+	var location_flow_ok := true
+	for object_id in location_checks.keys():
+		var expected: Dictionary = location_checks[object_id]
+		_move_to_story_object(main, String(object_id))
+		main.micro_location_notice_timer = 0.0
+		var enter_location_ok: bool = main._active_notice_text().find(String(expected["location"])) != -1
+		enter_location_ok = enter_location_ok and main._handle_micro_location_input(_key_event(KEY_E))
+		enter_location_ok = enter_location_ok and main.micro_location_active
+		var inspect_location_ok: bool = main._handle_micro_location_input(_key_event(KEY_E))
+		var memory: Dictionary = main._r01_campaign_node_memory(String(expected["node"]))
+		inspect_location_ok = inspect_location_ok and int(memory.get("node_micro_point_count", 0)) > 0
+		inspect_location_ok = inspect_location_ok and String(memory.get("node_last_micro_phrase", "")).find(String(expected["memory"])) != -1
+		location_flow_ok = location_flow_ok and enter_location_ok and inspect_location_ok
+		main._handle_micro_location_input(_key_event(KEY_ESCAPE))
+
+	_move_to_story_object(main, "r01_story_l05_fake_return_sign")
+	main._handle_micro_location_input(_key_event(KEY_E))
+	main.micro_location_risk_timer = 0.0
+	var active_threats_before: int = main.active_threats.size()
+	main._update_micro_location_runtime(0.2)
+	var risk_ok: bool = main.micro_location_active and (main.active_threats.size() > active_threats_before or String(main.last_threat_label).find("마이크로 장소") != -1)
+	main._handle_micro_location_input(_key_event(KEY_ESCAPE))
+
+	main._finish_match("victory")
+	main._handle_terminal_action()
+	var supply_text: String = main.hud.supply_visible_text()
+	var supply_ok: bool = main.match_state == "supply" and (supply_text.find("모델하우스") != -1 or supply_text.find("가짜") != -1 or supply_text.find("배수로") != -1)
+	supply_ok = supply_ok and supply_text.find("l02_") == -1 and supply_text.find("r01_story") == -1
+	main._open_r01_campaign_map()
+	main._select_r01_campaign_node(R01CampaignMap.NODE_L05)
+	var map_text: String = main.hud.campaign_map_visible_text()
+	var map_ok := map_text.find("짧은 장소") != -1 and map_text.find("가짜") != -1 and map_text.find("l05_") == -1 and map_text.find("r01_story") == -1
+	main.debug_tools.detail_visible = true
+	var debug_after: String = main._debug_overlay_text()
+	var debug_memory_ok := debug_after.find("r01 micro memory") != -1 and debug_after.find("l05_fake_shelter") != -1
+
+	_record("R01 micro location entry prompt hides ids", prompt_ok, entry_prompt)
+	_record("L02 porch micro location enters with E", enter_ok)
+	_record("L02 porch micro point inspect records node memory", inspect_ok)
+	_record("micro point repeat does not farm node memory", repeat_ok)
+	_record("micro J stamp suppresses linked source", stamp_ok)
+	_record("micro SPACE charge overloads linked source", charge_ok)
+	_record("micro location exits after completed points", all_done_ok)
+	_record("L02/L03/L04/L05 micro locations inspect points", location_flow_ok)
+	_record("micro location dwell keeps source risk active", risk_ok)
+	_record("micro location bridges to outpost without ids", supply_ok, supply_text)
+	_record("micro location bridges to campaign map without ids", map_ok, map_text)
+	_record("F12 exposes micro location debug state", debug_ok and debug_memory_ok, "%s\n%s" % [debug_before_exit, debug_after])
+	await _finish_main(main)
+
 func _probe_npc_presence_layer() -> void:
 	var main = await _new_main()
 	main.meta_progression.grant_first_recall_trace()
@@ -614,6 +706,13 @@ func _story_object_node_id(object: Dictionary) -> String:
 			return R01CampaignMap.NODE_L05
 		_:
 			return R01CampaignMap.NODE_L01
+
+func _key_event(keycode: int) -> InputEventKey:
+	var event := InputEventKey.new()
+	event.keycode = keycode
+	event.physical_keycode = keycode
+	event.pressed = true
+	return event
 
 func _probe_r01_campaign_result_bridge_variants() -> void:
 	var checks := {
