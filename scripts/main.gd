@@ -17,6 +17,7 @@ const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
+const R01SourceState := preload("res://scripts/r01_source_state.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
@@ -114,6 +115,9 @@ var r01_campaign_node_states := {}
 var r01_campaign_map_open := false
 var r01_campaign_new_signal_node_ids: Array[String] = []
 var r01_campaign_node_memory := {}
+var r01_source_states := {}
+var last_r01_source_action := "none"
+var last_r01_source_effect_summary := "none"
 var r01_zone_times := {}
 var open_house_signal_stage := 0
 var ration_candidate_notice_total := 0
@@ -224,6 +228,7 @@ func _process(delta: float) -> void:
 	entry_camera_timer = maxf(0.0, entry_camera_timer - delta)
 	_update_field_interaction_runtime(delta)
 	_update_manual_stamp_runtime(delta)
+	_update_r01_source_states(delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
@@ -625,7 +630,12 @@ func _schedule_pressure_ring(delta: float) -> void:
 		interval = 7.0
 	if WaveDirector.is_finale(elapsed):
 		interval = 5.8
+	interval *= _source_hazard_interval_mult(_r01_pressure_hazard_role())
 	pressure_ring_timer = interval + rng.randf_range(0.0, 2.2)
+	if _source_hazard_safety_active(_r01_pressure_hazard_role()):
+		pressure_ring_timer = maxf(pressure_ring_timer, 1.4)
+		last_threat_label = "강한 도장: 압박 링 지연"
+		return
 	_spawn_pressure_ring()
 
 func _schedule_flyer_drop(delta: float) -> void:
@@ -639,26 +649,44 @@ func _schedule_flyer_drop(delta: float) -> void:
 		interval = 4.9
 	if WaveDirector.is_finale(elapsed):
 		interval = 3.8
+	interval *= _source_hazard_interval_mult(_r01_flyer_hazard_role())
 	flyer_drop_timer = interval + rng.randf_range(0.0, 1.6)
+	if _source_hazard_safety_active(_r01_flyer_hazard_role()):
+		flyer_drop_timer = maxf(flyer_drop_timer, 1.2)
+		last_threat_label = "강한 도장: 전단 낙하 지연"
+		return
 	_spawn_flyer_drop()
 
 func _spawn_pressure_ring() -> void:
 	var offset := _threat_offset(88.0, 46.0)
 	var hazard_role := _r01_pressure_hazard_role()
-	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id)) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var warning := PRESSURE_RING_WARNING
+	var damage := PRESSURE_RING_DAMAGE
+	if bool(source_info.get("source_revealed", false)):
+		warning += 0.18
+	if bool(source_info.get("source_suppressed", false)):
+		warning += 0.26
+		damage *= 0.92
+	if bool(source_info.get("source_overloaded", false)):
+		warning += 0.44
+		damage *= 0.84
 	active_threats.append({
 		"type": THREAT_PRESSURE_RING,
 		"pos": Vector2(source_info.get("pos", player_pos + offset)),
 		"radius": PRESSURE_RING_RADIUS,
-		"timer": PRESSURE_RING_WARNING,
-		"duration": PRESSURE_RING_WARNING,
+		"timer": warning,
+		"duration": warning,
 		"linger": PRESSURE_RING_LINGER,
-		"damage": PRESSURE_RING_DAMAGE,
+		"damage": damage,
 		"label": "압박 링",
 		"hit_checked": false,
 		"source_used": bool(source_info.get("used", false)),
+		"source_id": String(source_info.get("source_id", "")),
 		"source_pos": Vector2(source_info.get("source_pos", Vector2(INF, INF))),
 		"source_label": _hazard_source_label(hazard_role),
+		"source_state": String(source_info.get("source_state", R01SourceState.STATE_ACTIVE)),
+		"source_revealed": bool(source_info.get("source_revealed", false)),
 	})
 	last_threat_label = "%s 예고" % _hazard_source_label(hazard_role)
 	_play_sfx("pressure_ring")
@@ -666,20 +694,33 @@ func _spawn_pressure_ring() -> void:
 func _spawn_flyer_drop() -> void:
 	var offset := _threat_offset(118.0, 32.0)
 	var hazard_role := _r01_flyer_hazard_role()
-	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id)) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var warning := FLYER_DROP_WARNING
+	var damage := FLYER_DROP_DAMAGE
+	if bool(source_info.get("source_revealed", false)):
+		warning += 0.16
+	if bool(source_info.get("source_suppressed", false)):
+		warning += 0.22
+		damage *= 0.92
+	if bool(source_info.get("source_overloaded", false)):
+		warning += 0.38
+		damage *= 0.84
 	active_threats.append({
 		"type": THREAT_FLYER_DROP,
 		"pos": Vector2(source_info.get("pos", player_pos + offset)),
 		"radius": FLYER_DROP_RADIUS,
-		"timer": FLYER_DROP_WARNING,
-		"duration": FLYER_DROP_WARNING,
+		"timer": warning,
+		"duration": warning,
 		"linger": FLYER_DROP_LINGER,
-		"damage": FLYER_DROP_DAMAGE,
+		"damage": damage,
 		"label": "위험 전단 낙하",
 		"hit_checked": false,
 		"source_used": bool(source_info.get("used", false)),
+		"source_id": String(source_info.get("source_id", "")),
 		"source_pos": Vector2(source_info.get("source_pos", Vector2(INF, INF))),
 		"source_label": _hazard_source_label(hazard_role),
+		"source_state": String(source_info.get("source_state", R01SourceState.STATE_ACTIVE)),
+		"source_revealed": bool(source_info.get("source_revealed", false)),
 	})
 	last_threat_label = "%s 예고" % _hazard_source_label(hazard_role)
 	_play_sfx("danger_flyer_drop")
@@ -757,6 +798,48 @@ func _hazard_source_label(hazard_role: String) -> String:
 			return "광고 잉크 분사"
 		_:
 			return "광고 위험"
+
+func _source_hazard_interval_mult(hazard_role: String) -> float:
+	var zone_id := R01CampaignMap.node_zone_id(current_r01_node_id)
+	var mult := 1.0
+	for raw_state in r01_source_states.values():
+		var state := Dictionary(raw_state)
+		if String(state.get("zone_id", "")) != zone_id:
+			continue
+		if not _source_state_affects_hazard(state, hazard_role):
+			continue
+		var state_id := R01SourceState.current_state(state)
+		if state_id == R01SourceState.STATE_OVERLOADED:
+			mult = maxf(mult, 1.32)
+		elif state_id == R01SourceState.STATE_SUPPRESSED:
+			mult = maxf(mult, 1.16)
+	return mult
+
+func _source_hazard_safety_active(hazard_role: String) -> bool:
+	var zone_id := R01CampaignMap.node_zone_id(current_r01_node_id)
+	for raw_state in r01_source_states.values():
+		var state := Dictionary(raw_state)
+		if String(state.get("zone_id", "")) != zone_id:
+			continue
+		if float(state.get("overload_remaining", 0.0)) <= 0.0:
+			continue
+		if _source_state_affects_hazard(state, hazard_role):
+			return true
+	return false
+
+func _source_state_affects_hazard(state: Dictionary, hazard_role: String) -> bool:
+	var source_role := String(state.get("source_role", ""))
+	match hazard_role:
+		"flyer_drop":
+			return source_role == "mailbox_coupon" or source_role == "sprinkler_ink"
+		"pressure_ring", "warning_line":
+			return source_role in ["doorbell_sensor", "street_speaker", "model_sign", "consultation_kiosk", "model_house_contract_node"]
+		"low_signal", "silence_leak":
+			return source_role == "drain_silence"
+		"fake_return", "rear_pincer":
+			return source_role == "fake_return_sign" or source_role == "street_speaker"
+		_:
+			return false
 
 func _threat_offset(max_radius: float, min_radius: float) -> Vector2:
 	var angle := rng.randf_range(-PI, PI)
@@ -901,13 +984,15 @@ func _fire_charge() -> void:
 		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
 
 	charge_effect_anchor_active = false
-	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
+	var source_targets := _charge_source_targets(aim_dir)
+	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect, not source_targets.is_empty())
+	var overloaded_sources := _apply_charge_source_overload(source_targets, aim_dir)
 	_record_playtest_charge(hit_count, perfect)
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
 	charge_effect_anchor_active = false
-	_fire_feedback(hit_count > 0)
-	effects.spawn_charge_particles(player_pos, aim_dir, hit_count > 0, rng)
+	_fire_feedback(hit_count > 0 or overloaded_sources > 0)
+	effects.spawn_charge_particles(player_pos, aim_dir, hit_count > 0 or overloaded_sources > 0, rng)
 	charge_window_left = 0.0
 	charge_timer = 0.0
 	charge_open_age = 0.0
@@ -928,7 +1013,7 @@ func _fallback_aim_dir() -> Vector2:
 		dir = Vector2.RIGHT
 	return dir.normalized()
 
-func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bool) -> int:
+func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bool, source_contact: bool = false) -> int:
 	var hit_indices := _charge_line_hit_indices(aim_dir, RETURN_STAMP_RANGE, RETURN_STAMP_WIDTH)
 	var hit_count := 0
 	var line_start := player_pos + aim_dir * 14.0
@@ -980,6 +1065,10 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 		else:
 			effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
 	else:
+		if source_contact:
+			effects.add_impact_line(line_start, trace_end, C.NEON_RED, 2.7, 0.18)
+			effects.add_status_ring(trace_end, C.VITAMIN_YELLOW, 12.0, 0.20)
+			return hit_count
 		effects.add_return_stamp_whiff(line_start, trace_end)
 		_play_sfx("return_stamp_whiff")
 	return hit_count
@@ -1428,6 +1517,7 @@ func _reset_r01_run_tracking() -> void:
 	open_house_signal_stage = 0
 	field_interacted_counts.clear()
 	manual_stamped_story_counts.clear()
+	r01_source_states.clear()
 	field_interaction_reveals.clear()
 	field_interaction_notice_timer = 0.0
 	field_interaction_notice_text = ""
@@ -1437,6 +1527,8 @@ func _reset_r01_run_tracking() -> void:
 	last_field_interaction_display_name = ""
 	last_manual_stamp_object_id = ""
 	last_manual_stamp_display_name = ""
+	last_r01_source_action = "none"
+	last_r01_source_effect_summary = "none"
 
 func _record_r01_zone_time(delta: float) -> void:
 	var zone_id := r01_map.current_zone_id()
@@ -1568,6 +1660,7 @@ func _apply_field_story_object_effect(object: Dictionary) -> void:
 	_show_field_interaction_notice(notice)
 	effects.add_floater(object_pos + Vector2(0, -18), "%s 완료" % String(object.get("interaction_type", "조사")), C.VITAMIN_YELLOW, 12)
 	effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 48.0, 0.32)
+	_reveal_r01_source_object(object, "E", result_phrase)
 	_apply_field_interaction_node_memory(object)
 	_record_field_interaction_outpost_event(object)
 	_add_field_interaction_reveals(object)
@@ -1666,6 +1759,7 @@ func _append_field_interaction_reveal(source: Dictionary, label: String, color: 
 	var source_id := String(source.get("id", ""))
 	if source_id == "":
 		return false
+	R01SourceState.reveal(r01_source_states, source, "linked_reveal", label)
 	for cue in field_interaction_reveals:
 		if String(cue.get("source_id", "")) == source_id:
 			return false
@@ -1678,6 +1772,15 @@ func _append_field_interaction_reveal(source: Dictionary, label: String, color: 
 		"color": color,
 	})
 	return true
+
+func _reveal_r01_source_object(object: Dictionary, action_label: String, phrase: String) -> void:
+	var result := R01SourceState.reveal(r01_source_states, object, "reveal", phrase)
+	last_r01_source_action = "%s reveal %s -> %s" % [
+		action_label,
+		String(object.get("display_name", "source")),
+		String(result.get("state", R01SourceState.STATE_REVEALED)),
+	]
+	last_r01_source_effect_summary = _source_kind_effect_summary(object, "reveal")
 
 func _apply_field_interaction_small_combat_link(object: Dictionary) -> void:
 	match String(object.get("campaign_effect", "")):
@@ -1700,6 +1803,9 @@ func _apply_field_interaction_small_combat_link(object: Dictionary) -> void:
 func _update_manual_stamp_runtime(delta: float) -> void:
 	manual_stamp_timer = maxf(0.0, manual_stamp_timer - delta)
 	manual_stamp_notice_timer = maxf(0.0, manual_stamp_notice_timer - delta)
+
+func _update_r01_source_states(delta: float) -> void:
+	R01SourceState.tick(r01_source_states, delta)
 
 func _try_manual_stamp() -> bool:
 	var aim_data := _charge_aim_data()
@@ -1783,11 +1889,14 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 	last_manual_stamp_object_id = object_id
 	last_manual_stamp_display_name = display_name
 	manual_stamp_total_story_counts[object_id] = int(manual_stamp_total_story_counts.get(object_id, 0)) + 1
-	var already_this_sortie := int(manual_stamped_story_counts.get(object_id, 0)) > 0
+	var suppress_result := R01SourceState.suppress(r01_source_states, object, _manual_stamp_story_reaction_phrase(object))
+	var already_this_sortie := int(manual_stamped_story_counts.get(object_id, 0)) > 0 or bool(suppress_result.get("repeat", false))
 	manual_stamped_story_counts[object_id] = int(manual_stamped_story_counts.get(object_id, 0)) + 1
 	if already_this_sortie:
 		effects.add_floater(object_pos + Vector2(0, -16), "이미 도장됨", Color(0.35, 0.70, 0.95), 10)
 		effects.add_status_ring(object_pos, Color(0.35, 0.70, 0.95), 34.0, 0.22)
+		last_r01_source_action = "repeat stamp %s -> %s" % [display_name, String(suppress_result.get("state", R01SourceState.STATE_SPENT))]
+		last_r01_source_effect_summary = "repeat only / no node memory"
 		return {
 			"hit": true,
 			"source_hit": false,
@@ -1797,8 +1906,11 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 	_record_manual_stamp_outpost_event(object)
 	_add_field_interaction_reveals(object)
 	_apply_manual_stamp_small_combat_link(object)
+	_apply_source_suppression_combat_effect(object)
 	effects.add_floater(object_pos + Vector2(0, -16), "도장 확인", C.NEON_RED, 11)
 	effects.add_status_ring(object_pos, C.NEON_RED, 44.0, 0.28)
+	last_r01_source_action = "stamp %s -> %s" % [display_name, String(suppress_result.get("state", R01SourceState.STATE_SUPPRESSED))]
+	last_r01_source_effect_summary = _source_kind_effect_summary(object, "suppress")
 	return {
 		"hit": true,
 		"source_hit": true,
@@ -1897,6 +2009,275 @@ func _manual_stamp_outpost_reaction(object: Dictionary) -> String:
 		String(object.get("display_name", "source")),
 		String(object.get("node_memory_phrase", "반품 확인")),
 	]
+
+func _charge_source_targets(aim_dir: Vector2) -> Array[Dictionary]:
+	var targets: Array[Dictionary] = []
+	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+		return targets
+	var safe_dir := aim_dir.normalized() if aim_dir.length_squared() > 0.01 else _fallback_aim_dir()
+	var candidates: Array[Dictionary] = []
+	for object in r01_blockout.story_objects_for_state():
+		if not _r01_story_source_processable(object):
+			continue
+		var object_pos := Vector2(object.get("pos", Vector2.ZERO))
+		var to_object := object_pos - player_pos
+		var forward := to_object.dot(safe_dir)
+		if forward < -12.0 or forward > RETURN_STAMP_RANGE + 34.0:
+			continue
+		var lateral_sq := maxf(0.0, to_object.length_squared() - forward * forward)
+		var radius := 66.0 if String(object.get("kind", "")) == "model_house" else 48.0
+		if lateral_sq > radius * radius:
+			continue
+		candidates.append({
+			"score": maxf(0.0, forward) + sqrt(lateral_sq) * 0.36,
+			"object": object,
+		})
+	if candidates.is_empty():
+		var zone_id := r01_blockout.nearest_zone_id(player_pos)
+		var near_object := r01_blockout.nearest_story_object(player_pos, 118.0, zone_id)
+		if near_object.is_empty():
+			near_object = r01_blockout.nearest_story_object(player_pos, 118.0)
+		if not near_object.is_empty() and _r01_story_source_processable(near_object):
+			targets.append(near_object)
+			return targets
+	candidates.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return float(a.get("score", 0.0)) < float(b.get("score", 0.0))
+	)
+	var seen := {}
+	for candidate in candidates:
+		var object: Dictionary = candidate.get("object", {})
+		var object_id := String(object.get("id", ""))
+		if object_id == "" or seen.has(object_id):
+			continue
+		seen[object_id] = true
+		targets.append(object)
+		if targets.size() >= 3:
+			break
+	return targets
+
+func _r01_story_source_processable(object: Dictionary) -> bool:
+	if object.is_empty():
+		return false
+	if String(object.get("id", "")) == "":
+		return false
+	if String(object.get("source_role", "environmental_readability")) != "environmental_readability":
+		return true
+	return not Array(object.get("reveal_spawn_roles", [])).is_empty() or not Array(object.get("reveal_hazard_roles", [])).is_empty()
+
+func _apply_charge_source_overload(source_targets: Array[Dictionary], aim_dir: Vector2) -> int:
+	var applied := 0
+	var repeats := 0
+	for object in source_targets:
+		var display_name := String(object.get("display_name", "위험 원천"))
+		var result := R01SourceState.overload(r01_source_states, object, _source_overload_phrase(object))
+		var object_pos := Vector2(object.get("pos", player_pos))
+		if bool(result.get("repeat", false)):
+			repeats += 1
+			effects.add_floater(object_pos + Vector2(0, -18), "이미 처리됨", Color(0.35, 0.70, 0.95), 10)
+			effects.add_status_ring(object_pos, Color(0.35, 0.70, 0.95), 36.0, 0.22)
+			continue
+		if not bool(result.get("applied", false)):
+			continue
+		applied += 1
+		last_manual_stamp_object_id = String(object.get("id", ""))
+		last_manual_stamp_display_name = display_name
+		_apply_source_action_node_memory(object, "overload")
+		_record_source_action_outpost_event(object, "overload")
+		_add_field_interaction_reveals(object)
+		_apply_source_overload_combat_effect(object, aim_dir)
+		effects.add_floater(object_pos + Vector2(0, -20), "강한 도장", C.VITAMIN_YELLOW, 12)
+		effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 62.0, 0.36)
+		effects.add_impact_line(player_pos + aim_dir.normalized() * 14.0, object_pos, C.NEON_RED, 3.2, 0.18)
+	if applied > 0:
+		var line := "강한 도장: 위험 원천 %d곳 교란" % applied
+		if applied == 1:
+			line = _source_overload_phrase(source_targets[0])
+		_show_wave_notice(line)
+		_play_sfx("return_stamp_combo", 0.92, 0.0)
+		_record_playtest_event("source_overload")
+		last_r01_source_action = "overload %d source(s)" % applied
+		last_r01_source_effect_summary = _source_kind_effect_summary(source_targets[0], "overload")
+	elif repeats > 0:
+		_show_wave_notice("강한 도장: 이미 처리한 위험 원천은 더 파밍되지 않습니다")
+		last_r01_source_action = "repeat overload"
+		last_r01_source_effect_summary = "repeat only / no node memory"
+	return applied
+
+func _apply_source_suppression_combat_effect(object: Dictionary) -> void:
+	var key := _source_effect_key(object)
+	var pos := Vector2(object.get("pos", player_pos))
+	match key:
+		"mailbox":
+			flyer_drop_timer = maxf(flyer_drop_timer, 2.3)
+			_delay_or_cancel_source_threats(pos, false)
+		"doorbell":
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.1)
+			_slow_enemies_near_source(pos, 120.0, 0.82, 0.85, 5.0)
+		"speaker":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.8)
+			_slow_enemies_near_source(pos, 142.0, 0.88, 0.82, 4.0, ["speaker", "signal"])
+		"drain":
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.0)
+			flyer_drop_timer = maxf(flyer_drop_timer, 1.8)
+			_delay_or_cancel_source_threats(pos, false)
+		"fake_return":
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.4)
+			_slow_enemies_near_source(pos, 130.0, 0.86, 0.84, 5.5, ["fast", "charger", "speaker"])
+		"model_house":
+			pressure_ring_timer = maxf(pressure_ring_timer, 2.1)
+			_slow_enemies_near_source(pos, 148.0, 0.86, 0.84, 4.5, ["elite", "signal", "speaker"])
+		_:
+			_delay_or_cancel_source_threats(pos, false)
+
+func _apply_source_overload_combat_effect(object: Dictionary, aim_dir: Vector2) -> void:
+	var pos := Vector2(object.get("pos", player_pos))
+	pressure_ring_timer = maxf(pressure_ring_timer, 3.1)
+	flyer_drop_timer = maxf(flyer_drop_timer, 2.8)
+	_delay_or_cancel_source_threats(pos, true)
+	_slow_enemies_near_source(pos, 164.0, 1.35, 0.62, 13.0, [])
+	effects.add_impact_shake(0.16, 4.0)
+	if aim_dir.length_squared() > 0.01:
+		charge_effect_anchor = pos
+		charge_effect_anchor_active = true
+
+func _slow_enemies_near_source(center: Vector2, radius: float, duration: float, slow_mult: float, knockback: float, roles: Array = []) -> int:
+	var affected := 0
+	var radius_sq := radius * radius
+	for i in range(enemies.enemies.size()):
+		var enemy := enemies.enemies[i]
+		var role := "elite" if bool(enemy.get("elite", false)) else String(enemy.get("role", "basic"))
+		if not roles.is_empty() and not roles.has(role):
+			continue
+		var enemy_pos := Vector2(enemy.get("pos", Vector2.ZERO))
+		if enemy_pos.distance_squared_to(center) > radius_sq:
+			continue
+		enemies.apply_slow(i, duration, slow_mult)
+		var dir := (enemy_pos - center).normalized()
+		if dir.length_squared() <= 0.01:
+			dir = Vector2.RIGHT
+		enemies.knockback_enemy(i, dir, knockback)
+		affected += 1
+	return affected
+
+func _delay_or_cancel_source_threats(center: Vector2, strong: bool) -> int:
+	var affected := 0
+	var next_threats: Array[Dictionary] = []
+	var cancelled := false
+	for threat in active_threats:
+		var threat_pos := Vector2(threat.get("pos", Vector2.ZERO))
+		var source_pos := Vector2(threat.get("source_pos", Vector2(INF, INF)))
+		var near_threat := threat_pos.distance_squared_to(center) <= 170.0 * 170.0
+		var near_source := source_pos.x < INF * 0.5 and source_pos.distance_squared_to(center) <= 86.0 * 86.0
+		if strong and not cancelled and (near_threat or near_source):
+			cancelled = true
+			affected += 1
+			effects.add_status_ring(threat_pos, Color(0.35, 0.70, 0.95), float(threat.get("radius", 42.0)), 0.26)
+			continue
+		if near_threat or near_source:
+			threat["timer"] = maxf(float(threat.get("timer", 0.0)), 0.18) + (0.80 if strong else 0.34)
+			threat["duration"] = float(threat.get("duration", 1.0)) + (0.80 if strong else 0.34)
+			threat["source_state"] = R01SourceState.STATE_OVERLOADED if strong else R01SourceState.STATE_SUPPRESSED
+			affected += 1
+		next_threats.append(threat)
+	active_threats = next_threats
+	return affected
+
+func _apply_source_action_node_memory(object: Dictionary, action: String) -> void:
+	var zone_id := String(object.get("zone_id", ""))
+	var node_id := _r01_node_id_for_zone(zone_id)
+	var memory := _r01_campaign_node_memory(node_id)
+	var display_name := String(object.get("display_name", "위험 원천"))
+	var names := Array(memory.get("node_source_action_names", [])).duplicate()
+	if not names.has(display_name):
+		names.append(display_name)
+	memory["node_source_action_names"] = names
+	memory["node_source_action_count"] = names.size()
+	memory["node_last_source_action_name"] = display_name
+	memory["node_last_source_action_phrase"] = _source_action_memory_phrase(object, action)
+	memory["node_last_event_line"] = memory["node_last_source_action_phrase"]
+	memory["node_last_outpost_reaction"] = _source_action_outpost_reaction(object, action)
+	memory["node_last_field_outpost_reaction"] = _source_action_outpost_reaction(object, action)
+	memory["node_last_tag_summary"] = String(object.get("tag_hint", "태그 힌트 없음"))
+	r01_campaign_node_memory[node_id] = memory
+
+func _record_source_action_outpost_event(object: Dictionary, action: String) -> void:
+	var npc_id := String(object.get("npc_id", "seven"))
+	var facility_id := String(object.get("facility_id", "sortie_board"))
+	meta_progression.record_outpost_event(npc_id, "source_%s" % action, _source_action_outpost_reaction(object, action), facility_id)
+
+func _source_action_memory_phrase(object: Dictionary, action: String) -> String:
+	if action == "overload":
+		return "강한 도장 교란: %s" % String(object.get("node_memory_phrase", object.get("display_name", "위험 원천")))
+	return "위험 원천 처리: %s" % String(object.get("node_memory_phrase", object.get("display_name", "위험 원천")))
+
+func _source_action_outpost_reaction(object: Dictionary, action: String) -> String:
+	var key := _source_effect_key(object)
+	match key:
+		"mailbox":
+			return "정산 카운터: 주소 중복 출력이 줄었습니다."
+		"doorbell":
+			return "정비대: 현관 센서 주파수를 기록했습니다."
+		"speaker":
+			return "출격 게시판: 스피커 압박선이 한 박자 늦어졌습니다."
+		"drain":
+			return "흔적 보관실: 배수구의 낮은 신호 위치를 표시했습니다."
+		"fake_return":
+			return "출격 게시판: 해당 회수선은 보급소 인증이 아닙니다."
+		"model_house":
+			return "이름 보관함: 심사관 신호가 잠깐 흔들렸습니다." if action == "overload" else "출격 게시판: 모델하우스 심사 신호를 경고로 고정했습니다."
+		_:
+			return "보급소: 현장 도장 처리 흔적을 보상 대신 기록으로 묶었습니다."
+
+func _source_overload_phrase(object: Dictionary) -> String:
+	match _source_effect_key(object):
+		"mailbox":
+			return "강한 도장: 우편함 발송 리듬이 끊겼습니다"
+		"doorbell":
+			return "강한 도장: 현관 센서 ping이 넓게 흔들립니다"
+		"speaker":
+			return "강한 도장: 스피커 압박선이 잠깐 끊깁니다"
+		"drain":
+			return "강한 도장: 낮은 신호 zone이 드러났습니다"
+		"fake_return":
+			return "강한 도장: 가짜 귀환 표지가 역방향으로 깜박입니다"
+		"model_house":
+			return "강한 도장: 모델하우스 심사 신호가 흔들립니다"
+		_:
+			return "강한 도장: 위험 원천 흐름이 잠깐 끊깁니다"
+
+func _source_kind_effect_summary(object: Dictionary, action: String) -> String:
+	match _source_effect_key(object):
+		"mailbox":
+			return "mailbox %s: coupon/basic source bias down, flyer marker earlier" % action
+		"doorbell":
+			return "doorbell %s: charger/speaker warning clearer, frequency down" % action
+		"speaker":
+			return "speaker %s: signal aura weaker, pressure line clearer" % action
+		"drain":
+			return "drain %s: low-signal hazard revealed, zone marked" % action
+		"fake_return":
+			return "fake-return %s: rear pincer source revealed, trigger warning stronger" % action
+		"model_house":
+			return "model-house %s: review signal revealed, elite/signal pressure eased" % action
+		_:
+			return "source %s: warning/hazard bias adjusted" % action
+
+func _source_effect_key(object: Dictionary) -> String:
+	var effect := String(object.get("campaign_effect", ""))
+	var source_role := String(object.get("source_role", ""))
+	if effect.find("mailbox") != -1 or source_role == "mailbox_coupon":
+		return "mailbox"
+	if effect == "front_sensor_warning" or source_role == "doorbell_sensor":
+		return "doorbell"
+	if effect == "speaker_signal_checked" or effect == "rear_ad_pillar_checked" or source_role == "street_speaker" or source_role == "model_sign":
+		return "speaker"
+	if effect == "drain_low_signal_trace" or effect == "low_signal_checked" or source_role == "drain_silence":
+		return "drain"
+	if effect == "fake_return_verified" or effect == "unstable_recovery_line_marked" or source_role == "fake_return_sign":
+		return "fake_return"
+	if effect == "model_house_access_warning" or effect == "consultation_question_held" or source_role == "model_house_contract_node" or source_role == "consultation_kiosk":
+		return "model_house"
+	return "source"
 
 func _show_manual_stamp_notice(text: String) -> void:
 	manual_stamp_notice_text = text
@@ -2011,7 +2392,8 @@ func _wave_params_for_elapsed(value: float) -> Dictionary:
 	var params := WaveDirector.params_for_time(value, sortie_index, r01_map.current_zone_id())
 	params = _apply_r01_contamination_spawn_pressure(params)
 	params = _apply_r01_campaign_node_spawn_hint(params, value)
-	return _apply_audit_spawn_pressure(params)
+	params = _apply_audit_spawn_pressure(params)
+	return _apply_r01_source_state_spawn_pressure(params)
 
 func _apply_r01_campaign_node_spawn_hint(params: Dictionary, value: float) -> Dictionary:
 	var result := params.duplicate(true)
@@ -2100,6 +2482,65 @@ func _apply_r01_contamination_spawn_pressure(params: Dictionary) -> Dictionary:
 	weights["signal"] = float(weights.get("signal", 0.0)) + 0.012 * float(int(r01_state.get("r01_contaminated_signal_count", 0)))
 	result["role_weights"] = weights
 	return result
+
+func _apply_r01_source_state_spawn_pressure(params: Dictionary) -> Dictionary:
+	var result := params.duplicate(true)
+	result["source_states"] = r01_source_states.duplicate(true)
+	result["source_state_summary"] = R01SourceState.count_summary(r01_source_states)
+	var zone_id := R01CampaignMap.node_zone_id(current_r01_node_id)
+	var weights: Dictionary = result.get("role_weights", {}).duplicate(true)
+	var suppressed := 0
+	var overloaded := 0
+	var affected_roles := {}
+	for raw_state in r01_source_states.values():
+		var state := Dictionary(raw_state)
+		if String(state.get("zone_id", "")) != zone_id:
+			continue
+		var state_id := R01SourceState.current_state(state)
+		if state_id != R01SourceState.STATE_SUPPRESSED and state_id != R01SourceState.STATE_OVERLOADED:
+			continue
+		var mult := 0.88
+		if state_id == R01SourceState.STATE_OVERLOADED:
+			mult = 0.76
+			overloaded += 1
+		else:
+			suppressed += 1
+		for role in _source_state_affected_spawn_roles(state):
+			if weights.has(role):
+				weights[role] = float(weights.get(role, 0.0)) * mult
+				affected_roles[role] = true
+	result["role_weights"] = weights
+	if suppressed > 0 or overloaded > 0:
+		var source_mult := clampf(1.0 - 0.075 * float(suppressed) - 0.13 * float(overloaded), 0.52, 1.0)
+		result["source_spawn_chance"] = float(result.get("source_spawn_chance", 0.0)) * source_mult
+		result["spawn_pincer_chance"] = float(result.get("spawn_pincer_chance", 0.0)) * clampf(source_mult + 0.08, 0.58, 1.0)
+		result["spawn_pressure"] = float(result.get("spawn_pressure", 1.0)) * clampf(1.0 - 0.018 * float(suppressed) - 0.035 * float(overloaded), 0.90, 1.0)
+		var role_names := affected_roles.keys()
+		role_names.sort()
+		result["source_affected_summary"] = "suppressed=%d overloaded=%d roles=%s" % [suppressed, overloaded, ",".join(role_names)]
+	else:
+		result["source_affected_summary"] = "none"
+	last_r01_source_effect_summary = String(result.get("source_affected_summary", last_r01_source_effect_summary))
+	return result
+
+func _source_state_affected_spawn_roles(state: Dictionary) -> Array[String]:
+	match String(state.get("source_role", "")):
+		"mailbox_coupon":
+			return ["coupon", "basic", "fast"]
+		"doorbell_sensor":
+			return ["charger", "speaker", "signal"]
+		"street_speaker", "model_sign":
+			return ["speaker", "signal", "charger"]
+		"drain_silence":
+			return ["signal", "tank", "basic"]
+		"fake_return_sign":
+			return ["fast", "charger", "speaker"]
+		"consultation_kiosk", "model_house_contract_node":
+			return ["elite", "signal", "speaker"]
+		"homecare_robot":
+			return ["robot", "tank", "basic"]
+		_:
+			return []
 
 func _apply_audit_spawn_pressure(params: Dictionary) -> Dictionary:
 	var result := params.duplicate(true)
@@ -3226,6 +3667,10 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_manual_stamp_count": 0,
 			"node_last_manual_stamp_name": "",
 			"node_last_manual_stamp_phrase": "",
+			"node_source_action_names": [],
+			"node_source_action_count": 0,
+			"node_last_source_action_name": "",
+			"node_last_source_action_phrase": "",
 		}
 	return memory
 
@@ -3966,6 +4411,12 @@ func _debug_info() -> Dictionary:
 		"r01_manual_stamp_sortie_counts": _field_interaction_counts_summary(manual_stamped_story_counts),
 		"r01_manual_stamp_total_counts": _field_interaction_counts_summary(manual_stamp_total_story_counts),
 		"r01_field_interaction_reveals": field_interaction_reveals.size(),
+		"r01_source_state_count": r01_source_states.size(),
+		"r01_source_state_counts": R01SourceState.count_summary(r01_source_states),
+		"r01_last_source_action": last_r01_source_action,
+		"r01_source_suppression_remaining": R01SourceState.remaining_summary(r01_source_states),
+		"r01_source_affected_summary": String(wave_params.get("source_affected_summary", last_r01_source_effect_summary)),
+		"r01_source_state_debug": R01SourceState.compact_debug(r01_source_states),
 		"r01_layer_ground_patch": int(r01_layer_summary.get("ground_patch", 0)),
 		"r01_layer_ground_decal": int(r01_layer_summary.get("ground_decal", 0)),
 		"r01_layer_travel_corridor": int(r01_layer_summary.get("travel_corridor", 0)),
@@ -4270,6 +4721,7 @@ func _draw() -> void:
 	_draw_arena()
 	_draw_signal_board_route_hints()
 	_draw_r01_contamination_marks()
+	_draw_r01_source_state_marks()
 	_draw_field_interaction_reveals()
 	_draw_charge_puddles()
 	_draw_threats()
@@ -4283,7 +4735,7 @@ func _draw() -> void:
 
 func _draw_arena() -> void:
 	if R01LayoutBlockout.ENABLED:
-		r01_blockout.draw(self, elapsed, player_pos, debug_tools.blockout_debug_labels_visible())
+		r01_blockout.draw(self, elapsed, player_pos, debug_tools.blockout_debug_labels_visible(), r01_source_states)
 		return
 	r01_map.draw(self, elapsed, player_pos, _boss_route_ready(), boss.active)
 
@@ -4396,6 +4848,43 @@ func _draw_field_interaction_reveals() -> void:
 		draw_line(pos + Vector2(0, -16), pos + Vector2(0, 16), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
 		if debug_tools.blockout_debug_labels_visible() or player_pos.distance_squared_to(pos) < 180.0 * 180.0:
 			draw_string(UIFont.get_font(), pos + Vector2(-54, 36), String(cue.get("label", "source")), HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.18, 0.12, 0.10, 0.62 * ratio))
+
+func _draw_r01_source_state_marks() -> void:
+	if r01_source_states.is_empty():
+		return
+	if not (match_state == "playing" or match_state == "level_up"):
+		return
+	for source_id in r01_source_states.keys():
+		var state := Dictionary(r01_source_states[source_id])
+		var state_id := R01SourceState.current_state(state)
+		if state_id == R01SourceState.STATE_ACTIVE:
+			continue
+		var pos := Vector2(state.get("pos", Vector2.ZERO))
+		var pulse := 0.5 + 0.5 * sin(elapsed * 5.5 + pos.x * 0.01)
+		if bool(state.get("revealed", false)):
+			draw_arc(pos, 28.0 + pulse * 5.0, 0.0, TAU, 36, Color(0.35, 0.70, 0.95, 0.30), 1.6)
+			draw_line(pos + Vector2(-18, 0), pos + Vector2(18, 0), Color(0.35, 0.70, 0.95, 0.24), 1.2)
+		if bool(state.get("stamped", false)):
+			var stamp_rect := Rect2(pos + Vector2(-16, -27), Vector2(32, 14))
+			draw_rect(stamp_rect, Color(1.0, 0.96, 0.82, 0.18), true)
+			draw_rect(stamp_rect, Color(1.0, 0.30, 0.36, 0.56), false, 1.6)
+			draw_line(stamp_rect.position + Vector2(5, 9), stamp_rect.position + Vector2(27, 5), Color(1.0, 0.30, 0.36, 0.62), 1.4)
+		if state_id == R01SourceState.STATE_SUPPRESSED:
+			draw_arc(pos, 38.0 + pulse * 3.0, 0.25, PI * 1.45, 32, Color(0.35, 0.70, 0.95, 0.38), 2.2)
+			draw_line(pos + Vector2(-24, 18), pos + Vector2(24, -18), Color(0.35, 0.70, 0.95, 0.34), 2.0)
+		elif state_id == R01SourceState.STATE_OVERLOADED:
+			var jitter := Vector2(sin(elapsed * 21.0) * 2.0, cos(elapsed * 17.0) * 2.0)
+			draw_circle(pos + jitter, 46.0 + pulse * 10.0, Color(1.0, 0.91, 0.25, 0.10))
+			draw_arc(pos + jitter, 52.0 + pulse * 8.0, 0.0, TAU, 48, Color(1.0, 0.91, 0.25, 0.68), 3.0)
+			draw_line(pos + Vector2(-30, -22), pos + Vector2(32, 20), Color(1.0, 0.30, 0.36, 0.52), 2.2)
+			draw_line(pos + Vector2(-26, 22), pos + Vector2(28, -20), Color(0.62, 1.0, 0.36, 0.42), 1.8)
+		elif state_id == R01SourceState.STATE_SPENT:
+			var sticker := Rect2(pos + Vector2(13, -10), Vector2(18, 12))
+			draw_rect(sticker, Color(1.0, 0.96, 0.82, 0.58), true)
+			draw_rect(sticker, Color(0.44, 0.25, 0.20, 0.52), false, 1.1)
+			draw_line(sticker.position + Vector2(3, 7), sticker.position + Vector2(15, 7), Color(0.44, 0.25, 0.20, 0.46), 1.0)
+		if debug_tools.blockout_debug_labels_visible():
+			draw_string(UIFont.get_font(), pos + Vector2(-70, 46), "%s %s" % [String(source_id), state_id], HORIZONTAL_ALIGNMENT_CENTER, 140, 7, Color(0.18, 0.12, 0.10, 0.68))
 
 func _r01_contamination_marks_should_draw() -> bool:
 	if not R01LayoutBlockout.ENABLED:
@@ -4550,6 +5039,13 @@ func _draw_threats() -> void:
 			var source_pos := Vector2(threat.get("source_pos", Vector2(INF, INF)))
 			if source_pos.x < INF * 0.5:
 				var source_alpha := 0.20 + 0.12 * sin(elapsed * 8.0)
+				var state_id := String(threat.get("source_state", R01SourceState.STATE_ACTIVE))
+				if state_id == R01SourceState.STATE_SUPPRESSED:
+					source_alpha *= 0.52
+				elif state_id == R01SourceState.STATE_OVERLOADED:
+					source_alpha *= 1.28
+				elif bool(threat.get("source_revealed", false)):
+					source_alpha *= 1.14
 				var source_color := Color(1.0, 0.91, 0.25, source_alpha)
 				if type == THREAT_PRESSURE_RING:
 					source_color = Color(1.0, 0.30, 0.36, source_alpha)

@@ -228,6 +228,16 @@ func detail_text(info: Dictionary) -> String:
 			str(info.get("r01_manual_stamp_sortie_counts", "")),
 			str(info.get("r01_manual_stamp_total_counts", "")),
 		],
+		"r01 source states count=%d %s" % [
+			int(info.get("r01_source_state_count", 0)),
+			str(info.get("r01_source_state_counts", "")),
+		],
+		"r01 source action %s remaining=%s" % [
+			str(info.get("r01_last_source_action", "")),
+			str(info.get("r01_source_suppression_remaining", "")),
+		],
+		"r01 source spawn/hazard affected %s" % str(info.get("r01_source_affected_summary", "")),
+		"r01 source state debug %s" % str(info.get("r01_source_state_debug", "")),
 		"r01 story object zones %s" % str(info.get("r01_story_object_summary", "")),
 		"r01 asset keys: %s" % str(info.get("r01_asset_key_sample", "")),
 		"outpost: %s %s facilities=%d" % [

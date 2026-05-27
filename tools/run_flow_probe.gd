@@ -2,6 +2,7 @@ extends SceneTree
 
 const MainScene := preload("res://scenes/main.tscn")
 const R01CampaignMap := preload("res://scripts/r01_campaign_map.gd")
+const R01SourceState := preload("res://scripts/r01_source_state.gd")
 
 var failures: Array[String] = []
 
@@ -20,6 +21,7 @@ func _run() -> void:
 	await _probe_r01_campaign_map_flow()
 	await _probe_r01_field_interactions()
 	await _probe_manual_combat_input()
+	await _probe_r01_source_state_handling()
 	await _probe_ten_minute_loop_readability()
 
 	if failures.is_empty():
@@ -441,6 +443,69 @@ func _probe_manual_combat_input() -> void:
 	_record("manual stamp HUD/tutorial text exists", hud_text_ok)
 	_record("manual stamp general UI hides ids", ui_clean_ok)
 	_record("F12 exposes manual stamp ids/counts", debug_ok, debug_text)
+	await _finish_main(main)
+
+func _probe_r01_source_state_handling() -> void:
+	var main = await _new_main()
+	_start_r01_story_probe(main, R01CampaignMap.NODE_L02)
+	var mailbox := _move_to_story_object(main, "r01_story_l02_mailbox")
+	var before_params: Dictionary = main._wave_params_for_elapsed(90.0)
+	var reveal_ok: bool = main._try_field_interaction()
+	var reveal_state: Dictionary = main.r01_source_states.get("r01_story_l02_mailbox", {})
+	reveal_ok = reveal_ok and R01SourceState.current_state(reveal_state) == R01SourceState.STATE_REVEALED and String(main._active_notice_text()).find("r01_story") == -1
+
+	main.manual_stamp_timer = 0.0
+	var suppress_ok: bool = main._try_manual_stamp_with_aim(Vector2.RIGHT)
+	var suppress_state: Dictionary = main.r01_source_states.get("r01_story_l02_mailbox", {})
+	var after_params: Dictionary = main._wave_params_for_elapsed(90.0)
+	suppress_ok = suppress_ok and R01SourceState.current_state(suppress_state) == R01SourceState.STATE_SUPPRESSED
+	suppress_ok = suppress_ok and float(after_params.get("source_spawn_chance", 1.0)) < float(before_params.get("source_spawn_chance", 1.0))
+	suppress_ok = suppress_ok and String(after_params.get("source_affected_summary", "")).find("suppressed=1") != -1
+	suppress_ok = suppress_ok and main._source_hazard_interval_mult("flyer_drop") > 1.0
+
+	var memory_before: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	var count_before := int(memory_before.get("node_manual_stamp_count", 0))
+	main.manual_stamp_timer = 0.0
+	var repeat_ok: bool = main._try_manual_stamp_with_aim(Vector2.RIGHT)
+	var memory_after: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L02)
+	repeat_ok = repeat_ok and String(main._active_notice_text()).find("이미") != -1 and int(memory_after.get("node_manual_stamp_count", 0)) == count_before
+
+	_move_to_story_object(main, "r01_story_l03_model_entry")
+	main.charge_window_left = main._charge_window()
+	main.charge_timer = main._charge_period()
+	main._fire_charge()
+	var overload_state: Dictionary = main.r01_source_states.get("r01_story_l03_model_entry", {})
+	var overload_memory: Dictionary = main._r01_campaign_node_memory(R01CampaignMap.NODE_L03)
+	var overload_ok := R01SourceState.current_state(overload_state) == R01SourceState.STATE_OVERLOADED and int(overload_memory.get("node_source_action_count", 0)) > 0 and String(main._active_notice_text()).find("overloaded") == -1
+
+	var expected_source_types := {
+		"r01_story_l02_mailbox": "mailbox",
+		"r01_story_l02_front_sensor": "doorbell",
+		"r01_story_l03_speaker_pillar": "speaker",
+		"r01_story_l04_drain_trace": "drain",
+		"r01_story_l05_fake_return_sign": "fake_return",
+		"r01_story_l03_model_entry": "model_house",
+	}
+	var source_types_ok := true
+	var source_type_summary := {}
+	for object_id in expected_source_types.keys():
+		var object: Dictionary = main.r01_blockout.story_object_by_id(String(object_id))
+		var key: String = main._source_effect_key(object)
+		source_type_summary[object_id] = key
+		source_types_ok = source_types_ok and key == String(expected_source_types[object_id])
+
+	main.debug_tools.detail_visible = true
+	var debug_text: String = main._debug_overlay_text()
+	var debug_ok := debug_text.find("r01 source states count") != -1 and debug_text.find("r01 source action") != -1 and debug_text.find("r01 source spawn/hazard affected") != -1
+	var ui_clean_ok := String(main._active_notice_text()).find("r01_story") == -1 and String(main._active_notice_text()).find("suppressed") == -1
+
+	_record("R01 source E reveal creates revealed session state", reveal_ok, JSON.stringify(reveal_state))
+	_record("R01 source J suppress affects spawn/hazard bias", suppress_ok, "before_chance=%.2f after_chance=%.2f summary=%s" % [float(before_params.get("source_spawn_chance", 0.0)), float(after_params.get("source_spawn_chance", 0.0)), String(after_params.get("source_affected_summary", ""))])
+	_record("R01 repeated source processing does not farm memory", repeat_ok)
+	_record("R01 SPACE charge overloads source safely", overload_ok, JSON.stringify(overload_state))
+	_record("R01 six source kinds have distinct handling", source_types_ok, JSON.stringify(source_type_summary))
+	_record("R01 source general UI hides internal ids/states", ui_clean_ok, main._active_notice_text())
+	_record("F12 exposes source state and affected spawn/hazard summary", debug_ok, debug_text)
 	await _finish_main(main)
 
 func _start_r01_story_probe(main, node_id: String) -> void:

@@ -3,6 +3,7 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
+const R01SourceState := preload("res://scripts/r01_source_state.gd")
 
 const ENABLED := true
 const WORLD_BOUNDS := Rect2(Vector2(-2640, -1485), Vector2(5280, 2970))
@@ -324,7 +325,7 @@ func _biased_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerato
 func _source_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerator, radius: float, role: String, wave_params: Dictionary, near_rect: Rect2) -> Vector2:
 	_last_source_spawn_debug = {"used": false, "role": role}
 	var chance := float(wave_params.get("source_spawn_chance", 0.0))
-	if chance <= 0.0 or rng.randf() > chance:
+	if chance <= 0.0:
 		return Vector2(INF, INF)
 	var zone_id := String(wave_params.get("source_zone_id", nearest_zone_id(player_pos)))
 	var sources := source_objects_for_spawn_role(role, zone_id)
@@ -336,8 +337,20 @@ func _source_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerato
 		sources = source_objects_for_spawn_role(role)
 	if sources.is_empty():
 		return Vector2(INF, INF)
-	var source: Dictionary = sources[rng.randi_range(0, sources.size() - 1)]
+	var source_states := Dictionary(wave_params.get("source_states", {}))
+	chance *= R01SourceState.source_list_chance_multiplier(source_states, sources)
+	if rng.randf() > chance:
+		_last_source_spawn_debug = {
+			"used": false,
+			"role": role,
+			"zone_id": zone_id,
+			"state_chance": chance,
+			"source_state_summary": R01SourceState.count_summary(source_states),
+		}
+		return Vector2(INF, INF)
+	var source: Dictionary = R01SourceState.pick_weighted_source(source_states, sources, rng)
 	var source_pos := Vector2(source.get("pos", player_pos))
+	var state := R01SourceState.state_for_source(source_states, String(source.get("id", "")))
 	var view_half := C.VIEWPORT_SIZE * 0.5
 	var dir := source_pos - player_pos
 	if dir.length_squared() <= 1.0:
@@ -363,6 +376,8 @@ func _source_enemy_spawn_position(player_pos: Vector2, rng: RandomNumberGenerato
 				"source_pos": source_pos,
 				"spawn_pos": candidate,
 				"bias": String(wave_params.get("source_spawn_label", "")),
+				"source_state": R01SourceState.current_state(state) if not state.is_empty() else R01SourceState.STATE_ACTIVE,
+				"state_chance": chance,
 			}
 			return candidate
 	return Vector2(INF, INF)
@@ -462,7 +477,7 @@ func last_source_spawn_debug() -> Dictionary:
 func last_hazard_source_debug() -> Dictionary:
 	return _last_hazard_source_debug.duplicate(true)
 
-func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: RandomNumberGenerator, fallback_pos: Vector2, zone_id: String = "") -> Dictionary:
+func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: RandomNumberGenerator, fallback_pos: Vector2, zone_id: String = "", source_states: Dictionary = {}) -> Dictionary:
 	var selected_zone := zone_id if zone_id != "" else nearest_zone_id(player_pos)
 	var sources := source_objects_for_hazard_role(hazard_role, selected_zone)
 	if sources.is_empty() and hazard_role == "pressure_ring":
@@ -476,8 +491,10 @@ func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: Rando
 	if sources.is_empty():
 		_last_hazard_source_debug = {"used": false, "hazard_role": hazard_role, "zone_id": selected_zone}
 		return {"pos": fallback_pos, "used": false}
-	var source: Dictionary = sources[rng.randi_range(0, sources.size() - 1)]
+	var source: Dictionary = R01SourceState.pick_weighted_source(source_states, sources, rng)
 	var source_pos := Vector2(source.get("pos", fallback_pos))
+	var state := R01SourceState.state_for_source(source_states, String(source.get("id", "")))
+	var state_id := R01SourceState.current_state(state) if not state.is_empty() else R01SourceState.STATE_ACTIVE
 	var dir := source_pos - player_pos
 	if dir.length_squared() <= 1.0:
 		dir = Vector2.RIGHT.rotated(rng.randf_range(-PI, PI))
@@ -488,6 +505,10 @@ func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: Rando
 		target_distance = rng.randf_range(88.0, 152.0)
 	elif hazard_role == "low_signal" or hazard_role == "silence_leak":
 		target_distance = rng.randf_range(28.0, 92.0)
+	if state_id == R01SourceState.STATE_SUPPRESSED:
+		target_distance += 24.0
+	elif state_id == R01SourceState.STATE_OVERLOADED:
+		target_distance += 42.0
 	var candidate := player_pos + dir * target_distance + side * rng.randf_range(-38.0, 38.0)
 	candidate = _clamp_world_position(candidate, 8.0)
 	_last_hazard_source_debug = {
@@ -498,6 +519,8 @@ func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: Rando
 		"zone_id": String(source.get("zone_id", "")),
 		"source_pos": source_pos,
 		"pos": candidate,
+		"source_state": state_id,
+		"source_weight": R01SourceState.source_weight(source_states, source),
 	}
 	return {
 		"pos": candidate,
@@ -506,6 +529,10 @@ func hazard_source_position(hazard_role: String, player_pos: Vector2, rng: Rando
 		"source_role": String(source.get("source_role", "")),
 		"source_pos": source_pos,
 		"story_function": String(source.get("story_function", "")),
+		"source_state": state_id,
+		"source_revealed": bool(state.get("revealed", false)) if not state.is_empty() else false,
+		"source_suppressed": state_id == R01SourceState.STATE_SUPPRESSED,
+		"source_overloaded": state_id == R01SourceState.STATE_OVERLOADED,
 	}
 
 func _clear_collision_cache() -> void:
@@ -822,12 +849,12 @@ func _fake_return_route_probe() -> Dictionary:
 		"note": "fake_return_route is event/phrase driven, not recovery UI",
 	}
 
-func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false) -> void:
+func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false, source_states: Dictionary = {}) -> void:
 	_draw_ground(canvas, elapsed)
 	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
-	_draw_props(canvas, elapsed, show_debug_labels)
+	_draw_props(canvas, elapsed, show_debug_labels, source_states)
 	_draw_collision_overlay(canvas, show_debug_labels)
 	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
 	_draw_world_bounds(canvas, show_debug_labels)
@@ -1002,7 +1029,7 @@ func _draw_marker_label(canvas: CanvasItem, zone_id: String, zone: Dictionary, p
 		return
 	return
 
-func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) -> void:
+func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}) -> void:
 	var objects := map_assembly.objects_for_state(state_variant)
 	objects.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		var layer_a := map_assembly.layer_rank(String(a.get("layer", "")))
@@ -1014,7 +1041,7 @@ func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) ->
 	for object in objects:
 		if _object_drawn_by_ground_pass(object):
 			continue
-		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels)
+		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels, source_states)
 
 func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 	var state := String(prop.get("state", "all"))
@@ -1027,14 +1054,14 @@ func _object_drawn_by_ground_pass(object: Dictionary) -> bool:
 	var object_id := String(object.get("id", ""))
 	return kind == "subdivision_road" or kind == "open_house_street" or kind == "model_axis" or kind == "drain_ground" or kind == "fake_ad_walkway" or kind == "travel_path" or object_id == "silence_edge_ground_band"
 
-func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool) -> void:
+func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}) -> void:
 	var pos := Vector2(object.get("pos", Vector2.ZERO))
 	var kind := String(object.get("kind", ""))
 	var prop_id := String(object.get("id", kind))
 	var asset_key := String(object.get("asset_key", prop_id))
 	_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
 	if not show_debug_labels:
-		_draw_source_feedback(canvas, object, elapsed)
+		_draw_source_feedback(canvas, object, elapsed, source_states)
 
 func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String, asset_key: String, elapsed: float, show_debug_labels: bool) -> void:
 	match kind:
@@ -1109,41 +1136,54 @@ func _draw_prop(canvas: CanvasItem, pos: Vector2, kind: String, prop_id: String,
 	if show_debug_labels:
 		_draw_prop_label(canvas, pos, "%s\n%s" % [prop_id, asset_key])
 
-func _draw_source_feedback(canvas: CanvasItem, object: Dictionary, elapsed: float) -> void:
+func _draw_source_feedback(canvas: CanvasItem, object: Dictionary, elapsed: float, source_states: Dictionary = {}) -> void:
 	var source_role := String(object.get("source_role", "environmental_readability"))
 	if source_role == "environmental_readability":
 		return
 	var pos := Vector2(object.get("pos", Vector2.ZERO))
-	var pulse := 0.5 + 0.5 * sin(elapsed * 3.2 + pos.x * 0.013)
+	var state := R01SourceState.state_for_source(source_states, String(object.get("id", "")))
+	var state_id := R01SourceState.current_state(state) if not state.is_empty() else R01SourceState.STATE_ACTIVE
+	var speed := 1.45 if state_id == R01SourceState.STATE_SUPPRESSED else 3.2
+	var alpha_mult := 0.46 if state_id == R01SourceState.STATE_SUPPRESSED else 1.0
+	if state_id == R01SourceState.STATE_OVERLOADED:
+		speed = 6.6
+		alpha_mult = 1.18
+	elif state_id == R01SourceState.STATE_SPENT:
+		alpha_mult = 0.34
+	var pulse := 0.5 + 0.5 * sin(elapsed * speed + pos.x * 0.013)
 	match source_role:
 		"mailbox_coupon":
-			canvas.draw_arc(pos + Vector2(0, -10), 22.0 + pulse * 5.0, -0.35, PI + 0.35, 24, Color(1.0, 0.91, 0.25, 0.22 + pulse * 0.20), 2.0)
-			canvas.draw_line(pos + Vector2(8, -15), pos + Vector2(28 + pulse * 4.0, -24), Color(1.0, 0.91, 0.25, 0.36), 2.0)
+			canvas.draw_arc(pos + Vector2(0, -10), 22.0 + pulse * 5.0, -0.35, PI + 0.35, 24, Color(1.0, 0.91, 0.25, (0.22 + pulse * 0.20) * alpha_mult), 2.0)
+			canvas.draw_line(pos + Vector2(8, -15), pos + Vector2(28 + pulse * 4.0, -24), Color(1.0, 0.91, 0.25, 0.36 * alpha_mult), 2.0)
 		"doorbell_sensor":
-			canvas.draw_line(pos, pos + Vector2(54.0 + pulse * 16.0, -10.0), Color(1.0, 0.62, 0.78, 0.34 + pulse * 0.18), 2.0)
-			canvas.draw_circle(pos, 11.0 + pulse * 3.0, Color(1.0, 0.62, 0.78, 0.12))
+			canvas.draw_line(pos, pos + Vector2(54.0 + pulse * 16.0, -10.0), Color(1.0, 0.62, 0.78, (0.34 + pulse * 0.18) * alpha_mult), 2.0)
+			canvas.draw_circle(pos, 11.0 + pulse * 3.0, Color(1.0, 0.62, 0.78, 0.12 * alpha_mult))
 		"sprinkler_ink":
-			canvas.draw_circle(pos, 36.0 + pulse * 9.0, Color(0.35, 0.70, 0.95, 0.06 + pulse * 0.07))
-			canvas.draw_arc(pos, 38.0 + pulse * 8.0, 0.0, TAU, 36, Color(0.35, 0.70, 0.95, 0.28), 1.8)
+			canvas.draw_circle(pos, 36.0 + pulse * 9.0, Color(0.35, 0.70, 0.95, (0.06 + pulse * 0.07) * alpha_mult))
+			canvas.draw_arc(pos, 38.0 + pulse * 8.0, 0.0, TAU, 36, Color(0.35, 0.70, 0.95, 0.28 * alpha_mult), 1.8)
 		"drain_silence":
-			canvas.draw_circle(pos, 46.0 + pulse * 10.0, Color(0.08, 0.20, 0.12, 0.08 + pulse * 0.06))
-			canvas.draw_arc(pos, 30.0 + pulse * 13.0, 0.2, PI * 1.45, 28, Color(0.62, 1.0, 0.36, 0.22), 1.8)
+			canvas.draw_circle(pos, 46.0 + pulse * 10.0, Color(0.08, 0.20, 0.12, (0.08 + pulse * 0.06) * alpha_mult))
+			canvas.draw_arc(pos, 30.0 + pulse * 13.0, 0.2, PI * 1.45, 28, Color(0.62, 1.0, 0.36, 0.22 * alpha_mult), 1.8)
 		"model_sign", "street_speaker", "model_house_contract_node":
-			canvas.draw_line(pos, pos + Vector2(86.0 + pulse * 24.0, -34.0), Color(1.0, 0.91, 0.25, 0.22 + pulse * 0.18), 2.0)
-			canvas.draw_arc(pos, 48.0 + pulse * 8.0, -0.7, 0.7, 22, Color(1.0, 0.30, 0.36, 0.28), 2.0)
+			canvas.draw_line(pos, pos + Vector2(86.0 + pulse * 24.0, -34.0), Color(1.0, 0.91, 0.25, (0.22 + pulse * 0.18) * alpha_mult), 2.0)
+			canvas.draw_arc(pos, 48.0 + pulse * 8.0, -0.7, 0.7, 22, Color(1.0, 0.30, 0.36, 0.28 * alpha_mult), 2.0)
 		"fake_return_sign":
 			var jitter := Vector2(sin(elapsed * 9.0) * 3.0, cos(elapsed * 7.0) * 2.0)
-			canvas.draw_rect(Rect2(pos - Vector2(34, 21) + jitter, Vector2(68, 42)), Color(0.95, 0.54, 0.78, 0.05 + pulse * 0.10), false, 2.0)
-			canvas.draw_line(pos + Vector2(-28, 16), pos + Vector2(34, -18), Color(0.95, 0.54, 0.78, 0.26 + pulse * 0.18), 2.2)
+			canvas.draw_rect(Rect2(pos - Vector2(34, 21) + jitter, Vector2(68, 42)), Color(0.95, 0.54, 0.78, (0.05 + pulse * 0.10) * alpha_mult), false, 2.0)
+			canvas.draw_line(pos + Vector2(-28, 16), pos + Vector2(34, -18), Color(0.95, 0.54, 0.78, (0.26 + pulse * 0.18) * alpha_mult), 2.2)
 		"homecare_robot":
-			canvas.draw_line(pos + Vector2(-28, 22), pos + Vector2(30, 22), Color(0.35, 0.70, 0.95, 0.18 + pulse * 0.18), 2.0)
-			canvas.draw_circle(pos + Vector2(0, 22), 8.0 + pulse * 3.0, Color(0.35, 0.70, 0.95, 0.12))
+			canvas.draw_line(pos + Vector2(-28, 22), pos + Vector2(30, 22), Color(0.35, 0.70, 0.95, (0.18 + pulse * 0.18) * alpha_mult), 2.0)
+			canvas.draw_circle(pos + Vector2(0, 22), 8.0 + pulse * 3.0, Color(0.35, 0.70, 0.95, 0.12 * alpha_mult))
 		"consultation_kiosk":
-			canvas.draw_line(pos, pos + Vector2(-62.0, -36.0), Color(1.0, 0.30, 0.36, 0.24 + pulse * 0.20), 2.0)
-			canvas.draw_line(pos, pos + Vector2(68.0, -28.0), Color(1.0, 0.30, 0.36, 0.20 + pulse * 0.20), 2.0)
+			canvas.draw_line(pos, pos + Vector2(-62.0, -36.0), Color(1.0, 0.30, 0.36, (0.24 + pulse * 0.20) * alpha_mult), 2.0)
+			canvas.draw_line(pos, pos + Vector2(68.0, -28.0), Color(1.0, 0.30, 0.36, (0.20 + pulse * 0.20) * alpha_mult), 2.0)
 		"repeated_house_front":
-			canvas.draw_circle(pos + Vector2(30, 18), 9.0 + pulse * 4.0, Color(1.0, 0.62, 0.78, 0.08 + pulse * 0.10))
-			canvas.draw_line(pos + Vector2(30, 18), pos + Vector2(58 + pulse * 8.0, 8), Color(1.0, 0.62, 0.78, 0.22), 1.8)
+			canvas.draw_circle(pos + Vector2(30, 18), 9.0 + pulse * 4.0, Color(1.0, 0.62, 0.78, (0.08 + pulse * 0.10) * alpha_mult))
+			canvas.draw_line(pos + Vector2(30, 18), pos + Vector2(58 + pulse * 8.0, 8), Color(1.0, 0.62, 0.78, 0.22 * alpha_mult), 1.8)
+	if state_id == R01SourceState.STATE_SUPPRESSED:
+		canvas.draw_line(pos + Vector2(-18, -18), pos + Vector2(18, 18), Color(0.35, 0.70, 0.95, 0.36), 2.0)
+	elif state_id == R01SourceState.STATE_OVERLOADED:
+		canvas.draw_arc(pos, 55.0 + pulse * 12.0, 0.0, TAU, 42, Color(1.0, 0.91, 0.25, 0.58), 3.0)
 
 func _draw_house_placeholder(canvas: CanvasItem, pos: Vector2) -> void:
 	_draw_blocker_shadow(canvas, pos, Vector2(126, 44))
