@@ -33,16 +33,16 @@ const MAIN_ROUTE := [NODE_L01, NODE_L02, NODE_L03]
 const NODE_DEFS := {
 	NODE_L01: {
 		"name": "침묵 가장자리",
-		"description": "보급소의 회수선이 아직 닿는 외곽입니다.",
+		"description": "공공 대피 안내는 오래전에 멈췄고, 그 위로 14차 가족 구성 보정 라벨만 갱신되는 외곽입니다.",
 		"short_description": "회수선 외곽",
 		"risk": "낮음",
 		"enemy_hint": "낮은 광고 밀도 / 흩어진 쿠폰",
 		"threat_hint": "흩어진 기본 광고체, 낮은 포위 압력",
 		"modifier": "회수선 안정, 낮은 밀도",
 		"modifier_short": "회수선 안정 / 낮은 밀도",
-		"objective": "주택가 첫 광고 신호 확인",
+		"objective": "오래된 공공 안내판과 14차 가족 구성 보정 표식 확인",
 		"recovery_line": "안정",
-		"route_note": "보급소 회수선이 닿는 외곽입니다.",
+		"route_note": "오래된 공공 안내판 위에 14차 가족 복구 운용 라벨이 덧붙은 외곽입니다.",
 		"zone_id": "silence_edge_start",
 		"ui_pos": Vector2(58, 184),
 		"start_offset": Vector2(32, -18),
@@ -51,24 +51,24 @@ const NODE_DEFS := {
 		"spawn_axis_label": "외곽 회수선 너머에서 느리게 접근",
 		"operation_role": "외곽 진입 작전권",
 		"tag_hint": "태그 없이 진입 가능 / 식량태그는 긴 체류 보험",
-		"region_reaction": "침묵 가장자리의 회수선이 한 번 더 고정됩니다.",
+		"region_reaction": "침묵 가장자리의 회수선이 등록 임계 전 인양 기준으로 다시 고정됩니다.",
 		"blockout_variant": "first_visit",
-		"blockout_phrase": "낮은 광고 밀도, 보급소 회수선의 가장자리",
-		"combat_goal": "회수선이 닿는 외곽을 확보한다",
-		"sortie_notice": "침묵 가장자리 진입: 회수선이 닿는 외곽을 확보합니다.",
+		"blockout_phrase": "공공 안내 응답 없음, 방문 기록 없음, 가족 구성 보류, 14차 가족 복구 운용 라벨이 남은 회수선 가장자리",
+		"combat_goal": "등록 임계 전 회수선 기준을 확인한다",
+		"sortie_notice": "침묵 가장자리 진입: 권리 안내 응답 없음. 가족 구성 보정 14차.",
 	},
 	NODE_L02: {
 		"name": "분양 주택 루프",
-		"description": "같은 집이 다른 입주 문구로 반복됩니다.",
+		"description": "주소는 둘인데 수령인은 비어 있습니다. 같은 집이 다른 입주 문구로 반복됩니다.",
 		"short_description": "반복 주택 루프",
 		"risk": "우편함/쿠폰 밀도 증가",
 		"enemy_hint": "스피커, 빠른 쿠폰, 반복 현관",
 		"threat_hint": "우편함/쿠폰 양쪽 발송, 빠른 전단 증가",
 		"modifier": "우편함과 쿠폰이 양쪽에서 끼어듦",
 		"modifier_short": "쿠폰/우편함 양쪽 발송",
-		"objective": "오픈하우스 신호를 추적한다",
+		"objective": "문패/우편함/현관 판정 기관을 대조한다",
 		"recovery_line": "흔들림",
-		"route_note": "외곽을 지나 같은 집들이 입주 문구만 바꿔 반복됩니다.",
+		"route_note": "외곽을 지나 같은 집들이 입주 문구만 바꿔 반복되고 수령인 빈칸을 다시 연다.",
 		"zone_id": "subdivision_loop_center",
 		"ui_pos": Vector2(160, 138),
 		"start_offset": Vector2(-210, 142),
@@ -77,24 +77,24 @@ const NODE_DEFS := {
 		"spawn_axis_label": "우편함과 현관 양쪽에서 포위",
 		"operation_role": "반복 주택가 안쪽 작전권",
 		"tag_hint": "식량태그와 충전태그가 있으면 포위 진입이 안정됩니다.",
-		"region_reaction": "우편함들이 같은 주소를 다시 인쇄합니다.",
+		"region_reaction": "우편함들이 같은 주소를 다시 인쇄하지만 수령인 칸은 비워 둡니다.",
 		"blockout_variant": "broadcast_record_3",
-		"blockout_phrase": "우편함, 입주 문구, 쿠폰 밀도가 올라가는 반복 주택가",
-		"combat_goal": "반복되는 집 사이의 신호를 추적한다",
-		"sortie_notice": "분양 주택 루프 진입: 반복되는 집 사이의 신호를 추적합니다.",
+		"blockout_phrase": "주소 둘, 수령인 빈칸, 우편함과 현관 센서가 판정 기관으로 켜지는 반복 주택가",
+		"combat_goal": "문패와 우편함의 빈 수령인 판정을 대조한다",
+		"sortie_notice": "분양 주택 루프 진입: 주소는 둘인데 수령인은 비어 있습니다.",
 	},
 	NODE_L03: {
 		"name": "모델하우스 결절",
-		"description": "가족 심사 절차가 이곳에서 시작됩니다.",
+		"description": "윤서: 고객 보류. 가족 칸 배정 실패. 가족 심사 절차가 이곳에서 시작됩니다.",
 		"short_description": "심사 절차 접근",
 		"risk": "심사 신호 / 가족 심사 절차",
 		"enemy_hint": "신호체, 스피커, 모델하우스 축",
 		"threat_hint": "신호체와 확성기 압박, 심사 절차 강화",
 		"modifier": "심사 절차, 결절 신호 증가",
 		"modifier_short": "심사 신호 증가",
-		"objective": "가족 심사 절차의 입구를 찾는다",
+		"objective": "고객 보류와 가족 칸 배정 실패를 기록한다",
 		"recovery_line": "불안정",
-		"route_note": "중심 루트 끝, 모델하우스 심사 절차가 열리는 결절입니다.",
+		"route_note": "중심 루트 끝, 고객 보류 판정과 가족 칸 배정 실패가 노출되는 결절입니다.",
 		"zone_id": "model_house_node_anchor",
 		"ui_pos": Vector2(276, 78),
 		"start_offset": Vector2(-300, 170),
@@ -103,24 +103,24 @@ const NODE_DEFS := {
 		"spawn_axis_label": "모델하우스 축에서 심사 신호 수렴",
 		"operation_role": "결절 접근 작전권",
 		"tag_hint": "수신태그와 송출 기록이 심사 접근 판단에 중요합니다.",
-		"region_reaction": "상담 부스가 윤서의 이름을 고객 명단에 올리려 합니다.",
+		"region_reaction": "상담 부스가 윤서의 이름을 고객 보류 칸에 올리려 합니다.",
 		"blockout_variant": "destroy_node",
-		"blockout_phrase": "모델하우스 방향의 결절 신호와 보스 심사 절차",
-		"combat_goal": "가족 심사 절차의 입구를 찾는다",
-		"sortie_notice": "모델하우스 결절 접근: 가족 심사 절차의 입구를 찾습니다.",
+		"blockout_phrase": "고객 보류, 가족 칸 배정 실패, 모델하우스 심사 절차",
+		"combat_goal": "가족 심사 절차를 확정 전 반려한다",
+		"sortie_notice": "모델하우스 결절 접근: 윤서 고객 보류. 가족 칸 배정 실패.",
 	},
 	NODE_L04: {
 		"name": "배수로 침묵 주머니",
-		"description": "광고음이 잠깐 끊기는 낮은 통로입니다.",
+		"description": "광고음이 잠깐 끊기지만 인양도 불안해지는 낮은 통로입니다.",
 		"short_description": "낮은 침묵 통로",
 		"risk": "낮지만 흔적이 진함",
 		"enemy_hint": "신호 흔적, 무거운 검수 로봇",
 		"threat_hint": "광고음 감소, 무거운 흔적과 침묵 신호",
 		"modifier": "광고음 감소, 흔적/침묵 강조",
 		"modifier_short": "광고음 감소 / 흔적 강조",
-		"objective": "광고음이 끊기는 낮은 통로를 조사한다",
+		"objective": "낮은 신호와 인양 불안을 함께 조사한다",
 		"recovery_line": "희미함",
-		"route_note": "중심 루트에서 빠지는 곁길, 소음이 잠깐 낮아집니다.",
+		"route_note": "중심 루트에서 빠지는 곁길, 캠페인 소음은 낮아지지만 회수선 박자도 약해집니다.",
 		"zone_id": "drain_pocket_anchor",
 		"ui_pos": Vector2(244, 194),
 		"start_offset": Vector2(-160, 48),
@@ -129,24 +129,24 @@ const NODE_DEFS := {
 		"spawn_axis_label": "낮은 배수로 흔적에서 느린 압박",
 		"operation_role": "우회/저신호 작전권",
 		"tag_hint": "식량태그가 부족하면 오래 버티기 어려운 우회로입니다.",
-		"region_reaction": "배수구 아래에서 회수되지 않은 표식이 남았습니다.",
+		"region_reaction": "배수구 아래에서 낮은 신호와 회수되지 않은 표식이 함께 남았습니다.",
 		"blockout_variant": "extract_memory",
-		"blockout_phrase": "위험은 낮지만 흔적이 진하게 남는 배수로 곁길",
-		"combat_goal": "광고음이 끊기는 낮은 통로를 조사한다",
-		"sortie_notice": "배수로 침묵 주머니 진입: 광고음이 끊기는 낮은 통로를 조사합니다.",
+		"blockout_phrase": "낮은 신호, 젖은 흔적, 인양 불안이 함께 남는 배수로 곁길",
+		"combat_goal": "낮은 신호와 회수선 박자를 대조한다",
+		"sortie_notice": "배수로 침묵 주머니 진입: 낮은 신호는 캠페인을 줄이지만 인양도 불안합니다.",
 	},
 	NODE_L05: {
 		"name": "가짜 귀환로",
-		"description": "돌아가는 길처럼 보이지만, 회수선이 닿지 않습니다.",
+		"description": "회수선처럼 떨리지만 보급소 쪽 침묵이 빠져 있습니다.",
 		"short_description": "회수선 흉내",
 		"risk": "혼동 / 귀환 신호 흉내",
 		"enemy_hint": "빠른 쿠폰, 스피커, 잘못된 화살표",
 		"threat_hint": "혼동 신호와 빠른 쿠폰, 회수선 흉내",
 		"modifier": "회수선 불안정, 혼동 신호",
 		"modifier_short": "혼동 신호 / 회수선 불안정",
-		"objective": "접근하지 말고 신호 패턴만 확인",
+		"objective": "가짜 회수선의 출처만 대조한다",
 		"recovery_line": "불안정",
-		"route_note": "보급소 방향처럼 보이는 가지지만 실제 회수선이 아닙니다.",
+		"route_note": "보급소 방향처럼 보이는 가지지만 실제 회수선이 아니라 캠페인의 귀가 동선 모방입니다.",
 		"zone_id": "fake_return_route_anchor",
 		"ui_pos": Vector2(86, 82),
 		"start_offset": Vector2(-110, 118),
@@ -155,11 +155,11 @@ const NODE_DEFS := {
 		"spawn_axis_label": "귀환처럼 보이는 화살표 뒤쪽에서 급습",
 		"operation_role": "위험 귀환/재방문 작전권",
 		"tag_hint": "수신태그가 부족하면 보급소가 회수선 출처를 의심합니다.",
-		"region_reaction": "보급소가 해당 회수선의 출처를 인정하지 않습니다.",
+		"region_reaction": "보급소가 해당 회수선의 출처를 인정하지 않고 오염 꼬리표로 보류합니다.",
 		"blockout_variant": "broadcast_record_3",
-		"blockout_phrase": "귀환 UI를 흉내 내는 산책로, 혼동과 광고 스피커 위험",
-		"combat_goal": "귀환처럼 보이는 신호를 따라가지 않는다",
-		"sortie_notice": "가짜 귀환로 진입: 귀환처럼 보이는 신호를 따라가지 않습니다.",
+		"blockout_phrase": "회수선처럼 떨리지만 보급소 침묵이 빠진 광고 산책로",
+		"combat_goal": "회수선처럼 보이는 신호를 따라가지 않는다",
+		"sortie_notice": "가짜 귀환로 진입: 회수선처럼 떨리지만 보급소 쪽 침묵이 빠져 있습니다.",
 	},
 }
 
@@ -304,15 +304,15 @@ static func node_sortie_notice(node_id: String) -> String:
 static func node_entry_notice(node_id: String) -> String:
 	match node_id:
 		NODE_L01:
-			return "외곽 회수 차선 진입: 낮은 광고음과 회수선 확보를 확인합니다."
+			return "외곽 회수 차선 진입: 공공 대피 안내 응답 없음. 가족 복구 운용 14차, 방문 기록 재해석 중."
 		NODE_L02:
-			return "분양 주택 루프 진입: 우편함과 현관 센서가 좌우 포위를 예고합니다."
+			return "분양 주택 루프 진입: 주소는 둘인데 수령인은 비어 있습니다."
 		NODE_L03:
-			return "모델하우스 축 진입: 상담 부스 송출선과 심사 압력이 모입니다."
+			return "모델하우스 축 진입: 윤서 고객 보류. 가족 칸 배정 실패."
 		NODE_L04:
-			return "배수로 침묵 주머니 진입: 낮은 신호와 젖은 흔적 후보를 추적합니다."
+			return "배수로 침묵 주머니 진입: 낮은 신호는 캠페인을 줄이지만 인양도 불안하게 만듭니다."
 		NODE_L05:
-			return "끊긴 광고 산책로 진입: 귀환로처럼 보이지만 회수선이 불안정합니다."
+			return "끊긴 광고 산책로 진입: 회수선처럼 떨리지만 보급소 쪽 침묵이 빠져 있습니다."
 		_:
 			return node_sortie_notice(node_id)
 
@@ -374,6 +374,8 @@ static func state_summary(states: Dictionary) -> String:
 
 static func node_result_line(node_id: String, recall_quality: String = "") -> String:
 	var prefix := "작전권: %s" % node_name(node_id)
+	if node_id == NODE_L03 and recall_quality == "stable_recall":
+		return "%s - 모델하우스 결절 심사 반려. 결절 일부 침묵, 상위 송출 잔향 남음." % prefix
 	match recall_quality:
 		"unstable_recall":
 			return "%s - 회수선이 흔들려 구역 흔적이 보류 표식으로 남았습니다." % prefix
@@ -382,7 +384,7 @@ static func node_result_line(node_id: String, recall_quality: String = "") -> St
 		"boss_interrupted":
 			return "%s - 심사 절차 일부가 이름 보관함에 걸렸습니다." % prefix
 		"story_recall":
-			return "%s - 첫 등록 직전 회수 플랫폼이 외곽 기록만 붙잡았습니다." % prefix
+			return "%s - 가족 슬롯 배정 직전 회수 플랫폼이 외곽 기록만 붙잡았습니다." % prefix
 		_:
 			return "%s - 이번 출격 기록이 다음 작전도에 고정됩니다." % prefix
 
@@ -401,7 +403,7 @@ static func node_incident_line(node_id: String, recall_quality: String = "") -> 
 				return "구역 사건: 짧거나 흔들린 체류 때문에 정산 근거가 희미하게 남았습니다."
 	match node_id:
 		NODE_L01:
-			return "구역 사건: 낮은 광고음 사이에서 회수 차선의 기준점이 다시 켜졌습니다."
+			return "구역 사건: 오래된 공공 안내판과 14차 가족 복구 운용 라벨이 회수 차선에 남았습니다."
 		NODE_L02:
 			return "구역 사건: 우편함들이 같은 주소를 반복 인쇄하고 현관 센서 노이즈가 남았습니다."
 		NODE_L03:
@@ -414,6 +416,8 @@ static func node_incident_line(node_id: String, recall_quality: String = "") -> 
 			return "구역 사건: R01 작전권 반응이 보급소 기록으로 남았습니다."
 
 static func node_outpost_reaction(node_id: String, recall_quality: String = "") -> String:
+	if node_id == NODE_L03 and recall_quality == "stable_recall":
+		return "출격 게시판이 R01 종료 아님, 결절 일부 침묵, 상위 송출 잔향 남음으로 표시합니다."
 	if node_id == NODE_L05:
 		if recall_quality == "stable_recall":
 			return "출격 게시판이 가짜 귀환로를 회수선이 아닌 광고 산책로로 다시 표시합니다."
@@ -457,8 +461,20 @@ static func node_map_memory_line(node_id: String, memory: Dictionary = {}) -> St
 	var manual_phrase := String(memory.get("node_last_manual_stamp_phrase", ""))
 	var source_count := int(memory.get("node_source_action_count", 0))
 	var source_phrase := String(memory.get("node_last_source_action_phrase", ""))
+	var source_learning := String(memory.get("node_source_learning_line", ""))
 	var micro_count := int(memory.get("node_micro_point_count", 0))
 	var micro_phrase := String(memory.get("node_last_micro_phrase", ""))
+	var role_guess := String(memory.get("node_yunseo_role_guess", "외부인"))
+	var boss_residue := int(memory.get("node_boss_residue", 0))
+	var outpost_trace_leak := int(memory.get("node_outpost_trace_leak", 0))
+	if source_learning != "" and source_count > 0:
+		return "흔적: %s / %s" % [source_phrase if source_phrase != "" else "source 판정", source_learning]
+	if boss_residue > 0:
+		return "흔적: 재심사 잔향 %d / 결절 일부 침묵 뒤 source 오브젝트가 윤서=고객 보류를 유지" % boss_residue
+	if outpost_trace_leak > 0:
+		return "흔적: 배수로 젖은 기록 %d / 낮은 신호와 회수선 불안 분리" % outpost_trace_leak
+	if role_guess == "보호자 후보" or role_guess == "수령인 후보" or role_guess == "가족 슬롯":
+		return "흔적: 윤서=%s / 가족 칸 배정 전 보류" % role_guess
 	if micro_count > 0 and micro_phrase != "":
 		if npc_trace_count > 0 and npc_trace_phrase != "":
 			return "흔적: %s / %s / 짧은 장소 %d곳" % [micro_phrase, npc_trace_phrase, micro_count]
@@ -494,7 +510,7 @@ static func node_map_memory_line(node_id: String, memory: Dictionary = {}) -> St
 	if recall_quality == "boss_interrupted":
 		return "흔적: 심사 중단 기록 / 이름 보관함 연동"
 	if recall_quality == "story_recall":
-		return "흔적: 첫 강제 회수 기준점 / 방문 %d회" % visit_count
+		return "흔적: 첫 등록 전 인양 기준점 / 방문 %d회" % visit_count
 	return "흔적: 방문 %d회 / %s" % [visit_count, tag_summary]
 
 static func node_memory_debug_summary(memories: Dictionary) -> String:
@@ -504,7 +520,7 @@ static func node_memory_debug_summary(memories: Dictionary) -> String:
 		if memory.is_empty():
 			parts.append("%s=none" % String(node_id))
 			continue
-		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,npc_trace=%d,manual=%d,source=%d,micro=%d,last_story=%s,last_npc_trace=%s,last_manual=%s,last_source=%s,last_micro=%s,contam=%s,unlock=%s,tags=%s}" % [
+		parts.append("%s{visits=%d,result=%s,recall=%s,signal=%d,story=%d,npc_trace=%d,manual=%d,source=%d,micro=%d,last_story=%s,last_npc_trace=%s,last_manual=%s,last_source=%s,last_micro=%s,role=%s,name_pressure=%d,fake_recall=%d,tag_contam=%d,contam=%s,unlock=%s,tags=%s}" % [
 			String(node_id),
 			int(memory.get("node_visit_count", 0)),
 			String(memory.get("last_node_result", "")),
@@ -520,6 +536,10 @@ static func node_memory_debug_summary(memories: Dictionary) -> String:
 			String(memory.get("node_last_manual_stamp_phrase", "")),
 			String(memory.get("node_last_source_action_phrase", "")),
 			String(memory.get("node_last_micro_phrase", "")),
+			String(memory.get("node_yunseo_role_guess", "외부인")),
+			int(memory.get("node_name_pressure", 0)),
+			int(memory.get("node_fake_recall_accuracy", 0)),
+			int(memory.get("node_tag_contamination", 0)),
 			String(memory.get("node_contamination_hint", "")),
 			String(memory.get("node_unlocked_by", "")),
 			String(memory.get("node_last_tag_summary", "")),

@@ -3,6 +3,7 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const NPCPresence := preload("res://scripts/npc_presence.gd")
+const SpriteAssets := preload("res://scripts/sprite_assets.gd")
 
 const WORLD_BOUNDS := Rect2(Vector2(0, 0), Vector2(1440, 810))
 const EXPANSION_BOUNDS_NOTE := "0.2 preview uses 1440x810; later hub scenes can expand to 1920x1080+."
@@ -103,6 +104,8 @@ const FACILITIES := [
 	},
 ]
 
+var sprite_assets := SpriteAssets.new()
+
 func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 	var signal_count := int(progress.get("signal_clue_count", 0))
 	var boss_analysis := int(progress.get("boss_analysis_level", 0))
@@ -121,6 +124,12 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 	var tag_ledger_summary := String(progress.get("tag_ledger_summary", ""))
 	var tag_facility_response := String(progress.get("tag_facility_response", ""))
 	var campaign_outpost_reaction := String(progress.get("campaign_outpost_reaction", ""))
+	var name_pressure := int(progress.get("r01_name_pressure", 0))
+	var tag_contamination := int(progress.get("r01_tag_contamination", 0))
+	var role_guess := String(progress.get("r01_yunseo_role_guess", "외부인"))
+	var fake_recall_accuracy := int(progress.get("r01_fake_recall_accuracy", 0))
+	var boss_residue := int(progress.get("r01_boss_residue", 0))
+	var outpost_trace_leak := int(progress.get("r01_outpost_trace_leak", 0))
 	if meta_progression != null:
 		boss_analysis = int(meta_progression.boss_analysis_level)
 		boss_clears = int(meta_progression.boss_clear_count)
@@ -166,6 +175,12 @@ func state_from_progress(progress: Dictionary, meta_progression) -> Dictionary:
 		"tag_ledger_summary": tag_ledger_summary,
 		"tag_facility_response": tag_facility_response,
 		"campaign_outpost_reaction": campaign_outpost_reaction,
+		"r01_name_pressure": name_pressure,
+		"r01_tag_contamination": tag_contamination,
+		"r01_yunseo_role_guess": role_guess,
+		"r01_fake_recall_accuracy": fake_recall_accuracy,
+		"r01_boss_residue": boss_residue,
+		"r01_outpost_trace_leak": outpost_trace_leak,
 	}
 
 func build_preview_layer(parent: Control, progress: Dictionary, meta_progression, show_debug_labels: bool = false) -> Dictionary:
@@ -173,6 +188,8 @@ func build_preview_layer(parent: Control, progress: Dictionary, meta_progression
 		parent.remove_child(child)
 		child.free()
 	parent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if sprite_assets.outpost_textures.is_empty():
+		sprite_assets.load_all()
 	var state := state_from_progress(progress, meta_progression)
 	var preview_size := parent.size
 	var scale := minf(preview_size.x / WORLD_BOUNDS.size.x, preview_size.y / WORLD_BOUNDS.size.y)
@@ -266,20 +283,36 @@ func natural_summary_lines(state: Dictionary = {}) -> Array[String]:
 	var variant := String(state.get("variant", STATE_DORMANT))
 	var records := int(state.get("signal_record_count", 0))
 	var analysis := int(state.get("boss_analysis_level", 0))
-	var line := "시설: 회수/정산/정비/보관/게시/조율/흔적/닫힌통로/게이트"
-	var state_line := "보급소 상태: 회수선과 출격 게이트만 낮게 켜져 있습니다."
+	var line := "시설: 회수/정산/이름보관/정비/게시/조율/흔적/닫힌통로/게이트"
+	var state_line := "보급소 상태: 정산 카운터와 이름 보관함이 승인/보류/오염과 이름 판정을 확정 전 분리합니다."
 	if variant == STATE_DESTROY_NODE:
 		state_line = "보급소 상태: 낮아진 광고음 사이로 끊긴 동선 표시가 남았습니다."
 	elif variant == STATE_EXTRACT_MEMORY:
 		state_line = "보급소 상태: 사진과 영수증 잔향이 보관함 뒤에서 흔들립니다."
 	elif variant == STATE_BOSS_CLEARED:
-		state_line = "보급소 상태: 코어 파편 쟁반과 상위 송출 잔향이 보입니다."
+		state_line = "보급소 상태: 모델하우스 결절 심사 반려 기록, 이름 보관함 이관, 상위 송출 잔향이 보입니다."
 	elif analysis > 0:
 		state_line = "보급소 상태: 결절 분석 %d단계가 이름 보관함과 조율대에 남았습니다." % analysis
 	elif records > 0:
 		state_line = "보급소 상태: 송출 기록 %d장이 출격 게시판에 고정되었습니다." % records
 	elif variant == STATE_FIRST_RECALL:
 		state_line = "보급소 상태: 첫 영수증과 전단 묶음이 정산 카운터에 남았습니다."
+	var name_pressure := int(state.get("r01_name_pressure", 0))
+	var tag_contamination := int(state.get("r01_tag_contamination", 0))
+	var boss_residue := int(state.get("r01_boss_residue", 0))
+	var role_guess := String(state.get("r01_yunseo_role_guess", ""))
+	var fake_accuracy := int(state.get("r01_fake_recall_accuracy", 0))
+	var outpost_trace_leak := int(state.get("r01_outpost_trace_leak", 0))
+	if boss_residue > 0:
+		state_line = "보급소 상태: 모델하우스 결절 심사 반려 기록이 이름 보관함으로 이관됐고, 상위 송출 잔향은 남았습니다."
+	elif name_pressure > 0:
+		state_line = "보급소 상태: 이름 보관함이 윤서=%s 라벨을 세대 칸에 넣지 않고 보류합니다." % role_guess
+	elif tag_contamination > 0:
+		state_line = "보급소 상태: 정산 카운터가 승인 태그와 오염 꼬리표를 따로 펼칩니다."
+	elif fake_accuracy > 0:
+		state_line = "보급소 상태: 출격 게시판이 가짜 회수 표식의 모방 정확도 %d를 귀환로 밖에 따로 표시합니다." % fake_accuracy
+	elif outpost_trace_leak > 0:
+		state_line = "보급소 상태: 배수로 젖은 기록 %d건을 낮은 신호와 회수선 불안으로 분리합니다." % outpost_trace_leak
 	var tag_response := String(state.get("campaign_outpost_reaction", ""))
 	if tag_response == "":
 		tag_response = String(state.get("tag_facility_response", ""))
@@ -465,6 +498,7 @@ func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scal
 	if facility_id == "recovery_platform" and not show_debug_labels:
 		_add_rect(parent, rect.position - Vector2(6, 5), rect.size + Vector2(12, 10), Color(0.62, 1.0, 0.36, 0.055))
 	_add_panel(parent, rect.position, rect.size, fill, Color(border.r, border.g, border.b, border.a * (0.42 if show_debug_labels else 0.22)))
+	_draw_facility_texture(parent, facility_id, rect, show_debug_labels)
 	if show_debug_labels:
 		_add_label(parent, String(facility["display_name"]), rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 11), Color(0.20, 0.16, 0.13, 0.56), 8)
 	elif _normal_label_visible(facility_id):
@@ -474,6 +508,20 @@ func _draw_facility(parent: Control, facility: Dictionary, offset: Vector2, scal
 	_add_rect(parent, anchor - Vector2(4, 4), Vector2(8, 8), Color(0.62, 1.0, 0.36, 0.12 if not show_debug_labels else 0.18))
 	if show_debug_labels:
 		_add_label(parent, "%s\n%s\n%s" % [facility_id, collision, facility_variant(facility_id, state)], rect.position + Vector2(2, rect.size.y + 2), Vector2(122, 26), Color(0.08, 0.05, 0.04, 0.68), 7, HORIZONTAL_ALIGNMENT_LEFT)
+
+func _draw_facility_texture(parent: Control, facility_id: String, rect: Rect2, show_debug_labels: bool) -> void:
+	var texture := sprite_assets.outpost_texture(facility_id)
+	if texture == null:
+		return
+	var texture_rect := TextureRect.new()
+	texture_rect.texture = texture
+	texture_rect.position = rect.position
+	texture_rect.size = rect.size
+	texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	texture_rect.modulate = Color(1, 1, 1, 0.82 if not show_debug_labels else 0.92)
+	parent.add_child(texture_rect)
 
 func _draw_facility_marks(parent: Control, facility_id: String, rect: Rect2, state: Dictionary) -> void:
 	var variant := facility_variant(facility_id, state)

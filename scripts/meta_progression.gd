@@ -292,7 +292,7 @@ func record_boss_recall(boss_hp_ratio: float) -> Dictionary:
 	var before := boss_analysis_level
 	boss_analysis_level = maxi(boss_analysis_level, target_level)
 	if boss_analysis_level > before:
-		_record_outpost_event(NPC_DOYUN, "boss_recall", "스마일 홈 심사관 절차가 한 겹 벗겨졌어. 다음엔 더 정확히 찌를 수 있다.", "charging_tuner")
+		_record_outpost_event(NPC_DOYUN, "boss_recall", "스마일 홈 심사관 절차가 한 겹 벗겨졌어. 가족 슬롯 배정 전 보급소가 끌어냈다.", "charging_tuner")
 	return {
 		"fragments_awarded": fragments_awarded,
 		"analysis_before": before,
@@ -308,13 +308,15 @@ func record_boss_victory() -> Dictionary:
 	var before := boss_analysis_level
 	boss_analysis_level = maxi(boss_analysis_level, 3)
 	awarded_flags["first_boss_victory"] = true
-	_record_outpost_event(NPC_SEVEN, "boss_victory", "스마일 홈 결절 처리 기록을 고정했습니다. 삭제하지 않습니다.", "sortie_board")
+	var rejection_report := local_response_state.record_r01_boss_rejection(2, 1)
+	_record_outpost_event(NPC_SEVEN, "boss_victory", "모델하우스 결절 심사 반려 기록을 고정했습니다. 결절 일부 침묵, 상위 송출 잔향 남음.", "sortie_board")
 	return {
 		"first_clear": first_clear,
 		"fragments_awarded": fragments,
 		"analysis_before": before,
 		"analysis_after": boss_analysis_level,
 		"clear_count": boss_clear_count,
+		"r01_boss_rejection": rejection_report,
 	}
 
 func set_smile_home_boss_outcome(outcome: String) -> bool:
@@ -337,11 +339,11 @@ func has_smile_home_boss_outcome() -> bool:
 func smile_home_boss_outcome_label() -> String:
 	match smile_home_boss_outcome:
 		SMILE_HOME_OUTCOME_DESTROY_NODE:
-			return "결절 파열: 스마일 홈 심사 절차를 끊어냈습니다."
+			return "결절 일부 침묵: 모델하우스 심사 반려 상태를 유지합니다."
 		SMILE_HOME_OUTCOME_EXTRACT_MEMORY:
-			return "기억 추출: 가족사진 뒤편의 기억을 보급소로 가져왔습니다."
+			return "이름 보관함 이관: 가족사진 뒤편 흔적을 가족 칸에 넣지 않고 보류합니다."
 		_:
-			return "스마일 홈 결절 처리 방식 선택 대기"
+			return "모델하우스 결절 심사 반려 후속 선택 대기"
 
 func _is_valid_smile_home_boss_outcome(outcome: String) -> bool:
 	return outcome == SMILE_HOME_OUTCOME_NONE or outcome == SMILE_HOME_OUTCOME_DESTROY_NODE or outcome == SMILE_HOME_OUTCOME_EXTRACT_MEMORY
@@ -385,6 +387,7 @@ func grant_run_flyer_bonus(base_reward: int) -> int:
 func grant_ration_ticket_settlement(settlement: Dictionary) -> Dictionary:
 	var confirmed: Dictionary = settlement.get("confirmed", {})
 	var approved: Dictionary = settlement.get("approved", {})
+	var held: Dictionary = settlement.get("held", {})
 	var contaminated: Dictionary = settlement.get("contaminated", {})
 	var gained := _empty_ticket_counts()
 	for ticket_id in TICKET_IDS:
@@ -395,8 +398,11 @@ func grant_ration_ticket_settlement(settlement: Dictionary) -> Dictionary:
 		gained[ticket_id] = amount
 	var contamination_report := local_response_state.record_r01_contamination(contaminated)
 	var gained_summary := _ticket_counts_text(gained)
+	var held_summary := _ticket_counts_text(held)
 	if gained_summary != "":
-		_record_outpost_event(NPC_MINA, "settlement", "정산표 접었어. %s은 보급소 이름으로 보관한다." % gained_summary, "settlement_counter")
+		_record_outpost_event(NPC_MINA, "settlement", "정산 카운터: 캠페인 승인 %s. 보급소 보류와 오염 꼬리표는 따로 둔다." % gained_summary, "settlement_counter")
+	if held_summary != "":
+		_record_outpost_event(NPC_BOKHEE, "settlement_hold", "정산 카운터: 보급소 보류 %s. 확정하지 않고 이름/흔적 보관함으로 넘긴다." % held_summary, "settlement_counter")
 	if bool(contamination_report.get("changed", false)):
 		_record_outpost_event(_contamination_npc_id(str(contamination_report.get("last_ticket", ""))), "contamination", _contamination_event_line(contamination_report), "settlement_counter")
 	return {
@@ -461,6 +467,7 @@ func tag_ledger_summary_line(last_run_result: Dictionary = {}) -> String:
 	var ledger: Dictionary = last_run_result.get("settlement_tag_ledger", {})
 	var confirmed: Dictionary = ledger.get("confirmed", {})
 	var candidates: Dictionary = ledger.get("candidates", {})
+	var approved: Dictionary = ledger.get("approved", {})
 	var held: Dictionary = ledger.get("held", {})
 	var contaminated: Dictionary = ledger.get("contaminated", {})
 	var spent := {
@@ -468,16 +475,29 @@ func tag_ledger_summary_line(last_run_result: Dictionary = {}) -> String:
 		TICKET_POWER: allocation_count(ALLOCATION_ROBOT_MAINTENANCE),
 		TICKET_SIGNAL: allocation_count(ALLOCATION_SIGNAL_BOARD),
 	}
-	return "보유 %s | 확정 %s | 후보 %s | 보류 %s | 오염 %s | 예약 %s" % [
+	return "보유 %s | 확정 %s | 후보 %s | 승인 %s | 보류 %s | 오염 %s | 예약 %s" % [
 		_ticket_counts_text_or_none(ration_tickets),
 		_ticket_counts_text_or_none(confirmed),
 		_ticket_counts_text_or_none(candidates),
+		_ticket_counts_text_or_none(approved),
 		_ticket_counts_text_or_none(held),
 		_ticket_counts_text_or_none(contaminated),
 		_ticket_counts_text_or_none(spent),
 	]
 
 func tag_facility_response_line(last_run_result: Dictionary = {}) -> String:
+	var name_archive_lines := Array(last_run_result.get("name_archive_lines", []))
+	var sections: Dictionary = last_run_result.get("settlement_sections", {})
+	if not sections.is_empty():
+		var approved_count := Array(sections.get("settlement_campaign_approved", [])).size()
+		var held_count := Array(sections.get("settlement_outpost_held", [])).size()
+		var contaminated_count := Array(sections.get("settlement_contaminated", [])).size()
+		var settlement_line := "정산 카운터가 캠페인 승인 %d / 보급소 보류 %d / 오염 꼬리표 %d로 회수품을 분리합니다." % [approved_count, held_count, contaminated_count]
+		if not name_archive_lines.is_empty():
+			return "%s / %s" % [settlement_line, String(name_archive_lines[0])]
+		return settlement_line
+	if not name_archive_lines.is_empty():
+		return String(name_archive_lines[0])
 	var recall_quality := String(last_run_result.get("recall_quality", ""))
 	if recall_quality == "unstable_recall":
 		return "정산 카운터가 보류 표식을 먼저 펼칩니다."
@@ -729,6 +749,9 @@ func set_r01_boss_outcome(outcome: String) -> bool:
 func record_r01_trace_choice(choice: String) -> bool:
 	return local_response_state.record_r01_trace_choice(choice)
 
+func record_r01_source_learning(source_key: String, state_id: String, action: String = "") -> Dictionary:
+	return local_response_state.record_r01_source_learning(source_key, state_id, action)
+
 func r01_state_summary() -> Dictionary:
 	local_response_state.set_r01_signal_records_found(signal_clue_count())
 	local_response_state.set_r01_boss_outcome(smile_home_boss_outcome)
@@ -838,7 +861,7 @@ func unlock_condition_label(condition: String) -> String:
 		"boss_analysis_2":
 			return "결절 분석 2/3"
 		"boss_clear_1":
-			return "결절 처리 1회"
+			return "심사 반려 1회"
 		_:
 			return ""
 
@@ -931,7 +954,7 @@ func has_any_upgrade() -> bool:
 	return false
 
 func boss_analysis_summary() -> String:
-	return "결절 분석: %d/3   처리 횟수: %d   캠페인 코어 파편: %d   %s" % [
+	return "결절 분석: %d/3   심사 반려: %d   캠페인 코어 파편: %d   %s" % [
 		boss_analysis_level,
 		boss_clear_count,
 		trace_count(TRACE_CAMPAIGN_CORE_FRAGMENT),
@@ -940,16 +963,16 @@ func boss_analysis_summary() -> String:
 
 func boss_hint() -> String:
 	if boss_clear_count > 0:
-		return "다음 조우 힌트: 스마일 홈 심사관 뒤편의 상위 송출 잔향을 추적하세요"
+		return "다음 출격: 스마일 홈 심사관 뒤편의 상위 송출 잔향을 추적하세요"
 	if has_all_signal_clues():
-		return "다음 조우 힌트: 세 단서가 겹쳤습니다. 240초 이후 스마일 홈 결절이 드러납니다"
+		return "다음 출격: 세 단서가 겹쳤습니다. 240초 이후 모델하우스 결절이 드러납니다"
 	if boss_analysis_level <= 0:
-		return "다음 조우 힌트: 스마일 홈의 검증 절차를 다시 추적하세요"
+		return "다음 출격: 스마일 홈의 검증 절차를 다시 추적하세요"
 	if boss_analysis_level == 1:
-		return "다음 조우 힌트: 앞치마 아래 결절 노출 중 방향집중 차징"
+		return "다음 출격: 앞치마 아래 결절 노출 중 방향집중 차징"
 	if boss_analysis_level == 2:
-		return "다음 조우 힌트: 앞치마 방패와 가족 할인 압박을 구분하세요"
-	return "다음 조우 힌트: 가족사진 뒤편의 송출 흔적을 보세요"
+		return "다음 출격: 앞치마 방패와 가족 할인 압박을 구분하세요"
+	return "다음 출격: 가족사진 뒤편의 송출 흔적을 보세요"
 
 func boss_weakness_label() -> String:
 	if boss_analysis_level >= 2:

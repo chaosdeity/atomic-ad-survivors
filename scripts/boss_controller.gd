@@ -1,7 +1,7 @@
 extends RefCounted
 
 const C := preload("res://scripts/game_config.gd")
-const EnemyController := preload("res://scripts/enemy_controller.gd")
+const DamageRouter := preload("res://scripts/damage_router.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 
 const BOSS_NAME := "스마일 홈 심사관"
@@ -32,7 +32,7 @@ var defeated := false
 var hp := MAX_HP
 var max_hp := MAX_HP
 var phase := 1
-var defense_type := EnemyController.DEFENSE_TYPE_PLATED
+var defense_type := DamageRouter.DEFENSE_TYPE_PLATED
 var core_exposed := false
 var pos := DEFAULT_POS
 var state := "inactive"
@@ -50,7 +50,6 @@ var shields: Array[float] = []
 var hit_flash := 0.0
 var core_expose_bonus := 0.0
 var outcome_visual := ""
-var defense_rules := EnemyController.new()
 
 func start() -> void:
 	active = true
@@ -72,7 +71,7 @@ func reset() -> void:
 	defeated = false
 	hp = max_hp
 	phase = 1
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	state = "inactive"
 	pattern_name = ""
@@ -146,20 +145,30 @@ func update(delta: float, player_pos: Vector2) -> Dictionary:
 				_set_idle()
 	return {}
 
-func apply_damage(base_damage: float, damage_type: String) -> Dictionary:
+func apply_damage(base_damage: float, damage_type: String, player_stats: Dictionary) -> Dictionary:
 	if not active or defeated:
 		return {}
 	var shield_damage := 0.0
-	var damage_mult := defense_rules.damage_multiplier(defense_type, damage_type)
-	var boss_damage := base_damage * damage_mult
+	var dmg_result := DamageRouter.calculate_damage({
+		"target_type": DamageRouter.TARGET_BOSS,
+		"base_damage": base_damage,
+		"damage_type": damage_type,
+		"boss_state": state,
+		"defense_type": defense_type,
+		"player_stats": player_stats
+	})
+
+	var damage_mult := float(dmg_result["multiplier"])
+	var boss_damage := float(dmg_result["final_damage"])
 	var shield_broken := false
-	var distorted_charge := state == "distortion_active" and (damage_type == EnemyController.DAMAGE_TYPE_CHARGE or damage_type == EnemyController.DAMAGE_TYPE_FOCUSED)
+	var distorted_charge := state == "distortion_active" and (damage_type == DamageRouter.DAMAGE_TYPE_CHARGE or damage_type == DamageRouter.DAMAGE_TYPE_FOCUSED)
+
 	if state == "shield" and shields.size() > 0:
 		var shield_mult := _shield_damage_multiplier(damage_type)
 		shield_damage = base_damage * shield_mult
 		_damage_front_shield(shield_damage)
 		shield_broken = true
-		boss_damage *= 0.30 if damage_type == EnemyController.DAMAGE_TYPE_AUTO else 0.55
+		boss_damage *= 0.30 if damage_type == DamageRouter.DAMAGE_TYPE_AUTO else 0.55
 		if shields.size() == 0:
 			_expose_core(2.2)
 	hp = maxf(0.0, hp - boss_damage)
@@ -176,7 +185,7 @@ func apply_damage(base_damage: float, damage_type: String) -> Dictionary:
 		"damage_type": damage_type,
 		"defense_type": defense_type,
 		"multiplier": damage_mult,
-		"effectiveness": defense_rules.damage_effectiveness(damage_mult),
+		"effectiveness": String(dmg_result["effectiveness"]),
 		"shield_damage": shield_damage,
 		"shield_broken": shield_broken,
 		"distorted_charge": distorted_charge,
@@ -237,9 +246,9 @@ func hp_ratio() -> float:
 func status_label() -> String:
 	if core_exposed:
 		return "마지막 코어" if phase >= 3 else "코어 노출"
-	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_AUTO:
+	if defense_type == DamageRouter.DEFENSE_TYPE_ANTI_AUTO:
 		return "자동저항"
-	if defense_type == EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
+	if defense_type == DamageRouter.DEFENSE_TYPE_ANTI_CHARGE:
 		return "차징저항"
 	if state == "demo_telegraph":
 		return "시연 준비"
@@ -268,7 +277,7 @@ func _set_idle() -> void:
 	pattern_name = ""
 	pattern_timer = ENRAGED_PATTERN_COOLDOWN if phase >= 3 else PATTERN_COOLDOWN
 	pos = _clamp_demo_pos(pos)
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -310,7 +319,7 @@ func _start_sweep(player_pos: Vector2) -> void:
 	sweep_axis = "horizontal" if pattern_index % 4 == 1 else "vertical"
 	sweep_line_coord = player_pos.y if sweep_axis == "horizontal" else player_pos.x
 	sweep_damage_done = false
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -318,7 +327,7 @@ func _start_shield() -> void:
 	state = "shield"
 	pattern_name = "평생 보증 앞치마"
 	pattern_timer = 5.2 if phase < 3 else 4.2
-	defense_type = EnemyController.DEFENSE_TYPE_ANTI_AUTO
+	defense_type = DamageRouter.DEFENSE_TYPE_ANTI_AUTO
 	core_exposed = false
 	shields.clear()
 	for i in range(SHIELD_COUNT):
@@ -328,7 +337,7 @@ func _start_distortion_telegraph() -> void:
 	state = "distortion_telegraph"
 	pattern_name = "행복 기준 재조정"
 	pattern_timer = DISTORTION_TELEGRAPH_TIME if phase < 3 else 0.95
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -336,7 +345,7 @@ func _start_distortion_active() -> void:
 	state = "distortion_active"
 	pattern_name = "행복 기준 재조정"
 	pattern_timer = DISTORTION_ACTIVE_TIME if phase < 3 else 3.6
-	defense_type = EnemyController.DEFENSE_TYPE_ANTI_CHARGE
+	defense_type = DamageRouter.DEFENSE_TYPE_ANTI_CHARGE
 	core_exposed = false
 	shields.clear()
 
@@ -350,7 +359,7 @@ func _start_demo_telegraph(player_pos: Vector2) -> void:
 	demo_dir = to_player.normalized() if to_player.length_squared() > 0.001 else Vector2.DOWN
 	demo_end_pos = _clamp_demo_pos(demo_start_pos + demo_dir * DEMO_TRAVEL_DISTANCE)
 	demo_hit_done = false
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -359,7 +368,7 @@ func _start_demo_charge() -> void:
 	pattern_name = "방문 점검 돌진"
 	pattern_timer = DEMO_CHARGE_TIME
 	demo_hit_done = false
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -367,7 +376,7 @@ func _start_demo_recover() -> void:
 	state = "demo_recover"
 	pattern_name = "방문 점검 돌진"
 	pattern_timer = DEMO_RECOVER_TIME
-	defense_type = EnemyController.DEFENSE_TYPE_PLATED
+	defense_type = DamageRouter.DEFENSE_TYPE_PLATED
 	core_exposed = false
 	shields.clear()
 
@@ -378,7 +387,7 @@ func _expose_core(duration: float) -> void:
 	if phase >= 3:
 		phase_duration = maxf(1.15, duration - 0.25)
 	pattern_timer = phase_duration + core_expose_bonus
-	defense_type = EnemyController.DEFENSE_TYPE_EXPOSED_CORE
+	defense_type = DamageRouter.DEFENSE_TYPE_EXPOSED_CORE
 	core_exposed = true
 	shields.clear()
 
@@ -415,13 +424,13 @@ func _clamp_demo_pos(value: Vector2) -> Vector2:
 	)
 
 func _shield_damage_multiplier(damage_type: String) -> float:
-	if damage_type == EnemyController.DAMAGE_TYPE_AUTO:
+	if damage_type == DamageRouter.DAMAGE_TYPE_AUTO:
 		return 0.55
-	if damage_type == EnemyController.DAMAGE_TYPE_CHARGE:
+	if damage_type == DamageRouter.DAMAGE_TYPE_CHARGE:
 		return 1.15
-	if damage_type == EnemyController.DAMAGE_TYPE_FOCUSED:
+	if damage_type == DamageRouter.DAMAGE_TYPE_FOCUSED:
 		return 1.35
-	if damage_type == EnemyController.DAMAGE_TYPE_BURST or damage_type == EnemyController.DAMAGE_TYPE_PUDDLE:
+	if damage_type == DamageRouter.DAMAGE_TYPE_BURST or damage_type == DamageRouter.DAMAGE_TYPE_PUDDLE:
 		return 1.25
 	return 1.0
 
@@ -650,7 +659,7 @@ func _draw_doorbell_and_nameplate(canvas: CanvasItem, elapsed: float, damage_tie
 	elif defeated and outcome_visual == "extract_memory":
 		label = "MEMORY KEPT"
 	elif defeated and outcome_visual == "destroy_node":
-		label = "NODE CUT"
+		label = "NODE HELD"
 	canvas.draw_string(UIFont.get_font(), pos + Vector2(0, 34), label, HORIZONTAL_ALIGNMENT_CENTER, 112.0, 9, C.INK)
 
 func _draw_core_exposed(canvas: CanvasItem, elapsed: float, damage_tier: int) -> void:
@@ -719,11 +728,11 @@ func _draw_shields(canvas: CanvasItem, elapsed: float) -> void:
 
 func _defense_color() -> Color:
 	match defense_type:
-		EnemyController.DEFENSE_TYPE_ANTI_AUTO:
+		DamageRouter.DEFENSE_TYPE_ANTI_AUTO:
 			return Color("#8a5a3f")
-		EnemyController.DEFENSE_TYPE_ANTI_CHARGE:
+		DamageRouter.DEFENSE_TYPE_ANTI_CHARGE:
 			return Color(0.35, 0.70, 0.95)
-		EnemyController.DEFENSE_TYPE_EXPOSED_CORE:
+		DamageRouter.DEFENSE_TYPE_EXPOSED_CORE:
 			return C.TOXIC_GREEN
 		_:
 			return Color("#433227")

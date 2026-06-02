@@ -17,52 +17,52 @@ const ZONE_HOUSING_LOOP_END := 210.0
 const ZONES := {
 	ZONE_SILENT_EDGE: {
 		"name": "침묵 가장자리",
-		"entry_phrase": "침묵 가장자리 - 보급소 신호가 아직 닿는다.",
+		"entry_phrase": "침묵 가장자리 - 공공 대피 안내 응답 없음. 가족 복구 운용 14차, 방문 기록 재해석 중.",
 		"debug_label": "R01 zone: 침묵 가장자리",
 	},
 	ZONE_BLOCKOUT_SILENCE_EDGE: {
 		"name": "침묵 가장자리",
-		"entry_phrase": "침묵 가장자리 - 보급소 신호가 아직 닿는다.",
+		"entry_phrase": "침묵 가장자리 - 시민 안내는 꺼졌고, 입주 보정만 남았습니다. 가족 구성 보정 14차.",
 		"debug_label": "R01 zone: 침묵 가장자리 / world anchor",
 	},
 	ZONE_BLOCKOUT_OUTER_RECOVERY: {
 		"name": "외곽 회수 차선",
-		"entry_phrase": "외곽 회수 차선 - 아직 돌아갈 길은 보입니다.",
+		"entry_phrase": "외곽 회수 차선 - 권리 안내: 응답 없음. 가족 구성 보정: 활성. 등록 임계 전 보급소 회수선이 윤서를 붙잡고 있습니다.",
 		"debug_label": "R01 zone: 외곽 회수 차선 / world anchor",
 	},
 	ZONE_HOUSING_LOOP: {
 		"name": "분양 주택 루프",
-		"entry_phrase": "분양 주택 루프 - 같은 집들이 다시 줄을 맞춘다.",
+		"entry_phrase": "분양 주택 루프 - 주소는 둘인데 수령인은 비어 있습니다.",
 		"debug_label": "R01 zone: 분양 주택 루프",
 	},
 	ZONE_BLOCKOUT_HOUSING_LOOP: {
 		"name": "분양 주택 루프",
-		"entry_phrase": "분양 주택 루프 - 같은 집들이 다시 줄을 맞춘다.",
+		"entry_phrase": "분양 주택 루프 - 문패와 우편함과 현관이 생활 장치이자 판정 기관으로 켜집니다.",
 		"debug_label": "R01 zone: 분양 주택 루프 / world anchor",
 	},
 	ZONE_BLOCKOUT_OPEN_HOUSE: {
 		"name": "오픈하우스 거리",
-		"entry_phrase": "오픈하우스 거리 - 방문만 해도 사은품. 살아 나가면 추가 사은품.",
+		"entry_phrase": "오픈하우스 거리 - 가족대표 1, 수령인 0, 보호자 후보 1. 재상담을 권합니다.",
 		"debug_label": "R01 zone: 오픈하우스 거리 / world anchor",
 	},
 	ZONE_MODEL_HOUSE_NEXUS: {
 		"name": "모델하우스 결절",
-		"entry_phrase": "모델하우스 결절 - 현관등이 윤서를 먼저 알아본다.",
+		"entry_phrase": "모델하우스 결절 - 윤서: 고객 보류. 가족 칸 배정 실패.",
 		"debug_label": "R01 zone: 모델하우스 결절",
 	},
 	ZONE_BLOCKOUT_MODEL_HOUSE: {
 		"name": "모델하우스 접근로",
-		"entry_phrase": "모델하우스 접근로 - 현관등이 윤서를 먼저 알아본다.",
+		"entry_phrase": "모델하우스 접근로 - 윤서: 고객 보류. 가족 칸 배정 실패.",
 		"debug_label": "R01 zone: 모델하우스 접근로 / world anchor",
 	},
 	ZONE_BLOCKOUT_DRAIN_POCKET: {
 		"name": "배수로 침묵 주머니",
-		"entry_phrase": "배수로 침묵 주머니 - 광고음이 낮아지는 대신 발밑이 젖어 있습니다.",
+		"entry_phrase": "배수로 침묵 주머니 - 낮은 신호가 캠페인을 줄이지만 인양도 불안해집니다.",
 		"debug_label": "R01 zone: 배수로 침묵 주머니 / world anchor",
 	},
 	ZONE_BLOCKOUT_FAKE_RETURN: {
 		"name": "끊긴 광고 산책로",
-		"entry_phrase": "끊긴 광고 산책로 - 친절한 화살표가 보급소를 흉내 냅니다.",
+		"entry_phrase": "끊긴 광고 산책로 - 회수선처럼 떨리지만 보급소 쪽 침묵이 빠져 있습니다.",
 		"debug_label": "R01 zone: 끊긴 광고 산책로 / world anchor",
 	},
 }

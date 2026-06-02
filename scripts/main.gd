@@ -1,6 +1,9 @@
 extends Node2D
 
 const C := preload("res://scripts/game_config.gd")
+const DamageRouter := preload("res://scripts/damage_router.gd")
+const PlayerController := preload("res://scripts/player_controller.gd")
+const GameStateMachine := preload("res://scripts/game_state_machine.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const AudioFactory := preload("res://scripts/audio_factory.gd")
 const HudController := preload("res://scripts/hud_controller.gd")
@@ -87,16 +90,14 @@ const MICRO_LOCATION_DIM_ALPHA := 0.20
 const MICRO_LOCATION_FOCUS_LERP := 0.56
 const MICRO_LOCATION_FOCUS_LIMIT := 72.0
 
-var player_pos := Vector2.ZERO
-var player_hp := C.PLAYER_MAX_HP
+var player: PlayerController
 var elapsed := 0.0
 var xp := 0.0
 var level := 1
 var kills := 0
-var match_state := "playing"
+var state_machine = GameStateMachine.new()
 var game_over := false
 var paused_for_card := false
-var player_stats := {}
 var offered_cards: Array[Dictionary] = []
 var selected_card_count := 0
 var peak_enemy_count := 0
@@ -143,7 +144,6 @@ var audit_segment_results: Array[Dictionary] = []
 var card_contribution_log := {}
 var playtest_metrics := {}
 
-var auto_timer := 0.0
 var manual_stamp_timer := 0.0
 var manual_stamp_notice_timer := 0.0
 var manual_stamp_notice_text := ""
@@ -151,23 +151,9 @@ var manual_stamped_story_counts := {}
 var manual_stamp_total_story_counts := {}
 var last_manual_stamp_object_id := ""
 var last_manual_stamp_display_name := ""
-var charge_timer := 0.0
-var charge_window_left := 0.0
-var charge_ready_flash := 0.0
-var charge_open_age := 0.0
-var charge_warning_played := false
-var charge_miss_notice := 0.0
-var last_move_dir := Vector2.DOWN
-var player_is_moving := false
-var attack_pose_timer := 0.0
-var attack_pose_dir := Vector2.RIGHT
-var hurt_feedback_cooldown := 0.0
-var auto_shot_counter := 0
-var charge_puddles: Array[Dictionary] = []
-var charge_effect_anchor := Vector2.ZERO
-var charge_effect_anchor_active := false
 var pending_kill_burst_contexts: Array[Dictionary] = []
 var active_threats: Array[Dictionary] = []
+var death_residue_marks: Array[Dictionary] = []
 var pressure_ring_timer := 0.0
 var flyer_drop_timer := 0.0
 var last_threat_label := ""
@@ -227,6 +213,8 @@ var r01_micro_locations := R01MicroLocations.new()
 var outpost_blockout := OutpostLayoutBlockout.new()
 
 func _ready() -> void:
+	player = PlayerController.new()
+	player.setup()
 	rng.seed = 42
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -238,7 +226,7 @@ func _ready() -> void:
 	if R01LayoutBlockout.ENABLED:
 		r01_blockout.configure_camera(camera)
 		enemies.configure_world(R01LayoutBlockout.WORLD_BOUNDS, Callable(r01_blockout, "enemy_spawn_position"))
-		player_pos = _r01_campaign_start_position(current_r01_node_id)
+		player.pos = _r01_campaign_start_position(current_r01_node_id)
 		_arm_entry_camera_for_node(current_r01_node_id)
 		r01_blockout.print_probe()
 	_build_audio()
@@ -261,13 +249,13 @@ func _process(delta: float) -> void:
 	_update_manual_stamp_runtime(delta)
 	_update_micro_location_runtime(delta)
 	_update_r01_source_states(delta)
-	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
+	if state_machine.is_terminal():
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
 		_update_hud()
 		_sync_camera()
 		queue_redraw()
-		if match_state != "supply" and Input.is_action_just_pressed("charge"):
+		if not state_machine.is_supply() and Input.is_action_just_pressed("charge"):
 			_handle_terminal_action()
 		return
 	if paused_for_card:
@@ -287,25 +275,25 @@ func _process(delta: float) -> void:
 	_update_preboss_signal_events()
 	_try_start_boss_encounter()
 	_check_victory()
-	if match_state == "victory" or match_state == "recalled" or match_state == "boss_victory":
+	if state_machine.is_match_over():
 		effects.update(delta)
 		_update_hud()
 		_sync_camera()
 		queue_redraw()
 		return
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
-	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
-	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
+	player.update_cooldowns(delta)
 	_update_player(delta)
 	var wave_params := _wave_params_for_elapsed(elapsed)
 	if not boss.active:
-		enemies.update_spawning(delta, elapsed, player_pos, rng, wave_params)
+		enemies.update_spawning(delta, elapsed, player.pos, rng, wave_params)
 		_update_wave_events(wave_params)
 		_update_campaign_node_pressure_cues(delta, wave_params)
 	_update_enemies(delta)
 	_update_charge_marks(delta)
+	_update_death_residue_marks(delta)
 	_update_threats(delta)
-	if match_state == "game_over" or match_state == "recalled" or match_state == "boss_victory":
+	if state_machine.is_match_over():
 		effects.update(delta)
 		_update_hud()
 		_sync_camera()
@@ -332,7 +320,7 @@ func _input(event: InputEvent) -> void:
 			_apply_card_choice(choice)
 		return
 
-	if match_state == "supply":
+	if state_machine.is_supply():
 		if _handle_campaign_map_input(event):
 			return
 		if _campaign_map_open_key(event):
@@ -346,29 +334,29 @@ func _input(event: InputEvent) -> void:
 			_handle_terminal_action()
 			return
 
-	if event.is_action_pressed("manual_stamp") and (match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory"):
+	if event.is_action_pressed("manual_stamp") and state_machine.is_match_over():
 		_handle_terminal_action()
 		return
 
-	if match_state == "playing" and not paused_for_card and _handle_micro_location_input(event):
+	if state_machine.is_playing() and not paused_for_card and _handle_micro_location_input(event):
 		return
 
-	if match_state == "playing" and not paused_for_card and event.is_action_pressed("interact"):
+	if state_machine.is_playing() and not paused_for_card and event.is_action_pressed("interact"):
 		if _try_field_interaction():
 			return
 
-	if match_state == "playing" and not paused_for_card and event.is_action_pressed("manual_stamp"):
+	if state_machine.is_playing() and not paused_for_card and event.is_action_pressed("manual_stamp"):
 		if _try_manual_stamp():
 			return
 
 	var pressed_charge := event.is_action_pressed("charge")
 	if pressed_charge:
-		if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
+		if state_machine.is_terminal():
 			_handle_terminal_action()
-		elif charge_window_left > 0.0:
+		elif player.charge_window_left > 0.0:
 			_fire_charge()
-		elif match_state == "playing":
-			_show_wave_notice("차징 도장 준비 중 %.1f초" % maxf(0.0, _charge_period() - charge_timer))
+		elif state_machine.is_playing():
+			_show_wave_notice("차징 도장 준비 중 %.1f초" % maxf(0.0, _charge_period() - player.charge_timer))
 
 func _campaign_map_open_key(event: InputEvent) -> bool:
 	if not event is InputEventKey or not event.pressed or event.echo:
@@ -474,7 +462,7 @@ func _camera_target_position() -> Vector2:
 		entry_offset = entry_camera_offset * ratio * ratio
 	if micro_location_active:
 		_refresh_micro_location_visual_state()
-	return player_pos + entry_offset + micro_location_camera_focus_offset + effects.shake_offset(rng)
+	return player.pos + entry_offset + micro_location_camera_focus_offset + effects.shake_offset(rng)
 
 func _sync_camera() -> void:
 	camera.global_position = _camera_target_position().round()
@@ -564,28 +552,25 @@ func _play_sfx(name: String, pitch_scale: float = 1.0, cooldown_override: float 
 
 func _update_player(delta: float) -> void:
 	var input_dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-	player_is_moving = input_dir.length_squared() > 0.0
-	if player_is_moving:
-		last_move_dir = input_dir
-	var old_pos := player_pos
-	player_pos += input_dir * _move_speed() * delta
+	var old_pos := player.pos
+	player.apply_movement(input_dir, delta, _move_speed() / float(player.stats.get("move_speed", 100.0)))
 	if R01LayoutBlockout.ENABLED:
-		player_pos = r01_blockout.resolve_player_position(old_pos, player_pos, C.PLAYER_RADIUS)
+		player.pos = r01_blockout.resolve_player_position(old_pos, player.pos, C.PLAYER_RADIUS)
 	_clamp_player_to_world()
 
 func _clamp_player_to_world() -> void:
 	if R01LayoutBlockout.ENABLED:
-		player_pos = r01_blockout.clamp_player_position(player_pos)
+		player.pos = r01_blockout.clamp_player_position(player.pos)
 		return
-	player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
-	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+	player.pos.x = clampf(player.pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
+	player.pos.y = clampf(player.pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
 	if R01LayoutBlockout.ENABLED:
 		for enemy in enemies.enemies:
 			old_positions.append(Vector2(enemy["pos"]))
-	var contact_damage := enemies.update_enemies(delta, player_pos)
+	var contact_damage := enemies.update_enemies(delta, player.pos)
 	if R01LayoutBlockout.ENABLED:
 		_apply_r01_enemy_navigation(old_positions, delta)
 	else:
@@ -593,15 +578,15 @@ func _update_enemies(delta: float) -> void:
 	_update_special_enemy_sfx()
 	if contact_damage <= 0.0:
 		return
-	player_hp = maxf(0.0, player_hp - _incoming_damage(contact_damage))
-	if hurt_feedback_cooldown <= 0.0:
-		hurt_feedback_cooldown = 0.32
+	player.hp = maxf(0.0, player.hp - _incoming_damage(contact_damage))
+	if player.hurt_feedback_cooldown <= 0.0:
+		player.hurt_feedback_cooldown = 0.32
 		effects.add_impact_shake(0.10, 2.8)
-		effects.add_status_ring(player_pos, C.NEON_RED, 18.0, 0.20)
+		effects.add_status_ring(player.pos, C.NEON_RED, 18.0, 0.20)
 		var contact_hint := enemies.contact_hint()
 		if contact_hint != "":
-			effects.add_floater(player_pos + Vector2(0, -18), contact_hint, C.NEON_RED, 12)
-	if player_hp <= 0.0:
+			effects.add_floater(player.pos + Vector2(0, -18), contact_hint, C.NEON_RED, 12)
+	if player.hp <= 0.0:
 		if boss.active:
 			boss_result_reason = "boss_recall"
 			boss.active = false
@@ -648,7 +633,7 @@ func _update_special_enemy_sfx() -> void:
 
 func _update_threats(delta: float) -> void:
 	_update_active_threats(delta)
-	if match_state != "playing" or paused_for_card or boss.active or _first_recall_active():
+	if not state_machine.is_playing() or paused_for_card or boss.active or _first_recall_active():
 		return
 	_schedule_pressure_ring(delta)
 	_schedule_flyer_drop(delta)
@@ -702,7 +687,7 @@ func _schedule_flyer_drop(delta: float) -> void:
 func _spawn_pressure_ring() -> void:
 	var offset := _threat_offset(88.0, 46.0)
 	var hazard_role := _r01_pressure_hazard_role()
-	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player.pos, rng, player.pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player.pos + offset, "used": false}
 	var warning := PRESSURE_RING_WARNING
 	var damage := PRESSURE_RING_DAMAGE
 	if bool(source_info.get("source_revealed", false)):
@@ -715,7 +700,7 @@ func _spawn_pressure_ring() -> void:
 		damage *= 0.84
 	active_threats.append({
 		"type": THREAT_PRESSURE_RING,
-		"pos": Vector2(source_info.get("pos", player_pos + offset)),
+		"pos": Vector2(source_info.get("pos", player.pos + offset)),
 		"radius": PRESSURE_RING_RADIUS,
 		"timer": warning,
 		"duration": warning,
@@ -736,7 +721,7 @@ func _spawn_pressure_ring() -> void:
 func _spawn_flyer_drop() -> void:
 	var offset := _threat_offset(118.0, 32.0)
 	var hazard_role := _r01_flyer_hazard_role()
-	var source_info := r01_blockout.hazard_source_position(hazard_role, player_pos, rng, player_pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player_pos + offset, "used": false}
+	var source_info := r01_blockout.hazard_source_position(hazard_role, player.pos, rng, player.pos + offset, R01CampaignMap.node_zone_id(current_r01_node_id), r01_source_states) if R01LayoutBlockout.ENABLED else {"pos": player.pos + offset, "used": false}
 	var warning := FLYER_DROP_WARNING
 	var damage := FLYER_DROP_DAMAGE
 	if bool(source_info.get("source_revealed", false)):
@@ -749,7 +734,7 @@ func _spawn_flyer_drop() -> void:
 		damage *= 0.84
 	active_threats.append({
 		"type": THREAT_FLYER_DROP,
-		"pos": Vector2(source_info.get("pos", player_pos + offset)),
+		"pos": Vector2(source_info.get("pos", player.pos + offset)),
 		"radius": FLYER_DROP_RADIUS,
 		"timer": warning,
 		"duration": warning,
@@ -770,26 +755,26 @@ func _spawn_flyer_drop() -> void:
 func _resolve_threat_hit(threat: Dictionary) -> void:
 	var center: Vector2 = threat["pos"]
 	var radius := float(threat.get("radius", 0.0))
-	if player_pos.distance_squared_to(center) > radius * radius:
+	if player.pos.distance_squared_to(center) > radius * radius:
 		return
 	var label := String(threat.get("label", "위험"))
 	var damage := _incoming_damage(float(threat.get("damage", 0.0)))
-	player_hp = maxf(0.0, player_hp - damage)
+	player.hp = maxf(0.0, player.hp - damage)
 	last_threat_label = label
-	effects.add_floater(player_pos + Vector2(0, -16), label, C.NEON_RED, 13)
-	_show_damage_number(player_pos + Vector2(0, -12), damage, "hit")
-	effects.add_status_ring(player_pos, C.NEON_RED, 24.0, 0.28)
+	effects.add_floater(player.pos + Vector2(0, -16), label, C.NEON_RED, 13)
+	_show_damage_number(player.pos + Vector2(0, -12), damage, "hit")
+	effects.add_status_ring(player.pos, C.NEON_RED, 24.0, 0.28)
 	effects.add_impact_shake(0.18, 4.6)
 	if String(threat.get("type", "")) == THREAT_PRESSURE_RING:
 		_play_sfx("pressure_ring_hit")
-		var push_dir := (player_pos - center).normalized() if player_pos.distance_squared_to(center) > 0.01 else last_move_dir.normalized()
+		var push_dir := (player.pos - center).normalized() if player.pos.distance_squared_to(center) > 0.01 else player.last_move_dir.normalized()
 		if push_dir.length_squared() <= 0.01:
 			push_dir = Vector2.RIGHT
-		player_pos += push_dir * PRESSURE_RING_KNOCKBACK
+		player.pos += push_dir * PRESSURE_RING_KNOCKBACK
 		_clamp_player_to_world()
 	else:
 		_play_sfx("danger_flyer_hit")
-	if player_hp <= 0.0:
+	if player.hp <= 0.0:
 		_finish_match("game_over")
 
 func _active_threat_count(threat_type: String) -> int:
@@ -892,7 +877,7 @@ func _update_boss(delta: float) -> void:
 	if not boss.active:
 		return
 	var previous_state := boss.state
-	var result := boss.update(delta, player_pos)
+	var result := boss.update(delta, player.pos)
 	if boss.active and boss.state != previous_state:
 		if boss.state == "core_exposed":
 			_play_sfx("boss_core_expose")
@@ -900,86 +885,72 @@ func _update_boss(delta: float) -> void:
 			_play_sfx("boss_warning")
 	if result.has("player_damage"):
 		var final_damage := _incoming_damage(float(result["player_damage"]))
-		player_hp = maxf(0.0, player_hp - final_damage)
+		player.hp = maxf(0.0, player.hp - final_damage)
 		if result.has("knockback"):
-			player_pos += Vector2(result["knockback"])
+			player.pos += Vector2(result["knockback"])
 			_clamp_player_to_world()
-		_show_damage_number(player_pos + Vector2(0, -16), final_damage, "hit")
+		_show_damage_number(player.pos + Vector2(0, -16), final_damage, "hit")
 		var heavy_hit := result.has("knockback")
 		effects.add_impact_shake(0.28 if heavy_hit else 0.18, 7.2 if heavy_hit else 5.2)
-		effects.add_status_ring(player_pos, C.NEON_RED, 32.0 if heavy_hit else 24.0, 0.38 if heavy_hit else 0.30)
-	if player_hp <= 0.0:
+		effects.add_status_ring(player.pos, C.NEON_RED, 32.0 if heavy_hit else 24.0, 0.38 if heavy_hit else 0.30)
+	if player.hp <= 0.0:
 		boss_result_reason = "boss_recall"
 		boss.active = false
 		boss.state = "recall_escape"
 		_finish_match("recalled")
 
 func _update_auto_fire(delta: float) -> void:
-	auto_timer -= delta
-	if auto_timer > 0.0:
+	if not player.update_auto_fire(delta, C.AUTO_TICK):
 		return
-	auto_timer = C.AUTO_TICK
-	var target_idx := _preferred_auto_target(player_pos, _auto_range())
+	var target_idx := _preferred_auto_target(player.pos, _auto_range())
 	var priority_target := target_idx != -1 and _enemy_has_return_stamp(enemies.enemies[target_idx])
-	var boss_in_range := boss.active and player_pos.distance_to(boss.pos) <= _auto_range() + BossController.BODY_RADIUS
+	var boss_in_range := boss.active and player.pos.distance_to(boss.pos) <= _auto_range() + BossController.BODY_RADIUS
 	if target_idx == -1 and not boss_in_range:
 		return
 	var damage := _auto_damage_per_tick()
-	if boss_in_range and not priority_target and (target_idx == -1 or boss.target_distance_sq(player_pos) <= player_pos.distance_squared_to(enemies.enemies[target_idx]["pos"])):
+	if boss_in_range and not priority_target and (target_idx == -1 or boss.target_distance_sq(player.pos) <= player.pos.distance_squared_to(enemies.enemies[target_idx]["pos"])):
 		var boss_hit := _apply_boss_damage(damage, "auto")
 		if not boss_hit.is_empty():
-			_register_attack_pose(boss.pos - player_pos, 0.14)
-			effects.add_auto_shot(player_pos, boss.pos)
+			_register_attack_pose(boss.pos - player.pos, 0.14)
+			effects.add_auto_shot(player.pos, boss.pos)
 			_play_sfx("auto_fire")
 		return
 	var target_pos: Vector2 = enemies.enemies[target_idx]["pos"]
 	if priority_target:
 		damage *= C.AUTO_MARKED_DAMAGE_MULT
-	var hit := enemies.apply_damage(target_idx, _enemy_meta_damage(damage, target_idx), "auto")
+	var hit := enemies.apply_damage(target_idx, damage, DamageRouter.DAMAGE_TYPE_AUTO, player.stats)
 	if not hit.is_empty():
 		_show_damage_number(Vector2(hit["pos"]), float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_add_audit_processing(float(hit["damage"]) * 1.4, "auto_hit", target_pos)
-		_register_attack_pose(target_pos - player_pos, 0.14)
-		_apply_hit_knockback(target_idx, player_pos, 5.5)
+		_register_attack_pose(target_pos - player.pos, 0.14)
+		_apply_hit_knockback(target_idx, player.pos, 5.5)
 		_play_sfx("enemy_hit")
 		if priority_target:
 			effects.add_status_ring(target_pos, C.NEON_RED, 19.0, 0.22)
 			effects.add_floater(target_pos + Vector2(0, -6), "반품 추적", C.NEON_RED, 11)
 	_handle_dead_positions(_cleanup_dead_positions())
-	effects.add_auto_shot(player_pos, target_pos)
+	effects.add_auto_shot(player.pos, target_pos)
 	_play_sfx("auto_fire")
 	if paused_for_card:
 		return
 	_try_split_shot(target_idx)
 
 func _update_charge(delta: float) -> void:
-	charge_miss_notice = maxf(0.0, charge_miss_notice - delta)
-	if charge_window_left > 0.0:
-		charge_window_left = maxf(0.0, charge_window_left - delta)
-		charge_open_age += delta
-		if charge_window_left <= 0.0:
-			_charge_missed()
-			charge_timer = 0.0
-			charge_open_age = 0.0
-			charge_warning_played = false
-	else:
-		charge_timer += delta
-		var warning_left := _charge_period() - charge_timer
-		if not charge_warning_played and warning_left <= C.CHARGE_WARNING_TIME:
-			charge_warning_played = true
-			effects.add_charge_warning_ring(player_pos)
-			charge_warning_audio.play()
-		if charge_timer >= _charge_period():
-			charge_window_left = _charge_window()
-			charge_open_age = 0.0
-			charge_warning_played = false
-			charge_ready_flash = C.CHARGE_READY_FLASH
-			effects.show_charge_ready()
-			_play_sfx("return_stamp_ready")
-	charge_ready_flash = maxf(0.0, charge_ready_flash - delta)
+	var events := player.update_charge(delta, _charge_period(), _charge_window(), C.CHARGE_WARNING_TIME)
+
+	if events["missed"]:
+		_charge_missed()
+
+	if events["warning"]:
+		effects.add_charge_warning_ring(player.pos)
+		charge_warning_audio.play()
+
+	if events["ready"]:
+		effects.show_charge_ready()
+		_play_sfx("return_stamp_ready")
 
 func _update_charge_puddles(delta: float) -> void:
-	for puddle in charge_puddles:
+	for puddle in player.charge_puddles:
 		puddle["life"] = float(puddle["life"]) - delta
 		puddle["tick"] = float(puddle.get("tick", 0.0)) + delta
 		if float(puddle["tick"]) < 0.16:
@@ -989,7 +960,7 @@ func _update_charge_puddles(delta: float) -> void:
 		puddle["display_tick"] = float(puddle.get("display_tick", 0.0)) + tick_delta
 		var center: Vector2 = puddle["pos"]
 		var damage := float(puddle["dps"]) * tick_delta
-		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage, -1, "puddle")
+		var hit_enemies := enemies.damage_enemies_in_radius_with_hits(center, float(puddle["radius"]), damage, player.stats, -1, DamageRouter.DAMAGE_TYPE_PUDDLE)
 		var puddle_processing := 0.0
 		for hit in hit_enemies:
 			puddle_processing += float(hit.get("damage", 0.0)) * 1.15
@@ -1005,11 +976,11 @@ func _update_charge_puddles(delta: float) -> void:
 			if not boss_hit.is_empty():
 				_show_damage_number(Vector2(boss_hit["pos"]), float(boss_hit["damage"]), "puddle", String(boss_hit["effectiveness"]))
 		_handle_dead_positions(_cleanup_dead_positions())
-	charge_puddles = charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
+	player.charge_puddles = player.charge_puddles.filter(func(puddle: Dictionary) -> bool: return float(puddle["life"]) > 0.0)
 
 func _charge_missed() -> void:
-	charge_miss_notice = 0.48
-	effects.show_charge_missed(player_pos)
+	player.charge_miss_notice = 0.48
+	effects.show_charge_missed(player.pos)
 	_play_sfx("return_stamp_whiff")
 
 func _fire_charge() -> void:
@@ -1020,37 +991,37 @@ func _fire_charge() -> void:
 	var damage := _charge_damage(directed)
 	var perfect := _is_perfect_charge()
 	if perfect:
-		damage *= 1.0 + 0.25 * float(player_stats["perfect_charge_level"])
-		limit += 2 * int(player_stats["perfect_charge_level"])
+		damage *= 1.0 + 0.25 * float(player.stats["perfect_charge_level"])
+		limit += 2 * int(player.stats["perfect_charge_level"])
 	if _emergency_charge_active():
-		damage *= 1.0 + 0.25 * float(player_stats["emergency_charge_level"])
+		damage *= 1.0 + 0.25 * float(player.stats["emergency_charge_level"])
 
-	charge_effect_anchor_active = false
+	player.charge_effect_anchor_active = false
 	var source_targets := _charge_source_targets(aim_dir)
 	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect, not source_targets.is_empty())
 	var overloaded_sources := _apply_charge_source_overload(source_targets, aim_dir)
 	_record_playtest_charge(hit_count, perfect)
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
-	charge_effect_anchor_active = false
+	player.charge_effect_anchor_active = false
 	_fire_feedback(hit_count > 0 or overloaded_sources > 0)
-	effects.spawn_charge_particles(player_pos, aim_dir, hit_count > 0 or overloaded_sources > 0, rng)
-	charge_window_left = 0.0
-	charge_timer = 0.0
-	charge_open_age = 0.0
-	charge_warning_played = false
-	charge_miss_notice = 0.0
+	effects.spawn_charge_particles(player.pos, aim_dir, hit_count > 0 or overloaded_sources > 0, rng)
+	player.charge_window_left = 0.0
+	player.charge_timer = 0.0
+	player.charge_open_age = 0.0
+	player.charge_warning_played = false
+	player.charge_miss_notice = 0.0
 
 func _charge_aim_data() -> Dictionary:
-	var aim := get_global_mouse_position() - player_pos
+	var aim := get_global_mouse_position() - player.pos
 	var directed := aim.length() > C.CHARGE_AIM_DEADZONE
 	var aim_dir := aim.normalized() if directed else _fallback_aim_dir()
 	return {"aim": aim, "directed": directed, "dir": aim_dir}
 
 func _fallback_aim_dir() -> Vector2:
-	var dir := last_move_dir
+	var dir := player.last_move_dir
 	if dir.length_squared() <= 0.01:
-		dir = attack_pose_dir
+		dir = player.attack_pose_dir
 	if dir.length_squared() <= 0.01:
 		dir = Vector2.RIGHT
 	return dir.normalized()
@@ -1058,8 +1029,8 @@ func _fallback_aim_dir() -> Vector2:
 func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bool, source_contact: bool = false) -> int:
 	var hit_indices := _charge_line_hit_indices(aim_dir, RETURN_STAMP_RANGE, RETURN_STAMP_WIDTH)
 	var hit_count := 0
-	var line_start := player_pos + aim_dir * 14.0
-	var trace_end := player_pos + aim_dir * RETURN_STAMP_RANGE
+	var line_start := player.pos + aim_dir * 14.0
+	var trace_end := player.pos + aim_dir * RETURN_STAMP_RANGE
 	var anchor_pos := trace_end
 	_register_attack_pose(aim_dir, 0.24)
 	for n in range(mini(limit, hit_indices.size())):
@@ -1068,7 +1039,7 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 			continue
 		var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
 		anchor_pos = hit_pos
-		var hit := enemies.apply_damage(idx, _enemy_meta_damage(damage, idx), "focused")
+		var hit := enemies.apply_damage(idx, damage, DamageRouter.DAMAGE_TYPE_FOCUSED, player.stats)
 		if hit.is_empty():
 			continue
 		_apply_return_stamp(idx, perfect)
@@ -1094,18 +1065,18 @@ func _fire_return_stamp(aim_dir: Vector2, limit: int, damage: float, perfect: bo
 			effects.add_floater(boss.pos + Vector2(0, -10), boss_stamp_label, C.NEON_RED, 13)
 			effects.add_impact_shake(0.16, 4.8)
 			hit_count += 1
-	charge_effect_anchor = anchor_pos
-	charge_effect_anchor_active = true
+	player.charge_effect_anchor = anchor_pos
+	player.charge_effect_anchor_active = true
 	if hit_count > 0:
 		_play_sfx("return_stamp_hit")
 		effects.add_impact_line(line_start, trace_end, C.NEON_RED, 4.0 if hit_count >= 3 else 3.0, 0.20)
 		effects.add_status_ring(trace_end, C.NEON_RED, 9.0, 0.18)
 		if hit_count >= 3:
 			_play_sfx("return_stamp_combo")
-			effects.add_floater(player_pos, "연속 반품 x%d" % hit_count, C.NEON_RED, 14)
+			effects.add_floater(player.pos, "연속 반품 x%d" % hit_count, C.NEON_RED, 14)
 			effects.add_impact_shake(0.18, 4.2)
 		else:
-			effects.add_floater(player_pos, "반품 도장!", C.NEON_RED, 14)
+			effects.add_floater(player.pos, "반품 도장!", C.NEON_RED, 14)
 	else:
 		if source_contact:
 			effects.add_impact_line(line_start, trace_end, C.NEON_RED, 2.7, 0.18)
@@ -1120,9 +1091,9 @@ func _apply_return_stamp(index: int, perfect: bool = false, duration_override: f
 		return
 	var duration := duration_override if duration_override > 0.0 else RETURN_STAMP_DURATION
 	if duration_override <= 0.0:
-		duration += 0.45 * float(player_stats.get("return_label_level", 0))
-		if perfect and int(player_stats["perfect_charge_level"]) > 0:
-			duration += 1.4 + 0.3 * float(player_stats["perfect_charge_level"])
+		duration += 0.45 * float(player.stats.get("return_label_level", 0))
+		if perfect and int(player.stats["perfect_charge_level"]) > 0:
+			duration += 1.4 + 0.3 * float(player.stats["perfect_charge_level"])
 	enemies.enemies[index]["return_stamp_timer"] = duration
 	enemies.enemies[index]["return_stamp_flash"] = 0.30
 	_play_sfx("return_stamp_mark")
@@ -1178,7 +1149,7 @@ func _cleanup_dead_positions(allow_burst_context: bool = true) -> Array[Vector2]
 			})
 	_add_audit_processing_for_dead_events(dead_events)
 	var dead_positions := enemies.cleanup_dead()
-	if allow_burst_context and int(player_stats.get("kill_burst_level", 0)) > 0:
+	if allow_burst_context and int(player.stats.get("kill_burst_level", 0)) > 0:
 		_queue_kill_burst_contexts(dead_events)
 	return dead_positions
 
@@ -1186,18 +1157,18 @@ func _add_audit_processing_for_dead_events(dead_events: Array[Dictionary]) -> vo
 	for event in dead_events:
 		var role := String(event.get("role", "basic"))
 		var sprite_kind := String(event.get("sprite_kind", ""))
-		var pos: Vector2 = event.get("pos", player_pos)
+		var pos: Vector2 = event.get("pos", player.pos)
 		var base := 22.0
 		var reason := "kill"
 		if bool(event.get("elite", false)):
 			base += 45.0
 		if bool(event.get("return_stamp", false)):
-			base += 24.0 + 8.0 * float(player_stats.get("return_label_level", 0))
+			base += 24.0 + 8.0 * float(player.stats.get("return_label_level", 0))
 			reason = "return_stamp_kill"
 		if role in ["signal", "speaker", "charger"]:
 			base += 14.0
 		if role == "robot" or sprite_kind == "appliance":
-			base += 18.0 + 10.0 * float(player_stats.get("battery_receipt_level", 0))
+			base += 18.0 + 10.0 * float(player.stats.get("battery_receipt_level", 0))
 			reason = "robot_kill"
 		if r01_map.current_zone_is_open_house() and _card_count("earn_open_house_checkin") > 0:
 			base += 10.0 * float(_card_count("earn_open_house_checkin"))
@@ -1238,7 +1209,7 @@ func _enemy_indices_in_radius(center: Vector2, radius: float, max_targets: int =
 func _charge_line_hit_indices(aim_dir: Vector2, max_range: float, width: float) -> Array[int]:
 	var hit_indices: Array[int] = []
 	for i in range(enemies.enemies.size()):
-		var to_enemy: Vector2 = enemies.enemies[i]["pos"] - player_pos
+		var to_enemy: Vector2 = enemies.enemies[i]["pos"] - player.pos
 		var forward := to_enemy.dot(aim_dir)
 		if forward < 0.0 or forward > max_range:
 			continue
@@ -1248,8 +1219,8 @@ func _charge_line_hit_indices(aim_dir: Vector2, max_range: float, width: float) 
 			continue
 		hit_indices.append(i)
 	hit_indices.sort_custom(func(a: int, b: int) -> bool:
-		var a_forward := Vector2(enemies.enemies[a]["pos"] - player_pos).dot(aim_dir)
-		var b_forward := Vector2(enemies.enemies[b]["pos"] - player_pos).dot(aim_dir)
+		var a_forward := Vector2(enemies.enemies[a]["pos"] - player.pos).dot(aim_dir)
+		var b_forward := Vector2(enemies.enemies[b]["pos"] - player.pos).dot(aim_dir)
 		return a_forward < b_forward
 	)
 	return hit_indices
@@ -1257,7 +1228,7 @@ func _charge_line_hit_indices(aim_dir: Vector2, max_range: float, width: float) 
 func _charge_line_hits_boss(aim_dir: Vector2, max_range: float, width: float) -> bool:
 	if not boss.active:
 		return false
-	var to_boss := boss.pos - player_pos
+	var to_boss := boss.pos - player.pos
 	var forward := to_boss.dot(aim_dir)
 	if forward < 0.0 or forward > max_range + BossController.BODY_RADIUS:
 		return false
@@ -1268,7 +1239,7 @@ func _charge_line_hits_boss(aim_dir: Vector2, max_range: float, width: float) ->
 func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 	var hit_indices: Array[int] = []
 	for i in range(enemies.enemies.size()):
-		var to_enemy: Vector2 = enemies.enemies[i]["pos"] - player_pos
+		var to_enemy: Vector2 = enemies.enemies[i]["pos"] - player.pos
 		var dist := to_enemy.length()
 		if dist > C.CHARGE_RANGE:
 			continue
@@ -1277,14 +1248,14 @@ func _charge_hit_indices(directed: bool, aim_dir: Vector2) -> Array[int]:
 		hit_indices.append(i)
 
 	hit_indices.sort_custom(func(a: int, b: int) -> bool:
-		return player_pos.distance_squared_to(enemies.enemies[a]["pos"]) < player_pos.distance_squared_to(enemies.enemies[b]["pos"])
+		return player.pos.distance_squared_to(enemies.enemies[a]["pos"]) < player.pos.distance_squared_to(enemies.enemies[b]["pos"])
 	)
 	return hit_indices
 
 func _charge_hits_boss(directed: bool, aim_dir: Vector2) -> bool:
 	if not boss.active:
 		return false
-	var to_boss := boss.pos - player_pos
+	var to_boss := boss.pos - player.pos
 	var dist := to_boss.length()
 	if dist > C.CHARGE_RANGE + BossController.BODY_RADIUS:
 		return false
@@ -1295,7 +1266,7 @@ func _charge_hits_boss(directed: bool, aim_dir: Vector2) -> bool:
 func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bool = true) -> Dictionary:
 	if not boss.active:
 		return {}
-	var hit := boss.apply_damage(_boss_meta_damage(base_damage), damage_type)
+	var hit := boss.apply_damage(base_damage, damage_type, player.stats)
 	if hit.is_empty():
 		return {}
 	_play_sfx("boss_hit")
@@ -1313,17 +1284,17 @@ func _apply_boss_damage(base_damage: float, damage_type: String, show_number: bo
 	return hit
 
 func _try_split_shot(primary_idx: int) -> void:
-	var split_level := int(player_stats["split_shot_level"])
+	var split_level := int(player.stats["split_shot_level"])
 	if split_level <= 0:
 		return
-	auto_shot_counter += 1
+	player.auto_shot_counter += 1
 	var cadence := maxi(2, 5 - split_level)
 	var auto_damage_synergy := _card_count("auto_damage") >= 2
 	if auto_damage_synergy:
 		cadence = maxi(2, cadence - 1)
-	if auto_shot_counter % cadence != 0:
+	if player.auto_shot_counter % cadence != 0:
 		return
-	var secondary_idx := _preferred_auto_target(player_pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx], true)
+	var secondary_idx := _preferred_auto_target(player.pos, _auto_range() + 30.0 + split_level * 10.0, [primary_idx], true)
 	if secondary_idx == -1:
 		return
 	var priority_target := _enemy_has_return_stamp(enemies.enemies[secondary_idx])
@@ -1333,16 +1304,16 @@ func _try_split_shot(primary_idx: int) -> void:
 		split_damage = _auto_damage_per_tick() * minf(0.90, 0.60 + 0.10 * split_level)
 	if priority_target:
 		split_damage *= C.AUTO_MARKED_DAMAGE_MULT
-	var hit := enemies.apply_damage(secondary_idx, _enemy_meta_damage(split_damage, secondary_idx), "auto")
+	var hit := enemies.apply_damage(secondary_idx, split_damage, DamageRouter.DAMAGE_TYPE_AUTO, player.stats)
 	if not hit.is_empty():
 		_show_damage_number(target_pos, float(hit["damage"]), "auto", String(hit["effectiveness"]))
 		_add_audit_processing(float(hit["damage"]) * 1.25, "auto_hit", target_pos)
-		_apply_hit_knockback(secondary_idx, player_pos, 4.0)
+		_apply_hit_knockback(secondary_idx, player.pos, 4.0)
 		_play_sfx("enemy_hit")
 		if priority_target:
 			effects.add_status_ring(target_pos, C.NEON_RED, 17.0, 0.22)
 	_handle_dead_positions(_cleanup_dead_positions())
-	effects.add_alt_shot(player_pos, target_pos)
+	effects.add_alt_shot(player.pos, target_pos)
 	_play_sfx("auto_fire", 1.18)
 	effects.add_status_ring(target_pos, C.TOXIC_GREEN, 18.0 if auto_damage_synergy else 14.0, 0.28 if auto_damage_synergy else 0.24)
 	var split_label := "증폭 분열!" if auto_damage_synergy else "분열!"
@@ -1351,7 +1322,7 @@ func _try_split_shot(primary_idx: int) -> void:
 	effects.add_floater(target_pos, split_label, C.TOXIC_GREEN, 14)
 
 func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
-	var burst_level := int(player_stats["kill_burst_level"])
+	var burst_level := int(player.stats["kill_burst_level"])
 	var dead_positions: Array[Vector2] = []
 	if burst_level <= 0:
 		return dead_positions
@@ -1369,7 +1340,7 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 	if rng.randf() > chance:
 		return dead_positions
 	var damage := 22.0 + 8.0 * burst_level
-	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, max_targets, "burst")
+	var hit_enemies := enemies.damage_enemies_in_radius_with_hits(pos, radius, damage, player.stats, max_targets, DamageRouter.DAMAGE_TYPE_BURST)
 	var boss_hit := {}
 	if boss.active and boss.contains_point(pos, radius):
 		boss_hit = _apply_boss_damage(damage, "burst")
@@ -1384,13 +1355,13 @@ func _try_kill_burst(pos: Vector2) -> Array[Vector2]:
 		effects.add_small_burst(pos)
 		effects.add_status_ring(pos, burst_color, radius, 0.34)
 		effects.add_floater(pos, burst_label, burst_color, 14)
-		if int(player_stats["charge_puddle_level"]) > 0:
+		if int(player.stats["charge_puddle_level"]) > 0:
 			_spawn_burst_residue_puddle(pos)
 		dead_positions = _cleanup_dead_positions()
 	return dead_positions
 
 func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> void:
-	var slow_level := int(player_stats["charge_slow_level"])
+	var slow_level := int(player.stats["charge_slow_level"])
 	if slow_level > 0:
 		var slow_duration := 1.0 + 0.25 * slow_level
 		var slow_mult := maxf(0.20, 0.58 - 0.08 * slow_level)
@@ -1405,22 +1376,22 @@ func _apply_charge_hit_modifiers(idx: int, directed: bool, aim_dir: Vector2) -> 
 		effects.add_status_ring(enemies.enemies[idx]["pos"], slow_color, 15.0, 0.30)
 		if slow_level >= 2:
 			effects.add_floater(enemies.enemies[idx]["pos"], slow_label, slow_color, 11)
-	var knockback_level := int(player_stats["charge_knockback_level"])
+	var knockback_level := int(player.stats["charge_knockback_level"])
 	if knockback_level > 0:
 		var from_pos: Vector2 = enemies.enemies[idx]["pos"]
-		var dir := aim_dir if directed else Vector2(enemies.enemies[idx]["pos"] - player_pos).normalized()
+		var dir := aim_dir if directed else Vector2(enemies.enemies[idx]["pos"] - player.pos).normalized()
 		enemies.knockback_enemy(idx, dir, 18.0 + 10.0 * knockback_level)
 		var to_pos: Vector2 = enemies.enemies[idx]["pos"]
 		effects.add_impact_line(from_pos, to_pos, C.NEON_RED)
 
 func _apply_charge_aftereffects(hit_count: int, directed: bool, aim_dir: Vector2, perfect: bool) -> void:
 	if perfect:
-		effects.add_floater(player_pos + Vector2(0, -8), "완벽!", C.VITAMIN_YELLOW, 18)
-		effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 34.0, 0.38)
+		effects.add_floater(player.pos + Vector2(0, -8), "완벽!", C.VITAMIN_YELLOW, 18)
+		effects.add_status_ring(player.pos, C.VITAMIN_YELLOW, 34.0, 0.38)
 	if _emergency_charge_active():
-		effects.add_floater(player_pos, "역송출!", C.NEON_RED, 14)
-	if int(player_stats["charge_slow_level"]) > 0 and hit_count > 0:
-		effects.add_floater(player_pos + Vector2(16, -8), "오류!", C.TOXIC_GREEN, 14)
+		effects.add_floater(player.pos, "역송출!", C.NEON_RED, 14)
+	if int(player.stats["charge_slow_level"]) > 0 and hit_count > 0:
+		effects.add_floater(player.pos + Vector2(16, -8), "오류!", C.TOXIC_GREEN, 14)
 	_spawn_charge_puddle(directed, aim_dir)
 	_try_charge_heal(hit_count)
 
@@ -1432,28 +1403,28 @@ func _try_charge_followthrough(hit_indices: Array[int], limit: int, damage: floa
 		return
 	var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
 	var follow_damage := damage * 0.28
-	var hit := enemies.apply_damage(idx, _enemy_meta_damage(follow_damage, idx), "focused")
+	var hit := enemies.apply_damage(idx, follow_damage, DamageRouter.DAMAGE_TYPE_FOCUSED, player.stats)
 	if not hit.is_empty():
 		_show_damage_number(hit_pos, float(hit["damage"]), "focused", String(hit["effectiveness"]))
-		_apply_hit_knockback(idx, player_pos, 10.0)
-		effects.add_impact_line(player_pos + aim_dir * 18.0, hit_pos, C.TOXIC_GREEN)
+		_apply_hit_knockback(idx, player.pos, 10.0)
+		effects.add_impact_line(player.pos + aim_dir * 18.0, hit_pos, C.TOXIC_GREEN)
 		effects.add_status_ring(hit_pos, C.TOXIC_GREEN, 16.0, 0.26)
 		effects.add_floater(hit_pos, "관통!", C.TOXIC_GREEN, 13)
 	_handle_dead_positions(_cleanup_dead_positions())
 
 func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
-	var puddle_level := int(player_stats["charge_puddle_level"])
+	var puddle_level := int(player.stats["charge_puddle_level"])
 	if puddle_level <= 0:
 		return
-	var pos := player_pos + (aim_dir * C.CHARGE_RANGE * 0.62 if directed else Vector2.ZERO)
-	if charge_effect_anchor_active:
-		pos = charge_effect_anchor
-	var area_combo := int(player_stats["kill_burst_level"]) > 0
+	var pos := player.pos + (aim_dir * C.CHARGE_RANGE * 0.62 if directed else Vector2.ZERO)
+	if player.charge_effect_anchor_active:
+		pos = player.charge_effect_anchor
+	var area_combo := int(player.stats["kill_burst_level"]) > 0
 	var radius := 46.0 + 6.0 * puddle_level + (4.0 if area_combo else 0.0)
 	var dps := (17.0 + 6.0 * puddle_level) * (1.10 if area_combo else 1.0) * 1.06
 	var life := 2.10 + 0.25 * puddle_level
 	var label := "반품 연쇄 잔류!" if area_combo else "반품 잔류!"
-	charge_puddles.append({
+	player.charge_puddles.append({
 		"pos": pos,
 		"radius": radius,
 		"dps": dps,
@@ -1462,32 +1433,32 @@ func _spawn_charge_puddle(directed: bool, aim_dir: Vector2) -> void:
 		"tick": 0.0,
 		"display_tick": 0.0,
 	})
-	while charge_puddles.size() > 2 + puddle_level:
-		charge_puddles.pop_front()
+	while player.charge_puddles.size() > 2 + puddle_level:
+		player.charge_puddles.pop_front()
 	effects.add_status_ring(pos, C.TOXIC_GREEN, radius, 0.42)
 	effects.add_floater(pos, label, C.TOXIC_GREEN, 14)
 
 func _spawn_burst_residue_puddle(pos: Vector2) -> void:
-	charge_puddles.append({
+	player.charge_puddles.append({
 		"pos": pos,
-		"radius": 34.0 + 4.0 * float(player_stats["charge_puddle_level"]),
-		"dps": 10.0 + 3.0 * float(player_stats["kill_burst_level"]),
+		"radius": 34.0 + 4.0 * float(player.stats["charge_puddle_level"]),
+		"dps": 10.0 + 3.0 * float(player.stats["kill_burst_level"]),
 		"life": 1.05,
 		"duration": 1.05,
 		"tick": 0.0,
 		"display_tick": 0.0,
 	})
-	while charge_puddles.size() > 2 + int(player_stats["charge_puddle_level"]):
-		charge_puddles.pop_front()
+	while player.charge_puddles.size() > 2 + int(player.stats["charge_puddle_level"]):
+		player.charge_puddles.pop_front()
 	effects.add_status_ring(pos, C.TOXIC_GREEN, 36.0, 0.34)
 	effects.add_floater(pos + Vector2(0, 8), "잉크 폭죽!", C.TOXIC_GREEN, 12)
 
 func _try_charge_heal(hit_count: int) -> void:
-	var heal_level := int(player_stats["charge_heal_level"])
+	var heal_level := int(player.stats["charge_heal_level"])
 	if heal_level <= 0:
 		return
 	var threshold := maxi(3, 6 - heal_level)
-	var survival_combo := _build_count("survival") >= 2 and player_hp <= float(player_stats["max_hp"]) * 0.45
+	var survival_combo := _build_count("survival") >= 2 and player.hp <= float(player.stats["max_hp"]) * 0.45
 	if survival_combo:
 		threshold = maxi(2, threshold - 1)
 	if hit_count < threshold:
@@ -1495,15 +1466,15 @@ func _try_charge_heal(hit_count: int) -> void:
 	var heal_amount := 3.0 + 2.0 * heal_level
 	if survival_combo:
 		heal_amount += 3.0
-	player_hp = minf(float(player_stats["max_hp"]), player_hp + heal_amount)
-	_show_damage_number(player_pos, heal_amount, "heal")
-	effects.add_floater(player_pos + Vector2(-16, -8), "생존 회복!" if survival_combo else "회복!", C.TOXIC_GREEN, 14)
+	player.hp = minf(float(player.stats["max_hp"]), player.hp + heal_amount)
+	_show_damage_number(player.pos, heal_amount, "heal")
+	effects.add_floater(player.pos + Vector2(-16, -8), "생존 회복!" if survival_combo else "회복!", C.TOXIC_GREEN, 14)
 
 func _is_perfect_charge() -> bool:
-	return int(player_stats["perfect_charge_level"]) > 0 and charge_open_age <= 0.25
+	return int(player.stats["perfect_charge_level"]) > 0 and player.charge_open_age <= 0.25
 
 func _emergency_charge_active() -> bool:
-	return int(player_stats["emergency_charge_level"]) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.30
+	return int(player.stats["emergency_charge_level"]) > 0 and player.hp <= float(player.stats["max_hp"]) * 0.30
 
 func _handle_dead_positions(dead_positions: Array[Vector2]) -> void:
 	_handle_dead_positions_internal(dead_positions, true)
@@ -1518,6 +1489,7 @@ func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_
 		_play_sfx("xp_pickup")
 		effects.spawn_pop_particles(pos, rng)
 		effects.add_burst(pos, Vector2.RIGHT, 0.18, false)
+		_add_death_residue_mark(pos)
 		if allow_kill_bursts:
 			burst_dead_positions.append_array(_try_kill_burst(pos))
 	if burst_dead_positions.size() > 0:
@@ -1528,25 +1500,40 @@ func _handle_dead_positions_internal(dead_positions: Array[Vector2], allow_kill_
 		_play_sfx("xp_pickup", 1.22, 0.0)
 		_show_level_card()
 
+func _add_death_residue_mark(pos: Vector2) -> void:
+	death_residue_marks.append({
+		"pos": pos,
+		"life": 0.85,
+		"duration": 0.85,
+		"radius": 18.0,
+	})
+	if death_residue_marks.size() > 36:
+		death_residue_marks = death_residue_marks.slice(death_residue_marks.size() - 36)
+
+func _update_death_residue_marks(delta: float) -> void:
+	for mark in death_residue_marks:
+		mark["life"] = float(mark.get("life", 0.0)) - delta
+	death_residue_marks = death_residue_marks.filter(func(mark: Dictionary) -> bool: return float(mark.get("life", 0.0)) > 0.0)
+
 func _update_wave_events(wave_params: Dictionary) -> void:
 	if _first_recall_active():
 		return
 	if not mid_event_triggered and elapsed >= WaveDirector.MID_EVENT_TIME:
 		mid_event_triggered = true
-		enemies.spawn_elite_group(4, elapsed, player_pos, rng, wave_params)
+		enemies.spawn_elite_group(4, elapsed, player.pos, rng, wave_params)
 		peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 		_show_wave_notice("대형 광고 마스코트 진입")
 	elif WaveDirector.is_finale(elapsed) and wave_notice_timer <= 0.0:
 		_show_wave_notice("피날레: 마지막 광고 공세")
 
 func _update_r01_zone(delta: float) -> void:
-	var world_zone_id := r01_blockout.nearest_zone_id(player_pos) if R01LayoutBlockout.ENABLED else ""
-	var changed := r01_map.update(delta, elapsed, match_state == "playing", world_zone_id)
-	if match_state == "playing":
+	var world_zone_id := r01_blockout.nearest_zone_id(player.pos) if R01LayoutBlockout.ENABLED else ""
+	var changed := r01_map.update(delta, elapsed, state_machine.is_playing(), world_zone_id)
+	if state_machine.is_playing():
 		_record_r01_zone_time(delta)
 		_update_open_house_signal_candidate()
 	if changed and not _first_recall_active():
-		if match_state == "playing":
+		if state_machine.is_playing():
 			_record_playtest_zone_entry(r01_map.current_zone_id())
 		var notice := r01_map.active_notice_text()
 		var clause_notice := _zone_clause_entry_notice(r01_map.current_zone_id())
@@ -1623,7 +1610,7 @@ func _update_open_house_signal_candidate() -> void:
 		_show_wave_notice("오픈하우스 체류: 모델하우스 신호가 선명해집니다")
 
 func _update_ration_candidate_feedback() -> void:
-	if match_state != "playing":
+	if not state_machine.is_playing():
 		return
 	var ration_data := _ration_hud_data()
 	var candidates: Dictionary = ration_data.get("candidates", {})
@@ -1643,8 +1630,8 @@ func _update_ration_candidate_feedback() -> void:
 	elif int(candidates.get("food", 0)) > 0 or int(confirmed.get("food", 0)) > 0:
 		label = "식량 후보"
 		notice = "식량태그 후보: 체류 근거가 정산 카운터에 남습니다"
-	effects.add_floater(player_pos + Vector2(0, -18), label, C.VITAMIN_YELLOW, 13)
-	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 50.0, 0.34)
+	effects.add_floater(player.pos + Vector2(0, -18), label, C.VITAMIN_YELLOW, 13)
+	effects.add_status_ring(player.pos, C.VITAMIN_YELLOW, 50.0, 0.34)
 	_show_wave_notice(notice)
 
 func _update_field_interaction_runtime(delta: float) -> void:
@@ -1663,15 +1650,15 @@ func _update_micro_location_runtime(delta: float) -> void:
 		micro_location_overlay_alpha = move_toward(micro_location_overlay_alpha, 0.0, delta * 5.0)
 		micro_location_camera_focus_offset = micro_location_camera_focus_offset.lerp(Vector2.ZERO, 0.24)
 		return
-	if match_state != "playing" or paused_for_card:
+	if not state_machine.is_playing() or paused_for_card:
 		_clear_micro_location_focus(false)
 		return
 	micro_location_overlay_alpha = move_toward(micro_location_overlay_alpha, 1.0, delta * 7.0)
 	_refresh_micro_location_visual_state()
 	var entry := _micro_location_entry_object(_current_micro_location())
 	if not entry.is_empty():
-		var entry_pos := Vector2(entry.get("pos", player_pos))
-		if player_pos.distance_squared_to(entry_pos) > MICRO_LOCATION_EXIT_RADIUS * MICRO_LOCATION_EXIT_RADIUS:
+		var entry_pos := Vector2(entry.get("pos", player.pos))
+		if player.pos.distance_squared_to(entry_pos) > MICRO_LOCATION_EXIT_RADIUS * MICRO_LOCATION_EXIT_RADIUS:
 			_exit_micro_location("위치가 멀어져 장소 조사에서 빠져나왔습니다.")
 			return
 	micro_location_elapsed += delta
@@ -1710,18 +1697,18 @@ func _handle_micro_location_input(event: InputEvent) -> bool:
 	return false
 
 func _nearest_micro_location_entry() -> Dictionary:
-	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+	if not R01LayoutBlockout.ENABLED or not state_machine.is_playing():
 		return {}
 	var best := {}
 	var best_distance := MICRO_LOCATION_ENTRY_RADIUS * MICRO_LOCATION_ENTRY_RADIUS
-	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	var zone_id := r01_blockout.nearest_zone_id(player.pos)
 	for location in R01MicroLocations.locations():
 		if String(location.get("zone_id", "")) != zone_id:
 			continue
 		var entry := _micro_location_entry_object(location)
 		if entry.is_empty():
 			continue
-		var distance := player_pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
+		var distance := player.pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
 		if distance <= best_distance:
 			best_distance = distance
 			best = location
@@ -1731,7 +1718,7 @@ func _nearest_micro_location_entry() -> Dictionary:
 		var entry := _micro_location_entry_object(location)
 		if entry.is_empty():
 			continue
-		var distance := player_pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
+		var distance := player.pos.distance_squared_to(Vector2(entry.get("pos", Vector2.ZERO)))
 		if distance <= best_distance:
 			best_distance = distance
 			best = location
@@ -1755,18 +1742,18 @@ func _refresh_micro_location_visual_state() -> void:
 	var location := _current_micro_location()
 	if location.is_empty():
 		micro_location_camera_focus_offset = Vector2.ZERO
-		micro_location_focus_world_pos = player_pos
+		micro_location_focus_world_pos = player.pos
 		return
 	var entry := _micro_location_entry_object(location)
-	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var entry_pos := Vector2(entry.get("pos", player.pos))
 	var camera_offset := Vector2(location.get("camera_offset", Vector2.ZERO))
-	var desired_focus := player_pos.lerp(entry_pos + camera_offset, MICRO_LOCATION_FOCUS_LERP)
+	var desired_focus := player.pos.lerp(entry_pos + camera_offset, MICRO_LOCATION_FOCUS_LERP)
 	micro_location_focus_world_pos = desired_focus
-	micro_location_camera_focus_offset = (desired_focus - player_pos).limit_length(MICRO_LOCATION_FOCUS_LIMIT)
+	micro_location_camera_focus_offset = (desired_focus - player.pos).limit_length(MICRO_LOCATION_FOCUS_LIMIT)
 
 func _micro_location_overlay_center(location: Dictionary) -> Vector2:
 	var entry := _micro_location_entry_object(location)
-	return Vector2(entry.get("pos", player_pos)) + Vector2(location.get("overlay_offset", Vector2.ZERO))
+	return Vector2(entry.get("pos", player.pos)) + Vector2(location.get("overlay_offset", Vector2.ZERO))
 
 func _micro_location_overlay_rect(location: Dictionary) -> Rect2:
 	var size := Vector2(location.get("overlay_size", Vector2(176, 116)))
@@ -1780,6 +1767,8 @@ func _micro_location_point_completed(location_id: String, point_id: String) -> b
 
 func _micro_location_accent_color(location: Dictionary) -> Color:
 	match String(location.get("visual_style", "")):
+		"public_anchor":
+			return Color(0.72, 0.84, 0.92, 0.92)
 		"window":
 			return Color(0.86, 0.74, 1.0, 0.92)
 		"model_lobby":
@@ -1820,7 +1809,7 @@ func _enter_micro_location(location: Dictionary) -> void:
 	_refresh_micro_location_visual_state()
 	last_micro_location_action = "enter %s" % current_micro_location_id
 	var entry := _micro_location_entry_object(location)
-	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var entry_pos := Vector2(entry.get("pos", player.pos))
 	var phrase := String(location.get("entry_phrase", "짧은 장소 조사를 시작했습니다."))
 	_show_micro_location_notice(phrase)
 	effects.add_floater(entry_pos + Vector2(0, -22), String(location.get("display_name", "장소")), C.VITAMIN_YELLOW, 12)
@@ -1845,7 +1834,7 @@ func _clear_micro_location_focus(clear_memory: bool) -> void:
 	micro_location_risk_state = "idle"
 	micro_location_overlay_alpha = 0.0
 	micro_location_camera_focus_offset = Vector2.ZERO
-	micro_location_focus_world_pos = player_pos
+	micro_location_focus_world_pos = player.pos
 	if clear_memory:
 		micro_location_completed_points.clear()
 		micro_location_total_counts.clear()
@@ -1863,7 +1852,7 @@ func _apply_micro_location_point(action: String) -> bool:
 	var already_completed := bool(micro_location_completed_points.get(point_key, false))
 	micro_location_total_counts[point_key] = int(micro_location_total_counts.get(point_key, 0)) + 1
 	var source := _micro_location_source_object(location, point)
-	var source_pos := Vector2(source.get("pos", player_pos))
+	var source_pos := Vector2(source.get("pos", player.pos))
 	if already_completed:
 		_show_micro_location_notice(String(point.get("repeat_phrase", "이미 확인한 지점입니다.")))
 		effects.add_floater(source_pos + Vector2(0, -18), "반복 확인", Color(0.35, 0.70, 0.95), 10)
@@ -1890,6 +1879,14 @@ func _apply_micro_location_point(action: String) -> bool:
 func _apply_micro_location_source_effect(location: Dictionary, point: Dictionary, source: Dictionary, action: String, phrase: String) -> void:
 	if source.is_empty():
 		return
+	if bool(location.get("noncombat_anchor", false)) or bool(point.get("noncombat_anchor", false)):
+		last_r01_source_action = "micro anchor %s/%s" % [
+			String(location.get("location_id", "")),
+			String(point.get("point_id", "")),
+		]
+		last_r01_source_effect_summary = "비전투 앵커: source-state 판정 없이 세계 기준만 고정"
+		_append_noncombat_anchor_reveal(source, String(point.get("display_name", "비전투 앵커")), Color(0.35, 0.70, 0.95, 0.44), MICRO_LOCATION_REVEAL_DURATION)
+		return
 	var result := {}
 	if action == "charge":
 		result = R01SourceState.overload(r01_source_states, source, phrase)
@@ -1900,6 +1897,10 @@ func _apply_micro_location_source_effect(location: Dictionary, point: Dictionary
 	else:
 		result = R01SourceState.reveal(r01_source_states, source, "micro_reveal", phrase)
 	var state_label := String(result.get("state", R01SourceState.STATE_ACTIVE))
+	var learning_state := _record_r01_source_learning(source, state_label, "micro_%s" % action)
+	var p0_phrase := _p0_state_with_repeat_phrase(source, state_label, learning_state)
+	if p0_phrase != "":
+		_show_micro_location_notice("%s / %s" % [phrase, p0_phrase])
 	last_r01_source_action = "micro %s %s -> %s" % [action, String(point.get("display_name", "")), state_label]
 	last_r01_source_effect_summary = _source_kind_effect_summary(source, "micro_%s" % action)
 	last_micro_location_action = "%s %s/%s" % [action, String(location.get("location_id", "")), String(point.get("point_id", ""))]
@@ -1950,12 +1951,22 @@ func _record_micro_location_outpost_event(location: Dictionary, point: Dictionar
 	meta_progression.record_outpost_event(npc_id, "micro_location_%s" % action, _micro_location_outpost_line(location, point, action), facility_id)
 
 func _apply_micro_location_small_combat_link(location: Dictionary, point: Dictionary, action: String) -> void:
+	if bool(location.get("noncombat_anchor", false)) or bool(point.get("noncombat_anchor", false)):
+		last_threat_label = "비전투 앵커: 세계 기준 확인"
+		return
 	var source := _micro_location_source_object(location, point)
 	var key := String(point.get("source_effect_hint", _source_effect_key(source)))
 	match key:
 		"doorbell":
 			pressure_ring_timer = maxf(pressure_ring_timer, 1.8)
 			last_threat_label = "마이크로 장소: 현관 센서 source 경고"
+		"nameplate":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.6)
+			last_threat_label = "마이크로 장소: 문패 source 경고"
+		"family_photo":
+			_set_boss_signal_state("faint")
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.8)
+			last_threat_label = "마이크로 장소: 가족사진 창문 source 경고"
 		"mailbox":
 			flyer_drop_timer = maxf(flyer_drop_timer, 1.4)
 			last_threat_label = "마이크로 장소: 주소 전단 source 표시"
@@ -1976,14 +1987,18 @@ func _apply_micro_location_small_combat_link(location: Dictionary, point: Dictio
 		_:
 			last_threat_label = "마이크로 장소 source 표시"
 	if action == "charge" and not source.is_empty():
-		_delay_or_cancel_source_threats(Vector2(source.get("pos", player_pos)), true)
+		_delay_or_cancel_source_threats(Vector2(source.get("pos", player.pos)), true)
 
 func _trigger_micro_location_risk_pulse(location: Dictionary) -> void:
 	var risk_level := int(location.get("risk_level", 1))
+	if risk_level <= 0 or bool(location.get("noncombat_anchor", false)):
+		micro_location_risk_timer = _micro_location_risk_interval(location)
+		micro_location_risk_state = "anchor"
+		return
 	micro_location_risk_timer = _micro_location_risk_interval(location)
 	micro_location_risk_state = "warning_%d" % maxi(1, risk_level)
 	var entry := _micro_location_entry_object(location)
-	var entry_pos := Vector2(entry.get("pos", player_pos))
+	var entry_pos := Vector2(entry.get("pos", player.pos))
 	if risk_level >= 3:
 		_spawn_pressure_ring()
 	else:
@@ -1995,6 +2010,8 @@ func _trigger_micro_location_risk_pulse(location: Dictionary) -> void:
 
 func _micro_location_risk_interval(location: Dictionary) -> float:
 	var risk_level := int(location.get("risk_level", 1))
+	if risk_level <= 0 or bool(location.get("noncombat_anchor", false)):
+		return 9999.0
 	return maxf(2.4, MICRO_LOCATION_RISK_BASE_INTERVAL - float(risk_level) * 0.45)
 
 func _micro_location_prompt_text() -> String:
@@ -2041,6 +2058,10 @@ func _micro_location_action_label(action: String) -> String:
 
 func _micro_location_source_label(point: Dictionary) -> String:
 	match String(point.get("source_effect_hint", "")):
+		"nameplate":
+			return "문패 source"
+		"family_photo":
+			return "가족사진 source"
 		"doorbell":
 			return "현관 source"
 		"mailbox":
@@ -2067,6 +2088,8 @@ func _micro_location_outpost_line(location: Dictionary, point: Dictionary, actio
 	var location_id := String(location.get("location_id", ""))
 	var point_name := String(point.get("display_name", "조사 지점"))
 	match location_id:
+		"l01_public_anchor":
+			return "세븐이 오래된 공공 안내판과 14차 갱신 라벨을 출격 게시판 첫 줄에 고정합니다."
 		"l02_porch_gap":
 			return "도윤이 현관 센서와 문틈 음성을 정비대 주파수표에 나란히 둡니다."
 		"l02_family_window":
@@ -2081,12 +2104,12 @@ func _micro_location_outpost_line(location: Dictionary, point: Dictionary, actio
 			return "보급소가 %s의 짧은 장소 조사를 보상 대신 기록으로 묶습니다." % String(location.get("display_name", "장소"))
 
 func _nearest_field_story_object() -> Dictionary:
-	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+	if not R01LayoutBlockout.ENABLED or not state_machine.is_playing():
 		return {}
-	var zone_id := r01_blockout.nearest_zone_id(player_pos)
-	var object := r01_blockout.nearest_story_object(player_pos, FIELD_INTERACTION_RADIUS, zone_id)
+	var zone_id := r01_blockout.nearest_zone_id(player.pos)
+	var object := r01_blockout.nearest_story_object(player.pos, FIELD_INTERACTION_RADIUS, zone_id)
 	if object.is_empty():
-		object = r01_blockout.nearest_story_object(player_pos, FIELD_INTERACTION_RADIUS)
+		object = r01_blockout.nearest_story_object(player.pos, FIELD_INTERACTION_RADIUS)
 	return object
 
 func _field_interaction_prompt_text() -> String:
@@ -2113,7 +2136,7 @@ func _try_field_interaction() -> bool:
 	var already_this_sortie := int(field_interacted_counts.get(object_id, 0)) > 0
 	field_interacted_counts[object_id] = int(field_interacted_counts.get(object_id, 0)) + 1
 	field_interaction_total_counts[object_id] = int(field_interaction_total_counts.get(object_id, 0)) + 1
-	var object_pos := Vector2(object.get("pos", player_pos))
+	var object_pos := Vector2(object.get("pos", player.pos))
 	if already_this_sortie:
 		_show_field_interaction_notice(_field_interaction_repeat_line(object))
 		effects.add_floater(object_pos + Vector2(0, -18), "반복 확인", Color(0.35, 0.70, 0.95), 11)
@@ -2123,7 +2146,7 @@ func _try_field_interaction() -> bool:
 	return true
 
 func _apply_field_story_object_effect(object: Dictionary) -> void:
-	var object_pos := Vector2(object.get("pos", player_pos))
+	var object_pos := Vector2(object.get("pos", player.pos))
 	var display_name := String(object.get("display_name", "흔적"))
 	var result_phrase := _field_interaction_result_line(object)
 	var hint_line := _field_interaction_hint_line(object)
@@ -2135,7 +2158,11 @@ func _apply_field_story_object_effect(object: Dictionary) -> void:
 	_show_field_interaction_notice(notice)
 	effects.add_floater(object_pos + Vector2(0, -18), "%s 완료" % String(object.get("interaction_type", "조사")), C.VITAMIN_YELLOW, 12)
 	effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 48.0, 0.32)
-	_reveal_r01_source_object(object, "E", result_phrase)
+	if bool(object.get("noncombat_anchor", false)):
+		last_r01_source_action = "field anchor %s" % String(object.get("id", ""))
+		last_r01_source_effect_summary = "비전투 앵커: source-state 판정 없이 첫 30분 의미 기준만 고정"
+	else:
+		_reveal_r01_source_object(object, "E", result_phrase)
 	_apply_field_interaction_node_memory(object)
 	_record_field_interaction_outpost_event(object)
 	_add_field_interaction_reveals(object)
@@ -2144,6 +2171,10 @@ func _apply_field_story_object_effect(object: Dictionary) -> void:
 
 func _field_interaction_result_line(object: Dictionary) -> String:
 	var base_line := String(object.get("result_phrase", "흔적이 작전도에 남았습니다."))
+	if not bool(object.get("noncombat_anchor", false)):
+		var p0_phrase := R01SourceState.p0_state_phrase(object, R01SourceState.STATE_REVEALED, _r01_phrase_state())
+		if p0_phrase != "":
+			base_line = "%s / %s" % [base_line, p0_phrase]
 	var trace_line := String(object.get("human_trace_first_line", ""))
 	if trace_line != "":
 		return "%s / %s" % [base_line, trace_line]
@@ -2229,6 +2260,9 @@ func _field_outpost_reaction_line(object: Dictionary) -> String:
 	var trace_reaction := String(object.get("human_trace_outpost_reaction", ""))
 	if trace_reaction != "":
 		return trace_reaction
+	var p0_settlement := R01SourceState.p0_settlement_line(object, R01SourceState.STATE_REVEALED, "revealed")
+	if p0_settlement != "":
+		return p0_settlement
 	return String(object.get("outpost_reaction", "R01 현장 흔적이 보급소 기록으로 넘어왔습니다."))
 
 func _consume_field_remote_comment(object: Dictionary) -> String:
@@ -2244,11 +2278,13 @@ func _consume_field_remote_comment(object: Dictionary) -> String:
 		return ""
 	field_remote_comment_seen[remote_tag] = true
 	last_field_remote_comment = remote_comment
-	effects.add_floater(player_pos + Vector2(0, -42), remote_comment, Color(0.35, 0.70, 0.95), 9)
+	effects.add_floater(player.pos + Vector2(0, -42), remote_comment, Color(0.35, 0.70, 0.95), 9)
 	return remote_comment
 
 func _add_field_interaction_reveals(object: Dictionary) -> void:
-	var zone_id := String(object.get("zone_id", r01_blockout.nearest_zone_id(player_pos)))
+	if bool(object.get("noncombat_anchor", false)):
+		return
+	var zone_id := String(object.get("zone_id", r01_blockout.nearest_zone_id(player.pos)))
 	var cue_count := 0
 	for role in Array(object.get("reveal_spawn_roles", [])):
 		for source in r01_blockout.source_objects_for_spawn_role(String(role), zone_id):
@@ -2293,12 +2329,18 @@ func _append_field_interaction_reveal(source: Dictionary, label: String, color: 
 	if source_id == "":
 		return false
 	R01SourceState.reveal(r01_source_states, source, "linked_reveal", label)
+	return _append_noncombat_anchor_reveal(source, label, color, duration)
+
+func _append_noncombat_anchor_reveal(source: Dictionary, label: String, color: Color, duration: float = FIELD_INTERACTION_REVEAL_DURATION) -> bool:
+	var source_id := String(source.get("id", ""))
+	if source_id == "":
+		return false
 	for cue in field_interaction_reveals:
 		if String(cue.get("source_id", "")) == source_id:
 			return false
 	field_interaction_reveals.append({
 		"source_id": source_id,
-		"pos": Vector2(source.get("pos", player_pos)),
+		"pos": Vector2(source.get("pos", player.pos)),
 		"label": label,
 		"timer": duration,
 		"duration": duration,
@@ -2308,18 +2350,31 @@ func _append_field_interaction_reveal(source: Dictionary, label: String, color: 
 
 func _reveal_r01_source_object(object: Dictionary, action_label: String, phrase: String) -> void:
 	var result := R01SourceState.reveal(r01_source_states, object, "reveal", phrase)
+	var state_label := String(result.get("state", R01SourceState.STATE_REVEALED))
+	var learning_state := _record_r01_source_learning(object, state_label, "revealed")
 	last_r01_source_action = "%s reveal %s -> %s" % [
 		action_label,
 		String(object.get("display_name", "source")),
-		String(result.get("state", R01SourceState.STATE_REVEALED)),
+		state_label,
 	]
-	last_r01_source_effect_summary = _source_kind_effect_summary(object, "reveal")
+	var p0_phrase := _p0_state_with_repeat_phrase(object, state_label, learning_state)
+	last_r01_source_effect_summary = p0_phrase if p0_phrase != "" else _source_kind_effect_summary(object, "reveal")
 
 func _apply_field_interaction_small_combat_link(object: Dictionary) -> void:
+	if bool(object.get("noncombat_anchor", false)):
+		last_threat_label = "비전투 앵커: 세계 기준 확인"
+		return
 	match String(object.get("campaign_effect", "")):
 		"front_sensor_warning":
 			pressure_ring_timer = maxf(pressure_ring_timer, 1.4)
 			last_threat_label = "현관 센서 source 경고"
+		"closed_door_stamp":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.2)
+			last_threat_label = "문패 source 경고"
+		"family_photo_memory":
+			_set_boss_signal_state("faint")
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.3)
+			last_threat_label = "가족사진 창문 source 경고"
 		"mailbox_address_duplicate":
 			flyer_drop_timer = maxf(flyer_drop_timer, 1.2)
 			last_threat_label = "우편함 전단 source 표시"
@@ -2352,8 +2407,8 @@ func _try_manual_stamp_with_aim(aim_dir: Vector2) -> bool:
 	if aim_dir.length_squared() <= 0.01:
 		aim_dir = _fallback_aim_dir()
 	aim_dir = aim_dir.normalized()
-	var line_start := player_pos + aim_dir * 12.0
-	var trace_end := player_pos + aim_dir * C.MANUAL_STAMP_RANGE
+	var line_start := player.pos + aim_dir * 12.0
+	var trace_end := player.pos + aim_dir * C.MANUAL_STAMP_RANGE
 	_register_attack_pose(aim_dir, 0.18)
 
 	var enemy_hits := _apply_manual_stamp_enemy_hit(aim_dir, line_start)
@@ -2394,7 +2449,7 @@ func _apply_manual_stamp_enemy_hit(aim_dir: Vector2, line_start: Vector2) -> int
 	if idx < 0 or idx >= enemies.enemies.size():
 		return 0
 	var hit_pos: Vector2 = enemies.enemies[idx]["pos"]
-	var hit := enemies.apply_damage(idx, _enemy_meta_damage(_manual_stamp_damage(), idx), "manual")
+	var hit := enemies.apply_damage(idx, _manual_stamp_damage(), DamageRouter.DAMAGE_TYPE_MANUAL, player.stats)
 	if hit.is_empty():
 		return 0
 	_apply_return_stamp(idx, false, C.MANUAL_STAMP_MARK_DURATION)
@@ -2404,7 +2459,7 @@ func _apply_manual_stamp_enemy_hit(aim_dir: Vector2, line_start: Vector2) -> int
 	effects.add_impact_line(line_start, hit_pos, C.NEON_RED, 2.4, 0.14)
 	effects.add_return_stamp_hit(hit_pos, aim_dir, false, false)
 	effects.add_floater(hit_pos + Vector2(0, -4), "도장", C.NEON_RED, 11)
-	_apply_hit_knockback(idx, player_pos, 8.0)
+	_apply_hit_knockback(idx, player.pos, 8.0)
 	var role := String(enemies.enemies[idx].get("role", "basic"))
 	if role in ["speaker", "charger", "signal"]:
 		last_threat_label = "현장 도장: %s source 경고" % role
@@ -2418,7 +2473,7 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 	if object_id == "":
 		return {"hit": false, "source_hit": false, "phrase": ""}
 	var display_name := String(object.get("display_name", "흔적"))
-	var object_pos := Vector2(object.get("pos", player_pos))
+	var object_pos := Vector2(object.get("pos", player.pos))
 	last_manual_stamp_object_id = object_id
 	last_manual_stamp_display_name = display_name
 	manual_stamp_total_story_counts[object_id] = int(manual_stamp_total_story_counts.get(object_id, 0)) + 1
@@ -2435,6 +2490,8 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 			"source_hit": false,
 			"phrase": "%s: 도장 흔적은 이미 남았습니다" % display_name,
 		}
+	var state_label := String(suppress_result.get("state", R01SourceState.STATE_SUPPRESSED))
+	var learning_state := _record_r01_source_learning(object, state_label, "suppressed")
 	_apply_manual_stamp_node_memory(object)
 	_record_manual_stamp_outpost_event(object)
 	_add_field_interaction_reveals(object)
@@ -2442,8 +2499,9 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 	_apply_source_suppression_combat_effect(object)
 	effects.add_floater(object_pos + Vector2(0, -16), "도장 확인", C.NEON_RED, 11)
 	effects.add_status_ring(object_pos, C.NEON_RED, 44.0, 0.28)
-	last_r01_source_action = "stamp %s -> %s" % [display_name, String(suppress_result.get("state", R01SourceState.STATE_SUPPRESSED))]
-	last_r01_source_effect_summary = _source_kind_effect_summary(object, "suppress")
+	last_r01_source_action = "stamp %s -> %s" % [display_name, state_label]
+	var p0_summary := _p0_state_with_repeat_phrase(object, state_label, learning_state)
+	last_r01_source_effect_summary = p0_summary if p0_summary != "" else _source_kind_effect_summary(object, "suppress")
 	return {
 		"hit": true,
 		"source_hit": true,
@@ -2451,19 +2509,19 @@ func _apply_manual_stamp_story_reaction(aim_dir: Vector2) -> Dictionary:
 	}
 
 func _manual_stamp_story_object(aim_dir: Vector2) -> Dictionary:
-	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+	if not R01LayoutBlockout.ENABLED or not state_machine.is_playing():
 		return {}
-	var zone_id := r01_blockout.nearest_zone_id(player_pos)
-	var near_object := r01_blockout.nearest_story_object(player_pos, C.MANUAL_STAMP_SOURCE_RADIUS, zone_id)
+	var zone_id := r01_blockout.nearest_zone_id(player.pos)
+	var near_object := r01_blockout.nearest_story_object(player.pos, C.MANUAL_STAMP_SOURCE_RADIUS, zone_id)
 	if near_object.is_empty():
-		near_object = r01_blockout.nearest_story_object(player_pos, C.MANUAL_STAMP_SOURCE_RADIUS)
+		near_object = r01_blockout.nearest_story_object(player.pos, C.MANUAL_STAMP_SOURCE_RADIUS)
 	if not near_object.is_empty():
 		return near_object
 	var best := {}
 	var best_score := INF
 	for object in r01_blockout.story_objects_for_state():
 		var object_pos := Vector2(object.get("pos", Vector2.ZERO))
-		var to_object := object_pos - player_pos
+		var to_object := object_pos - player.pos
 		var forward := to_object.dot(aim_dir)
 		if forward < -8.0 or forward > C.MANUAL_STAMP_RANGE + 18.0:
 			continue
@@ -2522,6 +2580,9 @@ func _apply_manual_stamp_small_combat_link(object: Dictionary) -> void:
 			pass
 
 func _manual_stamp_story_reaction_phrase(object: Dictionary) -> String:
+	var p0_phrase := _p0_state_with_repeat_phrase(object, R01SourceState.STATE_SUPPRESSED, _r01_phrase_state())
+	if p0_phrase != "":
+		return "현장 도장: %s" % p0_phrase
 	match String(object.get("campaign_effect", "")):
 		"mailbox_address_duplicate":
 			return "현장 도장: 우편함 source 발송이 잠깐 끊깁니다"
@@ -2535,9 +2596,15 @@ func _manual_stamp_story_reaction_phrase(object: Dictionary) -> String:
 			return "현장 도장: %s에 확인 흔적이 남았습니다" % String(object.get("display_name", "source"))
 
 func _manual_stamp_memory_phrase(object: Dictionary) -> String:
+	var p0_phrase := _p0_state_with_repeat_phrase(object, R01SourceState.STATE_SUPPRESSED, _r01_phrase_state())
+	if p0_phrase != "":
+		return p0_phrase
 	return "도장 확인: %s" % String(object.get("node_memory_phrase", object.get("display_name", "현장 source")))
 
 func _manual_stamp_outpost_reaction(object: Dictionary) -> String:
+	var p0_settlement := R01SourceState.p0_settlement_line(object, R01SourceState.STATE_SUPPRESSED, "suppressed")
+	if p0_settlement != "":
+		return p0_settlement
 	return "현장 도장 기록: %s - %s" % [
 		String(object.get("display_name", "source")),
 		String(object.get("node_memory_phrase", "반품 확인")),
@@ -2545,7 +2612,7 @@ func _manual_stamp_outpost_reaction(object: Dictionary) -> String:
 
 func _charge_source_targets(aim_dir: Vector2) -> Array[Dictionary]:
 	var targets: Array[Dictionary] = []
-	if not R01LayoutBlockout.ENABLED or match_state != "playing":
+	if not R01LayoutBlockout.ENABLED or not state_machine.is_playing():
 		return targets
 	var safe_dir := aim_dir.normalized() if aim_dir.length_squared() > 0.01 else _fallback_aim_dir()
 	var candidates: Array[Dictionary] = []
@@ -2553,7 +2620,7 @@ func _charge_source_targets(aim_dir: Vector2) -> Array[Dictionary]:
 		if not _r01_story_source_processable(object):
 			continue
 		var object_pos := Vector2(object.get("pos", Vector2.ZERO))
-		var to_object := object_pos - player_pos
+		var to_object := object_pos - player.pos
 		var forward := to_object.dot(safe_dir)
 		if forward < -12.0 or forward > RETURN_STAMP_RANGE + 34.0:
 			continue
@@ -2566,10 +2633,10 @@ func _charge_source_targets(aim_dir: Vector2) -> Array[Dictionary]:
 			"object": object,
 		})
 	if candidates.is_empty():
-		var zone_id := r01_blockout.nearest_zone_id(player_pos)
-		var near_object := r01_blockout.nearest_story_object(player_pos, 118.0, zone_id)
+		var zone_id := r01_blockout.nearest_zone_id(player.pos)
+		var near_object := r01_blockout.nearest_story_object(player.pos, 118.0, zone_id)
 		if near_object.is_empty():
-			near_object = r01_blockout.nearest_story_object(player_pos, 118.0)
+			near_object = r01_blockout.nearest_story_object(player.pos, 118.0)
 		if not near_object.is_empty() and _r01_story_source_processable(near_object):
 			targets.append(near_object)
 			return targets
@@ -2603,7 +2670,7 @@ func _apply_charge_source_overload(source_targets: Array[Dictionary], aim_dir: V
 	for object in source_targets:
 		var display_name := String(object.get("display_name", "위험 원천"))
 		var result := R01SourceState.overload(r01_source_states, object, _source_overload_phrase(object))
-		var object_pos := Vector2(object.get("pos", player_pos))
+		var object_pos := Vector2(object.get("pos", player.pos))
 		if bool(result.get("repeat", false)):
 			repeats += 1
 			effects.add_floater(object_pos + Vector2(0, -18), "이미 처리됨", Color(0.35, 0.70, 0.95), 10)
@@ -2612,6 +2679,8 @@ func _apply_charge_source_overload(source_targets: Array[Dictionary], aim_dir: V
 		if not bool(result.get("applied", false)):
 			continue
 		applied += 1
+		var state_label := String(result.get("state", R01SourceState.STATE_OVERLOADED))
+		_record_r01_source_learning(object, state_label, "overloaded")
 		last_manual_stamp_object_id = String(object.get("id", ""))
 		last_manual_stamp_display_name = display_name
 		_apply_source_action_node_memory(object, "overload")
@@ -2620,7 +2689,7 @@ func _apply_charge_source_overload(source_targets: Array[Dictionary], aim_dir: V
 		_apply_source_overload_combat_effect(object, aim_dir)
 		effects.add_floater(object_pos + Vector2(0, -20), "강한 도장", C.VITAMIN_YELLOW, 12)
 		effects.add_status_ring(object_pos, C.VITAMIN_YELLOW, 62.0, 0.36)
-		effects.add_impact_line(player_pos + aim_dir.normalized() * 14.0, object_pos, C.NEON_RED, 3.2, 0.18)
+		effects.add_impact_line(player.pos + aim_dir.normalized() * 14.0, object_pos, C.NEON_RED, 3.2, 0.18)
 	if applied > 0:
 		var line := "강한 도장: 위험 원천 %d곳 교란" % applied
 		if applied == 1:
@@ -2629,17 +2698,25 @@ func _apply_charge_source_overload(source_targets: Array[Dictionary], aim_dir: V
 		_play_sfx("return_stamp_combo", 0.92, 0.0)
 		_record_playtest_event("source_overload")
 		last_r01_source_action = "overload %d source(s)" % applied
-		last_r01_source_effect_summary = _source_kind_effect_summary(source_targets[0], "overload")
+		var overload_summary := _p0_state_with_repeat_phrase(source_targets[0], R01SourceState.STATE_OVERLOADED, _r01_phrase_state())
+		last_r01_source_effect_summary = overload_summary if overload_summary != "" else _source_kind_effect_summary(source_targets[0], "overload")
 	elif repeats > 0:
-		_show_wave_notice("강한 도장: 이미 처리한 위험 원천은 더 파밍되지 않습니다")
+		_show_wave_notice("강한 도장: 이미 보류한 위험 원천은 추가 판정 근거를 만들지 않습니다")
 		last_r01_source_action = "repeat overload"
 		last_r01_source_effect_summary = "repeat only / no node memory"
 	return applied
 
 func _apply_source_suppression_combat_effect(object: Dictionary) -> void:
 	var key := _source_effect_key(object)
-	var pos := Vector2(object.get("pos", player_pos))
+	var pos := Vector2(object.get("pos", player.pos))
 	match key:
+		"nameplate":
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.7)
+			_delay_or_cancel_source_threats(pos, false)
+		"family_photo":
+			_set_boss_signal_state("faint")
+			pressure_ring_timer = maxf(pressure_ring_timer, 1.9)
+			_slow_enemies_near_source(pos, 128.0, 0.84, 0.88, 4.0, ["signal", "speaker"])
 		"mailbox":
 			flyer_drop_timer = maxf(flyer_drop_timer, 2.3)
 			_delay_or_cancel_source_threats(pos, false)
@@ -2663,15 +2740,15 @@ func _apply_source_suppression_combat_effect(object: Dictionary) -> void:
 			_delay_or_cancel_source_threats(pos, false)
 
 func _apply_source_overload_combat_effect(object: Dictionary, aim_dir: Vector2) -> void:
-	var pos := Vector2(object.get("pos", player_pos))
+	var pos := Vector2(object.get("pos", player.pos))
 	pressure_ring_timer = maxf(pressure_ring_timer, 3.1)
 	flyer_drop_timer = maxf(flyer_drop_timer, 2.8)
 	_delay_or_cancel_source_threats(pos, true)
 	_slow_enemies_near_source(pos, 164.0, 1.35, 0.62, 13.0, [])
 	effects.add_impact_shake(0.16, 4.0)
 	if aim_dir.length_squared() > 0.01:
-		charge_effect_anchor = pos
-		charge_effect_anchor_active = true
+		player.charge_effect_anchor = pos
+		player.charge_effect_anchor_active = true
 
 func _slow_enemies_near_source(center: Vector2, radius: float, duration: float, slow_mult: float, knockback: float, roles: Array = []) -> int:
 	var affected := 0
@@ -2739,11 +2816,19 @@ func _record_source_action_outpost_event(object: Dictionary, action: String) -> 
 	meta_progression.record_outpost_event(npc_id, "source_%s" % action, _source_action_outpost_reaction(object, action), facility_id)
 
 func _source_action_memory_phrase(object: Dictionary, action: String) -> String:
+	var state_id := R01SourceState.STATE_OVERLOADED if action == "overload" else R01SourceState.STATE_SUPPRESSED
+	var p0_phrase := _p0_state_with_repeat_phrase(object, state_id, _r01_phrase_state())
+	if p0_phrase != "":
+		return p0_phrase
 	if action == "overload":
 		return "강한 도장 교란: %s" % String(object.get("node_memory_phrase", object.get("display_name", "위험 원천")))
 	return "위험 원천 처리: %s" % String(object.get("node_memory_phrase", object.get("display_name", "위험 원천")))
 
 func _source_action_outpost_reaction(object: Dictionary, action: String) -> String:
+	var state_id := R01SourceState.STATE_OVERLOADED if action == "overload" else R01SourceState.STATE_SUPPRESSED
+	var p0_settlement := R01SourceState.p0_settlement_line(object, state_id, action)
+	if p0_settlement != "":
+		return p0_settlement
 	var key := _source_effect_key(object)
 	match key:
 		"mailbox":
@@ -2762,7 +2847,14 @@ func _source_action_outpost_reaction(object: Dictionary, action: String) -> Stri
 			return "보급소: 현장 도장 처리 흔적을 보상 대신 기록으로 묶었습니다."
 
 func _source_overload_phrase(object: Dictionary) -> String:
+	var p0_phrase := R01SourceState.p0_state_phrase(object, R01SourceState.STATE_OVERLOADED, _r01_phrase_state())
+	if p0_phrase != "":
+		return "강한 도장: %s" % p0_phrase
 	match _source_effect_key(object):
+		"nameplate":
+			return "강한 도장: 문패 가족 칸 출력이 과열됩니다"
+		"family_photo":
+			return "강한 도장: 가족사진 창문 flash가 과열됩니다"
 		"mailbox":
 			return "강한 도장: 우편함 발송 리듬이 끊겼습니다"
 		"doorbell":
@@ -2780,6 +2872,10 @@ func _source_overload_phrase(object: Dictionary) -> String:
 
 func _source_kind_effect_summary(object: Dictionary, action: String) -> String:
 	match _source_effect_key(object):
+		"nameplate":
+			return "문패 %s: 이름 압력 증가, 라벨 덮어쓰기 보류" % action
+		"family_photo":
+			return "가족사진 창문 %s: 역할 판정 변화, 가족 슬롯 flash 조정" % action
 		"mailbox":
 			return "mailbox %s: coupon/basic source bias down, flyer marker earlier" % action
 		"doorbell":
@@ -2798,6 +2894,10 @@ func _source_kind_effect_summary(object: Dictionary, action: String) -> String:
 func _source_effect_key(object: Dictionary) -> String:
 	var effect := String(object.get("campaign_effect", ""))
 	var source_role := String(object.get("source_role", ""))
+	if effect == "closed_door_stamp" or R01SourceState.p0_source_key(object) == R01SourceState.P0_NAMEPLATE:
+		return "nameplate"
+	if effect == "family_photo_memory" or R01SourceState.p0_source_key(object) == R01SourceState.P0_FAMILY_PHOTO_WINDOW:
+		return "family_photo"
 	if effect.find("mailbox") != -1 or source_role == "mailbox_coupon":
 		return "mailbox"
 	if effect == "front_sensor_warning" or source_role == "doorbell_sensor":
@@ -2842,7 +2942,7 @@ func _field_interaction_counts_summary(counts: Dictionary) -> String:
 	return ", ".join(parts)
 
 func _open_house_signal_threshold(stage: int) -> float:
-	var reduction := float(player_stats.get("open_house_signal_threshold_reduction", 0.0))
+	var reduction := float(player.stats.get("open_house_signal_threshold_reduction", 0.0))
 	match stage:
 		1:
 			return maxf(12.0, 25.0 - reduction)
@@ -2865,8 +2965,8 @@ func _reset_audit_run_tracking() -> void:
 	card_contribution_log = {}
 
 func _update_audit_director(delta: float) -> void:
-	if int(player_stats.get("low_hp_allowance_level", 0)) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
-		_add_audit_processing(14.0 * delta * float(player_stats.get("low_hp_allowance_level", 0)), "low_hp")
+	if int(player.stats.get("low_hp_allowance_level", 0)) > 0 and player.hp <= float(player.stats["max_hp"]) * 0.35:
+		_add_audit_processing(14.0 * delta * float(player.stats.get("low_hp_allowance_level", 0)), "low_hp")
 	while audit_segment_index < AUDIT_SEGMENTS.size() and elapsed >= float(AUDIT_SEGMENTS[audit_segment_index]["time"]):
 		_resolve_audit_segment(AUDIT_SEGMENTS[audit_segment_index])
 		audit_segment_index += 1
@@ -2900,11 +3000,11 @@ func _resolve_audit_segment(segment: Dictionary) -> void:
 
 func _audit_threshold(segment: Dictionary) -> float:
 	var sortie_mult := 1.0 + maxf(0.0, float(sortie_index - 1)) * 0.08
-	var threshold_mult := 1.0 + float(player_stats.get("audit_threshold_mult", 0.0))
+	var threshold_mult := 1.0 + float(player.stats.get("audit_threshold_mult", 0.0))
 	var zone_id := r01_map.current_zone_id()
 	if _open_house_time() >= 25.0 and _card_count("earn_open_house_checkin") > 0:
 		threshold_mult -= 0.04 * float(_card_count("earn_open_house_checkin"))
-	if player_hp <= float(player_stats["max_hp"]) * 0.35 and _card_count("earn_low_hp_allowance") > 0:
+	if player.hp <= float(player.stats["max_hp"]) * 0.35 and _card_count("earn_low_hp_allowance") > 0:
 		threshold_mult -= 0.03 * float(_card_count("earn_low_hp_allowance"))
 	if zone_id == "drain_pocket_anchor":
 		threshold_mult -= 0.05
@@ -2918,8 +3018,8 @@ func _trigger_audit_failure_pressure(segment: Dictionary) -> void:
 		return
 	var wave_params := _wave_params_for_elapsed(maxf(elapsed, float(segment["time"])))
 	var count := mini(3, 1 + int(audit_pressure_level / 2))
-	enemies.spawn_elite_group(count, elapsed, player_pos, rng, wave_params)
-	effects.add_status_ring(player_pos, C.NEON_RED, 78.0 + 12.0 * float(audit_pressure_level), 0.42)
+	enemies.spawn_elite_group(count, elapsed, player.pos, rng, wave_params)
+	effects.add_status_ring(player.pos, C.NEON_RED, 78.0 + 12.0 * float(audit_pressure_level), 0.42)
 
 func _wave_params_for_elapsed(value: float) -> Dictionary:
 	var params := WaveDirector.params_for_time(value, sortie_index, r01_map.current_zone_id())
@@ -3106,9 +3206,9 @@ func _update_campaign_node_pressure_cues(delta: float, wave_params: Dictionary) 
 	var cue_color := C.NEON_RED
 	if current_r01_node_id == R01CampaignMap.NODE_L04:
 		cue_color = Color(0.35, 0.70, 0.95)
-	effects.add_floater(player_pos + Vector2(rng.randf_range(-32.0, 32.0), rng.randf_range(-14.0, 6.0)), label, cue_color, 12)
+	effects.add_floater(player.pos + Vector2(rng.randf_range(-32.0, 32.0), rng.randf_range(-14.0, 6.0)), label, cue_color, 12)
 	if current_r01_node_id == R01CampaignMap.NODE_L02 or current_r01_node_id == R01CampaignMap.NODE_L05:
-		effects.add_status_ring(player_pos, cue_color, 46.0, 0.26)
+		effects.add_status_ring(player.pos, cue_color, 46.0, 0.26)
 	_show_wave_notice("%s: %s" % [R01CampaignMap.node_name(current_r01_node_id), R01CampaignMap.node_modifier_short(current_r01_node_id)])
 
 func _show_damage_number(pos: Vector2, amount: float, kind: String, effectiveness: String = "normal") -> void:
@@ -3137,7 +3237,7 @@ func _damage_number_visible(pos: Vector2, kind: String, effectiveness: String) -
 	return true
 
 func _add_audit_processing(base_value: float, reason: String, pos: Vector2 = Vector2(-999999.0, -999999.0)) -> void:
-	if match_state != "playing" or base_value <= 0.0:
+	if not state_machine.is_playing() or base_value <= 0.0:
 		return
 	var amount := base_value * _audit_processing_mult(reason)
 	audit_processing += amount
@@ -3164,14 +3264,14 @@ func _record_audit_card_contributions(base_value: float, reason: String, amount:
 		_record_card_contribution("earn_battery_receipt", amount * share, "충전태그 처리")
 	if _card_count("earn_open_house_checkin") > 0 and r01_map.current_zone_is_open_house():
 		_record_card_contribution("earn_open_house_checkin", amount * 0.20, "오픈하우스 체류")
-	if _card_count("earn_low_hp_allowance") > 0 and (reason == "low_hp" or player_hp <= float(player_stats["max_hp"]) * 0.35):
+	if _card_count("earn_low_hp_allowance") > 0 and (reason == "low_hp" or player.hp <= float(player.stats["max_hp"]) * 0.35):
 		var share := 0.85 if reason == "low_hp" else 0.14
 		_record_card_contribution("earn_low_hp_allowance", amount * share, "저체력 근무")
 	if _card_count("terms_family_discount") > 0 and (r01_map.current_zone_is_open_house() or zone_id == "model_house_node_anchor"):
 		_record_card_contribution("terms_family_discount", amount * 0.18, "가족 약관")
 	if _card_count("terms_no_return_agreement") > 0 and reason == "charge_hit":
 		_record_card_contribution("terms_no_return_agreement", amount * 0.30, "차징 약관")
-	if _card_count("terms_auto_renewal") > 0 and (String(reason).begins_with("terms") or int(player_stats.get("terms_pressure_level", 0)) > 0):
+	if _card_count("terms_auto_renewal") > 0 and (String(reason).begins_with("terms") or int(player.stats.get("terms_pressure_level", 0)) > 0):
 		_record_card_contribution("terms_auto_renewal", amount * 0.10, "약관 증폭")
 
 func _record_threshold_card_contributions(segment: Dictionary, threshold: float) -> void:
@@ -3184,7 +3284,7 @@ func _record_threshold_card_contributions(segment: Dictionary, threshold: float)
 		_record_card_contribution("earn_overtime_sheet", base_threshold * 0.04 * float(_card_count("earn_overtime_sheet")), "감사 기준 완화")
 	if _card_count("terms_normal_customer_sticker") > 0:
 		_record_card_contribution("terms_normal_customer_sticker", base_threshold * 0.08 * float(_card_count("terms_normal_customer_sticker")), "정상 고객 판정")
-	if _card_count("earn_low_hp_allowance") > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
+	if _card_count("earn_low_hp_allowance") > 0 and player.hp <= float(player.stats["max_hp"]) * 0.35:
 		_record_card_contribution("earn_low_hp_allowance", base_threshold * 0.03 * float(_card_count("earn_low_hp_allowance")), "위기 기준 완화")
 
 func _record_card_contribution(card_id: String, processing_amount: float, note: String) -> void:
@@ -3221,30 +3321,30 @@ func _card_contribution_snapshot() -> Array[Dictionary]:
 	return result
 
 func _audit_processing_mult(reason: String) -> float:
-	var mult := 1.0 + float(player_stats.get("audit_processing_mult", 0.0))
+	var mult := 1.0 + float(player.stats.get("audit_processing_mult", 0.0))
 	var zone_id := r01_map.current_zone_id()
 	if r01_map.current_zone_is_open_house():
-		mult *= 1.0 + float(player_stats.get("open_house_processing_bonus", 0.0))
+		mult *= 1.0 + float(player.stats.get("open_house_processing_bonus", 0.0))
 	elif zone_id == "drain_pocket_anchor" and reason in ["charge_hit", "puddle", "robot_kill"]:
 		mult *= 1.08
 	elif zone_id == "fake_return_route_anchor" and reason in ["charge_hit", "return_stamp_kill"]:
 		mult *= 1.12
 	if reason == "charge_hit":
-		mult *= 1.0 + 0.10 * float(player_stats.get("return_label_level", 0))
-		mult *= 1.0 + 0.12 * float(player_stats.get("no_return_agreement_level", 0))
+		mult *= 1.0 + 0.10 * float(player.stats.get("return_label_level", 0))
+		mult *= 1.0 + 0.12 * float(player.stats.get("no_return_agreement_level", 0))
 	elif reason == "return_stamp_kill":
-		mult *= 1.0 + 0.16 * float(player_stats.get("return_label_level", 0))
-		mult *= 1.0 + 0.10 * float(player_stats.get("flyer_pop_level", 0))
+		mult *= 1.0 + 0.16 * float(player.stats.get("return_label_level", 0))
+		mult *= 1.0 + 0.10 * float(player.stats.get("flyer_pop_level", 0))
 	elif reason == "burst":
-		mult *= 1.0 + 0.12 * float(player_stats.get("flyer_pop_level", 0))
+		mult *= 1.0 + 0.12 * float(player.stats.get("flyer_pop_level", 0))
 	elif reason == "puddle":
-		mult *= 1.0 + 0.12 * float(player_stats.get("broadcast_residue_level", 0))
+		mult *= 1.0 + 0.12 * float(player.stats.get("broadcast_residue_level", 0))
 	elif reason == "robot_kill":
-		mult *= 1.0 + 0.18 * float(player_stats.get("battery_receipt_level", 0))
-		mult *= 1.0 + 0.12 * float(player_stats.get("robot_command_flip_level", 0))
-	if player_hp <= float(player_stats["max_hp"]) * 0.35:
-		mult *= 1.0 + 0.14 * float(player_stats.get("low_hp_allowance_level", 0))
-	var terms_level := float(player_stats.get("terms_auto_renewal_level", 0))
+		mult *= 1.0 + 0.18 * float(player.stats.get("battery_receipt_level", 0))
+		mult *= 1.0 + 0.12 * float(player.stats.get("robot_command_flip_level", 0))
+	if player.hp <= float(player.stats["max_hp"]) * 0.35:
+		mult *= 1.0 + 0.14 * float(player.stats.get("low_hp_allowance_level", 0))
+	var terms_level := float(player.stats.get("terms_auto_renewal_level", 0))
 	if terms_level > 0.0 and String(reason).begins_with("terms"):
 		mult *= 1.0 + 0.10 * terms_level
 	return mult
@@ -3276,7 +3376,7 @@ func _audit_hud_data() -> Dictionary:
 	}
 
 func _ration_hud_data() -> Dictionary:
-	if match_state != "playing":
+	if not state_machine.is_playing():
 		return {}
 	var confirmed := {
 		"food": 0,
@@ -3318,7 +3418,7 @@ func _ration_hud_data() -> Dictionary:
 	var risk := ""
 	if audit_pressure_level >= 3:
 		risk = "오염"
-	elif int(player_stats.get("terms_failure_risk", 0)) > 0:
+	elif int(player.stats.get("terms_failure_risk", 0)) > 0:
 		risk = "약관"
 	elif _fake_return_time() >= 20.0:
 		risk = "주의"
@@ -3429,7 +3529,7 @@ func _update_playtest_runtime_metrics() -> void:
 		_mark_playtest_time_once("first_ration_candidate_time")
 	if _open_house_time() > 0.1:
 		_mark_playtest_time_once("first_open_house_time")
-	if player_hp <= float(player_stats["max_hp"]) * 0.35:
+	if player.hp <= float(player.stats["max_hp"]) * 0.35:
 		_mark_playtest_time_once("first_low_hp_time")
 
 func _ration_candidate_count_snapshot() -> int:
@@ -3518,7 +3618,7 @@ func _update_preboss_signal_events() -> void:
 		_show_wave_notice("240초 결절 접근: 스마일 홈 심사 절차가 노출됩니다")
 
 func _try_start_boss_encounter() -> void:
-	if boss.active or boss.defeated or match_state != "playing":
+	if boss.active or boss.defeated or not state_machine.is_playing():
 		return
 	if _boss_route_ready() and elapsed >= 240.0:
 		_start_boss_encounter()
@@ -3532,8 +3632,8 @@ func _start_boss_encounter() -> void:
 	enemies.clear()
 	active_threats.clear()
 	wave_notice_timer = 4.0
-	wave_notice_text = "보스 조우: %s" % BossController.BOSS_NAME
-	effects.show_combat_banner(BossController.BOSS_NAME, C.VITAMIN_YELLOW)
+	wave_notice_text = "심사 절차 접근: %s" % BossController.BOSS_NAME
+	effects.show_combat_banner("스마일 홈 심사 절차", C.VITAMIN_YELLOW)
 	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
 	effects.add_impact_shake(0.28, 5.8)
 	_play_sfx("boss_warning")
@@ -3541,10 +3641,10 @@ func _start_boss_encounter() -> void:
 func _on_boss_defeated() -> void:
 	boss_signal_state = "silent"
 	boss_signal_unlocked = false
-	boss_result_reason = "boss_defeated"
+	boss_result_reason = "boss_rejected"
 	wave_notice_timer = 5.0
-	wave_notice_text = "스마일 홈 결절 처리"
-	effects.show_combat_banner("스마일 홈 결절 처리", C.TOXIC_GREEN)
+	wave_notice_text = "모델하우스 결절 심사 반려. 상위 송출 잔향 남음."
+	effects.show_combat_banner("모델하우스 결절 심사 반려", C.TOXIC_GREEN)
 	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
 	effects.add_impact_shake(0.34, 7.0)
 	_finish_match("boss_victory")
@@ -3556,8 +3656,8 @@ func _set_boss_signal_state(state: String) -> void:
 	var color := C.VITAMIN_YELLOW
 	if state == "detected" or state == "near":
 		color = C.NEON_RED
-	effects.add_status_ring(player_pos, color, 72.0, 0.50)
-	effects.add_floater(player_pos, "심사 신호 %s" % _boss_signal_label(), color, 14)
+	effects.add_status_ring(player.pos, color, 72.0, 0.50)
+	effects.add_floater(player.pos, "심사 신호 %s" % _boss_signal_label(), color, 14)
 
 func _boss_signal_rank(state: String) -> int:
 	match state:
@@ -3581,15 +3681,15 @@ func _update_first_recall_event(delta: float) -> void:
 		return
 	if recall_event_stage < 1 and elapsed >= FIRST_RECALL_WARNING_TIME:
 		recall_event_stage = 1
-		_show_wave_notice("캠페인 압력이 비정상 상승")
-		effects.add_status_ring(player_pos, C.NEON_RED, 58.0, 0.55)
-		effects.add_floater(player_pos, "압력 상승", C.NEON_RED, 15)
+		_show_wave_notice("등록 임계 접근. 회수선 긴급 고정.")
+		effects.add_status_ring(player.pos, C.NEON_RED, 58.0, 0.55)
+		effects.add_floater(player.pos, "등록 임계", C.NEON_RED, 15)
 	elif recall_event_stage < 2 and elapsed >= FIRST_RECALL_SURGE_TIME:
 		recall_event_stage = 2
 		recall_pressure_spawn_timer = 0.0
-		_show_wave_notice("캠페인 신호 붕괴: 생체 한계 초과")
-		effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 78.0, 0.65)
-		effects.add_floater(player_pos, "신호 붕괴!", C.VITAMIN_YELLOW, 16)
+		_show_wave_notice("가족 슬롯 배정 직전. 보급소 인양 시작.")
+		effects.add_status_ring(player.pos, C.VITAMIN_YELLOW, 78.0, 0.65)
+		effects.add_floater(player.pos, "인양 시작", C.VITAMIN_YELLOW, 16)
 		_spawn_recall_pressure(72)
 	if recall_event_stage >= 2:
 		_apply_first_recall_collapse(delta)
@@ -3598,14 +3698,14 @@ func _update_first_recall_event(delta: float) -> void:
 		_finish_match("recalled")
 
 func _first_recall_active() -> bool:
-	return sortie_index == 1 and first_sortie and not first_recall_done and match_state == "playing"
+	return sortie_index == 1 and first_sortie and not first_recall_done and state_machine.is_playing()
 
 func _boss_signal_label() -> String:
 	return String(BOSS_SIGNAL_LABELS.get(boss_signal_state, boss_signal_state))
 
 func _preboss_stage_label() -> String:
 	if sortie_index <= 1:
-		return "강제 회수"
+		return "등록 전 인양"
 	var clue_count := meta_progression.signal_clue_count()
 	if clue_count <= 0:
 		return "재출격 안정화"
@@ -3620,7 +3720,7 @@ func _next_objective_label() -> String:
 
 func _next_objective_short_label() -> String:
 	if _route_display_sortie_index() <= 1:
-		return "108초 회수까지 생존"
+		return "108초 등록 임계 전 보류"
 	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
 
 func _regional_clause_preview_line() -> String:
@@ -3628,7 +3728,7 @@ func _regional_clause_preview_line() -> String:
 	if contamination != "":
 		return contamination
 	if _route_display_sortie_index() <= 1:
-		return "30초마다 광고 감사 / 108초 회수 임계"
+		return "30초마다 광고 감사 / 108초 등록 임계"
 	if _boss_route_ready():
 		return "모델하우스 240초 이후 결절 접근 / 신호 적 증가"
 	var signal_level := meta_progression.signal_board_level()
@@ -3644,7 +3744,7 @@ func _regional_clause_short_line() -> String:
 	if contamination != "":
 		return contamination
 	if _route_display_sortie_index() <= 1:
-		return "30초 감사, 108초 회수"
+		return "30초 감사, 등록 전 인양"
 	if _boss_route_ready():
 		return "모델하우스 결절 감사"
 	if meta_progression.signal_board_level() >= 2 or meta_progression.signal_clue_count() >= 2:
@@ -3717,14 +3817,14 @@ func _sortie_start_notice() -> String:
 	return " / ".join(parts)
 
 func _route_display_sortie_index() -> int:
-	if match_state == "supply" or match_state == "recalled" or match_state == "boss_victory":
+	if state_machine.is_supply() or state_machine.get_state() == GameStateMachine.STATE_RECALLED or state_machine.get_state() == GameStateMachine.STATE_BOSS_VICTORY:
 		return sortie_index + 1
 	return sortie_index
 
 func _route_stage_label() -> String:
 	if meta_progression.boss_clear_count > 0 or boss_signal_state == "silent":
-		return "스마일 홈 결절 침묵"
-	if match_state == "supply":
+		return "결절 일부 침묵 / 상위 송출 잔향"
+	if state_machine.is_supply():
 		return "출격 게시판: %s" % R01CampaignMap.node_name(selected_r01_node_id)
 	if _boss_route_ready():
 		return "모델하우스 결절 접근 가능"
@@ -3736,11 +3836,11 @@ func _route_stage_label() -> String:
 
 func _next_goal_label() -> String:
 	if boss.active:
-		return "목표: 스마일 홈 심사관 결절 무력화"
-	if match_state == "supply":
+		return "목표: 스마일 홈 심사관 절차를 심사 반려로 밀어낸다"
+	if state_machine.is_supply():
 		return "목표: %s로 출격 준비" % R01CampaignMap.node_name(selected_r01_node_id)
 	if _route_display_sortie_index() <= 1:
-		return "목표: 108초 회수까지 생존"
+		return "목표: 108초 등록 임계까지 판정 보류"
 	if current_r01_node_id != "":
 		return "목표: %s" % R01CampaignMap.node_combat_goal(current_r01_node_id)
 	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
@@ -3756,7 +3856,7 @@ func _combat_goal_label() -> String:
 
 func _combat_timebox_hint() -> String:
 	if _first_recall_active():
-		return "108초 회수선까지 버티기"
+		return "108초 등록 전 인양선 유지"
 	match current_r01_node_id:
 		R01CampaignMap.NODE_L01:
 			return "60초: 첫 정산 근거"
@@ -3851,10 +3951,18 @@ func _session_progress_data() -> Dictionary:
 		"regional_clause_short": _regional_clause_short_line(),
 		"r01_contamination_summary": str(r01_state.get("r01_contamination_summary", meta_progression.r01_contamination_summary())),
 		"r01_contamination_total": int(r01_state.get("r01_contamination_total", 0)),
+		"r01_yunseo_role_guess": str(r01_state.get("r01_yunseo_role_guess", "외부인")),
+		"r01_fake_recall_accuracy": int(r01_state.get("r01_fake_recall_accuracy", 0)),
+		"r01_name_pressure": int(r01_state.get("r01_name_pressure", 0)),
+		"r01_tag_contamination": int(r01_state.get("r01_tag_contamination", 0)),
+		"r01_route_memory": int(r01_state.get("r01_route_memory", 0)),
+		"r01_source_suppression_memory": int(r01_state.get("r01_source_suppression_memory", 0)),
+		"r01_boss_residue": int(r01_state.get("r01_boss_residue", 0)),
+		"r01_outpost_trace_leak": int(r01_state.get("r01_outpost_trace_leak", 0)),
 	}
 
 func _outpost_result_route_target() -> String:
-	match match_state:
+	match state_machine.get_state():
 		"supply":
 			return "sortie_gate"
 		"recalled", "game_over", "victory", "boss_victory":
@@ -3928,7 +4036,7 @@ func _ten_minute_next_recommendation_line() -> String:
 func _finale_recovery_lines() -> Array[String]:
 	var r01_state := _r01_phrase_state()
 	var lines: Array[String] = [
-		"외곽 주택가 정찰 완료",
+		"외곽 가족 복구 판정 분리",
 		RoutePhraseResolver.r01_finale_recovery_progress_phrase(r01_state),
 		_ten_minute_next_recommendation_line(),
 	]
@@ -3941,13 +4049,13 @@ func _apply_first_recall_collapse(delta: float) -> void:
 	if recall_pressure_spawn_timer <= 0.0:
 		recall_pressure_spawn_timer = 2.2
 		_spawn_recall_pressure(18)
-		effects.add_status_ring(player_pos, C.NEON_RED, 92.0, 0.42)
+		effects.add_status_ring(player.pos, C.NEON_RED, 92.0, 0.42)
 	var collapse_ratio := clampf((elapsed - FIRST_RECALL_SURGE_TIME) / maxf(0.1, FIRST_RECALL_COLLAPSE_TIME - FIRST_RECALL_SURGE_TIME), 0.0, 1.0)
 	var pressure_dps := lerpf(10.0, 34.0, collapse_ratio)
-	player_hp = maxf(0.0, player_hp - pressure_dps * delta)
+	player.hp = maxf(0.0, player.hp - pressure_dps * delta)
 	if rng.randf() < delta * 1.8:
-		effects.add_floater(player_pos + Vector2(rng.randf_range(-18.0, 18.0), rng.randf_range(-8.0, 8.0)), "회수 임계", C.NEON_RED, 12)
-	if player_hp <= 0.0:
+		effects.add_floater(player.pos + Vector2(rng.randf_range(-18.0, 18.0), rng.randf_range(-8.0, 8.0)), "확정 전 인양", C.NEON_RED, 12)
+	if player.hp <= 0.0:
 		recall_event_stage = 3
 		_finish_match("recalled")
 
@@ -3961,13 +4069,13 @@ func _spawn_recall_pressure(count: int) -> void:
 	wave_params["contact_damage_mult"] = float(wave_params.get("contact_damage_mult", 1.0)) * 1.35
 	wave_params["role_weights"] = {"basic": 0.12, "fast": 0.34, "tank": 0.26, "signal": 0.28}
 	for i in range(maxi(0, mini(count, C.ENEMY_CAP - enemies.enemies.size()))):
-		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
+		enemies.spawn_enemy(elapsed, player.pos, rng, wave_params)
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
 func _check_victory() -> void:
 	if boss.active:
 		return
-	if match_state == "playing" and elapsed >= C.MATCH_DURATION:
+	if state_machine.is_playing() and elapsed >= C.MATCH_DURATION:
 		elapsed = C.MATCH_DURATION
 		_finish_match("victory")
 
@@ -3983,7 +4091,7 @@ func _finish_match(result_state: String) -> void:
 	_apply_run_result_progression()
 	_record_r01_campaign_node_result(result_state)
 	print("RunResult: %s" % JSON.stringify(last_run_result))
-	match_state = result_state
+	state_machine.change_state(result_state)
 	game_over = result_state == "game_over"
 	paused_for_card = false
 	if is_inside_tree():
@@ -4005,14 +4113,15 @@ func _result_data(result_state: String) -> Dictionary:
 		var fragments := int(last_boss_victory_report.get("fragments_awarded", 0))
 		var clear_count := int(last_boss_victory_report.get("clear_count", meta_progression.boss_clear_count))
 		return {
-			"result": "결절 처리 결과",
-			"description": "스마일 홈 심사관의 절차를 멈췄습니다. 지역은 조용해졌지만 상위 송출 잔향은 아직 남아 있습니다.",
-			"trace": "캠페인 코어 파편 +%d" % fragments,
+			"result": "모델하우스 결절 심사 반려",
+			"description": "스마일 홈 심사관: 가족 슬롯 배정 실패. 결절 일부 침묵, 상위 송출 잔향 남음.",
+			"trace": "보급소 보류: 심사 반려 기록 +%d" % fragments,
 			"progress_lines": [
-				"결절 처리: %d회" % clear_count,
+				"심사 반려 기록: %d회" % clear_count,
 				"결절 분석: %d/3" % meta_progression.boss_analysis_level,
 				meta_progression.smile_home_boss_outcome_label(),
-				"후속 선택 준비: 결절 파괴 또는 기억 추출",
+				"윤서: 고객 보류 유지. 이름 보관함 이관.",
+				"결절 일부 침묵. 상위 송출 잔향 남음.",
 				_ten_minute_next_recommendation_line(),
 			] + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
@@ -4028,16 +4137,16 @@ func _result_data(result_state: String) -> Dictionary:
 		if boss_result_reason == "boss_recall":
 			var analysis_level := int(last_boss_recall_report.get("analysis_after", meta_progression.boss_analysis_level))
 			var fragments := int(last_boss_recall_report.get("fragments_awarded", 0))
-			var trace_text := "캠페인 코어 파편 +%d" % fragments if fragments > 0 else "없음"
+			var trace_text := "보급소 보류: 심사 중단 기록 +%d" % fragments if fragments > 0 else "없음"
 			return {
 				"result": "심사 중단 회수",
-				"description": "스마일 홈 심사관의 절차를 일부 벗기고 보급소로 복귀했습니다.",
+				"description": "스마일 홈 심사관 절차 중 가족 슬롯 배정 직전 보급소가 끌어냈습니다.",
 				"trace": trace_text,
 				"progress_lines": [
 					"결절 분석: %d/3" % analysis_level,
 					_boss_analysis_milestone_label(analysis_level),
 					meta_progression.boss_weakness_label(),
-					meta_progression.boss_hint().replace("다음 조우 힌트", "다음 출격"),
+					meta_progression.boss_hint(),
 					_ten_minute_next_recommendation_line(),
 				] + _run_reward_lines(),
 				"button_text": "보급소로 돌아가기",
@@ -4050,9 +4159,9 @@ func _result_data(result_state: String) -> Dictionary:
 				"final_enemy_count": enemies.enemies.size(),
 			}
 		return {
-			"result": "신호 과부하 긴급 인양",
-			"description": "캠페인이 윤서의 이름과 주소를 등록하기 직전, 침묵 보급소가 회수선을 당겼습니다.",
-			"trace": "찢어진 광고 전단",
+			"result": "등록 전 긴급 인양",
+			"description": "가족 슬롯 배정 직전, 침묵 보급소가 비콘 신호를 붙잡고 확정 전 윤서를 끌어냈습니다.",
+			"trace": "보류된 전단 흔적",
 			"progress_lines": _session_progress_lines() + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
@@ -4065,12 +4174,12 @@ func _result_data(result_state: String) -> Dictionary:
 		}
 	if result_state == "victory":
 		return {
-			"result": "정상 회수",
+			"result": "정산 분리 완료",
 			"description": RoutePhraseResolver.r01_finale_recovery_description(_r01_phrase_state()),
 			"trace": "",
 			"progress_lines": _finale_recovery_lines(),
-			"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
-			"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
+			"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 보급소 정산",
+			"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 보급소 정산",
 			"survival_time": elapsed,
 			"level": level,
 			"kills": kills,
@@ -4079,11 +4188,11 @@ func _result_data(result_state: String) -> Dictionary:
 			"final_enemy_count": enemies.enemies.size(),
 		}
 	return {
-		"result": "긴급 인양",
-		"description": "회수선이 끊기기 전 보급소로 복귀했습니다. 일부 후보는 정산 실패로 보류됩니다.",
+		"result": "등록 전 긴급 인양",
+		"description": "등록/배정 확정 전 보급소가 회수선을 당겼습니다. 회수품은 승인/보류/오염으로 분리됩니다.",
 		"progress_lines": _session_progress_lines() + _run_reward_lines(),
-		"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
-		"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 다시 시작",
+		"button_text": "보급소로 돌아가기" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 보급소 정산",
+		"prompt": "스페이스 / 클릭으로 보급소 이동" if _should_show_supply_after_result(result_state) else "스페이스 / 클릭으로 보급소 정산",
 		"survival_time": elapsed,
 		"level": level,
 		"kills": kills,
@@ -4110,8 +4219,8 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"boss_hp_ratio": boss.hp_ratio(),
 		"boss_result_reason": boss_result_reason,
 		"first_sortie": first_sortie,
-		"card_counts": Dictionary(player_stats.get("card_counts", {})).duplicate(true),
-		"terms_failure_risk": int(player_stats.get("terms_failure_risk", 0)),
+		"card_counts": Dictionary(player.stats.get("card_counts", {})).duplicate(true),
+		"terms_failure_risk": int(player.stats.get("terms_failure_risk", 0)),
 		"r01_zone_times": r01_zone_times.duplicate(true),
 		"open_house_time": _open_house_time(),
 		"open_house_signal_stage": open_house_signal_stage,
@@ -4124,12 +4233,64 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"audit_progress_ratio": _audit_progress_ratio(),
 		"card_contributions": _card_contribution_snapshot(),
 		"playtest_metrics": _playtest_metrics_snapshot(),
+		"r01_learning_state": _r01_phrase_state(),
+		"r01_source_settlement_lines": _r01_source_settlement_lines(),
+		"r01_name_archive_lines": _r01_name_archive_lines(),
 	}
 
 func _run_reward_lines() -> Array[String]:
 	var lines: Array[String] = []
 	for line in Array(last_run_result.get("reward_lines", [])):
 		lines.append(str(line))
+	return lines
+
+func _record_r01_source_learning(object: Dictionary, state_id: String, action: String) -> Dictionary:
+	var source_key := R01SourceState.p0_source_key(object)
+	if source_key == "":
+		return _r01_phrase_state()
+	return meta_progression.record_r01_source_learning(source_key, state_id, action)
+
+func _p0_state_with_repeat_phrase(object: Dictionary, state_id: String, learning_state: Dictionary) -> String:
+	var p0_phrase := R01SourceState.p0_state_phrase(object, state_id, learning_state)
+	var source_key := R01SourceState.p0_source_key(object)
+	var repeat_phrase := R01SourceState.p0_repeat_change_line(source_key, learning_state)
+	if p0_phrase != "" and repeat_phrase != "":
+		return "%s / %s" % [p0_phrase, repeat_phrase]
+	if p0_phrase != "":
+		return p0_phrase
+	return repeat_phrase
+
+func _r01_source_settlement_lines() -> Array[String]:
+	var lines: Array[String] = []
+	var seen := {}
+	for raw_state in r01_source_states.values():
+		var source_state := Dictionary(raw_state)
+		var source_key := R01SourceState.p0_source_key(source_state)
+		if source_key == "" or bool(seen.get(source_key, false)):
+			continue
+		var state_id := R01SourceState.current_state(source_state)
+		var line := R01SourceState.p0_settlement_line(source_state, state_id, String(source_state.get("last_action", "")))
+		if line == "":
+			continue
+		lines.append(line)
+		seen[source_key] = true
+	return lines
+
+func _r01_name_archive_lines() -> Array[String]:
+	var lines: Array[String] = []
+	var seen := {}
+	var learning_state := _r01_phrase_state()
+	for raw_state in r01_source_states.values():
+		var source_state := Dictionary(raw_state)
+		var source_key := R01SourceState.p0_source_key(source_state)
+		if source_key == "" or bool(seen.get(source_key, false)):
+			continue
+		var state_id := R01SourceState.current_state(source_state)
+		var line := R01SourceState.p0_name_archive_line(source_state, state_id, learning_state)
+		if line == "":
+			continue
+		lines.append(line)
+		seen[source_key] = true
 	return lines
 
 func _apply_run_result_progression() -> void:
@@ -4148,8 +4309,20 @@ func _apply_run_result_progression() -> void:
 		reward_lines.append("보급소 보관: %s" % ration_summary)
 	for line in _contamination_progression_lines(contamination_report):
 		reward_lines.append(line)
+	_record_name_archive_outpost_events(Array(last_run_result.get("name_archive_lines", [])))
 	last_run_result["reward_lines"] = reward_lines
 	_sync_boss_signal_from_clues()
+
+func _record_name_archive_outpost_events(name_archive_lines: Array) -> void:
+	var count := 0
+	for raw_line in name_archive_lines:
+		var line := String(raw_line)
+		if line == "":
+			continue
+		meta_progression.record_outpost_event("bokhee", "name_archive_hold", line.replace("이름 보관함: ", ""), "name_archive")
+		count += 1
+		if count >= 2:
+			break
 
 func _record_r01_campaign_node_result(result_state: String) -> void:
 	if not R01CampaignMap.NODE_IDS.has(current_r01_node_id):
@@ -4165,6 +4338,14 @@ func _record_r01_campaign_node_result(result_state: String) -> void:
 	memory["node_signal_level"] = maxi(open_house_signal_stage, meta_progression.signal_clue_count())
 	memory["node_contamination_hint"] = contamination_hint
 	memory["node_last_tag_summary"] = _r01_node_tag_summary(tag_ledger)
+	var learning_state := _r01_phrase_state()
+	memory["node_yunseo_role_guess"] = String(learning_state.get("r01_yunseo_role_guess", "외부인"))
+	memory["node_fake_recall_accuracy"] = int(learning_state.get("r01_fake_recall_accuracy", 0))
+	memory["node_name_pressure"] = int(learning_state.get("r01_name_pressure", 0))
+	memory["node_tag_contamination"] = int(learning_state.get("r01_tag_contamination", 0))
+	memory["node_boss_residue"] = int(learning_state.get("r01_boss_residue", 0))
+	memory["node_outpost_trace_leak"] = int(learning_state.get("r01_outpost_trace_leak", 0))
+	memory["node_source_learning_line"] = _r01_source_learning_memory_line(learning_state)
 	memory["node_last_event_line"] = R01CampaignMap.node_incident_line(current_r01_node_id, recall_quality)
 	memory["node_last_outpost_reaction"] = R01CampaignMap.node_outpost_reaction(current_r01_node_id, recall_quality)
 	r01_campaign_node_memory[current_r01_node_id] = memory
@@ -4209,6 +4390,13 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_source_action_count": 0,
 			"node_last_source_action_name": "",
 			"node_last_source_action_phrase": "",
+			"node_yunseo_role_guess": "외부인",
+			"node_fake_recall_accuracy": 0,
+			"node_name_pressure": 0,
+			"node_tag_contamination": 0,
+			"node_boss_residue": 0,
+			"node_outpost_trace_leak": 0,
+			"node_source_learning_line": "",
 			"node_micro_location_names": [],
 			"node_micro_point_names": [],
 			"node_micro_location_count": 0,
@@ -4218,6 +4406,26 @@ func _r01_campaign_node_memory(node_id: String) -> Dictionary:
 			"node_last_micro_phrase": "",
 		}
 	return memory
+
+func _r01_source_learning_memory_line(learning_state: Dictionary) -> String:
+	var revisit_count := int(learning_state.get("r01_revisit_count", 0))
+	var role_guess := String(learning_state.get("r01_yunseo_role_guess", "외부인"))
+	var name_pressure := int(learning_state.get("r01_name_pressure", 0))
+	var fake_accuracy := int(learning_state.get("r01_fake_recall_accuracy", 0))
+	var tag_contamination := int(learning_state.get("r01_tag_contamination", 0))
+	var boss_residue := int(learning_state.get("r01_boss_residue", 0))
+	var outpost_trace_leak := int(learning_state.get("r01_outpost_trace_leak", 0))
+	if revisit_count <= 1 and name_pressure <= 0 and fake_accuracy <= 0 and tag_contamination <= 0 and boss_residue <= 0 and outpost_trace_leak <= 0:
+		return ""
+	return "R01 학습: 재방문=%d 윤서=%s 이름압력=%d 가짜회수=%d 태그오염=%d 배수로누출=%d 보스잔향=%d" % [
+		revisit_count,
+		role_guess,
+		name_pressure,
+		fake_accuracy,
+		tag_contamination,
+		outpost_trace_leak,
+		boss_residue,
+	]
 
 func _set_r01_campaign_node_unlocked_by(node_id: String, source_node_id: String) -> void:
 	var memory := _r01_campaign_node_memory(node_id)
@@ -4309,7 +4517,7 @@ func _sync_boss_signal_from_clues() -> void:
 		boss_signal_unlocked = false
 
 func _show_supply_depot() -> void:
-	match_state = "supply"
+	state_machine.change_state("supply")
 	game_over = false
 	first_recall_done = true
 	first_sortie = false
@@ -4326,11 +4534,11 @@ func _show_supply_depot() -> void:
 	_play_sfx("outpost_return")
 
 func _handle_terminal_action() -> void:
-	match match_state:
+	match state_machine.get_state():
 		"recalled", "boss_victory":
 			_show_supply_depot()
 		"victory", "game_over":
-			if _should_show_supply_after_result(match_state):
+			if _should_show_supply_after_result(state_machine.get_state()):
 				_show_supply_depot()
 			else:
 				_restart()
@@ -4359,7 +4567,7 @@ func _reset_r01_campaign_state() -> void:
 	last_micro_location_action = "none"
 
 func _open_r01_campaign_map() -> void:
-	if match_state != "supply":
+	if not state_machine.is_supply():
 		return
 	_ensure_selected_r01_campaign_node()
 	r01_campaign_map_open = true
@@ -4529,7 +4737,7 @@ func _arm_entry_camera_for_node(node_id: String) -> void:
 func _sync_r01_map_to_player_zone(show_entry_notice: bool) -> void:
 	if not R01LayoutBlockout.ENABLED:
 		return
-	var zone_id := r01_blockout.nearest_zone_id(player_pos)
+	var zone_id := r01_blockout.nearest_zone_id(player.pos)
 	r01_map.update(0.0, elapsed, show_entry_notice, zone_id)
 
 func _apply_supply_choice(index: int) -> void:
@@ -4553,11 +4761,11 @@ func _apply_supply_choice(index: int) -> void:
 	if applied:
 		boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
 		effects.show_combat_banner("보급소 적용: %s" % action_name, C.TOXIC_GREEN)
-		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
+		effects.add_status_ring(player.pos, C.TOXIC_GREEN, 36.0, 0.42)
 		effects.add_impact_shake(0.14, 2.2)
 		_play_sfx("upgrade_buy")
 	else:
-		effects.add_floater(player_pos, "배분/흔적 부족", C.NEON_RED, 13)
+		effects.add_floater(player.pos, "배분/흔적 부족", C.NEON_RED, 13)
 		action_name = ""
 		last_supply_reaction_line = ""
 		last_supply_action_surface = ""
@@ -4695,14 +4903,14 @@ func _facility_surface_prefix(surface_id: String) -> String:
 			return "보급"
 
 func _show_level_card() -> void:
-	if match_state != "playing":
+	if not state_machine.is_playing():
 		return
-	match_state = "level_up"
+	state_machine.change_state("level_up")
 	paused_for_card = true
 	if is_inside_tree():
 		get_tree().paused = true
-	player_stats["selected_card_count"] = selected_card_count
-	offered_cards = LevelUpCards.pick_three(rng, player_stats)
+	player.stats["selected_card_count"] = selected_card_count
+	offered_cards = LevelUpCards.pick_three(rng, player.stats)
 	_apply_charge_weapon_card_hints(offered_cards)
 	hud.show_level_cards(offered_cards, Callable(self, "_apply_card_choice"))
 
@@ -4715,7 +4923,7 @@ func _apply_card_choice(index: int) -> void:
 	_apply_card_effect(card)
 	selected_card_count += 1
 	offered_cards.clear()
-	match_state = "playing"
+	state_machine.change_state("playing")
 	paused_for_card = false
 	if is_inside_tree():
 		get_tree().paused = false
@@ -4726,104 +4934,104 @@ func _apply_card_effect(card: Dictionary) -> void:
 	var value: float = float(card["value"])
 	match effect:
 		"auto_damage_mult":
-			player_stats[effect] = float(player_stats[effect]) + value
-			player_stats["auto_range_bonus"] = float(player_stats["auto_range_bonus"]) + 8.0
-			auto_timer = 0.0
-			if int(player_stats["split_shot_level"]) > 0:
-				auto_shot_counter = maxi(auto_shot_counter, maxi(0, 4 - int(player_stats["split_shot_level"])))
-				effects.add_floater(player_pos + Vector2(0, -10), "분열 증폭!", C.TOXIC_GREEN, 13)
-			effects.add_floater(player_pos, "문구 강화!", C.NEON_RED, 13)
+			player.stats[effect] = float(player.stats[effect]) + value
+			player.stats["auto_range_bonus"] = float(player.stats["auto_range_bonus"]) + 8.0
+			player.auto_timer = 0.0
+			if int(player.stats["split_shot_level"]) > 0:
+				player.auto_shot_counter = maxi(player.auto_shot_counter, maxi(0, 4 - int(player.stats["split_shot_level"])))
+				effects.add_floater(player.pos + Vector2(0, -10), "분열 증폭!", C.TOXIC_GREEN, 13)
+			effects.add_floater(player.pos, "문구 강화!", C.NEON_RED, 13)
 		"xp_gain_mult":
-			player_stats[effect] = float(player_stats[effect]) + value
+			player.stats[effect] = float(player.stats[effect]) + value
 			var instant_xp := minf(_xp_requirement() * 0.35, 4.0 + float(level) * 1.5)
 			xp = minf(_xp_requirement() - 0.1, xp + instant_xp)
-			effects.add_floater(player_pos, "학습 완료!", C.VITAMIN_YELLOW, 13)
+			effects.add_floater(player.pos, "학습 완료!", C.VITAMIN_YELLOW, 13)
 		"move_speed_mult", "charge_damage_mult":
-			player_stats[effect] = float(player_stats[effect]) + value
+			player.stats[effect] = float(player.stats[effect]) + value
 		"auto_range_bonus", "charge_period_bonus":
-			player_stats[effect] = float(player_stats[effect]) + value
+			player.stats[effect] = float(player.stats[effect]) + value
 		"charge_target_bonus":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
 		"split_shot_level", "kill_burst_level", "charge_puddle_level", "perfect_charge_level", "emergency_charge_level", "charge_slow_level", "charge_heal_level", "charge_knockback_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
 		"return_label_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["charge_damage_mult"] = float(player_stats["charge_damage_mult"]) + 0.08
-			effects.add_floater(player_pos, "반품 표식 강화!", C.NEON_RED, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["charge_damage_mult"] = float(player.stats["charge_damage_mult"]) + 0.08
+			effects.add_floater(player.pos, "반품 표식 강화!", C.NEON_RED, 13)
 		"flyer_pop_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["kill_burst_level"] = int(player_stats["kill_burst_level"]) + int(value)
-			effects.add_floater(player_pos, "전단 연쇄 승인!", C.CORAL_PINK, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["kill_burst_level"] = int(player.stats["kill_burst_level"]) + int(value)
+			effects.add_floater(player.pos, "전단 연쇄 승인!", C.CORAL_PINK, 13)
 		"broadcast_residue_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["charge_puddle_level"] = int(player_stats["charge_puddle_level"]) + int(value)
-			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.08
-			effects.add_floater(player_pos, "송출 잔류!", C.VITAMIN_YELLOW, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["charge_puddle_level"] = int(player.stats["charge_puddle_level"]) + int(value)
+			player.stats["open_house_processing_bonus"] = float(player.stats["open_house_processing_bonus"]) + 0.08
+			effects.add_floater(player.pos, "송출 잔류!", C.VITAMIN_YELLOW, 13)
 		"robot_command_flip_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["charge_slow_level"] = int(player_stats["charge_slow_level"]) + int(value)
-			effects.add_floater(player_pos, "명령 오류!", C.TOXIC_GREEN, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["charge_slow_level"] = int(player.stats["charge_slow_level"]) + int(value)
+			effects.add_floater(player.pos, "명령 오류!", C.TOXIC_GREEN, 13)
 		"overtime_sheet_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["audit_threshold_mult"] = float(player_stats["audit_threshold_mult"]) - 0.04
-			effects.add_floater(player_pos, "야근 정산 등록", C.VITAMIN_YELLOW, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["audit_threshold_mult"] = float(player.stats["audit_threshold_mult"]) - 0.04
+			effects.add_floater(player.pos, "야근 정산 등록", C.VITAMIN_YELLOW, 13)
 		"battery_receipt_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["audit_processing_mult"] = float(player_stats["audit_processing_mult"]) + 0.04
-			effects.add_floater(player_pos, "충전태그 판정 준비", C.TOXIC_GREEN, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["audit_processing_mult"] = float(player.stats["audit_processing_mult"]) + 0.04
+			effects.add_floater(player.pos, "충전태그 판정 준비", C.TOXIC_GREEN, 13)
 		"open_house_checkin_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.18
-			effects.add_floater(player_pos, "방문 확인!", C.VITAMIN_YELLOW, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["open_house_processing_bonus"] = float(player.stats["open_house_processing_bonus"]) + 0.18
+			effects.add_floater(player.pos, "방문 확인!", C.VITAMIN_YELLOW, 13)
 		"low_hp_allowance_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["low_hp_damage_reduction"] = float(player_stats["low_hp_damage_reduction"]) + 0.05
-			effects.add_floater(player_pos, "위험수당 계약", C.CORAL_PINK, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["low_hp_damage_reduction"] = float(player.stats["low_hp_damage_reduction"]) + 0.05
+			effects.add_floater(player.pos, "위험수당 계약", C.CORAL_PINK, 13)
 		"normal_customer_sticker_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["audit_threshold_mult"] = float(player_stats["audit_threshold_mult"]) - 0.08
-			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["audit_threshold_mult"] = float(player.stats["audit_threshold_mult"]) - 0.08
+			player.stats["terms_pressure_level"] = int(player.stats["terms_pressure_level"]) + 1
 			audit_pressure_level += 1
-			effects.add_floater(player_pos, "정상 고객?", C.VITAMIN_YELLOW, 13)
+			effects.add_floater(player.pos, "정상 고객?", C.VITAMIN_YELLOW, 13)
 		"family_discount_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["open_house_processing_bonus"] = float(player_stats["open_house_processing_bonus"]) + 0.22
-			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["open_house_processing_bonus"] = float(player.stats["open_house_processing_bonus"]) + 0.22
+			player.stats["terms_pressure_level"] = int(player.stats["terms_pressure_level"]) + 1
 			audit_pressure_level += 1
-			effects.add_floater(player_pos, "가족 할인 적용", C.NEON_RED, 13)
+			effects.add_floater(player.pos, "가족 할인 적용", C.NEON_RED, 13)
 		"no_return_agreement_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["charge_damage_mult"] = float(player_stats["charge_damage_mult"]) + 0.40
-			player_stats["terms_failure_risk"] = int(player_stats["terms_failure_risk"]) + 1
-			effects.add_floater(player_pos, "반품 불가!", C.NEON_RED, 13)
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["charge_damage_mult"] = float(player.stats["charge_damage_mult"]) + 0.40
+			player.stats["terms_failure_risk"] = int(player.stats["terms_failure_risk"]) + 1
+			effects.add_floater(player.pos, "반품 불가!", C.NEON_RED, 13)
 		"terms_auto_renewal_level":
-			player_stats[effect] = int(player_stats[effect]) + int(value)
-			player_stats["audit_processing_mult"] = float(player_stats["audit_processing_mult"]) + 0.08
-			player_stats["terms_pressure_level"] = int(player_stats["terms_pressure_level"]) + 1
+			player.stats[effect] = int(player.stats[effect]) + int(value)
+			player.stats["audit_processing_mult"] = float(player.stats["audit_processing_mult"]) + 0.08
+			player.stats["terms_pressure_level"] = int(player.stats["terms_pressure_level"]) + 1
 			audit_pressure_level += 1
-			effects.add_floater(player_pos, "자동 갱신됨", C.NEON_RED, 13)
+			effects.add_floater(player.pos, "자동 갱신됨", C.NEON_RED, 13)
 		"max_hp_bonus":
-			player_stats["max_hp"] = float(player_stats["max_hp"]) + value
-			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
+			player.stats["max_hp"] = float(player.stats["max_hp"]) + value
+			player.hp = minf(float(player.stats["max_hp"]), player.hp + value)
 		"heal":
-			player_hp = minf(float(player_stats["max_hp"]), player_hp + value)
+			player.hp = minf(float(player.stats["max_hp"]), player.hp + value)
 
 func _record_card_choice(card: Dictionary) -> void:
-	var card_counts: Dictionary = player_stats["card_counts"]
+	var card_counts: Dictionary = player.stats["card_counts"]
 	var card_id := String(card["id"])
 	card_counts[card_id] = int(card_counts.get(card_id, 0)) + 1
-	var build_counts: Dictionary = player_stats["build_counts"]
+	var build_counts: Dictionary = player.stats["build_counts"]
 	var tags: Array = card.get("build_tags", [])
 	for tag_value in tags:
 		var tag := String(tag_value)
 		build_counts[tag] = int(build_counts.get(tag, 0)) + 1
 
 func _card_count(card_id: String) -> int:
-	var card_counts: Dictionary = player_stats.get("card_counts", {})
+	var card_counts: Dictionary = player.stats.get("card_counts", {})
 	return int(card_counts.get(card_id, 0))
 
 func _build_count(tag: String) -> int:
-	var build_counts: Dictionary = player_stats.get("build_counts", {})
+	var build_counts: Dictionary = player.stats.get("build_counts", {})
 	return int(build_counts.get(tag, 0))
 
 func _apply_charge_weapon_card_hints(cards: Array[Dictionary]) -> void:
@@ -4881,8 +5089,8 @@ func _active_notice_text() -> String:
 	return r01_map.active_notice_text()
 
 func _update_hud() -> void:
-	var terminal_state := match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply"
-	hud.update(player_hp, float(player_stats["max_hp"]), charge_window_left, charge_timer, _charge_period(), _charge_window(), _charge_state(), manual_stamp_timer, C.MANUAL_STAMP_COOLDOWN, elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name(), _audit_hud_data(), _ration_hud_data())
+	var terminal_state := state_machine.is_terminal()
+	hud.update(player.hp, float(player.stats["max_hp"]), player.charge_window_left, player.charge_timer, _charge_period(), _charge_window(), _charge_state(), manual_stamp_timer, C.MANUAL_STAMP_COOLDOWN, elapsed, C.MATCH_DURATION, level, kills, enemies.enemies.size(), paused_for_card, terminal_state, _active_notice_text(), _route_stage_label(), _combat_goal_label(), _charge_weapon_name(), _audit_hud_data(), _ration_hud_data())
 	hud.update_boss(boss.active, BossController.BOSS_NAME, boss.hp_ratio(), boss.status_label(), boss.defense_type)
 	hud.set_debug_text(_debug_overlay_text())
 
@@ -4911,7 +5119,7 @@ func _debug_info() -> Dictionary:
 	var outpost_state := outpost_blockout.state_from_progress(_session_progress_data(), meta_progression)
 	var outpost_collision_summary := outpost_blockout.collision_summary(outpost_state)
 	return {
-		"match_state": match_state,
+		"match_state": state_machine.get_state(),
 		"elapsed": elapsed,
 		"match_duration": C.MATCH_DURATION,
 		"wave_name": wave_params["name"],
@@ -4946,7 +5154,7 @@ func _debug_info() -> Dictionary:
 		],
 		"r01_blockout_enabled": R01LayoutBlockout.ENABLED,
 		"r01_blockout_variant": r01_blockout.state_variant,
-		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player_pos),
+		"r01_blockout_nearest": r01_blockout.nearest_zone_id(player.pos),
 		"r01_blockout_world": "%.0fx%.0f" % [R01LayoutBlockout.WORLD_BOUNDS.size.x, R01LayoutBlockout.WORLD_BOUNDS.size.y],
 		"r01_blockout_screens": r01_blockout.world_screen_count(),
 		"r01_open_house_time": _open_house_time(),
@@ -5031,15 +5239,15 @@ func _debug_info() -> Dictionary:
 		"last_threat_label": last_threat_label,
 		"enemy_count": enemies.enemies.size(),
 		"enemy_cap": C.ENEMY_CAP,
-		"player_hp": player_hp,
-		"max_hp": float(player_stats["max_hp"]),
+		"player.hp": player.hp,
+		"max_hp": float(player.stats["max_hp"]),
 		"level": level,
 		"xp": xp,
 		"charge_weapon": _charge_weapon_name(),
 		"charge_state": _charge_state(),
-		"charge_timer": charge_timer,
+		"player.charge_timer": player.charge_timer,
 		"charge_period": _charge_period(),
-		"charge_window_left": charge_window_left,
+		"player.charge_window_left": player.charge_window_left,
 		"manual_stamp_timer": manual_stamp_timer,
 		"manual_stamp_cooldown": C.MANUAL_STAMP_COOLDOWN,
 		"selected_card_count": selected_card_count,
@@ -5051,8 +5259,8 @@ func _debug_info() -> Dictionary:
 		"audit_fail_count": audit_fail_count,
 		"audit_pressure_level": audit_pressure_level,
 		"audit_last_result": audit_last_result,
-		"audit_processing_mult": float(player_stats.get("audit_processing_mult", 0.0)),
-		"audit_threshold_mult": float(player_stats.get("audit_threshold_mult", 0.0)),
+		"audit_processing_mult": float(player.stats.get("audit_processing_mult", 0.0)),
+		"audit_threshold_mult": float(player.stats.get("audit_threshold_mult", 0.0)),
 		"playtest_live_summary": _playtest_metrics_summary(),
 		"last_playtest_summary": _last_playtest_metrics_summary(),
 		"mid_event_triggered": mid_event_triggered,
@@ -5095,29 +5303,29 @@ func _debug_info() -> Dictionary:
 	}
 
 func _debug_force_level_up() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	_show_level_card()
 
 func _debug_open_charge() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
-	charge_timer = _charge_period()
-	charge_window_left = _charge_window()
-	charge_open_age = 0.0
-	charge_warning_played = false
-	charge_ready_flash = C.CHARGE_READY_FLASH
-	charge_miss_notice = 0.0
+	player.charge_timer = _charge_period()
+	player.charge_window_left = _charge_window()
+	player.charge_open_age = 0.0
+	player.charge_warning_played = false
+	player.charge_ready_flash = C.CHARGE_READY_FLASH
+	player.charge_miss_notice = 0.0
 	effects.show_charge_ready()
 	_play_sfx("return_stamp_ready", 1.0, 0.0)
 
 func _debug_drop_hp() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
-	player_hp = minf(player_hp, 20.0)
+	player.hp = minf(player.hp, 20.0)
 
 func _debug_jump_time(seconds: float) -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	elapsed = clampf(seconds, 0.0, C.MATCH_DURATION)
 	r01_map.force_elapsed(elapsed, true)
@@ -5130,7 +5338,7 @@ func _debug_jump_time(seconds: float) -> void:
 	_check_victory()
 
 func _debug_jump_preboss_signal(target_sortie_index: int, seconds: float) -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	sortie_index = maxi(target_sortie_index, 1)
 	first_sortie = sortie_index <= 1
@@ -5148,19 +5356,19 @@ func _debug_jump_preboss_signal(target_sortie_index: int, seconds: float) -> voi
 	_debug_jump_time(seconds)
 
 func _debug_force_victory() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	elapsed = C.MATCH_DURATION
 	_finish_match("victory")
 
 func _debug_force_game_over() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
-	player_hp = 0.0
+	player.hp = 0.0
 	_finish_match("game_over")
 
 func _debug_start_boss() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	first_sortie = false
 	first_recall_done = true
@@ -5170,7 +5378,7 @@ func _debug_start_boss() -> void:
 	_start_boss_encounter()
 
 func _debug_boss_phase_preview() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
@@ -5178,7 +5386,7 @@ func _debug_boss_phase_preview() -> void:
 	effects.show_combat_banner("보스 코어 강제 노출", C.TOXIC_GREEN)
 
 func _debug_boss_enrage_preview() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
@@ -5186,7 +5394,7 @@ func _debug_boss_enrage_preview() -> void:
 	effects.show_combat_banner("마지막 방송", C.NEON_RED)
 
 func _debug_boss_distortion() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
@@ -5194,15 +5402,15 @@ func _debug_boss_distortion() -> void:
 	effects.show_combat_banner("행복 기준 재조정", Color(0.35, 0.70, 0.95))
 
 func _debug_boss_safety_demo() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
-	boss.force_safety_demo(player_pos)
+	boss.force_safety_demo(player.pos)
 	effects.show_combat_banner("방문 점검 돌진", C.VITAMIN_YELLOW)
 
 func _debug_boss_recall_reward() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
@@ -5220,9 +5428,9 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 	if applied:
 		boss.set_outcome_visual(outcome)
 	effects.show_combat_banner(label, C.TOXIC_GREEN if applied else C.NEON_RED)
-	if match_state == "boss_victory":
+	if state_machine.get_state() == GameStateMachine.STATE_BOSS_VICTORY:
 		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_handle_terminal_action"))
-	elif match_state == "supply":
+	elif state_machine.is_supply():
 		current_supply_actions = _build_supply_actions()
 		hud.show_supply_depot(meta_progression, Callable(self, "_apply_supply_choice"), Callable(self, "_restart"), "", _session_progress_data(), current_supply_actions, Callable(self, "_open_r01_campaign_map"))
 
@@ -5238,7 +5446,7 @@ func _debug_r01_blockout_variant(variant: String) -> void:
 func _debug_open_r01_campaign_map() -> void:
 	if not C.DEBUG_TOOLS_ENABLED:
 		return
-	if match_state != "supply":
+	if not state_machine.is_supply():
 		_show_supply_depot()
 	_open_r01_campaign_map()
 
@@ -5255,7 +5463,7 @@ func _debug_preview_r01_campaign_node(index: int) -> void:
 		r01_campaign_node_states[selected_r01_node_id] = R01CampaignMap.STATE_AVAILABLE
 		if not r01_campaign_new_signal_node_ids.has(selected_r01_node_id):
 			r01_campaign_new_signal_node_ids.append(selected_r01_node_id)
-	if match_state != "supply":
+	if not state_machine.is_supply():
 		_show_supply_depot()
 	if not r01_campaign_map_open:
 		_open_r01_campaign_map()
@@ -5278,7 +5486,7 @@ func _debug_r01_campaign_unlock_all() -> void:
 	effects.show_combat_banner("R01 캠페인맵: 모든 지점 열림", C.TOXIC_GREEN)
 
 func _debug_defeat_boss() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	if not boss.active:
 		_debug_start_boss()
@@ -5286,17 +5494,17 @@ func _debug_defeat_boss() -> void:
 	_on_boss_defeated()
 
 func _debug_clear_enemies() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	enemies.clear()
 
 func _debug_spawn_swarm() -> void:
-	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
+	if not C.DEBUG_TOOLS_ENABLED or not state_machine.is_playing() or paused_for_card:
 		return
 	var wave_params := _wave_params_for_elapsed(elapsed)
 	var count := mini(24, C.ENEMY_CAP - enemies.enemies.size())
 	for i in range(count):
-		enemies.spawn_enemy(elapsed, player_pos, rng, wave_params)
+		enemies.spawn_enemy(elapsed, player.pos, rng, wave_params)
 	peak_enemy_count = maxi(peak_enemy_count, enemies.enemies.size())
 
 func _draw() -> void:
@@ -5307,6 +5515,7 @@ func _draw() -> void:
 	_draw_field_interaction_reveals()
 	_draw_micro_location_overlay()
 	_draw_charge_puddles()
+	_draw_death_residue_marks()
 	_draw_threats()
 	effects.draw_behind(self)
 	boss.draw(self, elapsed)
@@ -5318,14 +5527,14 @@ func _draw() -> void:
 
 func _draw_arena() -> void:
 	if R01LayoutBlockout.ENABLED:
-		r01_blockout.draw(self, elapsed, player_pos, debug_tools.blockout_debug_labels_visible(), r01_source_states)
+		r01_blockout.draw(self, elapsed, player.pos, debug_tools.blockout_debug_labels_visible(), r01_source_states, sprite_assets)
 		return
-	r01_map.draw(self, elapsed, player_pos, _boss_route_ready(), boss.active)
+	r01_map.draw(self, elapsed, player.pos, _boss_route_ready(), boss.active)
 
 func _draw_signal_board_route_hints() -> void:
 	if not R01LayoutBlockout.ENABLED:
 		return
-	if not (match_state == "playing" or match_state == "level_up"):
+	if not (state_machine.is_playing() or state_machine.is_level_up()):
 		return
 	var signal_level := meta_progression.signal_board_level()
 	if signal_level <= 0:
@@ -5335,7 +5544,7 @@ func _draw_signal_board_route_hints() -> void:
 	_draw_signal_board_corridor(open_pos, model_pos, signal_level)
 	var target_pos := open_pos
 	var target_label := "오픈하우스"
-	if signal_level >= 2 and (r01_map.current_zone_is_open_house() or open_house_signal_stage >= 1 or player_pos.distance_to(open_pos) < 560.0):
+	if signal_level >= 2 and (r01_map.current_zone_is_open_house() or open_house_signal_stage >= 1 or player.pos.distance_to(open_pos) < 560.0):
 		target_pos = model_pos
 		target_label = "모델하우스"
 	if _boss_route_ready():
@@ -5378,12 +5587,12 @@ func _draw_signal_board_target_pin(pos: Vector2, label: String, signal_level: in
 		draw_string(UIFont.get_font(), pos + Vector2(-64, -54), label, HORIZONTAL_ALIGNMENT_CENTER, 128, 10, Color(0.18, 0.13, 0.11, 0.82))
 
 func _draw_signal_board_compass(target_pos: Vector2, label: String, signal_level: int) -> void:
-	var delta := target_pos - player_pos
+	var delta := target_pos - player.pos
 	if delta.length_squared() <= 100.0:
 		return
 	var dir := delta.normalized()
 	var side := dir.rotated(PI * 0.5)
-	var compass_pos := player_pos + dir * 78.0
+	var compass_pos := player.pos + dir * 78.0
 	var pulse := 0.5 + 0.5 * sin(elapsed * 4.2)
 	var fill := Color(0.35, 0.70, 0.95, 0.18 + 0.05 * pulse)
 	var edge := Color(1.0, 0.91, 0.25, 0.62 + 0.12 * pulse)
@@ -5394,7 +5603,7 @@ func _draw_signal_board_compass(target_pos: Vector2, label: String, signal_level
 	var right := compass_pos - dir * 8.0 - side * 12.0
 	draw_colored_polygon(PackedVector2Array([tip, left, right]), Color(1.0, 0.91, 0.25, 0.58))
 	draw_polyline(PackedVector2Array([tip, left, right, tip]), Color(0.25, 0.18, 0.15, 0.72), 1.6)
-	var distance := int(round(player_pos.distance_to(target_pos) / 10.0) * 10.0)
+	var distance := int(round(player.pos.distance_to(target_pos) / 10.0) * 10.0)
 	var text := "%s %dm" % [label, distance]
 	if signal_level >= 3:
 		text = "%s 고정 %dm" % [label, distance]
@@ -5415,7 +5624,7 @@ func _draw_r01_contamination_marks() -> void:
 func _draw_field_interaction_reveals() -> void:
 	if field_interaction_reveals.is_empty():
 		return
-	if not (match_state == "playing" or match_state == "level_up"):
+	if not (state_machine.is_playing() or state_machine.is_level_up()):
 		return
 	for cue in field_interaction_reveals:
 		var pos := Vector2(cue.get("pos", Vector2.ZERO))
@@ -5425,11 +5634,12 @@ func _draw_field_interaction_reveals() -> void:
 		var color: Color = cue.get("color", C.VITAMIN_YELLOW)
 		var pulse := 0.5 + 0.5 * sin(elapsed * 6.0 + pos.x * 0.01)
 		var radius := 24.0 + 9.0 * pulse
+		sprite_assets.draw_ui_vfx(self, "source_reveal", pos, Vector2(72, 72), 0.62 * ratio)
 		draw_circle(pos, radius, Color(color.r, color.g, color.b, 0.07 + 0.08 * ratio))
 		draw_arc(pos, radius + 5.0, 0.0, TAU, 32, Color(color.r, color.g, color.b, 0.32 * ratio), 2.0)
 		draw_line(pos + Vector2(-16, 0), pos + Vector2(16, 0), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
 		draw_line(pos + Vector2(0, -16), pos + Vector2(0, 16), Color(color.r, color.g, color.b, 0.38 * ratio), 1.5)
-		if debug_tools.blockout_debug_labels_visible() or player_pos.distance_squared_to(pos) < 180.0 * 180.0:
+		if debug_tools.blockout_debug_labels_visible() or player.pos.distance_squared_to(pos) < 180.0 * 180.0:
 			draw_string(UIFont.get_font(), pos + Vector2(-54, 36), String(cue.get("label", "source")), HORIZONTAL_ALIGNMENT_CENTER, 108, 7, Color(0.18, 0.12, 0.10, 0.62 * ratio))
 
 func _draw_micro_location_overlay() -> void:
@@ -5461,7 +5671,7 @@ func _draw_micro_location_dim(rect: Rect2, accent: Color, alpha: float) -> void:
 	var visible_size := C.VIEWPORT_SIZE / zoom
 	var visible_rect := Rect2(camera.global_position - visible_size * 0.5, visible_size)
 	draw_rect(visible_rect, Color(0.04, 0.03, 0.03, MICRO_LOCATION_DIM_ALPHA * alpha))
-	draw_circle(player_pos, 118.0, Color(1.0, 0.96, 0.82, 0.035 * alpha))
+	draw_circle(player.pos, 118.0, Color(1.0, 0.96, 0.82, 0.035 * alpha))
 	draw_circle(rect.get_center(), maxf(rect.size.x, rect.size.y) * 0.58, Color(accent.r, accent.g, accent.b, 0.045 * alpha))
 
 func _draw_micro_location_frame(location: Dictionary, rect: Rect2, accent: Color, alpha: float) -> void:
@@ -5480,6 +5690,8 @@ func _draw_micro_location_frame(location: Dictionary, rect: Rect2, accent: Color
 
 func _draw_micro_location_identity(location: Dictionary, rect: Rect2, accent: Color, alpha: float) -> void:
 	match String(location.get("visual_style", "")):
+		"public_anchor":
+			_draw_micro_public_anchor_identity(rect, accent, alpha)
 		"window":
 			_draw_micro_window_identity(rect, accent, alpha)
 		"model_lobby":
@@ -5490,6 +5702,25 @@ func _draw_micro_location_identity(location: Dictionary, rect: Rect2, accent: Co
 			_draw_micro_fake_shelter_identity(rect, accent, alpha)
 		_:
 			_draw_micro_porch_identity(rect, accent, alpha)
+
+func _draw_micro_public_anchor_identity(rect: Rect2, accent: Color, alpha: float) -> void:
+	var c := rect.get_center()
+	var board := Rect2(c + Vector2(-74, -36), Vector2(112, 56))
+	draw_rect(board, Color(0.13, 0.12, 0.10, 0.54 * alpha))
+	draw_rect(board, Color(accent.r, accent.g, accent.b, 0.40 * alpha), false, 1.8)
+	draw_line(board.position + Vector2(0, 19), board.position + Vector2(board.size.x, 19), Color(0.88, 0.82, 0.64, 0.24 * alpha), 1.2)
+	draw_string(UIFont.get_font(), board.position + Vector2(8, 14), "권리 안내 OFF", HORIZONTAL_ALIGNMENT_LEFT, 92, 7, Color(0.88, 0.82, 0.64, 0.42 * alpha))
+	draw_string(UIFont.get_font(), board.position + Vector2(8, 34), "입주 보정 ON", HORIZONTAL_ALIGNMENT_LEFT, 92, 7, Color(1.0, 0.91, 0.25, 0.58 * alpha))
+	var label := Rect2(c + Vector2(28, -48), Vector2(48, 24))
+	draw_rect(label, Color(1.0, 0.91, 0.25, 0.20 * alpha))
+	draw_rect(label, Color(1.0, 0.30, 0.36, 0.42 * alpha), false, 1.2)
+	draw_string(UIFont.get_font(), label.position + Vector2(6, 15), "14차", HORIZONTAL_ALIGNMENT_LEFT, 36, 8, Color(0.18, 0.12, 0.10, 0.76 * alpha))
+	if _micro_location_point_completed(current_micro_location_id, "public_notice"):
+		_draw_micro_completion_stamp(board.position + Vector2(20, 30), alpha)
+	if _micro_location_point_completed(current_micro_location_id, "revision_label_14"):
+		_draw_micro_completion_stamp(label.get_center(), alpha)
+	if _micro_location_point_completed(current_micro_location_id, "rights_vs_family"):
+		draw_line(c + Vector2(-68, 34), c + Vector2(72, 34), Color(0.35, 0.70, 0.95, 0.36 * alpha), 2.0)
 
 func _draw_micro_porch_identity(rect: Rect2, accent: Color, alpha: float) -> void:
 	var c := rect.get_center()
@@ -5625,7 +5856,7 @@ func _draw_micro_completion_stamp(pos: Vector2, alpha: float) -> void:
 func _draw_r01_source_state_marks() -> void:
 	if r01_source_states.is_empty():
 		return
-	if not (match_state == "playing" or match_state == "level_up"):
+	if not (state_machine.is_playing() or state_machine.is_level_up()):
 		return
 	for source_id in r01_source_states.keys():
 		var state := Dictionary(r01_source_states[source_id])
@@ -5635,6 +5866,7 @@ func _draw_r01_source_state_marks() -> void:
 		var pos := Vector2(state.get("pos", Vector2.ZERO))
 		var pulse := 0.5 + 0.5 * sin(elapsed * 5.5 + pos.x * 0.01)
 		if bool(state.get("revealed", false)):
+			sprite_assets.draw_ui_vfx(self, "source_reveal", pos, Vector2(72, 72), 0.54)
 			draw_arc(pos, 28.0 + pulse * 5.0, 0.0, TAU, 36, Color(0.35, 0.70, 0.95, 0.30), 1.6)
 			draw_line(pos + Vector2(-18, 0), pos + Vector2(18, 0), Color(0.35, 0.70, 0.95, 0.24), 1.2)
 		if bool(state.get("stamped", false)):
@@ -5647,6 +5879,7 @@ func _draw_r01_source_state_marks() -> void:
 			draw_line(pos + Vector2(-24, 18), pos + Vector2(24, -18), Color(0.35, 0.70, 0.95, 0.34), 2.0)
 		elif state_id == R01SourceState.STATE_OVERLOADED:
 			var jitter := Vector2(sin(elapsed * 21.0) * 2.0, cos(elapsed * 17.0) * 2.0)
+			sprite_assets.draw_ui_vfx(self, "overload", pos + jitter, Vector2(96, 96), 0.82)
 			draw_circle(pos + jitter, 46.0 + pulse * 10.0, Color(1.0, 0.91, 0.25, 0.10))
 			draw_arc(pos + jitter, 52.0 + pulse * 8.0, 0.0, TAU, 48, Color(1.0, 0.91, 0.25, 0.68), 3.0)
 			draw_line(pos + Vector2(-30, -22), pos + Vector2(32, 20), Color(1.0, 0.30, 0.36, 0.52), 2.2)
@@ -5662,7 +5895,7 @@ func _draw_r01_source_state_marks() -> void:
 func _r01_contamination_marks_should_draw() -> bool:
 	if not R01LayoutBlockout.ENABLED:
 		return false
-	if not (match_state == "playing" or match_state == "level_up"):
+	if not (state_machine.is_playing() or state_machine.is_level_up()):
 		return false
 	if boss.active:
 		return false
@@ -5745,7 +5978,7 @@ func _r01_contamination_label_visible(pos: Vector2) -> bool:
 		return false
 	if debug_tools.blockout_debug_labels_visible():
 		return true
-	if player_pos.distance_squared_to(pos) > CONTAMINATION_MARK_LABEL_DISTANCE * CONTAMINATION_MARK_LABEL_DISTANCE:
+	if player.pos.distance_squared_to(pos) > CONTAMINATION_MARK_LABEL_DISTANCE * CONTAMINATION_MARK_LABEL_DISTANCE:
 		return false
 	return _enemy_count_near(pos, CONTAMINATION_MARK_LABEL_DISTANCE) <= CONTAMINATION_MARK_LABEL_ENEMY_LIMIT
 
@@ -5792,7 +6025,7 @@ func _r01_contamination_readability_snapshot() -> Dictionary:
 	}
 
 func _draw_charge_puddles() -> void:
-	for puddle in charge_puddles:
+	for puddle in player.charge_puddles:
 		var ratio := float(puddle["life"]) / maxf(0.001, float(puddle["duration"]))
 		var pos: Vector2 = puddle["pos"]
 		var radius := float(puddle["radius"])
@@ -5800,6 +6033,16 @@ func _draw_charge_puddles() -> void:
 		draw_circle(pos, radius, Color(0.62, 1.0, 0.36, 0.18 + 0.12 * ratio))
 		draw_arc(pos, radius, 0.0, TAU, 40, Color(0.62, 1.0, 0.36, 0.56 * ratio), 3.0)
 		draw_arc(pos, radius * pulse, 0.0, TAU, 32, Color(1.0, 0.3, 0.36, 0.42 * ratio), 2.5)
+
+func _draw_death_residue_marks() -> void:
+	for mark in death_residue_marks:
+		var life := float(mark.get("life", 0.0))
+		var duration := maxf(0.001, float(mark.get("duration", 0.85)))
+		var ratio := clampf(life / duration, 0.0, 1.0)
+		var pos := Vector2(mark.get("pos", Vector2.ZERO))
+		var radius := float(mark.get("radius", 18.0))
+		if not sprite_assets.draw_enemy_death_residue(self, pos, radius, 0.68 * ratio):
+			draw_circle(pos, radius, Color(1.0, 0.91, 0.25, 0.08 * ratio))
 
 func _draw_threats() -> void:
 	for threat in active_threats:
@@ -5845,32 +6088,41 @@ func _draw_threats() -> void:
 
 func _draw_player() -> void:
 	var charge_state := _charge_state()
-	var aim := get_global_mouse_position() - player_pos
+	var aim := get_global_mouse_position() - player.pos
 	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
 	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
-	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
-	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
-	if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
-		sprite_assets.draw_player_fallback(self, player_pos)
-	if attack_pose_timer > 0.0:
-		var pose_ratio := attack_pose_timer / 0.20
-		var pose_dir := attack_pose_dir.normalized() if attack_pose_dir.length_squared() > 0.0 else Vector2.RIGHT
-		draw_line(player_pos + pose_dir * 3.0, player_pos + pose_dir * (24.0 + 4.0 * pose_ratio), C.NEON_RED, 3.0)
-		draw_arc(player_pos + pose_dir * 13.0, 18.0, pose_dir.angle() - 0.9, pose_dir.angle() + 0.9, 14, Color(1.0, 0.91, 0.25, 0.75 * pose_ratio), 2.5)
+	draw_circle(player.pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
+	var player_frame := int(elapsed * 6.0) % 3 if player.is_moving else 0
+	var player_pose := ""
+	if player.attack_pose_timer > 0.0:
+		player_pose = "manual_stamp"
+	elif player.charge_window_left > 0.0:
+		player_pose = "stamp_ready"
+	elif player.charge_ready_flash > 0.0:
+		player_pose = "stamp_release"
+	if not sprite_assets.draw_player(self, player.pos, _player_sprite_row(), player_frame, player_pose):
+		sprite_assets.draw_player_fallback(self, player.pos)
+	if player.attack_pose_timer > 0.0:
+		var pose_ratio := player.attack_pose_timer / 0.20
+		var pose_dir := player.attack_pose_dir.normalized() if player.attack_pose_dir.length_squared() > 0.0 else Vector2.RIGHT
+		sprite_assets.draw_ui_vfx(self, "stamp_hit", player.pos + pose_dir * 24.0, Vector2(54, 54), 0.70 * pose_ratio, pose_dir.angle())
+		draw_line(player.pos + pose_dir * 3.0, player.pos + pose_dir * (24.0 + 4.0 * pose_ratio), C.NEON_RED, 3.0)
+		draw_arc(player.pos + pose_dir * 13.0, 18.0, pose_dir.angle() - 0.9, pose_dir.angle() + 0.9, 14, Color(1.0, 0.91, 0.25, 0.75 * pose_ratio), 2.5)
 	if charge_state == "warning":
-		var warning_left := maxf(0.0, _charge_period() - charge_timer)
+		var warning_left := maxf(0.0, _charge_period() - player.charge_timer)
 		var warning_ratio := 1.0 - clampf(warning_left / C.CHARGE_WARNING_TIME, 0.0, 1.0)
 		var pulse := 1.0 + sin(warning_ratio * PI * 5.0) * 0.12
-		draw_arc(player_pos, 23.0 * pulse, -PI / 2.0, TAU * warning_ratio - PI / 2.0, 36, C.NEON_RED, 3.0)
-		draw_circle(player_pos, 29.0 + warning_ratio * 10.0, Color(1.0, 0.91, 0.25, 0.07))
+		draw_arc(player.pos, 23.0 * pulse, -PI / 2.0, TAU * warning_ratio - PI / 2.0, 36, C.NEON_RED, 3.0)
+		draw_circle(player.pos, 29.0 + warning_ratio * 10.0, Color(1.0, 0.91, 0.25, 0.07))
 		_draw_charge_weapon_preview(aim, preview_dir, false)
-	elif charge_ready_flash > 0.0 or charge_window_left > 0.0:
-		var ratio := charge_window_left / _charge_window()
-		var pulse := 1.0 + sin(charge_open_age * 28.0) * 0.13
+	elif player.charge_ready_flash > 0.0 or player.charge_window_left > 0.0:
+		var ratio := player.charge_window_left / _charge_window()
+		var pulse := 1.0 + sin(player.charge_open_age * 28.0) * 0.13
 		var focus_color := Color(0.62, 1.0, 0.36, 0.22) if has_aim else Color(1.0, 0.91, 0.25, 0.20)
-		draw_arc(player_pos, 18.0 * pulse, -PI / 2.0, TAU * ratio - PI / 2.0, 32, C.TOXIC_GREEN if has_aim else C.VITAMIN_YELLOW, 4.0)
-		draw_arc(player_pos, 25.0 + charge_open_age * 42.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.70), 2.0)
-		draw_circle(player_pos, 34.0 + charge_open_age * 20.0, focus_color)
+		sprite_assets.draw_ui_vfx(self, "charge_ready", player.pos, Vector2(70, 70) * pulse, 0.72)
+		draw_arc(player.pos, 18.0 * pulse, -PI / 2.0, TAU * ratio - PI / 2.0, 32, C.TOXIC_GREEN if has_aim else C.VITAMIN_YELLOW, 4.0)
+		draw_arc(player.pos, 25.0 + player.charge_open_age * 42.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.70), 2.0)
+		draw_circle(player.pos, 34.0 + player.charge_open_age * 20.0, focus_color)
 		_draw_charge_weapon_preview(aim, preview_dir, true)
 
 func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) -> void:
@@ -5879,11 +6131,13 @@ func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) ->
 	line_color.a = alpha
 	var edge_color := C.VITAMIN_YELLOW
 	edge_color.a = alpha * 0.62
-	var end_pos := player_pos + aim_dir * RETURN_STAMP_RANGE
+	var end_pos := player.pos + aim_dir * RETURN_STAMP_RANGE
 	var side := aim_dir.rotated(PI * 0.5) * RETURN_STAMP_WIDTH
-	draw_line(player_pos, end_pos, line_color, 4.0 if open else 2.4)
-	draw_line(player_pos + side, end_pos + side, edge_color, 1.5)
-	draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
+	if open:
+		sprite_assets.draw_ui_vfx(self, "stamp_release", end_pos, Vector2(60, 60), 0.55, aim_dir.angle())
+	draw_line(player.pos, end_pos, line_color, 4.0 if open else 2.4)
+	draw_line(player.pos + side, end_pos + side, edge_color, 1.5)
+	draw_line(player.pos - side, end_pos - side, edge_color, 1.5)
 	draw_arc(end_pos, 8.0 if open else 6.0, 0.0, TAU, 24, line_color, 2.0)
 
 func _draw_enemies() -> void:
@@ -5891,7 +6145,7 @@ func _draw_enemies() -> void:
 		_draw_enemy(enemy)
 
 func _draw_actor_stack() -> void:
-	var actors: Array[Dictionary] = [{"type": "player", "sort_y": player_pos.y}]
+	var actors: Array[Dictionary] = [{"type": "player", "sort_y": player.pos.y}]
 	for enemy in enemies.enemies:
 		var pos: Vector2 = enemy["pos"]
 		actors.append({"type": "enemy", "sort_y": pos.y, "enemy": enemy})
@@ -5931,7 +6185,7 @@ func _enemy_priority_visual(enemy: Dictionary) -> bool:
 
 func _enemy_near_player_visual(enemy: Dictionary, distance: float = 155.0) -> bool:
 	var pos: Vector2 = enemy.get("pos", Vector2.ZERO)
-	return pos.distance_squared_to(player_pos) <= distance * distance
+	return pos.distance_squared_to(player.pos) <= distance * distance
 
 func _enemy_base_ring_visible(enemy: Dictionary) -> bool:
 	if debug_tools.detail_debug_visible():
@@ -6001,6 +6255,7 @@ func _draw_enemy_hit_feedback(enemy: Dictionary) -> void:
 	var radius := float(enemy["radius"])
 	var heavy := bool(enemy.get("elite", false)) or String(enemy.get("role", "basic")) == "tank"
 	var flash_color := Color(1.0, 0.96, 0.72, 0.32 * ratio)
+	sprite_assets.draw_ui_vfx(self, "stamp_hit", pos, Vector2(radius * 3.2, radius * 3.2), 0.44 * ratio)
 	if heavy:
 		flash_color = Color(1.0, 0.91, 0.25, 0.38 * ratio)
 	draw_circle(pos, radius + (3.0 if heavy else 1.5), flash_color)
@@ -6148,9 +6403,9 @@ func _defense_color(defense: String) -> Color:
 			return Color(1.0, 0.96, 0.72, 0.70)
 
 func _player_sprite_row() -> int:
-	if absf(last_move_dir.x) > absf(last_move_dir.y):
-		return 2 if last_move_dir.x > 0.0 else 1
-	return 0 if last_move_dir.y >= 0.0 else 3
+	if absf(player.last_move_dir.x) > absf(player.last_move_dir.y):
+		return 2 if player.last_move_dir.x > 0.0 else 1
+	return 0 if player.last_move_dir.y >= 0.0 else 3
 
 func _ensure_input_map() -> void:
 	_add_key_action("move_left", [KEY_A, KEY_LEFT])
@@ -6181,8 +6436,8 @@ func _add_key_action(action: StringName, keys: Array[int]) -> void:
 			InputMap.action_add_event(action, event)
 
 func _restart() -> void:
-	var was_supply := match_state == "supply"
-	var was_terminal_redeploy := TERMINAL_STATES.has(match_state) and first_recall_done
+	var was_supply := state_machine.is_supply()
+	var was_terminal_redeploy := state_machine.is_terminal() and first_recall_done
 	if is_inside_tree():
 		get_tree().paused = false
 	if was_supply and R01CampaignMap.is_node_selectable(selected_r01_node_id, r01_campaign_node_states):
@@ -6200,15 +6455,15 @@ func _restart() -> void:
 	current_supply_actions.clear()
 	last_supply_reaction_line = ""
 	_reset_player_stats()
-	player_pos = _r01_campaign_start_position(current_r01_node_id) if R01LayoutBlockout.ENABLED else Vector2.ZERO
+	player.pos = _r01_campaign_start_position(current_r01_node_id) if R01LayoutBlockout.ENABLED else Vector2.ZERO
 	if R01LayoutBlockout.ENABLED:
 		_arm_entry_camera_for_node(current_r01_node_id)
-	player_hp = float(player_stats["max_hp"])
+	player.hp = float(player.stats["max_hp"])
 	elapsed = 0.0
 	xp = 0.0
 	level = 1
 	kills = 0
-	match_state = "playing"
+	state_machine.change_state("playing")
 	game_over = false
 	paused_for_card = false
 	offered_cards.clear()
@@ -6221,27 +6476,28 @@ func _restart() -> void:
 	ration_candidate_notice_total = 0
 	wave_notice_timer = 0.0
 	wave_notice_text = ""
-	auto_timer = 0.0
+	player.auto_timer = 0.0
 	manual_stamp_timer = 0.0
 	manual_stamp_notice_timer = 0.0
 	manual_stamp_notice_text = ""
-	auto_shot_counter = 0
-	attack_pose_timer = 0.0
-	attack_pose_dir = Vector2.RIGHT
-	hurt_feedback_cooldown = 0.0
-	charge_timer = 0.0
-	charge_window_left = 0.0
-	charge_open_age = 0.0
-	charge_ready_flash = 0.0
-	charge_warning_played = false
-	charge_miss_notice = 0.0
-	charge_effect_anchor = Vector2.ZERO
-	charge_effect_anchor_active = false
+	player.auto_shot_counter = 0
+	player.attack_pose_timer = 0.0
+	player.attack_pose_dir = Vector2.RIGHT
+	player.hurt_feedback_cooldown = 0.0
+	player.charge_timer = 0.0
+	player.charge_window_left = 0.0
+	player.charge_open_age = 0.0
+	player.charge_ready_flash = 0.0
+	player.charge_warning_played = false
+	player.charge_miss_notice = 0.0
+	player.charge_effect_anchor = Vector2.ZERO
+	player.charge_effect_anchor_active = false
 	pending_kill_burst_contexts.clear()
 	enemies.clear()
 	effects.clear()
-	charge_puddles.clear()
+	player.charge_puddles.clear()
 	active_threats.clear()
+	death_residue_marks.clear()
 	pressure_ring_timer = 0.0
 	flyer_drop_timer = 0.0
 	last_threat_label = ""
@@ -6267,7 +6523,7 @@ func _record_r01_visit_for_current_sortie() -> void:
 
 func _reset_player_stats() -> void:
 	var meta_bonuses := meta_progression.bonuses()
-	player_stats = {
+	player.stats = {
 		"max_hp": C.PLAYER_MAX_HP + float(meta_bonuses["max_hp_bonus"]),
 		"move_speed_mult": 0.0,
 		"auto_damage_mult": 0.0,
@@ -6314,59 +6570,51 @@ func _reset_player_stats() -> void:
 	}
 
 func _move_speed() -> float:
-	return C.PLAYER_SPEED * (1.0 + float(player_stats["move_speed_mult"]))
+	return C.PLAYER_SPEED * (1.0 + float(player.stats["move_speed_mult"]))
 
 func _auto_range() -> float:
-	return C.AUTO_RANGE + float(player_stats["auto_range_bonus"])
+	return C.AUTO_RANGE + float(player.stats["auto_range_bonus"])
 
 func _auto_damage_per_tick() -> float:
-	var base_damage := C.BASE_DPS * (1.0 + float(player_stats["auto_damage_mult"])) * C.AUTO_TICK + float(player_stats["auto_damage_bonus"])
+	var base_damage := C.BASE_DPS * (1.0 + float(player.stats["auto_damage_mult"])) * C.AUTO_TICK + float(player.stats["auto_damage_bonus"])
 	return base_damage * C.AUTO_ASSIST_DAMAGE_MULT
 
 func _manual_stamp_damage() -> float:
-	return C.MANUAL_STAMP_DAMAGE + float(player_stats["charge_damage_bonus"]) * 0.35
+	return C.MANUAL_STAMP_DAMAGE + float(player.stats["charge_damage_bonus"]) * 0.35
 
 func _charge_period() -> float:
-	var emergency_bonus := -0.45 * float(player_stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0
-	return maxf(1.2, C.CHARGE_PERIOD + float(player_stats["charge_period_bonus"]) + emergency_bonus)
+	var emergency_bonus := -0.45 * float(player.stats["emergency_charge_level"]) if _emergency_charge_active() else 0.0
+	return maxf(1.2, C.CHARGE_PERIOD + float(player.stats["charge_period_bonus"]) + emergency_bonus)
 
 func _charge_window() -> float:
-	return C.CHARGE_WINDOW + float(player_stats["charge_window_bonus"])
+	return C.CHARGE_WINDOW + float(player.stats["charge_window_bonus"])
 
-func _incoming_damage(amount: float) -> float:
-	var reduction := 0.0
-	if player_hp <= float(player_stats["max_hp"]) * 0.35:
-		reduction = float(player_stats["low_hp_damage_reduction"])
-	return amount * maxf(0.65, 1.0 - reduction)
-
-func _enemy_meta_damage(base_damage: float, index: int) -> float:
-	if index < 0 or index >= enemies.enemies.size():
-		return base_damage
-	if bool(enemies.enemies[index].get("elite", false)):
-		return base_damage * (1.0 + float(player_stats["elite_damage_mult"]))
-	return base_damage
-
-func _boss_meta_damage(base_damage: float) -> float:
-	if boss.state == "shield":
-		return base_damage * (1.0 + float(player_stats["boss_shield_damage_mult"]))
-	return base_damage
+func _incoming_damage(amount: float, damage_type: String = DamageRouter.DAMAGE_TYPE_CONTACT) -> float:
+	var result := DamageRouter.calculate_damage({
+		"target_type": DamageRouter.TARGET_PLAYER,
+		"base_damage": amount,
+		"damage_type": damage_type,
+		"player.hp": player.hp,
+		"player.stats": player.stats
+	})
+	return float(result["final_damage"])
 
 func _charge_state() -> String:
-	if charge_window_left > 0.0:
+	if player.charge_window_left > 0.0:
 		return "open"
-	if charge_miss_notice > 0.0:
+	if player.charge_miss_notice > 0.0:
 		return "missed"
-	if _charge_period() - charge_timer <= C.CHARGE_WARNING_TIME:
+	if _charge_period() - player.charge_timer <= C.CHARGE_WARNING_TIME:
 		return "warning"
 	return "cooldown"
 
 func _charge_target_limit(directed: bool) -> int:
 	var base_limit := C.DIRECTED_AOE_TARGETS if directed else C.CHARGE_AOE_TARGETS
-	return base_limit + int(player_stats["charge_target_bonus"])
+	return base_limit + int(player.stats["charge_target_bonus"])
 
 func _charge_damage(directed: bool) -> float:
 	var directed_mult := C.DIRECTED_BONUS if directed else 1.0
-	return (C.CHARGE_DAMAGE + float(player_stats["charge_damage_bonus"])) * directed_mult * (1.0 + float(player_stats["charge_damage_mult"]))
+	return (C.CHARGE_DAMAGE + float(player.stats["charge_damage_bonus"])) * directed_mult * (1.0 + float(player.stats["charge_damage_mult"]))
 
 func _supply_choice_from_event(event: InputEvent) -> int:
 	if not event is InputEventKey or not event.pressed or event.echo:
@@ -6386,19 +6634,19 @@ func _supply_choice_from_event(event: InputEvent) -> int:
 func _register_attack_pose(dir: Vector2, duration: float) -> void:
 	if dir.length_squared() <= 0.0:
 		return
-	attack_pose_dir = dir.normalized()
-	attack_pose_timer = maxf(attack_pose_timer, duration)
+	player.attack_pose_dir = dir.normalized()
+	player.attack_pose_timer = maxf(player.attack_pose_timer, duration)
 
 func _apply_hit_knockback(index: int, source_pos: Vector2, distance: float) -> void:
 	if index < 0 or index >= enemies.enemies.size():
 		return
 	var dir := Vector2(enemies.enemies[index]["pos"]) - source_pos
 	if dir.length_squared() <= 0.0:
-		dir = attack_pose_dir
+		dir = player.attack_pose_dir
 	enemies.knockback_enemy(index, dir.normalized(), distance)
 
 func _xp_gain() -> float:
-	return 1.0 * (1.0 + float(player_stats["xp_gain_mult"]))
+	return 1.0 * (1.0 + float(player.stats["xp_gain_mult"]))
 
 func _xp_requirement() -> float:
 	return level * 10.0

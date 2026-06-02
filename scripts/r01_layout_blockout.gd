@@ -141,6 +141,8 @@ const ZONE_PROPS := {
 	"silence_edge_start": [
 		{"id": "low_concentration_floor", "offset": Vector2(-70, 30), "kind": "floor", "state": "all"},
 		{"id": "sparse_flyer_scraps", "offset": Vector2(18, -42), "kind": "scraps", "state": "all"},
+		{"id": "old_public_notice_sign", "offset": Vector2(76, 84), "kind": "sign", "state": "all"},
+		{"id": "revision_label_14", "offset": Vector2(118, 42), "kind": "tag", "state": "all"},
 		{"id": "weak_route_hint", "offset": Vector2(96, 28), "kind": "route", "state": "all"},
 		{"id": "distant_mailbox_hint", "offset": Vector2(132, -72), "kind": "mailbox", "state": "all"},
 		{"id": "quiet_service_van_shell", "offset": Vector2(-164, 82), "kind": "road_barrier", "state": "all"},
@@ -856,12 +858,12 @@ func _fake_return_route_probe() -> Dictionary:
 		"note": "fake_return_route is event/phrase driven, not recovery UI",
 	}
 
-func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false, source_states: Dictionary = {}) -> void:
+func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false, source_states: Dictionary = {}, runtime_assets = null) -> void:
 	_draw_ground(canvas, elapsed)
 	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
-	_draw_props(canvas, elapsed, show_debug_labels, source_states)
+	_draw_props(canvas, elapsed, show_debug_labels, source_states, runtime_assets)
 	_draw_collision_overlay(canvas, show_debug_labels)
 	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
 	_draw_world_bounds(canvas, show_debug_labels)
@@ -1036,7 +1038,7 @@ func _draw_marker_label(canvas: CanvasItem, zone_id: String, zone: Dictionary, p
 		return
 	return
 
-func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}) -> void:
+func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}, runtime_assets = null) -> void:
 	var objects := map_assembly.objects_for_state(state_variant)
 	objects.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
 		var layer_a := map_assembly.layer_rank(String(a.get("layer", "")))
@@ -1048,7 +1050,7 @@ func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool, so
 	for object in objects:
 		if _object_drawn_by_ground_pass(object):
 			continue
-		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels, source_states)
+		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels, source_states, runtime_assets)
 
 func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 	var state := String(prop.get("state", "all"))
@@ -1061,12 +1063,18 @@ func _object_drawn_by_ground_pass(object: Dictionary) -> bool:
 	var object_id := String(object.get("id", ""))
 	return kind == "subdivision_road" or kind == "open_house_street" or kind == "model_axis" or kind == "drain_ground" or kind == "fake_ad_walkway" or kind == "travel_path" or object_id == "silence_edge_ground_band"
 
-func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}) -> void:
+func _draw_object_placeholder(canvas: CanvasItem, object: Dictionary, elapsed: float, show_debug_labels: bool, source_states: Dictionary = {}, runtime_assets = null) -> void:
 	var pos := Vector2(object.get("pos", Vector2.ZERO))
 	var kind := String(object.get("kind", ""))
 	var prop_id := String(object.get("id", kind))
 	var asset_key := String(object.get("asset_key", prop_id))
-	_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
+	var state := R01SourceState.state_for_source(source_states, prop_id)
+	var state_id := R01SourceState.current_state(state) if not state.is_empty() else R01SourceState.STATE_ACTIVE
+	var drew_runtime_asset := false
+	if runtime_assets != null and runtime_assets.has_method("draw_r01_object"):
+		drew_runtime_asset = bool(runtime_assets.draw_r01_object(canvas, object, state_id))
+	if not drew_runtime_asset:
+		_draw_prop(canvas, pos, kind, prop_id, asset_key, elapsed, show_debug_labels)
 	if not show_debug_labels:
 		_draw_source_feedback(canvas, object, elapsed, source_states)
 		_draw_npc_trace_feedback(canvas, object, elapsed)

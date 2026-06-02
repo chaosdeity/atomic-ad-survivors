@@ -17,8 +17,8 @@ const RECALL_STORY := "story_recall"
 
 const TIER_LABELS := {
 	TIER_NONE: "정산 근거 없음",
-	TIER_WARMUP: "45초 회수 후보",
-	TIER_SURVIVED_60: "60초 회수 근거",
+	TIER_WARMUP: "45초 판정 근거",
+	TIER_SURVIVED_60: "60초 보류 근거",
 	TIER_STABLE_90: "90초 안정",
 	TIER_SIGNAL_120: "120초 신호",
 	TIER_DEEP_180: "180초 심층",
@@ -37,6 +37,9 @@ const TICKET_RIGHT_LABELS := {
 	TICKET_POWER: "정비권",
 	TICKET_SIGNAL: "접근권",
 }
+const SETTLEMENT_CAMPAIGN_APPROVED := "settlement_campaign_approved"
+const SETTLEMENT_OUTPOST_HELD := "settlement_outpost_held"
+const SETTLEMENT_CONTAMINATED := "settlement_contaminated"
 
 static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var elapsed := float(result_data.get("elapsed", 0.0))
@@ -61,6 +64,9 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var audit_total_processing := float(result_data.get("audit_total_processing", 0.0))
 	var audit_last_result := String(result_data.get("audit_last_result", ""))
 	var playtest_metrics: Dictionary = result_data.get("playtest_metrics", {})
+	var r01_learning_state: Dictionary = result_data.get("r01_learning_state", {})
+	var r01_source_settlement_lines: Array = Array(result_data.get("r01_source_settlement_lines", []))
+	var r01_name_archive_source_lines: Array = Array(result_data.get("r01_name_archive_lines", []))
 	var open_house_processing_mult := _open_house_processing_mult(open_house_time)
 	var effective_kills := int(round(float(kills) * open_house_processing_mult))
 	var reward_tier := _reward_tier(elapsed)
@@ -68,7 +74,7 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var special_reward_allowed := match_state == "boss_victory" or boss_result_reason == "boss_recall" or (match_state == "recalled" and first_sortie)
 	var anti_farm_reason := ""
 	if not general_reward_allowed:
-		anti_farm_reason = "%.0f초 미만 런은 일반 정산 후보가 열리지 않습니다." % MIN_GENERAL_REWARD_SECONDS
+		anti_farm_reason = "%.0f초 미만 체류는 캠페인 승인/보류 판정 근거가 부족합니다." % MIN_GENERAL_REWARD_SECONDS
 
 	var torn_ad_flyer_reward := _torn_ad_flyer_reward(reward_tier, effective_kills, level, peak_enemy_count) if general_reward_allowed else 0
 	var campaign_core_fragment_reward := _campaign_core_fragment_reward(match_state, boss_result_reason, boss_hp_ratio)
@@ -96,6 +102,8 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	)
 	var recall_quality := _recall_quality(match_state, elapsed, first_sortie, boss_result_reason, fake_return_time, audit_pressure_level, terms_failure_risk, general_reward_allowed)
 	var tag_ledger := _settlement_tag_ledger(ration_settlement, recall_quality, anti_farm_reason)
+	var settlement_sections := _settlement_sections(tag_ledger, r01_source_settlement_lines, r01_learning_state)
+	var name_archive_lines := _name_archive_result_lines(r01_name_archive_source_lines, r01_learning_state, recall_quality)
 	var reward_lines := _reward_lines(
 		reward_tier,
 		general_reward_allowed,
@@ -124,7 +132,12 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		boss_result_reason,
 		boss_hp_ratio
 	)
+	reward_lines = _settlement_counter_lines(settlement_sections) + reward_lines
 	for line in _playtest_metric_lines(playtest_metrics):
+		reward_lines.append(line)
+	for line in name_archive_lines:
+		reward_lines.append(line)
+	for line in _r01_learning_lines(r01_learning_state):
 		reward_lines.append(line)
 
 	return {
@@ -141,6 +154,8 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"recall_quality_line": recall_quality_line(recall_quality),
 		"settlement_tag_ledger": tag_ledger,
 		"settlement_tag_ledger_line": settlement_tag_ledger_line(tag_ledger),
+		"settlement_sections": settlement_sections,
+		"name_archive_lines": name_archive_lines,
 		"tag_rights_line": tag_rights_line(),
 		"card_contributions": card_contributions,
 		"open_house_time": open_house_time,
@@ -158,6 +173,162 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"playtest_target_count": int(playtest_metrics.get("first_5_target_count", 7)),
 	}
 
+static func _settlement_sections(tag_ledger: Dictionary, source_lines: Array, learning_state: Dictionary) -> Dictionary:
+	var sections := {
+		SETTLEMENT_CAMPAIGN_APPROVED: [],
+		SETTLEMENT_OUTPOST_HELD: [],
+		SETTLEMENT_CONTAMINATED: [],
+	}
+	var confirmed_text := _ticket_counts_text(Dictionary(tag_ledger.get("confirmed", {})))
+	var approved_text := _ticket_counts_text(Dictionary(tag_ledger.get("approved", {})))
+	var held_text := _ticket_counts_text(Dictionary(tag_ledger.get("held", {})))
+	var contaminated_text := _ticket_counts_text(Dictionary(tag_ledger.get("contaminated", {})))
+	if confirmed_text != "":
+		_append_unique_section(sections, SETTLEMENT_CAMPAIGN_APPROVED, "%s 확정. R01 약관이 인정한 사용권입니다." % confirmed_text)
+	if approved_text != "":
+		_append_unique_section(sections, SETTLEMENT_CAMPAIGN_APPROVED, "%s 승인. 단, 역할 판정 문구가 동봉될 수 있습니다." % approved_text)
+	if held_text != "":
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "%s 보류. 보급소가 확정하지 않고 보관합니다." % held_text)
+	if contaminated_text != "":
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "%s 승인. 광고 약관과 R01 학습이 따라붙습니다." % contaminated_text)
+	for raw_line in source_lines:
+		var line := _strip_settlement_prefix(String(raw_line))
+		if line == "":
+			continue
+		var raw_text := String(raw_line)
+		if raw_text.begins_with("캠페인 승인:"):
+			_append_unique_section(sections, SETTLEMENT_CAMPAIGN_APPROVED, line)
+		elif raw_text.begins_with("오염 꼬리표:"):
+			_append_unique_section(sections, SETTLEMENT_CONTAMINATED, line)
+		elif raw_text.begins_with("보급소 보류:"):
+			_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, line)
+		else:
+			_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, line)
+	var role_guess := String(learning_state.get("r01_yunseo_role_guess", "외부인"))
+	var name_pressure := int(learning_state.get("r01_name_pressure", 0))
+	var tag_contamination := int(learning_state.get("r01_tag_contamination", 0))
+	var fake_accuracy := int(learning_state.get("r01_fake_recall_accuracy", 0))
+	var boss_residue := int(learning_state.get("r01_boss_residue", 0))
+	var outpost_trace_leak := int(learning_state.get("r01_outpost_trace_leak", 0))
+	if name_pressure > 0:
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "윤서 이름 압력 %d. 이름 보관함이 세대 칸 확정을 보류합니다." % name_pressure)
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "문패/현관 반복 변화. 윤서 이름 호명 정확도가 올라갑니다.")
+	if role_guess == "보호자 후보" or role_guess == "수령인 후보" or role_guess == "가족 슬롯":
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "윤서 판정 %s. 가족 칸 배정 시도를 정산에서 보류합니다." % role_guess)
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "가족사진 창문/현관 센서 반복 변화. 빈칸 구도와 역할 판정이 강화됩니다.")
+	if tag_contamination > 0:
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "태그 오염 %d. 승인 태그에 광고 약관 꼬리표가 붙었습니다." % tag_contamination)
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "우편함/배수로 반복 변화. 수령인 후보 문구와 회수선 불안이 같이 증가합니다.")
+	if fake_accuracy > 0:
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "가짜 회수 정확도 %d. 귀가 동선 광고가 다음 출격에 따라붙을 수 있습니다." % fake_accuracy)
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "가짜 회수 표식 반복 변화. 보급소 색 모방이 더 정확해졌습니다.")
+	if outpost_trace_leak > 0:
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "배수로 젖은 기록 %d. 낮은 신호는 보급소 보류로 묶고 회수선 불안은 따로 표시합니다." % outpost_trace_leak)
+	if boss_residue > 0:
+		_append_unique_section(sections, SETTLEMENT_CAMPAIGN_APPROVED, "수신태그 승인. 단, 수령인 후보 문구 동봉.")
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "심사 반려 기록 보류. 가족 칸에 넣지 않음.")
+		_append_unique_section(sections, SETTLEMENT_OUTPOST_HELD, "윤서 이름: 고객 보류 상태로 이름 보관함 이관.")
+		_append_unique_section(sections, SETTLEMENT_CONTAMINATED, "모델하우스 접근 근거에 재심사 잔향이 붙었습니다.")
+	return sections
+
+static func _append_unique_section(sections: Dictionary, key: String, item: String) -> void:
+	if item == "":
+		return
+	var items: Array = Array(sections.get(key, []))
+	if not items.has(item):
+		items.append(item)
+	sections[key] = items
+
+static func _settlement_counter_lines(sections: Dictionary) -> Array[String]:
+	var lines: Array[String] = [
+		"정산 카운터: 승인과 보류, 오염 꼬리표를 분리합니다.",
+		"정산 카운터: 회수품은 보상이 아니라 판정 근거입니다.",
+		"정산 카운터: 캠페인이 인정한 것과 보급소가 확정하지 않은 것을 나눕니다.",
+	]
+	var approved := Array(sections.get(SETTLEMENT_CAMPAIGN_APPROVED, []))
+	var held := Array(sections.get(SETTLEMENT_OUTPOST_HELD, []))
+	var contaminated := Array(sections.get(SETTLEMENT_CONTAMINATED, []))
+	if not approved.is_empty():
+		lines.append("캠페인 승인: %s" % _compact_section_items(approved))
+	if not held.is_empty():
+		lines.append("보급소 보류: %s" % _compact_section_items(held))
+	if not contaminated.is_empty():
+		lines.append("오염 꼬리표: %s" % _compact_section_items(contaminated))
+	return lines
+
+static func _name_archive_result_lines(source_lines: Array, learning_state: Dictionary, recall_quality: String) -> Array[String]:
+	var lines: Array[String] = []
+	for raw_line in source_lines:
+		_append_unique(lines, String(raw_line))
+	var role_guess := String(learning_state.get("r01_yunseo_role_guess", "외부인"))
+	var name_pressure := int(learning_state.get("r01_name_pressure", 0))
+	var fake_accuracy := int(learning_state.get("r01_fake_recall_accuracy", 0))
+	var boss_residue := int(learning_state.get("r01_boss_residue", 0))
+	var outpost_trace_leak := int(learning_state.get("r01_outpost_trace_leak", 0))
+	if name_pressure > 0:
+		_append_unique(lines, "이름 보관함: 윤서 이름 옆에 고객 보류 흔적이 붙었습니다.")
+	if name_pressure >= 3:
+		_append_unique(lines, "이름 보관함: 다음 출격에서 윤서 이름을 더 정확히 부를 수 있습니다.")
+	if role_guess == "보호자 후보" or role_guess == "수령인 후보" or role_guess == "가족 슬롯":
+		_append_unique(lines, "이름 보관함: 가족 칸 배정 시도를 윤서 이름 옆 보류 기록으로 격리합니다.")
+	if fake_accuracy > 0:
+		_append_unique(lines, "이름 보관함: 가짜 회수선 기록을 귀환 이름표와 분리했습니다.")
+	if outpost_trace_leak > 0:
+		_append_unique(lines, "이름 보관함: 배수로 젖은 구조 요청을 가족 칸 밖 흔적으로 보관했습니다.")
+	if boss_residue > 0:
+		_append_unique(lines, "이름 보관함: 윤서 이름을 고객 보류 상태로 두고 심사 반려 기록을 이관했습니다.")
+	if recall_quality == RECALL_BOSS_INTERRUPTED:
+		_append_unique(lines, "이름 보관함: 가족심사 관리자 반려 기록이 윤서 이름 옆에 붙었습니다.")
+	if lines.is_empty():
+		_append_unique(lines, "이름 보관함: 스마일홈이 붙인 이름/역할 라벨을 가족 칸에 확정하지 않고 보류합니다.")
+	var capped: Array[String] = []
+	if boss_residue > 0:
+		_append_unique(capped, "이름 보관함: 윤서 이름을 고객 보류 상태로 두고 심사 반려 기록을 이관했습니다.")
+	for line in lines:
+		_append_unique(capped, String(line))
+		if capped.size() >= 4:
+			break
+	return capped
+
+static func _strip_settlement_prefix(line: String) -> String:
+	for prefix in ["source 정산:", "캠페인 승인:", "보급소 보류:", "오염 꼬리표:"]:
+		if line.begins_with(prefix):
+			return line.substr(prefix.length()).strip_edges()
+	return line.strip_edges()
+
+static func _compact_section_items(items: Array) -> String:
+	var parts: Array[String] = []
+	for raw_item in items:
+		parts.append(String(raw_item))
+		if parts.size() >= 2:
+			break
+	var suffix := " 외 %d건" % (items.size() - parts.size()) if items.size() > parts.size() else ""
+	return " / ".join(parts) + suffix
+
+static func _r01_learning_lines(state: Dictionary) -> Array[String]:
+	if state.is_empty():
+		return []
+	var lines: Array[String] = []
+	var revisit_count := int(state.get("r01_revisit_count", 0))
+	var role_guess := String(state.get("r01_yunseo_role_guess", "외부인"))
+	var fake_accuracy := int(state.get("r01_fake_recall_accuracy", 0))
+	var name_pressure := int(state.get("r01_name_pressure", 0))
+	var tag_contamination := int(state.get("r01_tag_contamination", 0))
+	var route_memory := int(state.get("r01_route_memory", 0))
+	var suppression_memory := int(state.get("r01_source_suppression_memory", 0))
+	var boss_residue := int(state.get("r01_boss_residue", 0))
+	var outpost_trace_leak := int(state.get("r01_outpost_trace_leak", 0))
+	lines.append("R01 학습: 재방문 %d / 윤서 판정 %s / 이름 압력 %d" % [revisit_count, role_guess, name_pressure])
+	if fake_accuracy > 0 or tag_contamination > 0:
+		lines.append("R01 학습: 가짜 회수 정확도 %d / 태그 오염 %d" % [fake_accuracy, tag_contamination])
+	if route_memory > 0 or suppression_memory > 0 or outpost_trace_leak > 0:
+		lines.append("R01 학습: 경로 기억 %d / source 억제 기억 %d / 보급소 흔적 누출 %d" % [route_memory, suppression_memory, outpost_trace_leak])
+	if boss_residue > 0:
+		lines.append("R01 학습: 보스 잔향 %d / 재심사 잔향이 source 오브젝트에 흩어집니다." % boss_residue)
+	if revisit_count >= 2:
+		lines.append("반복 출격 source 변화: 문패/창문/우편함/현관/배수로/가짜 회수 표식이 역할 판정과 회수선 정확도를 다시 계산합니다.")
+	return lines
+
 static func recall_quality_label(quality_id: String) -> String:
 	match quality_id:
 		RECALL_STABLE:
@@ -169,7 +340,7 @@ static func recall_quality_label(quality_id: String) -> String:
 		RECALL_BOSS_INTERRUPTED:
 			return "심사 중단 회수"
 		RECALL_STORY:
-			return "첫 강제 회수"
+			return "첫 등록 전 인양"
 		_:
 			return "회수 판정 대기"
 
@@ -178,13 +349,13 @@ static func recall_quality_line(quality_id: String) -> String:
 		RECALL_STABLE:
 			return "회수 상태: 정산 근거가 충분해 다음 출격 조율이 안정적입니다."
 		RECALL_EMERGENCY:
-			return "회수 상태: 긴급 인양입니다. 보급소가 정산 근거를 엄격히 봅니다."
+			return "회수 상태: 등록 확정 전 긴급 인양입니다. 보급소가 승인/보류 근거를 엄격히 분리합니다."
 		RECALL_UNSTABLE:
 			return "회수 상태: 회수선이 흔들려 후보와 보류 표식이 더 눈에 띕니다."
 		RECALL_BOSS_INTERRUPTED:
 			return "회수 상태: 심사 중단 기록이 이름 보관함과 조율대에 남습니다."
 		RECALL_STORY:
-			return "회수 상태: 첫 등록 직전 보급소가 강제로 윤서를 끌어왔습니다."
+			return "회수 상태: 가족 슬롯 배정 직전 보급소가 윤서를 끌어왔습니다."
 		_:
 			return "회수 상태: 보급소가 정산표를 확인 중입니다."
 
@@ -504,20 +675,20 @@ static func _reward_lines(
 	boss_hp_ratio: float
 ) -> Array[String]:
 	var lines: Array[String] = []
-	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
+	lines.append("정산 분리 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	lines.append(recall_quality_line(recall_quality))
 	if anti_farm_reason != "":
-		lines.append("일반 정산 잠김: %s" % anti_farm_reason)
+		lines.append("승인/보류 판정 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
-		lines.append("일반 정산 후보(미반영): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
+		lines.append("보급소 보류 후보(미반영): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
 	if campaign_core_fragment_reward > 0:
-		lines.append("결절 성과 후보(미반영): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
+		lines.append("보급소 보류 후보(미반영): 심사 반려 기록 +%d" % campaign_core_fragment_reward)
 	for line in _ration_ticket_lines(ration_settlement):
 		lines.append(line)
 	lines.append(tag_rights_line())
 	lines.append(settlement_tag_ledger_line(tag_ledger))
 	if boss_result_reason == "boss_recall":
-		lines.append("스마일 홈 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
+		lines.append("심사 압력 잔여: %d%%. 가족 슬롯 배정 전 인양." % int(round(boss_hp_ratio * 100.0)))
 	if audit_pass_count > 0 or audit_fail_count > 0:
 		lines.append("광고 감사 결과: 통과 %d / 미달 %d / 총 처리량 %.0f" % [audit_pass_count, audit_fail_count, audit_total_processing])
 	if audit_pressure_level > 0:
@@ -529,15 +700,15 @@ static func _reward_lines(
 	if open_house_processing_mult > 1.0:
 		lines.append("오픈하우스 처리량 보정: x%.2f (처리 %d -> %d 판정)" % [open_house_processing_mult, kills, effective_kills])
 	if open_house_signal_stage >= 3 or open_house_time >= 75.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 모델하우스 신호가 선명해졌습니다." % open_house_time)
+		lines.append("오픈하우스 체류 판정: %.0f초 - 모델하우스 심사 접근권과 R01 학습이 함께 증가했습니다." % open_house_time)
 	elif open_house_signal_stage >= 2 or open_house_time >= 50.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 수신태그 승인 보정이 붙었습니다." % open_house_time)
+		lines.append("오픈하우스 체류 판정: %.0f초 - 수신태그 승인 보정과 가족 심사 압력이 함께 붙었습니다." % open_house_time)
 	elif open_house_signal_stage >= 1 or open_house_time >= 25.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 수신태그 후보가 올라왔습니다." % open_house_time)
+		lines.append("오픈하우스 체류 판정: %.0f초 - 수신태그 후보와 재상담 압력이 올라왔습니다." % open_house_time)
 	if drain_pocket_time >= 20.0:
-		lines.append("지역 약관: 배수로 침묵 주머니 %.0f초 - 수신태그 후보가 조용히 올라왔습니다." % drain_pocket_time)
+		lines.append("지역 약관: 배수로 침묵 주머니 %.0f초 - 낮은 신호가 수신태그 후보와 인양 불안을 함께 남겼습니다." % drain_pocket_time)
 	if fake_return_time >= 20.0:
-		lines.append("지역 약관: 끊긴 광고 산책로 %.0f초 - 식량태그 후보와 오염 위험이 함께 생겼습니다." % fake_return_time)
+		lines.append("지역 약관: 끊긴 광고 산책로 %.0f초 - 가짜 회수선 대조와 오염 꼬리표가 함께 남았습니다." % fake_return_time)
 	if not signal_clue_candidates.is_empty():
 		lines.append("신호 단서 판정: %s" % ", ".join(signal_clue_candidates))
 	return lines
@@ -624,10 +795,10 @@ static func _ration_ticket_lines(settlement: Dictionary) -> Array[String]:
 	var approved_text := _ticket_counts_text(approved)
 	var held_text := _ticket_counts_text(held)
 	if approved_text != "" or held_text != "":
-		lines.append("후보 정산: 승인 %s / 보류 %s" % [approved_text if approved_text != "" else "없음", held_text if held_text != "" else "없음"])
+		lines.append("후보 분리: 캠페인 승인 %s / 보급소 보류 %s" % [approved_text if approved_text != "" else "없음", held_text if held_text != "" else "없음"])
 	var contaminated_text := _ticket_counts_text(contaminated)
 	if contaminated_text != "":
-		lines.append("오염 정산: %s" % contaminated_text)
+		lines.append("오염 꼬리표: %s" % contaminated_text)
 	var downgraded_text := _ticket_counts_text(downgraded)
 	if downgraded_text != "":
 		lines.append("약관 리스크: %s 후보화" % downgraded_text)

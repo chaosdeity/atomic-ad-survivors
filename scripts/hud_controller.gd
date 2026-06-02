@@ -350,7 +350,7 @@ func build(parent: Node) -> void:
 	restart_button = Button.new()
 	restart_button.position = Vector2(34, 154)
 	restart_button.size = Vector2(232, 30)
-	restart_button.text = "스페이스 / 클릭으로 다시 시작"
+	restart_button.text = "스페이스 / 클릭으로 보급소 정산"
 	restart_button.add_theme_font_size_override("font_size", FONT_BODY)
 	restart_button.add_theme_color_override("font_color", C.INK)
 	_apply_font(restart_button)
@@ -579,7 +579,7 @@ func update_boss(active: bool, boss_name: String, hp_ratio: float, status_text: 
 	boss_status_label.text = "%d%%\n%s" % [int(round(hp_ratio * 100.0)), status_text]
 
 func show_game_over() -> void:
-	prompt_label.text = "긴급 인양  -  스페이스 / 클릭으로 다시 시작"
+	prompt_label.text = "확정 전 인양  -  스페이스 / 클릭으로 보급소 정산"
 	prompt_label.visible = true
 
 func show_level_cards(cards: Array[Dictionary], chosen_callback: Callable) -> void:
@@ -640,11 +640,11 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	if description != "":
 		extra_lines += "\n%s" % _compact_ui_text(description, 78)
 	if trace != "":
-		extra_lines += "\n획득한 흔적  %s" % _compact_ui_text(trace, 34)
+		extra_lines += "\n회수/보류 흔적  %s" % _compact_ui_text(trace, 34)
 	for line in _compact_result_progress_lines(Array(result_data.get("progress_lines", []))):
 		extra_lines += "\n%s" % line
-	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
-	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
+	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 보급소 정산"))
+	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 보급소 정산"))
 	result_label.add_theme_font_size_override("font_size", FONT_TINY)
 	result_label.text = "%s\n체류 %03d/%03d | Lv%d | 처리 %d\n카드 %d | 적 최고/최종 %d/%d%s" % [
 		result_data["result"],
@@ -702,7 +702,7 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var tag_rights := str(session_progress.get("tag_rights_summary", ""))
 	tag_rights = tag_rights.replace("식량태그=", "식량=").replace("충전태그=", "충전=").replace("수신태그=", "수신=")
 	var rights_or_allocation := _compact_ui_text(tag_rights if tag_rights != "" else allocation_summary, 30)
-	var place_allocation_line := _compact_ui_text("%s / %s" % ["시설: 회수/정산/정비/게시/게이트", rights_or_allocation], 48)
+	var place_allocation_line := _compact_ui_text("%s / %s" % ["시설: 회수/정산/이름보관/정비/게시/게이트", rights_or_allocation], 48)
 	reaction_summary = _compact_ui_text(reaction_summary, 24)
 	board_text = _compact_ui_text(board_text, 30)
 	var recommendation_line := str(session_progress.get("next_recommendation_line", ""))
@@ -941,9 +941,14 @@ func _on_campaign_close_requested() -> void:
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	var max_lines := 7
 	var priority_prefixes := [
-		"런 정산 기준:",
+		"정산 카운터:",
+		"정산 분리 기준:",
+		"캠페인 승인:",
+		"보급소 보류:",
+		"오염 꼬리표:",
+		"이름 보관함:",
 		"회수 상태:",
-		"일반 정산 잠김:",
+		"승인/보류 판정 잠김:",
 		"작전권:",
 		"구역 사건:",
 		"다음 추천:",
@@ -951,7 +956,7 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
-		"후보 정산:",
+		"후보 분리:",
 		"보급소 보관:",
 		"지역 오염 기록:",
 		"다음 출격 변화:",
