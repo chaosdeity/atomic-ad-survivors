@@ -47,7 +47,7 @@ func _probe_scripted_first_5_metrics(main) -> void:
 	main.first_sortie = false
 	main.first_recall_done = true
 	main.sortie_index = 2
-	main.match_state = "playing"
+	main.state_machine.change_state("playing")
 	main._reset_r01_run_tracking()
 	main._reset_audit_run_tracking()
 	main._reset_playtest_metrics()

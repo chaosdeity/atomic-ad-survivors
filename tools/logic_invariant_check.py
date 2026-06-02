@@ -326,17 +326,25 @@ def check_level_card_separation(t: dict[str, str], results: list[Check]) -> None
     reset_body = function_body(main, "_reset_player_stats")
     restart_body = function_body(main, "_restart")
     card_meta_mix = any(token in cards for token in ["MetaProgression", "meta_progression", "FileAccess", "ConfigFile", "user://"])
+    show_enters_level_up = has_all(show_body, ["paused_for_card = true", "LevelUpCards.pick_three"]) and (
+        'match_state = "level_up"' in show_body
+        or 'state_machine.change_state("level_up")' in show_body
+    )
+    choice_returns_to_playing = has_all(apply_body, ["_record_card_choice", "_apply_card_effect", "paused_for_card = false"]) and (
+        'match_state = "playing"' in apply_body
+        or 'state_machine.change_state("playing")' in apply_body
+    )
 
     add(results, "PASS" if "const CARDS := [" in cards and "static func pick_three" in cards else "FAIL", "level cards", "level_up_cards.gd owns runtime card definitions and picker")
     add(
         results,
-        "PASS" if has_all(show_body, ['match_state = "level_up"', "paused_for_card = true", "LevelUpCards.pick_three"]) else "FAIL",
+        "PASS" if show_enters_level_up else "FAIL",
         "level cards",
         "main shows runtime cards through level_up state",
     )
     add(
         results,
-        "PASS" if has_all(apply_body, ["_record_card_choice", "_apply_card_effect", 'match_state = "playing"', "paused_for_card = false"]) else "FAIL",
+        "PASS" if choice_returns_to_playing else "FAIL",
         "level cards",
         "card choice applies runtime effect then returns to playing",
     )
