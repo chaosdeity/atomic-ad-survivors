@@ -1,5 +1,12 @@
 # Atomic Ad Survivors 에셋 제작 계획
 
+> 현재 문서 상태: 레거시 제작 계획.
+>
+> 이 문서의 `1950s atomic suburb`, `파스텔 교외`, `1950s 주부`, `플라밍고`, `BBQ 그릴`, `미국식 단독주택/잔디` 중심 에셋 지시는 최신 R01/P0 기준에서 폐기한다.
+> 최신 기준은 `P0_CAMPAIGN_VISUAL_IDENTITY_LOCK.md`, `R01_AD_CAMPAIGN_ENVIRONMENT_RULES.md`, `P0_ART_REWORK_DECISION.md`, `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`를 우선한다.
+>
+> 최신 판정: R01은 덜떨어진 미국 광고가 아니라, 한국 서부 수도권 신도시/분양/모델하우스 생활권을 고도화 스마일홈 광고 AI가 행복입주 보증 캠페인으로 재분류한 지역이다.
+
 ## 1. 에셋 제작 목표
 
 이 문서는 `Atomic Ad Survivors`의 1차 목표 빌드인 `Vertical Slice 0.1`에서 코드 드로잉을 실제 스프라이트와 UI 에셋으로 교체하기 위한 제작 문서다. 다음 작업자가 바로 이미지 생성, 정리, Godot import, 스프라이트 적용을 시작할 수 있도록 최소 에셋 세트, 파일명, 폴더 구조, 생성 프롬프트, 적용 규칙을 한곳에 묶는다.

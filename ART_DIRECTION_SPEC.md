@@ -1,5 +1,12 @@
 # 아트 디렉션 사양서 — 3개 톤 후보 비교
 
+> 현재 문서 상태: 레거시 방향 탐색 문서.
+>
+> 이 문서의 `1950s 광고 도시`, `파스텔 교외`, `1950s 주부 좀비`, `미국식 suburb` 계열 문구는 최신 R01/P0 기준이 아니다.
+> 최신 기준은 `P0_CAMPAIGN_VISUAL_IDENTITY_LOCK.md`, `R01_AD_CAMPAIGN_ENVIRONMENT_RULES.md`, `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`, `story/03_regions/r01_suburb.md`를 우선한다.
+>
+> 최신 판정: R01의 물리 기반은 대한민국 수도권 서부 신도시/분양/모델하우스 생활권이며, 미국식 행복가정 이미지는 스마일홈 광고 AI가 덧씌운 archive 표면으로만 제한한다.
+
 **프로젝트**: Godot 4 기반 2D 탑다운 생존 로그라이크 (Brotato·Vampire Survivors 계열)
 **공통 세계관 토대**: 원자력 시대(Atomic Age) 디스토피아 — 방사능 누출·기업 슬로건·붕괴된 일상
 **레퍼런스 위치**: `c:/workspace/스팀펑크/generated_assets/{01,02,03}/`
