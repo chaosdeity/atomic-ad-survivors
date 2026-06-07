@@ -3,8 +3,12 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 const UIFont := preload("res://scripts/ui_font.gd")
 const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
+const R01ProcedureStationVisuals := preload("res://scripts/r01_procedure_station_visuals.gd")
+const R01ProductionFixtureVisuals := preload("res://scripts/r01_production_fixture_visuals.gd")
+const R01StationFixtureCollisionOverrides := preload("res://scripts/r01_station_fixture_collision_overrides.gd")
 
 const ENABLED := true
+const USE_PRODUCTION_FIXTURE_TEXTURES := true
 const WORLD_BOUNDS := Rect2(Vector2(-2640, -1485), Vector2(5280, 2970))
 const PLAYER_MARGIN := 28.0
 const STATE_FIRST_VISIT := "first_visit"
@@ -212,6 +216,13 @@ var _collision_records_cache: Array[Dictionary] = []
 var _pathing_probe_cache_variant := ""
 var _pathing_probe_cache := {}
 var map_assembly := R01MapAssembly.new()
+var procedure_station_visuals = R01ProcedureStationVisuals.new()
+var station_fixture_collision_overrides := R01StationFixtureCollisionOverrides.new()
+var _last_draw_player_pos := Vector2.ZERO
+
+func _init() -> void:
+	if USE_PRODUCTION_FIXTURE_TEXTURES:
+		procedure_station_visuals = R01ProductionFixtureVisuals.new()
 
 func reset() -> void:
 	state_variant = STATE_FIRST_VISIT
@@ -331,6 +342,8 @@ func active_collision_records(variant: String = state_variant) -> Array[Dictiona
 	if variant == state_variant and _collision_records_cache_variant == variant:
 		return _collision_records_cache
 	var records := map_assembly.collision_records(variant)
+	if variant == state_variant:
+		records = station_fixture_collision_overrides.apply(records, procedure_station_visuals.station_scenes(self))
 	if variant == state_variant:
 		_collision_records_cache_variant = variant
 		_collision_records_cache = records
@@ -650,11 +663,14 @@ func _fake_return_route_probe() -> Dictionary:
 	}
 
 func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_labels: bool = false) -> void:
+	_last_draw_player_pos = player_pos
 	_draw_ground(canvas, elapsed)
 	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
+	_draw_procedure_station_floor_layers(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
 	_draw_props(canvas, elapsed, show_debug_labels)
+	_draw_procedure_station_back_layers(canvas, player_pos.y)
 	_draw_collision_overlay(canvas, show_debug_labels)
 	_draw_zone_markers(canvas, elapsed, player_pos, show_debug_labels)
 	_draw_world_bounds(canvas, show_debug_labels)
@@ -663,12 +679,15 @@ func draw_foreground_hints(canvas: CanvasItem, _elapsed: float, show_debug_label
 	if show_debug_labels:
 		return
 	for record in active_collision_records():
+		if _station_placeholder_visual_suppressed(record):
+			continue
 		var collision_class := String(record.get("collision_class", COLLISION_NONE))
 		var kind := String(record.get("kind", ""))
 		if collision_class == COLLISION_HARD:
 			_draw_hard_blocker_foreground(canvas, record)
 		elif collision_class == COLLISION_SOFT and (kind == "mailbox" or kind == "road_barrier" or kind == "sign"):
 			_draw_soft_blocker_foreground(canvas, record)
+	_draw_procedure_station_front_layers(canvas, _last_draw_player_pos.y)
 
 func _draw_ground(canvas: CanvasItem, elapsed: float) -> void:
 	canvas.draw_rect(WORLD_BOUNDS, Color("#e7d8b7"))
@@ -841,7 +860,24 @@ func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) ->
 	for object in objects:
 		if _object_drawn_by_ground_pass(object):
 			continue
+		if _station_placeholder_visual_suppressed(object):
+			continue
 		_draw_object_placeholder(canvas, object, elapsed, show_debug_labels)
+
+func _draw_procedure_station_floor_layers(canvas: CanvasItem) -> void:
+	for scene in procedure_station_visuals.station_scenes(self):
+		procedure_station_visuals.draw_floor_layer(canvas, scene)
+
+func _draw_procedure_station_back_layers(canvas: CanvasItem, player_y: float) -> void:
+	for scene in procedure_station_visuals.station_scenes(self):
+		procedure_station_visuals.draw_back_layer(canvas, scene, player_y)
+
+func _draw_procedure_station_front_layers(canvas: CanvasItem, player_y: float) -> void:
+	for scene in procedure_station_visuals.station_scenes(self):
+		procedure_station_visuals.draw_front_layer(canvas, scene, player_y)
+
+func _station_placeholder_visual_suppressed(object: Dictionary) -> bool:
+	return procedure_station_visuals.suppresses_placeholder(object)
 
 func _prop_visible_for_variant(prop: Dictionary, variant: String) -> bool:
 	var state := String(prop.get("state", "all"))
