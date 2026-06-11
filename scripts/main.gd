@@ -104,6 +104,10 @@ var audit_pressure_level := 0
 var audit_last_result := "대기"
 var audit_segment_results: Array[Dictionary] = []
 var card_contribution_log := {}
+var procedure_interaction_counts := {}
+var procedure_interaction_total := 0
+var last_procedure_interaction := "대기"
+var procedure_interaction_feedback_timer := 0.0
 var playtest_metrics := {}
 
 var auto_timer := 0.0
@@ -212,6 +216,7 @@ func _process(delta: float) -> void:
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
 	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
+	procedure_interaction_feedback_timer = maxf(0.0, procedure_interaction_feedback_timer - delta)
 	_update_player(delta)
 	var wave_params := _wave_params_for_elapsed(elapsed)
 	if not boss.active:
@@ -264,6 +269,10 @@ func _input(event: InputEvent) -> void:
 			_handle_terminal_action()
 		elif charge_window_left > 0.0:
 			_fire_charge()
+	if event.is_action_pressed("interact") and not (event is InputEventKey and event.echo):
+		if match_state == "playing" and not paused_for_card:
+			_try_procedure_interaction()
+			return
 
 func _exit_tree() -> void:
 	_cleanup_audio_players()
@@ -420,6 +429,35 @@ func _clamp_player_to_world() -> void:
 		return
 	player_pos.x = clampf(player_pos.x, -C.ARENA_HALF.x, C.ARENA_HALF.x)
 	player_pos.y = clampf(player_pos.y, -C.ARENA_HALF.y, C.ARENA_HALF.y)
+
+func _try_procedure_interaction() -> void:
+	if not R01LayoutBlockout.ENABLED:
+		return
+	if procedure_interaction_feedback_timer > 0.0:
+		return
+	var target := r01_blockout.nearest_procedure_interaction(player_pos)
+	if target.is_empty():
+		procedure_interaction_feedback_timer = 0.45
+		effects.add_floater(player_pos + Vector2(0, -18), "절차 장치 없음", C.VITAMIN_YELLOW, 10)
+		return
+	procedure_interaction_feedback_timer = 0.32
+	var pos := Vector2(target.get("pos", player_pos))
+	var kind := String(target.get("interaction_kind", "procedure"))
+	var label := String(target.get("interaction_label", "절차"))
+	var result := String(target.get("interaction_result", label))
+	var key := "%s/%s" % [String(target.get("zone_id", "")), kind]
+	var count := int(procedure_interaction_counts.get(key, 0)) + 1
+	procedure_interaction_counts[key] = count
+	procedure_interaction_total += 1
+	last_procedure_interaction = "%s x%d" % [label, count]
+	var processing := float(target.get("interaction_processing", 64.0))
+	if count > 1:
+		processing *= 0.55
+	_add_audit_processing(processing, "procedure_%s" % kind, pos)
+	_register_attack_pose(pos - player_pos, 0.16)
+	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)
+	effects.add_floater(pos + Vector2(0, -24), result, C.VITAMIN_YELLOW, 12)
+	effects.show_combat_banner("%s 절차 수행" % label, C.VITAMIN_YELLOW)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
@@ -1327,6 +1365,10 @@ func _reset_audit_run_tracking() -> void:
 	audit_last_result = "대기"
 	audit_segment_results = []
 	card_contribution_log = {}
+	procedure_interaction_counts = {}
+	procedure_interaction_total = 0
+	last_procedure_interaction = "대기"
+	procedure_interaction_feedback_timer = 0.0
 
 func _update_audit_director(delta: float) -> void:
 	if int(player_stats.get("low_hp_allowance_level", 0)) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
@@ -2693,6 +2735,9 @@ func _debug_info() -> Dictionary:
 		"r01_layer_blocker_back": int(r01_layer_summary.get("blocker_back", 0)),
 		"r01_layer_prop_mid": int(r01_layer_summary.get("prop_mid", 0)),
 		"r01_asset_key_sample": ", ".join(r01_blockout.asset_key_sample()) if R01LayoutBlockout.ENABLED else "",
+		"r01_procedure_interaction_total": procedure_interaction_total,
+		"r01_last_procedure_interaction": last_procedure_interaction,
+		"r01_procedure_interaction_counts": procedure_interaction_counts,
 		"outpost_variant": str(outpost_state.get("variant", "")),
 		"outpost_facility_count": outpost_blockout.facility_count(),
 		"outpost_world_bounds": "%.0fx%.0f" % [OutpostLayoutBlockout.WORLD_BOUNDS.size.x, OutpostLayoutBlockout.WORLD_BOUNDS.size.y],
@@ -2942,6 +2987,7 @@ func _draw() -> void:
 	_draw_actor_stack()
 	if R01LayoutBlockout.ENABLED:
 		r01_blockout.draw_foreground_hints(self, elapsed, debug_tools.blockout_debug_labels_visible())
+		_draw_procedure_interaction_prompt()
 	effects.draw_front(self)
 	effects.draw_screen_flash(self, camera.global_position)
 
@@ -3252,6 +3298,39 @@ func _draw_charge_weapon_preview(_aim: Vector2, aim_dir: Vector2, open: bool) ->
 	draw_line(player_pos - side, end_pos - side, edge_color, 1.5)
 	draw_arc(end_pos, 8.0 if open else 6.0, 0.0, TAU, 24, line_color, 2.0)
 
+func _draw_procedure_interaction_prompt() -> void:
+	if match_state != "playing" or paused_for_card or not R01LayoutBlockout.ENABLED:
+		return
+	var target := r01_blockout.nearest_procedure_interaction(player_pos)
+	if target.is_empty():
+		return
+	var pos := Vector2(target.get("pos", player_pos))
+	var prompt := String(target.get("interaction_prompt", "절차 수행"))
+	var distance := float(target.get("distance", 0.0))
+	var alpha := clampf(1.0 - distance / R01LayoutBlockout.PROCEDURE_INTERACTION_RADIUS, 0.35, 1.0)
+	var label := "E  %s" % prompt
+	var label_size := Vector2(142, 26)
+	var label_width := 130.0
+	var desired_label_pos := pos + Vector2(-70, -42)
+	var view_top_left := camera.global_position - C.VIEWPORT_SIZE * 0.5
+	var safe_min := view_top_left + Vector2(12, 48)
+	var safe_max := view_top_left + C.VIEWPORT_SIZE - Vector2(label_size.x + 8.0, 20)
+	var label_pos := Vector2(
+		clampf(desired_label_pos.x, safe_min.x, safe_max.x),
+		clampf(desired_label_pos.y, safe_min.y, safe_max.y)
+	)
+	draw_circle(pos, 15.0 + sin(elapsed * 5.0) * 1.5, Color(1.0, 0.91, 0.25, 0.07 * alpha))
+	draw_arc(pos, 22.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.42 * alpha), 1.6)
+	if label_pos.distance_squared_to(desired_label_pos) > 4.0:
+		draw_line(pos + Vector2(0, -20), label_pos + Vector2(label_size.x * 0.5 - 4.0, -2), Color(1.0, 0.91, 0.25, 0.34 * alpha), 1.2)
+	var label_rect := Rect2(label_pos + Vector2(-6, -15), label_size)
+	draw_rect(label_rect, Color(0.035, 0.025, 0.018, 0.92))
+	draw_rect(label_rect, Color(1.0, 0.90, 0.42, 0.74), false, 1.4)
+	var text_pos := label_pos + Vector2(0, 2)
+	for offset in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1)]:
+		draw_string(UIFont.get_font(), text_pos + offset, label, HORIZONTAL_ALIGNMENT_CENTER, label_width, 12, Color(0.0, 0.0, 0.0, 0.90))
+	draw_string(UIFont.get_font(), text_pos, label, HORIZONTAL_ALIGNMENT_CENTER, label_width, 12, Color(1.0, 0.98, 0.78, 1.0))
+
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
 		_draw_enemy(enemy)
@@ -3457,6 +3536,7 @@ func _ensure_input_map() -> void:
 	_add_key_action("move_up", [KEY_W, KEY_UP])
 	_add_key_action("move_down", [KEY_S, KEY_DOWN])
 	_add_key_action("charge", [KEY_SPACE])
+	_add_key_action("interact", [KEY_E])
 	if not InputMap.has_action("charge"):
 		InputMap.add_action("charge")
 	var mouse := InputEventMouseButton.new()

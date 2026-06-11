@@ -5,10 +5,12 @@ const UIFont := preload("res://scripts/ui_font.gd")
 const R01MapAssembly := preload("res://scripts/r01_map_assembly.gd")
 const R01ProcedureStationVisuals := preload("res://scripts/r01_procedure_station_visuals.gd")
 const R01ProductionFixtureVisuals := preload("res://scripts/r01_production_fixture_visuals.gd")
+const R01ProductionBackgroundVisuals := preload("res://scripts/r01_production_background_visuals.gd")
 const R01StationFixtureCollisionOverrides := preload("res://scripts/r01_station_fixture_collision_overrides.gd")
 
 const ENABLED := true
 const USE_PRODUCTION_FIXTURE_TEXTURES := true
+const USE_PRODUCTION_BACKGROUND_TEXTURES := true
 const WORLD_BOUNDS := Rect2(Vector2(-2640, -1485), Vector2(5280, 2970))
 const PLAYER_MARGIN := 28.0
 const STATE_FIRST_VISIT := "first_visit"
@@ -24,6 +26,7 @@ const NAV_BLOCK := "block"
 const NAV_SOFT_AVOID := "soft_avoid"
 const NAV_IGNORE := "ignore"
 const MODEL_HOUSE_CLEAR_RADIUS := 180.0
+const PROCEDURE_INTERACTION_RADIUS := 82.0
 const STATE_VARIANTS := [
 	STATE_FIRST_VISIT,
 	STATE_BROADCAST_RECORD_3,
@@ -217,12 +220,15 @@ var _pathing_probe_cache_variant := ""
 var _pathing_probe_cache := {}
 var map_assembly := R01MapAssembly.new()
 var procedure_station_visuals = R01ProcedureStationVisuals.new()
+var production_background_visuals = null
 var station_fixture_collision_overrides := R01StationFixtureCollisionOverrides.new()
 var _last_draw_player_pos := Vector2.ZERO
 
 func _init() -> void:
 	if USE_PRODUCTION_FIXTURE_TEXTURES:
 		procedure_station_visuals = R01ProductionFixtureVisuals.new()
+	if USE_PRODUCTION_BACKGROUND_TEXTURES:
+		production_background_visuals = R01ProductionBackgroundVisuals.new()
 
 func reset() -> void:
 	state_variant = STATE_FIRST_VISIT
@@ -349,6 +355,21 @@ func active_collision_records(variant: String = state_variant) -> Array[Dictiona
 		_collision_records_cache = records
 	return records
 
+func nearest_procedure_interaction(player_pos: Vector2, max_distance: float = PROCEDURE_INTERACTION_RADIUS) -> Dictionary:
+	var best := {}
+	var best_distance := INF
+	for record in active_collision_records():
+		if String(record.get("collision_class", COLLISION_NONE)) != COLLISION_TRIGGER:
+			continue
+		if String(record.get("interaction_kind", "")) == "":
+			continue
+		var distance := _distance_to_record(player_pos, record)
+		if distance <= max_distance and distance < best_distance:
+			best = record.duplicate(true)
+			best["distance"] = distance
+			best_distance = distance
+	return best
+
 func _clear_collision_cache() -> void:
 	_collision_records_cache_variant = ""
 	_collision_records_cache.clear()
@@ -448,6 +469,21 @@ func _point_overlaps_record(point: Vector2, record: Dictionary, radius: float) -
 		return rect.has_point(point)
 	var check_radius := float(record.get("radius", 12.0)) + radius
 	return point.distance_squared_to(pos) <= check_radius * check_radius
+
+func _distance_to_record(point: Vector2, record: Dictionary) -> float:
+	var shape := String(record.get("shape", "circle"))
+	var pos: Vector2 = record.get("pos", Vector2.ZERO)
+	if shape == "rect":
+		var size: Vector2 = record.get("size", Vector2(24, 24))
+		var rect := Rect2(pos - size * 0.5, size)
+		if rect.has_point(point):
+			return 0.0
+		var nearest := Vector2(
+			clampf(point.x, rect.position.x, rect.position.x + rect.size.x),
+			clampf(point.y, rect.position.y, rect.position.y + rect.size.y)
+		)
+		return point.distance_to(nearest)
+	return maxf(0.0, point.distance_to(pos) - float(record.get("radius", 12.0)))
 
 func _clamp_world_position(pos: Vector2, radius: float) -> Vector2:
 	return Vector2(
@@ -667,6 +703,7 @@ func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_la
 	_draw_ground(canvas, elapsed)
 	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
+	_draw_production_background_layers(canvas)
 	_draw_procedure_station_floor_layers(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
 	_draw_props(canvas, elapsed, show_debug_labels)
@@ -867,6 +904,12 @@ func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) ->
 func _draw_procedure_station_floor_layers(canvas: CanvasItem) -> void:
 	for scene in procedure_station_visuals.station_scenes(self):
 		procedure_station_visuals.draw_floor_layer(canvas, scene)
+
+func _draw_production_background_layers(canvas: CanvasItem) -> void:
+	if production_background_visuals == null:
+		return
+	for scene in procedure_station_visuals.station_scenes(self):
+		production_background_visuals.draw_background_layer(canvas, scene)
 
 func _draw_procedure_station_back_layers(canvas: CanvasItem, player_y: float) -> void:
 	for scene in procedure_station_visuals.station_scenes(self):
