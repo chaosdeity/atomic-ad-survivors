@@ -2,7 +2,7 @@
 
 상태: v0.1 내부 제작/관리자 기준
 목적: 유저에게는 숨기는 E01의 현실 지리 앵커를 관리자와 제작팀이 명확히 공유한다.
-연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`
+연결 문서: `docs/world/WORLD_MAP_CAMPAIGN_ECOLOGY_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_FIRST_SEASON_LOCAL_NODES_V0_1.md`, `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`, `docs/world/E01_WORLD_MAP_BLOCKOUT_V0_1.md`, `docs/world/E01_WORLD_MAP_PRODUCTION_TABLE_V0_1.md`, `story/06_characters/playable_20_roster_blueprint_v0_1.md`
 
 ## 0. 판정 요약
 
@@ -10,7 +10,7 @@
 - 유저용 월드맵에는 실명 지명과 실제 도시명을 직접 노출하지 않는다.
 - 관리자/제작자는 실제 도시권, 항만, 공항, 병원, 물류, 산업단지, 방송/상업 축을 알아야 한다.
 - 캐릭터 원점과 해금 캠페인은 이 관리자용 현실 권역을 기준으로 배치한다.
-- 정확 GPS 좌표와 실제 주소는 v0.1에서 확정하지 않는다. 이 문서는 `현실 권역/도시권/인프라 축`을 잠그는 문서다.
+- 정확 GPS 좌표와 실제 주소는 v0.1에서 확정하지 않는다. 단, 제작팀용 시/구/동급 생활권 앵커는 `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`에서 별도로 잠근다.
 
 핵심 원칙:
 
@@ -30,6 +30,7 @@
 | 월드맵 실루엣 | 유저 | 해안선, 도시 밀도, 항만/공항 거리, 도로축, 방송탑 실루엣 | 노출 |
 | 관리자 현실 권역 | 기획/아트/레벨/QA | 실제 도시권과 인프라 축 | 내부 전용 |
 | 제작 세부 앵커 | 기획/아트/레벨 | 병원군, 물류 허브, 신도시, 산업단지, 검역 터미널 같은 실제 기능 | 내부 전용 |
+| 시/동급 제작 앵커 | 기획/아트/레벨/QA | 김포시 장기동-운양동, 고촌읍-풍무동, 인천 서구 오류동 같은 제작 생활권 | 내부 전용 |
 | 정확 좌표/주소 | 추후 지도 제작 단계 | 좌표화가 필요한 경우 별도 잠금 | v0.1 미확정 |
 
 금지:
@@ -43,7 +44,7 @@
 허용:
 
 ```text
-내부 문서와 관리자 툴에서는 현실 권역명을 쓴다.
+내부 문서와 관리자 툴에서는 현실 권역명과 시/동급 제작 앵커를 쓴다.
 아트/레벨 제작자는 실제 인프라 배치를 참고한다.
 후반 기록, 깨진 좌표, 옛 지도 조각에서는 실명 일부를 암시할 수 있다.
 ```
@@ -83,6 +84,8 @@ E01 서부권
 ---
 
 ## 3. 캠페인별 관리자 현실 권역
+
+세부 시/구/동급 제작 앵커는 `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`를 우선한다. 아래 표는 권역/기능 요약이며, 실제 아트/레벨 제작 시에는 시/동급 잠금표까지 확인해야 한다.
 
 | 권역 | 정식 캠페인 | 유저 표시 축 | 관리자 현실 권역 | 제작 세부 앵커 | 유저 노출 금지 |
 |---|---|---|---|---|---|
