@@ -2,7 +2,7 @@
 
 상태: v0.1 내부 제작 기준
 목적: 유저에게 직접 노출하지 않을 전 지구 캠페인의 현실 위치, 도시권, 인프라 앵커를 고정한다.
-연결 문서: `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
+연결 문서: `docs/world/GLOBAL_CAMPAIGN_CATALOG_V0_1.md`, `docs/world/GLOBAL_CAMPAIGN_MAP_PLACEMENT_V0_1.md`, `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`, `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`, `docs/world/E02_PLUS_REGION_EXPANSION_PRINCIPLES_V0_1.md`
 
 ## 0. 판정 요약
 
@@ -40,7 +40,7 @@
 
 정식 캠페인 아래의 소형 로컬 노드도 공중에 뜨면 안 된다.
 
-E01은 이미 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 40개 로컬 노드의 관리자 위치를 따로 가진다. E02~E12의 소형 로컬 노드는 시즌 슬라이스가 열릴 때 세부화하되, 아래 96개 캠페인 앵커 밖으로 벗어나면 안 된다.
+E01은 이미 `docs/world/E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`에서 40개 로컬 노드의 관리자 위치를 따로 가지며, `docs/world/E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`에서 국가-시/구-읍면동급 제작 앵커까지 별도로 잠근다. E02~E12의 소형 로컬 노드는 시즌 슬라이스가 열릴 때 같은 깊이로 세부화하되, 아래 96개 캠페인 앵커 밖으로 벗어나면 안 된다.
 
 필수 필드:
 
@@ -95,7 +95,7 @@ P1 재방문, 숨은 루트, 잔향, 회수선 기준점이 남는 곳.
 
 | ID | 캠페인 | 관리자 현실 위치 | 제작 인프라 앵커 | 소형 로컬 생성 범위 |
 |---|---|---|---|---|
-| E01_C01 | 서부 스마일홈 | 대한민국 서부 수도권 외곽 신도시/분양 주택지 | 모델하우스, 스마트 도어, 상담 데스크, 가족사진 프레임 | `E01_ADMIN_REAL_LOCATION_MAP_V0_1.md`의 R01 기준 |
+| E01_C01 | 서부 스마일홈 | 대한민국 경기도 김포시 장기동-운양동-마산동-구래동형 외곽 신도시/분양 주택지 | 모델하우스, 스마트 도어, 상담 데스크, 가족사진 프레임 | `E01_ADMIN_CITY_DONG_LOCATION_LOCK_V0_1.md`의 R01 기준 |
 | E01_C02 | 백색팔찌 격리권 | 서울/수도권 대형 병원군과 장기 입원 축 | 응급 접수, 입원동, 퇴원 심사, 보험 정산 | E01 R02 의료 격리 노드 |
 | E01_C03 | 반품 회수 벨트 | 인천-김포-부천-군포-이천형 물류축 | 반품 야드, 자동 분류장, 최종 반품 심사 | E01 R03 물류 회수 노드 |
 | E01_C04 | 정품충전 공단 | 반월/시화/평택형 산업단지와 폐충전소 축 | 배터리 충전, 정품 검사, 재동기화 코어 | E01 R04 산업/충전 노드 |
