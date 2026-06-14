@@ -8,6 +8,12 @@ const TEXTURE_PATHS := {
 	"renewal_passage": "res://assets/art_inbox/r01_map_background_v01/r01_bg_renewal_gate_passage_support.png",
 	"renewal_shadow": "res://assets/art_inbox/r01_map_background_v01/r01_bg_renewal_gate_shadow_wear.png",
 	"contact_shadow": "res://assets/art_inbox/r01_map_background_v01/r01_bg_station_contact_shadow_set.png",
+	"open_house_pad": "res://assets/art_inbox/r01_map_background_v02/r01_bg_open_house_guided_visit_street_pad.png",
+	"model_house_threshold": "res://assets/art_inbox/r01_map_background_v02/r01_bg_model_house_node_threshold.png",
+	"family_profile_panel": "res://assets/art_inbox/r01_map_background_v02/r01_bg_family_profile_window_loop_panel.png",
+	"fake_return_residue": "res://assets/art_inbox/r01_map_background_v02/r01_bg_fake_return_broken_route_decal_set.png",
+	"suburb_axis_marks": "res://assets/art_inbox/r01_map_background_v02/r01_bg_suburb_navigation_house_axis_marks.png",
+	"open_house_queue_residue": "res://assets/art_inbox/r01_map_background_v02/r01_bg_open_house_queue_residue_decal_set.png",
 }
 
 const BACKGROUND_META := {
@@ -27,6 +33,15 @@ const BACKGROUND_META := {
 		{"texture": "room_meal_marks", "anchor": "floor_pad", "offset": Vector2(106, -30), "size": Vector2(400, 180), "alpha": 0.70},
 	],
 }
+
+const MAP_BACKGROUND_META := [
+	{"texture": "open_house_pad", "anchor": "open_house_street_anchor", "offset": Vector2(-20, 45), "size": Vector2(520, 292), "alpha": 0.80},
+	{"texture": "open_house_queue_residue", "anchor": "open_house_street_anchor", "offset": Vector2(-76, 92), "size": Vector2(440, 248), "alpha": 0.52},
+	{"texture": "model_house_threshold", "anchor": "model_house_node_anchor", "offset": Vector2(-8, 54), "size": Vector2(460, 258), "alpha": 0.72},
+	{"texture": "family_profile_panel", "anchor": "model_house_node_anchor", "offset": Vector2(74, -78), "size": Vector2(500, 156), "alpha": 0.70},
+	{"texture": "fake_return_residue", "anchor": "fake_return_route_anchor", "offset": Vector2(-28, 18), "size": Vector2(460, 258), "alpha": 0.50},
+	{"texture": "suburb_axis_marks", "anchor": "subdivision_loop_center", "anchor_to": "open_house_street_anchor", "lerp": 0.55, "offset": Vector2(36, -34), "size": Vector2(640, 220), "alpha": 0.38},
+]
 
 var _textures := {}
 
@@ -52,6 +67,16 @@ func draw_background_layer(canvas: CanvasItem, scene: Dictionary) -> void:
 		var alpha := float(entry.get("alpha", 1.0))
 		_draw_centered_texture(canvas, texture_key, center, size, alpha)
 
+func draw_map_background_layer(canvas: CanvasItem, layout) -> void:
+	for entry in MAP_BACKGROUND_META:
+		var center := _map_entry_center(layout, entry)
+		if center == Vector2.INF:
+			continue
+		var texture_key := String(entry.get("texture", ""))
+		var size := Vector2(entry.get("size", Vector2.ZERO))
+		var alpha := float(entry.get("alpha", 1.0))
+		_draw_centered_texture(canvas, texture_key, center, size, alpha)
+
 func texture_paths() -> Dictionary:
 	return TEXTURE_PATHS.duplicate()
 
@@ -60,6 +85,16 @@ func _scene_role_position(scene: Dictionary, role: String) -> Vector2:
 		if String(object.get("role", "")) == role:
 			return Vector2(object.get("pos", Vector2.ZERO))
 	return Vector2.INF
+
+func _map_entry_center(layout, entry: Dictionary) -> Vector2:
+	var anchor_id := String(entry.get("anchor", ""))
+	if anchor_id == "":
+		return Vector2.INF
+	var anchor: Vector2 = layout.anchor_position(anchor_id)
+	if entry.has("anchor_to"):
+		var target: Vector2 = layout.anchor_position(String(entry.get("anchor_to", "")))
+		anchor = anchor.lerp(target, float(entry.get("lerp", 0.5)))
+	return anchor + Vector2(entry.get("offset", Vector2.ZERO))
 
 func _draw_centered_texture(canvas: CanvasItem, texture_key: String, center: Vector2, size: Vector2, alpha: float) -> void:
 	var texture: Texture2D = _textures.get(texture_key)

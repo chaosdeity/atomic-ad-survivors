@@ -703,6 +703,7 @@ func draw(canvas: CanvasItem, elapsed: float, player_pos: Vector2, show_debug_la
 	_draw_ground(canvas, elapsed)
 	_draw_zone_fields(canvas)
 	_draw_travel_corridors(canvas)
+	_draw_map_background_layers(canvas)
 	_draw_production_background_layers(canvas)
 	_draw_procedure_station_floor_layers(canvas)
 	_draw_density_tests(canvas, elapsed, show_debug_labels)
@@ -904,6 +905,11 @@ func _draw_props(canvas: CanvasItem, elapsed: float, show_debug_labels: bool) ->
 func _draw_procedure_station_floor_layers(canvas: CanvasItem) -> void:
 	for scene in procedure_station_visuals.station_scenes(self):
 		procedure_station_visuals.draw_floor_layer(canvas, scene)
+
+func _draw_map_background_layers(canvas: CanvasItem) -> void:
+	if production_background_visuals == null:
+		return
+	production_background_visuals.draw_map_background_layer(canvas, self)
 
 func _draw_production_background_layers(canvas: CanvasItem) -> void:
 	if production_background_visuals == null:
