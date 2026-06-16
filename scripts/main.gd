@@ -3289,7 +3289,7 @@ func _draw_player() -> void:
 	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
 	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
 	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
-	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
+	var player_frame := int(elapsed * 6.0) % 4 if player_is_moving else 0
 	var yunseo_action_pose := _player_runtime_action_pose_id()
 	if yunseo_action_pose != "":
 		if not sprite_assets.draw_yunseo_pose(self, player_pos, yunseo_action_pose):

@@ -18,6 +18,32 @@ const YUNSEO_POSE_PATHS := {
 }
 const YUNSEO_WALK_PATHS := {
 	"down": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_down_refedit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_down_refedit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_down_refedit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_down_refedit_v01_04.png",
+	],
+	"left": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_left_refedit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_left_refedit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_left_refedit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_left_refedit_v01_04.png",
+	],
+	"right": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_right_refedit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_right_refedit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_right_refedit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_right_refedit_v01_04.png",
+	],
+	"up": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_up_refedit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_up_refedit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_up_refedit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_up_refedit_v01_04.png",
+	],
+}
+const YUNSEO_LEGACY_WALK_PATHS := {
+	"down": [
 		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_01.png",
 		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_02.png",
 		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_03.png",
@@ -61,11 +87,9 @@ func load_all() -> void:
 	player_texture = _load_texture(PLAYER_PATH)
 	for pose_id in YUNSEO_POSE_PATHS:
 		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
-	for direction in YUNSEO_WALK_PATHS:
-		var frames: Array[Texture2D] = []
-		for path in YUNSEO_WALK_PATHS[direction]:
-			frames.append(_load_texture(String(path)))
-		yunseo_walk_textures[direction] = frames
+	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
+	if yunseo_walk_textures.is_empty():
+		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_LEGACY_WALK_PATHS)
 	for kind in TIER1_PATHS:
 		enemy_textures[kind] = _load_texture(TIER1_PATHS[kind])
 	elite_texture = _load_texture(ELITE_PATH)
@@ -76,7 +100,8 @@ func draw_player(canvas: CanvasItem, pos: Vector2, row: int, frame: int) -> bool
 		return false
 	var cell := Vector2(48, 48)
 	var pivot := Vector2(24, 43)
-	var src := Rect2(Vector2(frame * cell.x, row * cell.y), cell)
+	var columns := maxi(1, int(player_texture.get_width() / int(cell.x)))
+	var src := Rect2(Vector2((frame % columns) * cell.x, row * cell.y), cell)
 	canvas.draw_texture_rect_region(player_texture, Rect2((pos - pivot).round(), cell), src)
 	return true
 
@@ -156,3 +181,15 @@ func _load_texture(path: String) -> Texture2D:
 		push_warning("Sprite asset could not be loaded: %s" % path)
 		return null
 	return ImageTexture.create_from_image(image)
+
+func _load_yunseo_walk_set(paths_by_direction: Dictionary) -> Dictionary:
+	var textures := {}
+	for direction in paths_by_direction:
+		var frames: Array[Texture2D] = []
+		for path in paths_by_direction[direction]:
+			var texture := _load_texture(String(path))
+			if texture == null:
+				return {}
+			frames.append(texture)
+		textures[direction] = frames
+	return textures
