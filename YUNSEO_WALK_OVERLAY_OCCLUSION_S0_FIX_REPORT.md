@@ -1,119 +1,82 @@
-# Yunseo Walk Runtime Overlay Occlusion S0 Fix Report
+# Yunseo Walk Overlay Occlusion S0 Fix Report
 
 Date: 2026-06-16
 
 Worktree: `C:\workspace\_codex_yunseo_runtime_state_v02`
 
-Branch: `codex/yunseo-runtime-state-v02`
-
 ## Goal
 
-Resolve the S0 runtime QA HOLD where the interaction completion/combat banner crossed Yunseo's center in 480x270 runtime captures.
+Resolve the runtime visibility failure where the interaction completion / combat banner crosses Yunseo's center during the walk-cycle priority samples.
 
 Progress:
 
 `Yunseo movement animation 90% HOLD -> 93% S0 fix implemented`
 
-## Basis
+## Inputs
 
-- `YUNSEO_V06_WALK_CYCLE_RUNTIME_QA_REPORT.md`
+- `C:\workspace\_codex_yunseo_runtime_state_v02\YUNSEO_V06_WALK_CYCLE_RUNTIME_QA_REPORT.md`
 - `C:\workspace\_codex_yunseo_walk_cycle_runtime_qa_output\yunseo_walk_interaction_priority_sheet.png`
 - `C:\workspace\_codex_yunseo_walk_cycle_runtime_qa_output\results.json`
 
-## Failure Being Fixed
+## Files Modified
 
-The walk cycle runtime QA showed that Yunseo walk/action state worked, but the procedure interaction completion feedback triggered the global combat banner. That banner is drawn by the effects controller across the center of the viewport and covered Yunseo in:
+- `C:\workspace\_codex_yunseo_runtime_state_v02\scripts\main.gd`
 
-- `21_walk_interaction_priority_hook.png`
-- `22_action_end_return_walk.png`
-- `23_action_end_return_idle.png`
+No assets, imports, walk frames, collision, navigation, reward, cooldown, processing, or gameplay tuning files were modified.
 
-## Changed File
+## Fix Summary
 
-Allowed file changed:
+- Added `safe_combat_toasts` in `scripts/main.gd`.
+- Routed combat/banner notices through `_show_safe_combat_notice()`.
+- In R01 blockout runtime, combat notices now render as compact screen-space safe toasts near the lower-left HUD area instead of the center of the viewport.
+- Outside R01 blockout runtime, existing `effects.show_combat_banner()` behavior is preserved.
+- Existing prompt toast from `_draw_procedure_interaction_prompt()` remains readable.
+- Player-near feedback remains limited to existing small ring/floater feedback.
 
-- `scripts/main.gd`
+## Scope Control
 
-No other file was modified by this S0 fix.
+Changed only overlay/banner draw routing and screen-safe toast rendering in `scripts/main.gd`.
 
-## Implementation
+Preserved:
 
-In `_try_procedure_interaction()`, removed the procedure completion call to:
-
-`effects.show_combat_banner("%s 절차 수행" % label, C.VITAMIN_YELLOW)`
-
-The local procedure feedback remains intact:
-
-- `procedure_interaction_feedback_timer`
-- `last_procedure_interaction`
-- `effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)`
-- `effects.add_floater(pos + Vector2(0, -24), result, C.VITAMIN_YELLOW, 12)`
-- safe prompt/toast drawing from `_draw_procedure_interaction_prompt()`
-
-Reason:
-
-`effects_controller.gd` owns the global combat banner drawing position, but that file was outside the allowed edit scope. Removing the procedure-specific global banner call in `main.gd` is the smallest allowed change that prevents this interaction feedback from crossing the player center.
-
-## Explicit Non-Changes
-
-No changes were made to:
-
-- Yunseo walk cycle frame timing
-- Yunseo walk direction logic
-- Yunseo action/transient state priority
-- reward values
-- cooldown values
-- interaction trigger logic
+- walk cycle frame timing
+- walk direction/state priority
+- player movement speed
+- collision/navigation constraints
+- interaction trigger conditions
 - interaction processing values
-- collision
-- navigation
-- movement speed
-- PNG files
-- `.png.import` files
-- Godot import/cache
-
-Spot checks:
-
-- `procedure_interaction_feedback_timer = 0.45` unchanged
-- `procedure_interaction_feedback_timer = 0.32` unchanged
-- `interaction_processing` lookup unchanged
-- `processing *= 0.55` unchanged
-- `_move_speed()` unchanged
-- R01 collision calls through `resolve_player_position()` and `clamp_player_position()` unchanged
-- walk frame calculation remains `int(player_walk_anim_time * 6.0) % 4`
+- reward/cooldown values
+- Yunseo PNG/walk frame assets
+- Godot imports
 
 ## Verification
 
 Commands run:
 
-- `git diff -- scripts\main.gd`
-- targeted `rg` for procedure feedback, processing, walk, movement, collision, and banner calls
-- `git diff --check`
-- `git diff --cached --name-only`
+```powershell
+git diff -- scripts/main.gd
+git diff --check
+git diff --cached --stat
+git diff -U0 -- scripts/main.gd | rg -n "PLAYER_SPEED|move_speed|walk|frame|collision|navigation|cooldown|interaction_processing|reward|PLAYER_RADIUS|resolve_player_position|clamp_player|player_pos \+=|CHARGE_|MATCH_DURATION|AUTO_|DPS|damage|hp|sortie|xp|level|kills"
+```
 
 Results:
 
-- `git diff --check`: PASS
-- staged diff: `0`
-- Godot was not run
-- no import generated
-- no asset changed
+- `git diff -- scripts/main.gd`: only overlay/banner routing and safe toast draw additions.
+- `git diff --check`: passed. Git emitted the existing LF-to-CRLF working-copy warning, but no whitespace error.
+- `git diff --cached --stat`: empty, staged diff remains `0`.
+- Forbidden gameplay/walk/collision/timing keyword scan over zero-context diff: no matches.
 
-Note:
+Godot was not run, per instruction. Runtime QA remains for the next step.
 
-`git diff -- scripts\main.gd` still includes prior Yunseo runtime and walk integration changes already present in this branch. The S0 fix itself is the removal of the procedure-specific global combat banner call described above.
+## Remaining Risk
 
-## PASS/HOLD For This Step
+- Visual pass is not yet rerun. The next QA should re-run the same 480x270 runtime capture and specifically inspect:
+  - `21_walk_interaction_priority_hook.png`
+  - `22_action_end_return_walk.png`
+  - `23_action_end_return_idle.png`
+- Because `effects_controller.gd` was not modified, non-R01 runtime keeps its original centered combat banner behavior by design.
 
-Implementation status: `PASS`
+## Status
 
-Runtime QA status: not run in this step by request.
-
-Next required step:
-
-Re-run the 480x270 temp/copy walk runtime QA and confirm that:
-
-- `21_walk_interaction_priority_hook.png` no longer has the large center banner
-- action return samples no longer cover Yunseo
-- prompt/toast readability remains acceptable
-- walk/action priority remains PASS
+S0 fix implemented. Ready for next runtime QA.

@@ -1,4 +1,4 @@
-# Yunseo Runtime/State + Walk Cycle Final Diff Audit
+# Yunseo Runtime/State v02 Final Diff Audit
 
 Date: 2026-06-16
 
@@ -6,133 +6,50 @@ Worktree: `C:\workspace\_codex_yunseo_runtime_state_v02`
 
 Branch: `codex/yunseo-runtime-state-v02`
 
-## Goal
+## Final Verdict
 
-Lock the exact commit-ready scope for Yunseo runtime/state v02 plus Yunseo v06 walk cycle integration.
+PASS / commit-ready audit.
 
 Progress:
 
 `Yunseo movement animation 97% -> 98% commit-ready audit`
 
-## Basis
+This audit is based on the latest S0 overlay occlusion runtime QA rerun.
 
-- `YUNSEO_RUNTIME_STATE_V02_INTEGRATION_REPORT.md`
-- `YUNSEO_V06_WALK_CYCLE_IMPORT_ONLY_REPORT.md`
-- `YUNSEO_V06_WALK_CYCLE_CODE_INTEGRATION_REPORT.md`
-- `YUNSEO_V06_WALK_CYCLE_RUNTIME_QA_REPORT.md`
-- `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md`
+## Important Scope Note
 
-## Current Git Status
+PR #8 already merged the Yunseo runtime/state and walk-cycle baseline scope:
 
-Tracked modified:
-
+- Yunseo action pose PNG 8
+- Yunseo action pose `.png.import` 8
+- Yunseo walk PNG 16
+- Yunseo walk `.png.import` 16
 - `scripts/main.gd`
 - `scripts/sprite_assets.gd`
+- core reports/plans
 
-Untracked relevant runtime assets/reports:
+The current worktree delta is therefore the follow-up S0 overlay completion scope, not a replay of all 61 PR #8 files.
 
-- `assets/art_inbox/yunseo_runtime_v06/`
-- `assets/art_inbox/yunseo_runtime_v06_walk/`
-- Yunseo runtime/state and walk-cycle reports listed below
+Current commit-ready delta after this audit:
 
-Untracked local manifests:
+1. `scripts/main.gd`
+2. `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_REPORT.md`
+3. `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md`
+4. `YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md`
 
-- `yunseo_v06_runtime_source_manifest.json`
-- `yunseo_v06_walk_import_only_manifest.json`
+Exact current commit file count: `4`.
 
-Staged files:
+## Verified Baseline Scope
 
-- `0`
+Tracked baseline assets/code from the merged Yunseo runtime/walk work:
 
-## Commit Include Candidate
+- action pose PNG: `8`
+- action pose `.png.import`: `8`
+- walk PNG: `16`
+- walk `.png.import`: `16`
+- code files: `scripts/main.gd`, `scripts/sprite_assets.gd`
 
-Recommended include count: `61`
-
-### Code
-
-Include:
-
-- `scripts/main.gd`
-- `scripts/sprite_assets.gd`
-
-Scope:
-
-- Yunseo v06 action pose runtime resolver
-- Yunseo v06 walk cycle runtime draw path
-- action/transient/prompt > walk > idle priority
-- S0 removal of procedure-specific global combat banner
-
-### Yunseo Action Pose PNGs
-
-Include 8 PNG files:
-
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_01_idle.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_02_scan_low.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_03_cable_hook.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_04_pull_retrieval.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_05_stamp_ready.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_06_reject_stamp.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png`
-
-### Yunseo Action Pose Import Metadata
-
-Include 8 `.png.import` files using forced add because `*.import` is ignored:
-
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_01_idle.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_02_scan_low.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_03_cable_hook.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_04_pull_retrieval.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_05_stamp_ready.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_06_reject_stamp.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png.import`
-- `assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png.import`
-
-### Yunseo Walk Cycle PNGs
-
-Include 16 PNG files:
-
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_01.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_02.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_03.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_04.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_01.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_02.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_03.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_04.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_01.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_02.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_03.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_04.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_01.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_02.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_03.png`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_04.png`
-
-### Yunseo Walk Cycle Import Metadata
-
-Include 16 `.png.import` files using forced add because `*.import` is ignored:
-
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_01.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_02.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_03.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_04.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_01.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_02.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_03.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_04.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_01.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_02.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_03.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_04.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_01.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_02.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_03.png.import`
-- `assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_04.png.import`
-
-### Core Reports
-
-Include 11 report/planning files:
+Tracked report/plan baseline includes:
 
 - `YUNSEO_RUNTIME_STATE_V02_INTEGRATION_REPORT.md`
 - `YUNSEO_MOVEMENT_ANIMATION_STATE_MACHINE_AUDIT.md`
@@ -146,108 +63,169 @@ Include 11 report/planning files:
 - `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md`
 - `YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md`
 
-## Commit Exclude Candidate
+## Current Git State
+
+Tracked diff before rewriting this audit:
+
+- `scripts/main.gd`
+- `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_REPORT.md`
+- `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md`
+
+Tracked diff after this audit should be:
+
+- `scripts/main.gd`
+- `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_REPORT.md`
+- `YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md`
+
+Staged diff: `0`.
+
+Active `.godot`: absent.
+
+## Recommended Include Scope
+
+Stage exactly these 4 current-delta files:
+
+```text
+scripts/main.gd
+YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_REPORT.md
+YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md
+YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md
+```
+
+Do not stage the previously merged PNG/import files again unless rebuilding the full PR #8 scope from an older base.
+
+## Force-Add Requirement
+
+Current follow-up commit:
+
+- `.png.import` files changed: `0`
+- `.png.import` force-add needed: `0`
+
+Full PR #8 baseline replay only:
+
+- `.png.import` files: `24`
+- because `.png.import` is ignored, those would require exact `git add -f -- <path>` if they were not already tracked.
+
+## Exclude Scope
 
 Exclude:
 
+- `YUNSEO_RUNTIME_STATE_V02_COMMIT_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_MERGE_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_PR_FINAL_PMO_REVIEW_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_PR_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_PUSH_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_STAGE_REPORT.md`
+- `YUNSEO_RUNTIME_STATE_V02_STAGE_WHITESPACE_FIX_REPORT.md`
 - `yunseo_v06_runtime_source_manifest.json`
 - `yunseo_v06_walk_import_only_manifest.json`
-- external QA output folders:
-  - `C:\workspace\_codex_yunseo_runtime_state_v02_qa_output`
-  - `C:\workspace\_codex_yunseo_walk_cycle_runtime_qa_output`
-  - `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_qa_output`
-- external generation/source folders:
-  - `C:\workspace\_codex_yunseo_walk_cycle_assets\w1`
-  - `C:\workspace\_codex_yunseo_walk_cycle_assets\w1_right_rework`
-  - `C:\workspace\_codex_yunseo_walk_cycle_assets\w2`
-  - `C:\workspace\스팀펑크\assets\yunseo_p0_v06_runtime_action_sheet`
-- old worktree artifacts
-- rejected/raw/temp logs/contact sheets
-- existing unrelated docs such as `YUNSEO_RETURN_STAMP_POLISH_NOTES.md`
+- `C:\workspace\_codex_yunseo_runtime_state_v02_qa_output`
+- `C:\workspace\_codex_yunseo_walk_cycle_runtime_qa_output`
+- `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_qa_output`
+- `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_runtime_qa_output`
+- `C:\workspace\_codex_yunseo_walk_cycle_assets`
+- any temp/copy project folders
+- rejected/raw/temp logs outside the report set
 
-Reason:
+## Out-of-Scope Check
 
-Runtime commit only needs active alias assets, import metadata, code integration, and core reports. The manifests and external QA/source folders are local provenance/output material and are not required for runtime load.
+Current diff out-of-scope counts:
 
-## Out-of-Scope Audit
+- `.godot`: `0`
+- `generated_assets`: `0`
+- `exports`: `0`
+- R01 background/fixture PNG: `0`
+- external QA output folders: `0`
+- W1/W2 source folders: `0`
+- manifests: `0`
+- unrelated story/world docs: `0`
 
-R01 background/fixture PNG changes:
-
-- `0`
-
-Collision/navigation/gameplay balance changes:
-
-- `0` intentional changes.
-- Spot checks unchanged:
-  - `PLAYER_SPEED := 118.0`
-  - `PLAYER_RADIUS := 10.0`
-  - `_move_speed()` formula unchanged
-  - `resolve_player_position(...)` still used
-  - `clamp_player_position(...)` still used
-  - `procedure_interaction_feedback_timer = 0.45` unchanged
-  - `procedure_interaction_feedback_timer = 0.32` unchanged
-  - `interaction_processing` lookup unchanged
-  - `processing *= 0.55` unchanged
-  - walk timing remains `int(player_walk_anim_time * 6.0) % 4`
-
-Godot local/import/export:
-
-- Active `.godot`: absent
-- `.godot` status delta: `0`
-- `generated_assets` status delta: `0`
-- `exports` status delta: `0`
-- active broad import not run in this audit
-
-Tracked code diff:
-
-- `scripts/main.gd`: Yunseo runtime/action/walk integration plus S0 procedure banner removal
-- `scripts/sprite_assets.gd`: Yunseo action and walk texture path/load/draw helpers
+Out-of-scope verdict: `0 / PASS`.
 
 ## Diff Check
 
-`git diff --check`: `PASS`
+`git diff --check`: PASS.
 
-Notes:
+Line-ending warnings may appear for the modified files on Windows, but no whitespace error was reported.
 
-- Git reports LF -> CRLF warnings for `scripts/main.gd` and `scripts/sprite_assets.gd`.
-- No whitespace errors were reported.
-- Staged diff remains `0`.
+## QA Evidence Summary
 
-## .png.import Handling
+Yunseo runtime/state v02:
 
-`.gitignore` ignores `*.import`, so all 24 `.png.import` files must be staged with exact forced adds.
+- runtime/state QA: `PASS_WITH_WATCH`
+- Yunseo v06 action poses visible in 480x270 runtime
+- existing 48x48 survivor remains fallback only
+- texture load error: `0`
+- Godot fatal/error: `0`
 
-Required:
+Walk cycle runtime:
 
-`git add -f -- <each .png.import path>`
+- initial walk runtime QA: functional pass but HOLD due centered banner occlusion
+- walk down/right/up/left loop: verified
+- action/transient priority: verified
+- idle/walk return: verified
 
-Do not use:
+S0 overlay occlusion runtime QA rerun:
 
-- `git add .`
-- broad import/cache staging
-- `.godot` staging
+- final status: `PASS_WITH_WATCH`
+- Godot import exit code: `0`
+- overlay probe exit code: `0`
+- safe toast probe exit code: `0`
+- Godot fatal/error: `0`
+- texture load error: `0`
+- screenshots: `22`
+- all screenshots: `480x270`
+- central combat banner occlusion: resolved
+- `_show_safe_combat_notice()` safe toast: lower-left safe HUD area
+- prompt toast retained
+- target floater retained
+- status ring retained
+- walk/action priority retained
 
-## Watch Items For PR
+Latest QA output:
 
-Carry these notes into the PR body:
+- `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_runtime_qa_output\results.json`
+- `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_runtime_qa_output\yunseo_walk_overlay_s0_runtime_interaction_priority_sheet.png`
+- `C:\workspace\_codex_yunseo_walk_overlay_s0_fix_runtime_qa_output\yunseo_walk_overlay_s0_runtime_final_integrated_sheet.png`
 
-- `pose 05 stamp_ready`: `PASS_WITH_WATCH`; open case/device silhouette should continue to be watched so it does not read as a map/document/tablet at 480x270.
-- right/left walk stride: `PASS_WITH_WATCH`; readable now, but watch for exaggerated stride during continuous play.
-- 48px tool density: `PASS_WITH_WATCH`; rose sleeve/reel/tool silhouette survives, but details are dense at small scale.
-- smaller feedback readability: `PASS_WITH_WATCH`; central banner occlusion is fixed, and target floater/status ring remain, but completion feedback should be rechecked in dense combat.
+## Watch Items
 
-## Commit Message Candidate
+Keep these in PR/merge notes:
 
-`Add Yunseo runtime poses and walk cycle`
+- pose 05 `stamp_ready` read
+- right/left stride
+- 48px tool density
+- smaller safe toast feedback readability
 
-## Stage Approval Phrase
+## Rollback Criteria
 
-Recommended next stage-only prompt:
+Rollback or HOLD if any of the following appear in stage/QA:
 
-`Stage only the 61 files listed in YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md: Yunseo action pose PNG/import files, Yunseo walk PNG/import files, scripts/main.gd, scripts/sprite_assets.gd, and the 11 core reports. Use exact paths and git add -f only for the .png.import files. Do not stage manifests, QA output folders, generation source folders, .godot, generated_assets, exports, or unrelated docs.`
+- centered combat banner returns over Yunseo in R01 procedure completion
+- safe toast becomes unreadable or blocks Yunseo/fixture centers
+- prompt toast conflicts with safe toast
+- target floater/status ring disappears
+- walk/action priority regresses
+- survivor fallback becomes the default player
+- texture load error or Godot fatal/error appears
+- `.godot`, generated import cache, external QA output, W1/W2 source, manifests, generated assets, exports, R01 background/fixture PNG, or unrelated docs enter the staged set
 
-## Final Judgment
+## Stage Approval Text
 
-Commit-ready audit: `PASS`
+Approved for stage-only:
 
-The exact commit scope is locked. No stage, commit, push, PR, file cleanup, Godot run, or import generation was performed by this audit.
+```text
+Stage exactly the 4 current-delta files listed in YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md:
+scripts/main.gd,
+YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_REPORT.md,
+YUNSEO_WALK_OVERLAY_OCCLUSION_S0_FIX_QA_REPORT.md,
+YUNSEO_RUNTIME_STATE_V02_FINAL_DIFF_AUDIT.md.
+
+Do not stage PNG files, .png.import files, manifests, external QA outputs, temp/copy projects, W1/W2 source folders, .godot, generated_assets, exports, R01 background/fixture PNG, or unrelated story/world docs.
+Use exact git add paths only. Do not use git add .
+```
+
+## Next Step
+
+Stage-only.

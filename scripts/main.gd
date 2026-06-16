@@ -108,6 +108,7 @@ var procedure_interaction_counts := {}
 var procedure_interaction_total := 0
 var last_procedure_interaction := "대기"
 var procedure_interaction_feedback_timer := 0.0
+var safe_combat_toasts: Array[Dictionary] = []
 var playtest_metrics := {}
 
 var auto_timer := 0.0
@@ -185,6 +186,7 @@ func _ready() -> void:
 	set_process(true)
 
 func _process(delta: float) -> void:
+	_update_safe_combat_toasts(delta)
 	if match_state == "game_over" or match_state == "victory" or match_state == "recalled" or match_state == "boss_victory" or match_state == "supply":
 		r01_map.update(delta, elapsed, false)
 		effects.update(delta)
@@ -1840,7 +1842,7 @@ func _start_boss_encounter() -> void:
 	active_threats.clear()
 	wave_notice_timer = 4.0
 	wave_notice_text = "보스 조우: 스마일 홈 시어머니"
-	effects.show_combat_banner("스마일 홈 시어머니", C.VITAMIN_YELLOW)
+	_show_safe_combat_notice("스마일 홈 시어머니", C.VITAMIN_YELLOW)
 	effects.add_status_ring(boss.pos, C.VITAMIN_YELLOW, BossController.BODY_RADIUS + 28.0, 0.62)
 	effects.add_impact_shake(0.28, 5.8)
 	_play_sfx("boss_warning")
@@ -1851,7 +1853,7 @@ func _on_boss_defeated() -> void:
 	boss_result_reason = "boss_defeated"
 	wave_notice_timer = 5.0
 	wave_notice_text = "스마일 홈 결절 침묵"
-	effects.show_combat_banner("스마일 홈 결절 침묵", C.TOXIC_GREEN)
+	_show_safe_combat_notice("스마일 홈 결절 침묵", C.TOXIC_GREEN)
 	effects.add_status_ring(boss.pos, C.TOXIC_GREEN, BossController.BODY_RADIUS + 34.0, 0.72)
 	effects.add_impact_shake(0.34, 7.0)
 	_finish_match("boss_victory")
@@ -1881,7 +1883,26 @@ func _show_wave_notice(text: String) -> void:
 	wave_notice_text = text
 	wave_notice_timer = 2.8
 	var danger := text.contains("피날레") or text.contains("붕괴") or text.contains("압력") or text.contains("보스")
-	effects.show_combat_banner(text, C.NEON_RED if danger else C.VITAMIN_YELLOW)
+	_show_safe_combat_notice(text, C.NEON_RED if danger else C.VITAMIN_YELLOW)
+
+func _show_safe_combat_notice(text: String, color: Color) -> void:
+	if R01LayoutBlockout.ENABLED:
+		safe_combat_toasts = [{
+			"text": text,
+			"color": color,
+			"life": 1.05,
+			"duration": 1.05,
+		}]
+		effects.add_impact_shake(0.22, 5.0)
+		return
+	effects.show_combat_banner(text, color)
+
+func _update_safe_combat_toasts(delta: float) -> void:
+	if safe_combat_toasts.is_empty():
+		return
+	for toast in safe_combat_toasts:
+		toast["life"] = float(toast["life"]) - delta
+	safe_combat_toasts = safe_combat_toasts.filter(func(toast: Dictionary) -> bool: return float(toast["life"]) > 0.0)
 
 func _update_first_recall_event(delta: float) -> void:
 	if not _first_recall_active():
@@ -2422,7 +2443,7 @@ func _apply_supply_choice(index: int) -> void:
 				last_supply_reaction_line = "정비대가 %s 항목을 출격 전 점검표에 올렸습니다." % action_name
 	if applied:
 		boss.set_core_expose_bonus(meta_progression.core_expose_bonus())
-		effects.show_combat_banner("보급소 적용: %s" % action_name, C.TOXIC_GREEN)
+		_show_safe_combat_notice("보급소 적용: %s" % action_name, C.TOXIC_GREEN)
 		effects.add_status_ring(player_pos, C.TOXIC_GREEN, 36.0, 0.42)
 		effects.add_impact_shake(0.14, 2.2)
 		_play_sfx("upgrade_buy")
@@ -2900,7 +2921,7 @@ func _debug_boss_phase_preview() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_phase_two_preview()
-	effects.show_combat_banner("보스 코어 강제 노출", C.TOXIC_GREEN)
+	_show_safe_combat_notice("보스 코어 강제 노출", C.TOXIC_GREEN)
 
 func _debug_boss_enrage_preview() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -2908,7 +2929,7 @@ func _debug_boss_enrage_preview() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_enraged_preview()
-	effects.show_combat_banner("마지막 방송", C.NEON_RED)
+	_show_safe_combat_notice("마지막 방송", C.NEON_RED)
 
 func _debug_boss_distortion() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -2916,7 +2937,7 @@ func _debug_boss_distortion() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_distortion()
-	effects.show_combat_banner("행복 기준 재조정", Color(0.35, 0.70, 0.95))
+	_show_safe_combat_notice("행복 기준 재조정", Color(0.35, 0.70, 0.95))
 
 func _debug_boss_safety_demo() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -2924,7 +2945,7 @@ func _debug_boss_safety_demo() -> void:
 	if not boss.active:
 		_debug_start_boss()
 	boss.force_safety_demo(player_pos)
-	effects.show_combat_banner("방문 점검 돌진", C.VITAMIN_YELLOW)
+	_show_safe_combat_notice("방문 점검 돌진", C.VITAMIN_YELLOW)
 
 func _debug_boss_recall_reward() -> void:
 	if not C.DEBUG_TOOLS_ENABLED or match_state != "playing" or paused_for_card:
@@ -2944,7 +2965,7 @@ func _debug_set_smile_home_boss_outcome(outcome: String) -> void:
 	var label := meta_progression.smile_home_boss_outcome_label() if applied else "잘못된 보스 처리 값"
 	if applied:
 		boss.set_outcome_visual(outcome)
-	effects.show_combat_banner(label, C.TOXIC_GREEN if applied else C.NEON_RED)
+	_show_safe_combat_notice(label, C.TOXIC_GREEN if applied else C.NEON_RED)
 	if match_state == "boss_victory":
 		hud.show_result_screen(_result_data("boss_victory"), Callable(self, "_handle_terminal_action"))
 	elif match_state == "supply":
@@ -2956,7 +2977,7 @@ func _debug_r01_blockout_variant(variant: String) -> void:
 		return
 	if not r01_blockout.set_state_variant(variant):
 		return
-	effects.show_combat_banner("R01 blockout: %s" % variant, C.VITAMIN_YELLOW)
+	_show_safe_combat_notice("R01 blockout: %s" % variant, C.VITAMIN_YELLOW)
 	_update_hud()
 	queue_redraw()
 
@@ -2996,6 +3017,7 @@ func _draw() -> void:
 		_draw_procedure_interaction_prompt()
 	effects.draw_front(self)
 	effects.draw_screen_flash(self, camera.global_position)
+	_draw_safe_combat_toasts()
 
 func _draw_arena() -> void:
 	if R01LayoutBlockout.ENABLED:
@@ -3347,6 +3369,29 @@ func _draw_procedure_interaction_prompt() -> void:
 	var toast_text_pos := toast_pos + Vector2(7, 13)
 	draw_string(UIFont.get_font(), toast_text_pos + Vector2(1, 1), toast_label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 12.0, 9, Color(0.0, 0.0, 0.0, 0.82 * alpha))
 	draw_string(UIFont.get_font(), toast_text_pos, toast_label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 12.0, 9, Color(1.0, 0.98, 0.78, 0.96 * alpha))
+
+func _draw_safe_combat_toasts() -> void:
+	if safe_combat_toasts.is_empty():
+		return
+	var view_top_left := camera.global_position - C.VIEWPORT_SIZE * 0.5
+	var toast_size := Vector2(172, 18)
+	var toast_pos := view_top_left + Vector2(12, C.VIEWPORT_SIZE.y - 34)
+	for i in range(safe_combat_toasts.size()):
+		var toast := safe_combat_toasts[i]
+		var ratio := clampf(float(toast["life"]) / maxf(0.001, float(toast["duration"])), 0.0, 1.0)
+		var pos := toast_pos + Vector2(0, -float(i) * 21.0)
+		var color: Color = toast["color"]
+		var edge := color
+		edge.a = clampf(ratio * 0.58, 0.0, 0.58)
+		var fill := Color(0.035, 0.025, 0.018, clampf(ratio * 0.70, 0.0, 0.70))
+		var rect := Rect2(pos, toast_size)
+		draw_rect(rect, fill)
+		draw_rect(rect, edge, false, 1.0)
+		var text_color := Color(1.0, 0.98, 0.78, clampf(ratio * 1.18, 0.0, 0.96))
+		var label := String(toast["text"])
+		var text_pos := pos + Vector2(7, 13)
+		draw_string(UIFont.get_font(), text_pos + Vector2(1, 1), label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 14.0, 9, Color(0.0, 0.0, 0.0, text_color.a * 0.82))
+		draw_string(UIFont.get_font(), text_pos, label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 14.0, 9, text_color)
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
