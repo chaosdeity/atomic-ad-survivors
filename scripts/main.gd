@@ -119,8 +119,11 @@ var charge_warning_played := false
 var charge_miss_notice := 0.0
 var last_move_dir := Vector2.DOWN
 var player_is_moving := false
+var player_walk_anim_time := 0.0
 var attack_pose_timer := 0.0
 var attack_pose_dir := Vector2.RIGHT
+var player_pose_override_id := ""
+var player_pose_override_timer := 0.0
 var hurt_feedback_cooldown := 0.0
 var auto_shot_counter := 0
 var charge_puddles: Array[Dictionary] = []
@@ -215,6 +218,7 @@ func _process(delta: float) -> void:
 		return
 	wave_notice_timer = maxf(0.0, wave_notice_timer - delta)
 	attack_pose_timer = maxf(0.0, attack_pose_timer - delta)
+	_update_player_pose_override(delta)
 	hurt_feedback_cooldown = maxf(0.0, hurt_feedback_cooldown - delta)
 	procedure_interaction_feedback_timer = maxf(0.0, procedure_interaction_feedback_timer - delta)
 	_update_player(delta)
@@ -417,6 +421,7 @@ func _update_player(delta: float) -> void:
 	player_is_moving = input_dir.length_squared() > 0.0
 	if player_is_moving:
 		last_move_dir = input_dir
+		player_walk_anim_time += delta
 	var old_pos := player_pos
 	player_pos += input_dir * _move_speed() * delta
 	if R01LayoutBlockout.ENABLED:
@@ -455,9 +460,9 @@ func _try_procedure_interaction() -> void:
 		processing *= 0.55
 	_add_audit_processing(processing, "procedure_%s" % kind, pos)
 	_register_attack_pose(pos - player_pos, 0.16)
+	_set_player_pose_override("cable_hook", 0.18)
 	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)
 	effects.add_floater(pos + Vector2(0, -24), result, C.VITAMIN_YELLOW, 12)
-	effects.show_combat_banner("%s 절차 수행" % label, C.VITAMIN_YELLOW)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
@@ -775,6 +780,7 @@ func _fire_charge() -> void:
 
 	charge_effect_anchor_active = false
 	var hit_count := _fire_return_stamp(aim_dir, limit + 4, damage, perfect)
+	_set_player_pose_override("pull_retrieval" if hit_count > 0 else "reject_stamp", 0.22)
 	_record_playtest_charge(hit_count, perfect)
 	_handle_dead_positions(_cleanup_dead_positions())
 	_apply_charge_aftereffects(hit_count, directed, aim_dir, perfect)
@@ -3262,8 +3268,20 @@ func _draw_player() -> void:
 	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
 	draw_circle(player_pos + Vector2(2, 4), 11.0, Color(0, 0, 0, 0.18))
 	var player_frame := int(elapsed * 6.0) % 2 if player_is_moving else 0
-	if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
-		sprite_assets.draw_player_fallback(self, player_pos)
+	var yunseo_action_pose := _player_runtime_action_pose_id()
+	if yunseo_action_pose != "":
+		if not sprite_assets.draw_yunseo_pose(self, player_pos, yunseo_action_pose):
+			if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+				sprite_assets.draw_player_fallback(self, player_pos)
+	elif player_is_moving:
+		var walk_frame := int(player_walk_anim_time * 6.0) % 4
+		if not sprite_assets.draw_yunseo_walk(self, player_pos, _player_walk_direction_id(), walk_frame):
+			if not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
+				if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+					sprite_assets.draw_player_fallback(self, player_pos)
+	elif not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
+		if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+			sprite_assets.draw_player_fallback(self, player_pos)
 	if attack_pose_timer > 0.0:
 		var pose_ratio := attack_pose_timer / 0.20
 		var pose_dir := attack_pose_dir.normalized() if attack_pose_dir.length_squared() > 0.0 else Vector2.RIGHT
@@ -3308,28 +3326,27 @@ func _draw_procedure_interaction_prompt() -> void:
 	var prompt := String(target.get("interaction_prompt", "절차 수행"))
 	var distance := float(target.get("distance", 0.0))
 	var alpha := clampf(1.0 - distance / R01LayoutBlockout.PROCEDURE_INTERACTION_RADIUS, 0.35, 1.0)
-	var label := "E  %s" % prompt
-	var label_size := Vector2(142, 26)
-	var label_width := 130.0
-	var desired_label_pos := pos + Vector2(-70, -42)
 	var view_top_left := camera.global_position - C.VIEWPORT_SIZE * 0.5
-	var safe_min := view_top_left + Vector2(12, 48)
-	var safe_max := view_top_left + C.VIEWPORT_SIZE - Vector2(label_size.x + 8.0, 20)
-	var label_pos := Vector2(
-		clampf(desired_label_pos.x, safe_min.x, safe_max.x),
-		clampf(desired_label_pos.y, safe_min.y, safe_max.y)
-	)
 	draw_circle(pos, 15.0 + sin(elapsed * 5.0) * 1.5, Color(1.0, 0.91, 0.25, 0.07 * alpha))
 	draw_arc(pos, 22.0, 0.0, TAU, 32, Color(1.0, 0.91, 0.25, 0.42 * alpha), 1.6)
-	if label_pos.distance_squared_to(desired_label_pos) > 4.0:
-		draw_line(pos + Vector2(0, -20), label_pos + Vector2(label_size.x * 0.5 - 4.0, -2), Color(1.0, 0.91, 0.25, 0.34 * alpha), 1.2)
-	var label_rect := Rect2(label_pos + Vector2(-6, -15), label_size)
-	draw_rect(label_rect, Color(0.035, 0.025, 0.018, 0.92))
-	draw_rect(label_rect, Color(1.0, 0.90, 0.42, 0.74), false, 1.4)
-	var text_pos := label_pos + Vector2(0, 2)
+	var badge_center := pos + Vector2(20, -20)
+	var badge_rect := Rect2(badge_center - Vector2(9, 9), Vector2(18, 18))
+	draw_line(pos + Vector2(9, -9), badge_rect.position + Vector2(2, badge_rect.size.y - 2), Color(1.0, 0.91, 0.25, 0.22 * alpha), 0.8)
+	draw_rect(badge_rect, Color(0.035, 0.025, 0.018, 0.62))
+	draw_rect(badge_rect, Color(1.0, 0.90, 0.42, 0.64 * alpha), false, 1.0)
+	var badge_text_pos := badge_rect.position + Vector2(5, 13)
 	for offset in [Vector2(-1, 0), Vector2(1, 0), Vector2(0, -1), Vector2(0, 1)]:
-		draw_string(UIFont.get_font(), text_pos + offset, label, HORIZONTAL_ALIGNMENT_CENTER, label_width, 12, Color(0.0, 0.0, 0.0, 0.90))
-	draw_string(UIFont.get_font(), text_pos, label, HORIZONTAL_ALIGNMENT_CENTER, label_width, 12, Color(1.0, 0.98, 0.78, 1.0))
+		draw_string(UIFont.get_font(), badge_text_pos + offset, "E", HORIZONTAL_ALIGNMENT_CENTER, 8.0, 10, Color(0.0, 0.0, 0.0, 0.82))
+	draw_string(UIFont.get_font(), badge_text_pos, "E", HORIZONTAL_ALIGNMENT_CENTER, 8.0, 10, Color(1.0, 0.98, 0.78, 1.0))
+	var toast_size := Vector2(118, 18)
+	var toast_pos := view_top_left + Vector2(12, 84)
+	var toast_rect := Rect2(toast_pos, toast_size)
+	draw_rect(toast_rect, Color(0.035, 0.025, 0.018, 0.68 * alpha))
+	draw_rect(toast_rect, Color(1.0, 0.90, 0.42, 0.50 * alpha), false, 1.0)
+	var toast_label := "E  %s" % prompt
+	var toast_text_pos := toast_pos + Vector2(7, 13)
+	draw_string(UIFont.get_font(), toast_text_pos + Vector2(1, 1), toast_label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 12.0, 9, Color(0.0, 0.0, 0.0, 0.82 * alpha))
+	draw_string(UIFont.get_font(), toast_text_pos, toast_label, HORIZONTAL_ALIGNMENT_LEFT, toast_size.x - 12.0, 9, Color(1.0, 0.98, 0.78, 0.96 * alpha))
 
 func _draw_enemies() -> void:
 	for enemy in enemies.enemies:
@@ -3592,6 +3609,9 @@ func _restart() -> void:
 	auto_shot_counter = 0
 	attack_pose_timer = 0.0
 	attack_pose_dir = Vector2.RIGHT
+	player_walk_anim_time = 0.0
+	player_pose_override_id = ""
+	player_pose_override_timer = 0.0
 	hurt_feedback_cooldown = 0.0
 	charge_timer = 0.0
 	charge_window_left = 0.0
@@ -3713,6 +3733,45 @@ func _charge_state() -> String:
 	if _charge_period() - charge_timer <= C.CHARGE_WARNING_TIME:
 		return "warning"
 	return "cooldown"
+
+func _player_runtime_action_pose_id() -> String:
+	var charge_state := _charge_state()
+	if match_state == "recalled":
+		return "retrieval_escape"
+	if hurt_feedback_cooldown > 0.0:
+		return "hurt_interrupted"
+	if charge_state == "missed":
+		return "reject_stamp"
+	if charge_state == "open" or charge_ready_flash > 0.0:
+		return "stamp_ready"
+	if player_pose_override_timer > 0.0 and player_pose_override_id != "":
+		return player_pose_override_id
+	if charge_state == "warning":
+		return "scan_low"
+	if _procedure_prompt_active():
+		return "scan_low"
+	return ""
+
+func _player_walk_direction_id() -> String:
+	if absf(last_move_dir.x) > absf(last_move_dir.y):
+		return "right" if last_move_dir.x > 0.0 else "left"
+	return "down" if last_move_dir.y >= 0.0 else "up"
+
+func _procedure_prompt_active() -> bool:
+	if match_state != "playing" or paused_for_card or not R01LayoutBlockout.ENABLED:
+		return false
+	return not r01_blockout.nearest_procedure_interaction(player_pos).is_empty()
+
+func _set_player_pose_override(pose_id: String, duration: float) -> void:
+	if pose_id == "" or duration <= 0.0:
+		return
+	player_pose_override_id = pose_id
+	player_pose_override_timer = maxf(player_pose_override_timer, duration)
+
+func _update_player_pose_override(delta: float) -> void:
+	player_pose_override_timer = maxf(0.0, player_pose_override_timer - delta)
+	if player_pose_override_timer <= 0.0:
+		player_pose_override_id = ""
 
 func _charge_target_limit(directed: bool) -> int:
 	var base_limit := C.DIRECTED_AOE_TARGETS if directed else C.CHARGE_AOE_TARGETS
