@@ -3,6 +3,45 @@ extends RefCounted
 const C := preload("res://scripts/game_config.gd")
 
 const PLAYER_PATH := "res://assets/characters/player/player_survivor_48x48_4dir_walk.png"
+const YUNSEO_POSE_SCALE := 0.11
+const YUNSEO_POSE_ORIGIN := Vector2(320, 560)
+const YUNSEO_POSE_CANVAS := Vector2(796, 658)
+const YUNSEO_POSE_PATHS := {
+	"idle": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_01_idle.png",
+	"scan_low": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_02_scan_low.png",
+	"cable_hook": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_03_cable_hook.png",
+	"pull_retrieval": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_04_pull_retrieval.png",
+	"stamp_ready": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_05_stamp_ready.png",
+	"reject_stamp": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_06_reject_stamp.png",
+	"hurt_interrupted": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png",
+	"retrieval_escape": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png",
+}
+const YUNSEO_WALK_PATHS := {
+	"down": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_down_04.png",
+	],
+	"left": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_left_04.png",
+	],
+	"right": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_right_04.png",
+	],
+	"up": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk/yunseo_v06_walk_up_04.png",
+	],
+}
 const TIER1_PATHS := {
 	"billboard": "res://assets/characters/enemies/tier1/enemy_billboard_tumor_32x32_idle.png",
 	"appliance": "res://assets/characters/enemies/tier1/enemy_appliance_zombie_32x32_idle.png",
@@ -12,12 +51,21 @@ const ELITE_PATH := "res://assets/characters/enemies/tier2/enemy_infected_housew
 const LARGE_ELITE_PATH := "res://assets/characters/enemies/tier2/elite_ad_mascot_80x80_idle.png"
 
 var player_texture: Texture2D
+var yunseo_pose_textures := {}
+var yunseo_walk_textures := {}
 var enemy_textures := {}
 var elite_texture: Texture2D
 var large_elite_texture: Texture2D
 
 func load_all() -> void:
 	player_texture = _load_texture(PLAYER_PATH)
+	for pose_id in YUNSEO_POSE_PATHS:
+		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
+	for direction in YUNSEO_WALK_PATHS:
+		var frames: Array[Texture2D] = []
+		for path in YUNSEO_WALK_PATHS[direction]:
+			frames.append(_load_texture(String(path)))
+		yunseo_walk_textures[direction] = frames
 	for kind in TIER1_PATHS:
 		enemy_textures[kind] = _load_texture(TIER1_PATHS[kind])
 	elite_texture = _load_texture(ELITE_PATH)
@@ -30,6 +78,27 @@ func draw_player(canvas: CanvasItem, pos: Vector2, row: int, frame: int) -> bool
 	var pivot := Vector2(24, 43)
 	var src := Rect2(Vector2(frame * cell.x, row * cell.y), cell)
 	canvas.draw_texture_rect_region(player_texture, Rect2((pos - pivot).round(), cell), src)
+	return true
+
+func draw_yunseo_pose(canvas: CanvasItem, pos: Vector2, pose_id: String) -> bool:
+	var texture: Texture2D = yunseo_pose_textures.get(pose_id)
+	if texture == null:
+		return false
+	var draw_size := YUNSEO_POSE_CANVAS * YUNSEO_POSE_SCALE
+	var top_left := pos - YUNSEO_POSE_ORIGIN * YUNSEO_POSE_SCALE
+	canvas.draw_texture_rect(texture, Rect2(top_left.round(), draw_size), false)
+	return true
+
+func draw_yunseo_walk(canvas: CanvasItem, pos: Vector2, direction: String, frame: int) -> bool:
+	var frames: Array = yunseo_walk_textures.get(direction, [])
+	if frames.is_empty():
+		return false
+	var texture: Texture2D = frames[posmod(frame, frames.size())]
+	if texture == null:
+		return false
+	var draw_size := YUNSEO_POSE_CANVAS * YUNSEO_POSE_SCALE
+	var top_left := pos - YUNSEO_POSE_ORIGIN * YUNSEO_POSE_SCALE
+	canvas.draw_texture_rect(texture, Rect2(top_left.round(), draw_size), false)
 	return true
 
 func draw_enemy(canvas: CanvasItem, enemy: Dictionary, frame: int) -> bool:
