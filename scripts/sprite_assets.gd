@@ -16,6 +16,32 @@ const YUNSEO_POSE_PATHS := {
 	"hurt_interrupted": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png",
 	"retrieval_escape": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png",
 }
+const YUNSEO_S2_R2_WALK_PATHS := {
+	"down": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_down_s2_r2_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_down_s2_r2_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_down_s2_r2_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_down_s2_r2_v01_04.png",
+	],
+	"left": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_left_s2_r2_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_left_s2_r2_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_left_s2_r2_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_left_s2_r2_v01_04.png",
+	],
+	"right": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_right_s2_r2_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_right_s2_r2_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_right_s2_r2_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_right_s2_r2_v01_04.png",
+	],
+	"up": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_up_s2_r2_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_up_s2_r2_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_up_s2_r2_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_up_s2_r2_v01_04.png",
+	],
+}
 const YUNSEO_WALK_PATHS := {
 	"down": [
 		"res://assets/art_inbox/yunseo_runtime_v06_walk_refedit_v01/yunseo_v06_walk_down_refedit_v01_01.png",
@@ -87,7 +113,9 @@ func load_all() -> void:
 	player_texture = _load_texture(PLAYER_PATH)
 	for pose_id in YUNSEO_POSE_PATHS:
 		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
-	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
+	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_S2_R2_WALK_PATHS)
+	if yunseo_walk_textures.is_empty():
+		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
 	if yunseo_walk_textures.is_empty():
 		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_LEGACY_WALK_PATHS)
 	for kind in TIER1_PATHS:
@@ -121,8 +149,10 @@ func draw_yunseo_walk(canvas: CanvasItem, pos: Vector2, direction: String, frame
 	var texture: Texture2D = frames[posmod(frame, frames.size())]
 	if texture == null:
 		return false
-	var draw_size := YUNSEO_POSE_CANVAS * YUNSEO_POSE_SCALE
-	var top_left := pos - YUNSEO_POSE_ORIGIN * YUNSEO_POSE_SCALE
+	var side_scale := 0.985 if direction == "left" or direction == "right" else 1.0
+	var draw_size := Vector2(YUNSEO_POSE_CANVAS.x * YUNSEO_POSE_SCALE * side_scale, YUNSEO_POSE_CANVAS.y * YUNSEO_POSE_SCALE)
+	var scaled_origin := Vector2(YUNSEO_POSE_ORIGIN.x * YUNSEO_POSE_SCALE * side_scale, YUNSEO_POSE_ORIGIN.y * YUNSEO_POSE_SCALE)
+	var top_left := pos - scaled_origin
 	canvas.draw_texture_rect(texture, Rect2(top_left.round(), draw_size), false)
 	return true
 
