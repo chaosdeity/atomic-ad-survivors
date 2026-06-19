@@ -64,6 +64,7 @@ const AUDIT_SEGMENTS := [
 const PLAYER_WALK_FPS := 6.0
 const PLAYER_WALK_SETTLE_FRAMES := 2.0
 const PLAYER_WALK_BOB_PIXELS := 1.0
+const PLAYER_USE_YUNSEO_WALK_FRAMES := false
 const PLAYER_WALK_CONTACT_SHADOW_ENABLED := false
 const PLAYER_WALK_CONTACT_SHADOW_RADIUS := 5.5
 const PLAYER_WALK_CONTACT_SHADOW_ALPHA := 0.06
@@ -3300,8 +3301,11 @@ func _draw_player() -> void:
 	var aim := get_global_mouse_position() - player_pos
 	var has_aim := aim.length() > C.CHARGE_AIM_DEADZONE
 	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
-	var walk_frame := int(player_walk_anim_time * PLAYER_WALK_FPS) % 4
-	var walk_contact := player_is_moving and (walk_frame == 0 or walk_frame == 2)
+	var walk_frame := 0
+	var walk_contact := false
+	if PLAYER_USE_YUNSEO_WALK_FRAMES or PLAYER_WALK_CONTACT_SHADOW_ENABLED:
+		walk_frame = int(player_walk_anim_time * PLAYER_WALK_FPS) % 4
+		walk_contact = player_is_moving and (walk_frame == 0 or walk_frame == 2)
 	draw_circle(player_pos + Vector2(2, 4), 10.0, Color(0, 0, 0, 0.14))
 	if PLAYER_WALK_CONTACT_SHADOW_ENABLED and player_is_moving:
 		var contact_radius := PLAYER_WALK_CONTACT_SHADOW_RADIUS + (1.0 if walk_contact else 0.0)
@@ -3314,13 +3318,17 @@ func _draw_player() -> void:
 			if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
 				sprite_assets.draw_player_fallback(self, player_pos)
 	elif player_is_moving:
-		var walk_bob := -PLAYER_WALK_BOB_PIXELS if walk_frame == 1 or walk_frame == 3 else 0.0
-		var walk_draw_pos := player_pos + Vector2(0, walk_bob)
-		if not sprite_assets.draw_yunseo_walk(self, walk_draw_pos, _player_walk_direction_id(), walk_frame):
-			if not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
-				if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
-					sprite_assets.draw_player_fallback(self, player_pos)
-	elif player_walk_settle_timer > 0.0:
+		if PLAYER_USE_YUNSEO_WALK_FRAMES:
+			var walk_bob := -PLAYER_WALK_BOB_PIXELS if walk_frame == 1 or walk_frame == 3 else 0.0
+			var walk_draw_pos := player_pos + Vector2(0, walk_bob)
+			if not sprite_assets.draw_yunseo_walk(self, walk_draw_pos, _player_walk_direction_id(), walk_frame):
+				if not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
+					if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+						sprite_assets.draw_player_fallback(self, player_pos)
+		elif not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
+			if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+				sprite_assets.draw_player_fallback(self, player_pos)
+	elif PLAYER_USE_YUNSEO_WALK_FRAMES and player_walk_settle_timer > 0.0:
 		var settle_ratio := clampf(player_walk_settle_timer / (PLAYER_WALK_SETTLE_FRAMES / PLAYER_WALK_FPS), 0.0, 1.0)
 		var settle_pos := player_pos + Vector2(0, -round(settle_ratio))
 		if not sprite_assets.draw_yunseo_pose(self, settle_pos, "idle"):
