@@ -115,6 +115,8 @@ var procedure_interaction_counts := {}
 var procedure_interaction_total := 0
 var last_procedure_interaction := "대기"
 var procedure_interaction_feedback_timer := 0.0
+var objective_first_procedure_done := false
+var objective_interaction_kinds := {}
 var safe_combat_toasts: Array[Dictionary] = []
 var playtest_metrics := {}
 
@@ -469,6 +471,8 @@ func _try_procedure_interaction() -> void:
 	var count := int(procedure_interaction_counts.get(key, 0)) + 1
 	procedure_interaction_counts[key] = count
 	procedure_interaction_total += 1
+	objective_first_procedure_done = true
+	objective_interaction_kinds[kind] = int(objective_interaction_kinds.get(kind, 0)) + 1
 	last_procedure_interaction = "%s x%d" % [label, count]
 	var processing := float(target.get("interaction_processing", 64.0))
 	if count > 1:
@@ -477,7 +481,9 @@ func _try_procedure_interaction() -> void:
 	_register_attack_pose(pos - player_pos, 0.16)
 	_set_player_pose_override("cable_hook", 0.18)
 	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)
-	effects.add_floater(pos + Vector2(0, -24), result, C.VITAMIN_YELLOW, 12)
+	var progress := _objective_progress_label()
+	effects.add_floater(pos + Vector2(0, -24), "%s / %s" % [result, progress], C.VITAMIN_YELLOW, 12)
+	_show_safe_combat_notice("%s 처리: %s" % [label, progress], C.VITAMIN_YELLOW)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
@@ -1390,6 +1396,8 @@ func _reset_audit_run_tracking() -> void:
 	procedure_interaction_total = 0
 	last_procedure_interaction = "대기"
 	procedure_interaction_feedback_timer = 0.0
+	objective_first_procedure_done = false
+	objective_interaction_kinds = {}
 
 func _update_audit_director(delta: float) -> void:
 	if int(player_stats.get("low_hp_allowance_level", 0)) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
@@ -1614,8 +1622,9 @@ func _audit_hud_data() -> Dictionary:
 			"threshold": 1.0,
 			"ratio": 1.0,
 			"time_left": 0.0,
-			"pressure": audit_pressure_level,
-		}
+		"pressure": audit_pressure_level,
+		"objective": _objective_progress_label(),
+	}
 	var segment: Dictionary = AUDIT_SEGMENTS[audit_segment_index]
 	var threshold := _audit_threshold(segment)
 	return {
@@ -1625,6 +1634,7 @@ func _audit_hud_data() -> Dictionary:
 		"ratio": audit_processing / maxf(1.0, threshold),
 		"time_left": maxf(0.0, float(segment["time"]) - elapsed),
 		"pressure": audit_pressure_level,
+		"objective": _objective_progress_label(),
 	}
 
 func _ration_hud_data() -> Dictionary:
@@ -1941,6 +1951,72 @@ func _update_first_recall_event(delta: float) -> void:
 func _first_recall_active() -> bool:
 	return sortie_index == 1 and first_sortie and not first_recall_done and match_state == "playing"
 
+func _objective_stage_id() -> String:
+	if match_state == "supply":
+		return "supply_decision"
+	if match_state == "recalled" or match_state == "victory" or match_state == "game_over" or match_state == "boss_victory":
+		return "settlement"
+	if boss.active:
+		return "boss_signal"
+	if sortie_index > 1 or first_recall_done:
+		if _boss_route_ready():
+			return "boss_tease"
+		return "redeploy_signal"
+	if recall_event_stage >= 2:
+		return "emergency_recall"
+	if audit_pressure_level > 0 or _audit_progress_ratio() >= 0.70:
+		return "pressure"
+	if objective_first_procedure_done or procedure_interaction_total > 0:
+		return "procedure_progress"
+	return "start_procedure"
+
+func _objective_stage_label() -> String:
+	match _objective_stage_id():
+		"start_procedure":
+			return "절차 장치 확인"
+		"procedure_progress":
+			return "절차 처리 진행"
+		"pressure":
+			return "등록 압력 대응"
+		"emergency_recall":
+			return "긴급 회수 대기"
+		"settlement":
+			return "정산 확인"
+		"supply_decision":
+			return "보급소 배분"
+		"redeploy_signal":
+			return "재출격 신호 확인"
+		"boss_tease":
+			return "보스 신호 예고"
+		"boss_signal":
+			return "결절 처리"
+		_:
+			return "목표 확인"
+
+func _objective_progress_label() -> String:
+	var kind_count := objective_interaction_kinds.size()
+	if sortie_index <= 1 and not first_recall_done:
+		return "%s %d/4 | 감사 %.0f%% | 압%d" % [
+			_objective_stage_label(),
+			clampi(kind_count, 0, 4),
+			clampf(_audit_progress_ratio(), 0.0, 1.0) * 100.0,
+			audit_pressure_level,
+		]
+	if match_state == "supply":
+		return "%s | %s" % [_objective_stage_label(), meta_progression.next_run_change_summary()]
+	if _boss_route_ready():
+		return "%s | 신호 %d/%d" % [_objective_stage_label(), meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
+	return "%s | 신호 %d/%d" % [_objective_stage_label(), meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
+
+func _objective_result_summary() -> String:
+	var parts: Array[String] = []
+	parts.append("목표 단계: %s" % _objective_stage_label())
+	parts.append("절차 접촉: %d회 / %d종" % [procedure_interaction_total, objective_interaction_kinds.size()])
+	parts.append("감사 처리: %.0f / 통과 %d / 미달 %d / 압력 %d" % [audit_total_processing, audit_pass_count, audit_fail_count, audit_pressure_level])
+	if last_procedure_interaction != "" and last_procedure_interaction != "대기":
+		parts.append("마지막 절차: %s" % last_procedure_interaction)
+	return " | ".join(parts)
+
 func _boss_signal_label() -> String:
 	return String(BOSS_SIGNAL_LABELS.get(boss_signal_state, boss_signal_state))
 
@@ -1957,11 +2033,13 @@ func _preboss_stage_label() -> String:
 	return "스마일 홈 결절 노출"
 
 func _next_objective_label() -> String:
+	if _route_display_sortie_index() <= 1:
+		return _objective_progress_label()
 	return _next_goal_label().replace("목표: ", "")
 
 func _next_objective_short_label() -> String:
 	if _route_display_sortie_index() <= 1:
-		return "108초 회수까지 생존"
+		return _objective_stage_label()
 	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
 
 func _regional_clause_preview_line() -> String:
@@ -2071,14 +2149,14 @@ func _next_goal_label() -> String:
 	if boss.active:
 		return "목표: 스마일 홈 시어머니 처리"
 	if _route_display_sortie_index() <= 1:
-		return "목표: 108초 회수까지 생존"
+		return "목표: %s" % _objective_progress_label()
 	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _combat_goal_label() -> String:
 	if boss.active:
 		return "시어머니 처리"
 	if sortie_index <= 1:
-		return "%s | 회수 신호 대기" % r01_map.current_zone_name()
+		return "%s | %s" % [r01_map.current_zone_name(), _objective_progress_label()]
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
 
 func _boss_route_ready() -> bool:
@@ -2107,6 +2185,9 @@ func _session_progress_data() -> Dictionary:
 		"next_goal_label": _next_goal_label(),
 		"next_objective": _next_objective_label(),
 		"next_objective_short": _next_objective_short_label(),
+		"objective_stage": _objective_stage_label(),
+		"objective_progress": _objective_progress_label(),
+		"objective_result_summary": _objective_result_summary(),
 		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_state),
 		"r01_sortie_goal_short_phrase": RoutePhraseResolver.r01_sortie_goal_short_phrase(r01_state),
 		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
@@ -2267,7 +2348,7 @@ func _result_data(result_state: String) -> Dictionary:
 			"result": "신호 과부하 강제 회수",
 			"description": "캠페인 신호가 윤서의 이름을 끝까지 읽기 전에, 침묵 보급소가 회수선을 당겼습니다.",
 			"trace": "찢어진 광고 전단",
-			"progress_lines": _session_progress_lines() + _run_reward_lines(),
+			"progress_lines": _objective_result_lines() + _session_progress_lines() + _run_reward_lines(),
 			"button_text": "보급소로 돌아가기",
 			"prompt": "스페이스 / 클릭으로 보급소 이동",
 			"survival_time": elapsed,
@@ -2335,9 +2416,21 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"audit_last_result": audit_last_result,
 		"audit_segment_results": audit_segment_results.duplicate(true),
 		"audit_progress_ratio": _audit_progress_ratio(),
+		"objective_stage": _objective_stage_label(),
+		"objective_progress": _objective_progress_label(),
+		"objective_result_summary": _objective_result_summary(),
+		"procedure_interaction_total": procedure_interaction_total,
+		"procedure_interaction_kinds": objective_interaction_kinds.size(),
+		"last_procedure_interaction": last_procedure_interaction,
 		"card_contributions": _card_contribution_snapshot(),
 		"playtest_metrics": _playtest_metrics_snapshot(),
 	}
+
+func _objective_result_lines() -> Array[String]:
+	return [
+		_objective_result_summary(),
+		"다음 처리: 보급소에서 회수물 배분 후 재출격",
+	]
 
 func _run_reward_lines() -> Array[String]:
 	var lines: Array[String] = []

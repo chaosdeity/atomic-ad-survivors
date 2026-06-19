@@ -745,8 +745,9 @@ func _update_audit_panel(audit_data: Dictionary, paused_for_card: bool, game_ove
 		audit_bar.color = C.NEON_RED
 	else:
 		audit_bar.color = C.VITAMIN_YELLOW
-	audit_label.text = "%s %.0f/%.0f  %.0fs  압%d" % [
-		str(audit_data.get("name", "광고 감사")),
+	var audit_name := str(audit_data.get("objective", audit_data.get("name", "광고 감사")))
+	audit_label.text = "%s %.0f/%.0f %.0fs 압%d" % [
+		_compact_ui_text(audit_name, 14),
 		processing,
 		threshold,
 		time_left,
