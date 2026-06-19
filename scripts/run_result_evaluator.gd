@@ -50,6 +50,11 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var audit_pressure_level := int(result_data.get("audit_pressure_level", 0))
 	var audit_total_processing := float(result_data.get("audit_total_processing", 0.0))
 	var audit_last_result := String(result_data.get("audit_last_result", ""))
+	var objective_stage := String(result_data.get("objective_stage", ""))
+	var objective_result_summary := String(result_data.get("objective_result_summary", ""))
+	var procedure_interaction_total := int(result_data.get("procedure_interaction_total", 0))
+	var procedure_interaction_kinds := int(result_data.get("procedure_interaction_kinds", 0))
+	var last_procedure_interaction := String(result_data.get("last_procedure_interaction", ""))
 	var playtest_metrics: Dictionary = result_data.get("playtest_metrics", {})
 	var open_house_processing_mult := _open_house_processing_mult(open_house_time)
 	var effective_kills := int(round(float(kills) * open_house_processing_mult))
@@ -103,6 +108,11 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		audit_pressure_level,
 		audit_total_processing,
 		audit_last_result,
+		objective_stage,
+		objective_result_summary,
+		procedure_interaction_total,
+		procedure_interaction_kinds,
+		last_procedure_interaction,
 		anti_farm_reason,
 		boss_result_reason,
 		boss_hp_ratio
@@ -130,6 +140,9 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"audit_fail_count": audit_fail_count,
 		"audit_pressure_level": audit_pressure_level,
 		"audit_total_processing": audit_total_processing,
+		"objective_stage": objective_stage,
+		"procedure_interaction_total": procedure_interaction_total,
+		"procedure_interaction_kinds": procedure_interaction_kinds,
 		"playtest_metrics": playtest_metrics,
 		"playtest_score": int(playtest_metrics.get("first_5_score", 0)),
 		"playtest_target_count": int(playtest_metrics.get("first_5_target_count", 7)),
@@ -394,12 +407,25 @@ static func _reward_lines(
 	audit_pressure_level: int,
 	audit_total_processing: float,
 	audit_last_result: String,
+	objective_stage: String,
+	objective_result_summary: String,
+	procedure_interaction_total: int,
+	procedure_interaction_kinds: int,
+	last_procedure_interaction: String,
 	anti_farm_reason: String,
 	boss_result_reason: String,
 	boss_hp_ratio: float
 ) -> Array[String]:
 	var lines: Array[String] = []
 	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
+	if objective_result_summary != "":
+		lines.append(objective_result_summary)
+	elif objective_stage != "":
+		lines.append("목표 단계: %s" % objective_stage)
+	if procedure_interaction_total > 0:
+		lines.append("절차 처리: %d회 / %d종" % [procedure_interaction_total, procedure_interaction_kinds])
+	if last_procedure_interaction != "" and last_procedure_interaction != "대기":
+		lines.append("마지막 절차: %s" % last_procedure_interaction)
 	if anti_farm_reason != "":
 		lines.append("일반 보상 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
