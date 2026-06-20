@@ -117,6 +117,7 @@ var last_procedure_interaction := "대기"
 var procedure_interaction_feedback_timer := 0.0
 var objective_first_procedure_done := false
 var objective_interaction_kinds := {}
+var procedure_completion_acknowledged := false
 var onboarding_marker_timer := 0.0
 var safe_combat_toasts: Array[Dictionary] = []
 var playtest_metrics := {}
@@ -476,15 +477,19 @@ func _try_procedure_interaction() -> void:
 	objective_interaction_kinds[kind] = int(objective_interaction_kinds.get(kind, 0)) + 1
 	last_procedure_interaction = "%s x%d" % [label, count]
 	var processing := float(target.get("interaction_processing", 64.0))
-	if count > 1:
+	var repeated := count > 1
+	if repeated:
 		processing *= 0.55
 	_add_audit_processing(processing, "procedure_%s" % kind, pos)
 	_register_attack_pose(pos - player_pos, 0.16)
 	_set_player_pose_override("cable_hook", 0.18)
 	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)
 	var done_text := _interaction_complete_label(kind)
-	effects.add_floater(pos + Vector2(0, -24), done_text, C.VITAMIN_YELLOW, 12)
-	_show_safe_combat_notice("%s  %s" % [done_text, _procedure_progress_chip()], C.VITAMIN_YELLOW)
+	var feedback_text := "%s 반복 55%%" % done_text if repeated else done_text
+	effects.add_floater(pos + Vector2(0, -24), feedback_text, C.VITAMIN_YELLOW, 12)
+	_show_safe_combat_notice("%s  %s" % [feedback_text, _procedure_progress_chip()], C.VITAMIN_YELLOW)
+	if _procedure_progress_count() >= 4 and not procedure_completion_acknowledged:
+		_acknowledge_procedure_completion(pos)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
@@ -1399,6 +1404,7 @@ func _reset_audit_run_tracking() -> void:
 	procedure_interaction_feedback_timer = 0.0
 	objective_first_procedure_done = false
 	objective_interaction_kinds = {}
+	procedure_completion_acknowledged = false
 	onboarding_marker_timer = 0.0
 
 func _update_audit_director(delta: float) -> void:
@@ -1959,6 +1965,20 @@ func _procedure_progress_count() -> int:
 func _procedure_progress_chip() -> String:
 	return "입주 절차 %d/4" % _procedure_progress_count()
 
+func _procedure_completion_reward_line() -> String:
+	return "절차 완료 기록: 4/4"
+
+func _procedure_completion_supply_hint() -> String:
+	return "다음 목표: 오픈하우스 체류로 수신태그 확보"
+
+func _acknowledge_procedure_completion(pos: Vector2) -> void:
+	procedure_completion_acknowledged = true
+	effects.add_status_ring(pos, C.NEON_RED, 58.0, 0.40)
+	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 42.0, 0.34)
+	effects.add_floater(player_pos + Vector2(0, -30), "절차 완료 - 압력 상승", C.VITAMIN_YELLOW, 13)
+	_add_audit_processing(36.0, "procedure_completion", pos)
+	_show_safe_combat_notice("절차 완료 - 압력 상승  %s" % _procedure_progress_chip(), C.VITAMIN_YELLOW)
+
 func _next_incomplete_procedure_kind() -> String:
 	for kind in ["checkin", "procedure_panel", "room_meal_access", "renewal_gate"]:
 		if not objective_interaction_kinds.has(kind):
@@ -2108,6 +2128,8 @@ func _objective_progress_label() -> String:
 
 func _objective_result_summary() -> String:
 	var parts: Array[String] = []
+	if procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4:
+		parts.append(_procedure_completion_reward_line())
 	parts.append("목표 단계: %s" % _objective_stage_label())
 	parts.append("절차 접촉: %d회 / %d종" % [procedure_interaction_total, objective_interaction_kinds.size()])
 	parts.append("감사 처리: %.0f / 통과 %d / 미달 %d / 압력 %d" % [audit_total_processing, audit_pass_count, audit_fail_count, audit_pressure_level])
@@ -2286,6 +2308,8 @@ func _session_progress_data() -> Dictionary:
 		"objective_stage": _objective_stage_label(),
 		"objective_progress": _objective_progress_label(),
 		"objective_result_summary": _objective_result_summary(),
+		"procedure_completion_acknowledged": procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4,
+		"supply_empty_hint": _procedure_completion_supply_hint() if procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4 else "",
 		"r01_sortie_goal_phrase": RoutePhraseResolver.r01_sortie_goal_phrase(r01_state),
 		"r01_sortie_goal_short_phrase": RoutePhraseResolver.r01_sortie_goal_short_phrase(r01_state),
 		"r01_outpost_phrase": RoutePhraseResolver.r01_outpost_phrase(r01_state),
@@ -2520,6 +2544,7 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"procedure_interaction_total": procedure_interaction_total,
 		"procedure_interaction_kinds": objective_interaction_kinds.size(),
 		"last_procedure_interaction": last_procedure_interaction,
+		"procedure_completion_bonus": procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4,
 		"card_contributions": _card_contribution_snapshot(),
 		"playtest_metrics": _playtest_metrics_snapshot(),
 	}

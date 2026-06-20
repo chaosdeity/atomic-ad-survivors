@@ -668,7 +668,8 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		supply_feedback_label.text = "선택 가능: 보급태그 배분 또는 정비대 강화"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
-		supply_feedback_label.text = "배분할 표/흔적 없음. 재출격 가능"
+		var empty_hint := str(session_progress.get("supply_empty_hint", ""))
+		supply_feedback_label.text = _compact_ui_text(empty_hint if empty_hint != "" else "배분할 표/흔적 없음. 재출격 가능", 44)
 	_ensure_supply_button_count(actions.size())
 	for i in range(supply_upgrade_buttons.size()):
 		var button := supply_upgrade_buttons[i]
@@ -789,6 +790,9 @@ func _on_supply_upgrade_button_pressed(index: int) -> void:
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	var max_lines := 6
 	var priority_prefixes := [
+		"절차 완료 기록:",
+		"목표 단계:",
+		"절차 처리:",
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
