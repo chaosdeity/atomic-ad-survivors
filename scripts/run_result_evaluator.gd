@@ -55,6 +55,7 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var procedure_interaction_total := int(result_data.get("procedure_interaction_total", 0))
 	var procedure_interaction_kinds := int(result_data.get("procedure_interaction_kinds", 0))
 	var last_procedure_interaction := String(result_data.get("last_procedure_interaction", ""))
+	var procedure_completion_bonus := bool(result_data.get("procedure_completion_bonus", false))
 	var playtest_metrics: Dictionary = result_data.get("playtest_metrics", {})
 	var open_house_processing_mult := _open_house_processing_mult(open_house_time)
 	var effective_kills := int(round(float(kills) * open_house_processing_mult))
@@ -113,6 +114,7 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		procedure_interaction_total,
 		procedure_interaction_kinds,
 		last_procedure_interaction,
+		procedure_completion_bonus,
 		anti_farm_reason,
 		boss_result_reason,
 		boss_hp_ratio
@@ -143,6 +145,7 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"objective_stage": objective_stage,
 		"procedure_interaction_total": procedure_interaction_total,
 		"procedure_interaction_kinds": procedure_interaction_kinds,
+		"procedure_completion_bonus": procedure_completion_bonus,
 		"playtest_metrics": playtest_metrics,
 		"playtest_score": int(playtest_metrics.get("first_5_score", 0)),
 		"playtest_target_count": int(playtest_metrics.get("first_5_target_count", 7)),
@@ -412,11 +415,14 @@ static func _reward_lines(
 	procedure_interaction_total: int,
 	procedure_interaction_kinds: int,
 	last_procedure_interaction: String,
+	procedure_completion_bonus: bool,
 	anti_farm_reason: String,
 	boss_result_reason: String,
 	boss_hp_ratio: float
 ) -> Array[String]:
 	var lines: Array[String] = []
+	if procedure_completion_bonus:
+		lines.append("절차 완료 기록: 4/4")
 	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	if objective_result_summary != "":
 		lines.append(objective_result_summary)
