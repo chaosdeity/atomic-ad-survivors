@@ -52,9 +52,9 @@ const BOSS_SIGNAL_LABELS := {
 }
 const TERMINAL_STATES := ["game_over", "victory", "recalled", "boss_victory"]
 const AUDIT_SEGMENTS := [
-	{"time": 30.0, "name": "정상 고객 예비 감사", "threshold": 120.0, "pass": "첫 기준 통과", "fail": "검문 로봇 증원"},
-	{"time": 60.0, "name": "전단 확산 감사", "threshold": 260.0, "pass": "태그 후보 판정 안정", "fail": "적 밀도 상승"},
-	{"time": 90.0, "name": "오픈하우스 방문 감사", "threshold": 520.0, "pass": "수신태그 후보 노출", "fail": "오픈하우스 압력 상승"},
+	{"time": 30.0, "name": "정상 고객 예비 감사", "threshold": 110.0, "pass": "첫 기준 통과", "fail": "검문 로봇 증원"},
+	{"time": 60.0, "name": "전단 확산 감사", "threshold": 230.0, "pass": "태그 후보 판정 안정", "fail": "적 밀도 상승"},
+	{"time": 90.0, "name": "오픈하우스 방문 감사", "threshold": 480.0, "pass": "수신태그 후보 노출", "fail": "오픈하우스 압력 상승"},
 	{"time": 120.0, "name": "가족 적합성 감사", "threshold": 1000.0, "pass": "카드 시너지 안정", "fail": "빠른 검수 로봇 등장"},
 	{"time": 150.0, "name": "정산 예비 감사", "threshold": 1800.0, "pass": "후보 승인률 보정", "fail": "후보 보류율 상승"},
 	{"time": 180.0, "name": "모델하우스 신호 감사", "threshold": 3200.0, "pass": "신호 위치 표시", "fail": "회수선 안정도 감소"},
@@ -118,6 +118,9 @@ var procedure_interaction_feedback_timer := 0.0
 var objective_first_procedure_done := false
 var objective_interaction_kinds := {}
 var procedure_completion_acknowledged := false
+var procedure_completion_pressure_stage := 0
+var procedure_completion_pressure_timer := -1.0
+var procedure_repeat_penalty_count := 0
 var onboarding_marker_timer := 0.0
 var safe_combat_toasts: Array[Dictionary] = []
 var playtest_metrics := {}
@@ -220,6 +223,7 @@ func _process(delta: float) -> void:
 	_update_r01_zone(delta)
 	_update_onboarding_marker(delta)
 	_update_audit_director(delta)
+	_update_procedure_completion_pressure(delta)
 	_update_playtest_runtime_metrics()
 	_update_first_recall_event(delta)
 	_update_preboss_signal_events()
@@ -480,6 +484,7 @@ func _try_procedure_interaction() -> void:
 	var repeated := count > 1
 	if repeated:
 		processing *= 0.55
+		procedure_repeat_penalty_count += 1
 	_add_audit_processing(processing, "procedure_%s" % kind, pos)
 	_register_attack_pose(pos - player_pos, 0.16)
 	_set_player_pose_override("cable_hook", 0.18)
@@ -1405,6 +1410,9 @@ func _reset_audit_run_tracking() -> void:
 	objective_first_procedure_done = false
 	objective_interaction_kinds = {}
 	procedure_completion_acknowledged = false
+	procedure_completion_pressure_stage = 0
+	procedure_completion_pressure_timer = -1.0
+	procedure_repeat_penalty_count = 0
 	onboarding_marker_timer = 0.0
 
 func _update_audit_director(delta: float) -> void:
@@ -1971,13 +1979,44 @@ func _procedure_completion_reward_line() -> String:
 func _procedure_completion_supply_hint() -> String:
 	return "다음 목표: 오픈하우스 체류로 수신태그 확보"
 
+func _procedure_completion_candidate_line() -> String:
+	return "절차 보상 후보: 보급소 정산 우선"
+
+func _procedure_repeat_decision_line() -> String:
+	if procedure_repeat_penalty_count <= 0:
+		return ""
+	return "반복 감산: %d회 / 다음 장치 우선" % procedure_repeat_penalty_count
+
 func _acknowledge_procedure_completion(pos: Vector2) -> void:
 	procedure_completion_acknowledged = true
+	procedure_completion_pressure_stage = 0
+	procedure_completion_pressure_timer = elapsed + 8.0
 	effects.add_status_ring(pos, C.NEON_RED, 58.0, 0.40)
 	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 42.0, 0.34)
 	effects.add_floater(player_pos + Vector2(0, -30), "절차 완료 - 압력 상승", C.VITAMIN_YELLOW, 13)
 	_add_audit_processing(36.0, "procedure_completion", pos)
 	_show_safe_combat_notice("절차 완료 - 압력 상승  %s" % _procedure_progress_chip(), C.VITAMIN_YELLOW)
+
+func _update_procedure_completion_pressure(_delta: float) -> void:
+	if not procedure_completion_acknowledged or procedure_completion_pressure_stage >= 2:
+		return
+	if match_state != "playing" or not _first_recall_active():
+		return
+	if procedure_completion_pressure_timer < 0.0 or elapsed < procedure_completion_pressure_timer:
+		return
+	if procedure_completion_pressure_stage == 0:
+		procedure_completion_pressure_stage = 1
+		procedure_completion_pressure_timer = elapsed + 12.0
+		audit_pressure_level = maxi(audit_pressure_level, 1)
+		_add_audit_processing(24.0, "procedure_pressure_ramp", player_pos)
+		effects.add_status_ring(player_pos, C.NEON_RED, 64.0, 0.38)
+		_show_safe_combat_notice("등록 압력 재상승  회수선 유지", C.NEON_RED)
+		return
+	procedure_completion_pressure_stage = 2
+	procedure_completion_pressure_timer = -1.0
+	_add_audit_processing(18.0, "procedure_pressure_ramp", player_pos)
+	effects.add_status_ring(player_pos, C.VITAMIN_YELLOW, 52.0, 0.34)
+	_show_safe_combat_notice("회수 임계 접근  보급소 신호 대기", C.VITAMIN_YELLOW)
 
 func _next_incomplete_procedure_kind() -> String:
 	for kind in ["checkin", "procedure_panel", "room_meal_access", "renewal_gate"]:
@@ -2130,9 +2169,13 @@ func _objective_result_summary() -> String:
 	var parts: Array[String] = []
 	if procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4:
 		parts.append(_procedure_completion_reward_line())
+		parts.append(_procedure_completion_candidate_line())
 	parts.append("목표 단계: %s" % _objective_stage_label())
 	parts.append("절차 접촉: %d회 / %d종" % [procedure_interaction_total, objective_interaction_kinds.size()])
 	parts.append("감사 처리: %.0f / 통과 %d / 미달 %d / 압력 %d" % [audit_total_processing, audit_pass_count, audit_fail_count, audit_pressure_level])
+	var repeat_line := _procedure_repeat_decision_line()
+	if repeat_line != "":
+		parts.append(repeat_line)
 	if last_procedure_interaction != "" and last_procedure_interaction != "대기":
 		parts.append("마지막 절차: %s" % last_procedure_interaction)
 	return " | ".join(parts)
@@ -2545,6 +2588,8 @@ func _run_result_input(result_state: String) -> Dictionary:
 		"procedure_interaction_kinds": objective_interaction_kinds.size(),
 		"last_procedure_interaction": last_procedure_interaction,
 		"procedure_completion_bonus": procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4,
+		"procedure_repeat_penalty_count": procedure_repeat_penalty_count,
+		"procedure_completion_pressure_stage": procedure_completion_pressure_stage,
 		"card_contributions": _card_contribution_snapshot(),
 		"playtest_metrics": _playtest_metrics_snapshot(),
 	}

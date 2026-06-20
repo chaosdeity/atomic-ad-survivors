@@ -56,6 +56,8 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 	var procedure_interaction_kinds := int(result_data.get("procedure_interaction_kinds", 0))
 	var last_procedure_interaction := String(result_data.get("last_procedure_interaction", ""))
 	var procedure_completion_bonus := bool(result_data.get("procedure_completion_bonus", false))
+	var procedure_repeat_penalty_count := int(result_data.get("procedure_repeat_penalty_count", 0))
+	var procedure_completion_pressure_stage := int(result_data.get("procedure_completion_pressure_stage", 0))
 	var playtest_metrics: Dictionary = result_data.get("playtest_metrics", {})
 	var open_house_processing_mult := _open_house_processing_mult(open_house_time)
 	var effective_kills := int(round(float(kills) * open_house_processing_mult))
@@ -115,6 +117,8 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		procedure_interaction_kinds,
 		last_procedure_interaction,
 		procedure_completion_bonus,
+		procedure_repeat_penalty_count,
+		procedure_completion_pressure_stage,
 		anti_farm_reason,
 		boss_result_reason,
 		boss_hp_ratio
@@ -146,6 +150,8 @@ static func evaluate_run_result(result_data: Dictionary) -> Dictionary:
 		"procedure_interaction_total": procedure_interaction_total,
 		"procedure_interaction_kinds": procedure_interaction_kinds,
 		"procedure_completion_bonus": procedure_completion_bonus,
+		"procedure_repeat_penalty_count": procedure_repeat_penalty_count,
+		"procedure_completion_pressure_stage": procedure_completion_pressure_stage,
 		"playtest_metrics": playtest_metrics,
 		"playtest_score": int(playtest_metrics.get("first_5_score", 0)),
 		"playtest_target_count": int(playtest_metrics.get("first_5_target_count", 7)),
@@ -416,6 +422,8 @@ static func _reward_lines(
 	procedure_interaction_kinds: int,
 	last_procedure_interaction: String,
 	procedure_completion_bonus: bool,
+	procedure_repeat_penalty_count: int,
+	procedure_completion_pressure_stage: int,
 	anti_farm_reason: String,
 	boss_result_reason: String,
 	boss_hp_ratio: float
@@ -423,6 +431,9 @@ static func _reward_lines(
 	var lines: Array[String] = []
 	if procedure_completion_bonus:
 		lines.append("절차 완료 기록: 4/4")
+		lines.append("절차 보상 후보: 보급소 정산 우선")
+		if procedure_completion_pressure_stage > 0:
+			lines.append("압력 대응 기록: 회수선 유지 %d단계" % procedure_completion_pressure_stage)
 	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	if objective_result_summary != "":
 		lines.append(objective_result_summary)
@@ -432,6 +443,8 @@ static func _reward_lines(
 		lines.append("절차 처리: %d회 / %d종" % [procedure_interaction_total, procedure_interaction_kinds])
 	if last_procedure_interaction != "" and last_procedure_interaction != "대기":
 		lines.append("마지막 절차: %s" % last_procedure_interaction)
+	if procedure_repeat_penalty_count > 0:
+		lines.append("반복 감산: %d회 - 다음 장치 우선" % procedure_repeat_penalty_count)
 	if anti_farm_reason != "":
 		lines.append("일반 보상 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:

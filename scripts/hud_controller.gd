@@ -791,8 +791,11 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 	var max_lines := 6
 	var priority_prefixes := [
 		"절차 완료 기록:",
+		"절차 보상 후보:",
+		"압력 대응 기록:",
 		"목표 단계:",
 		"절차 처리:",
+		"반복 감산:",
 		"플레이테스트 계측:",
 		"확정 태그:",
 		"태그 후보:",
