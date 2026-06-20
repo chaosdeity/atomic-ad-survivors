@@ -592,7 +592,7 @@ func show_result_screen(result_data: Dictionary, chosen_callback: Callable) -> v
 	prompt_label.text = str(result_data.get("prompt", "스페이스 / 클릭으로 다시 시작"))
 	restart_button.text = str(result_data.get("button_text", "스페이스 / 클릭으로 다시 시작"))
 	result_label.add_theme_font_size_override("font_size", FONT_TINY)
-	result_label.text = "%s\n생존 %03d/%03d | Lv%d | 처치 %d\n카드 %d | 적 최고/최종 %d/%d%s" % [
+	result_label.text = "%s\n생존 %03d/%03d | Lv%d K%d\n카드 %d | 적 %d/%d%s" % [
 		result_data["result"],
 		int(result_data["survival_time"]),
 		int(C.MATCH_DURATION),
@@ -637,14 +637,13 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	reaction_summary = _compact_ui_text(reaction_summary, 24)
 	board_text = _compact_ui_text(board_text, 30)
 	var objective_short := _compact_ui_text(str(session_progress.get("next_objective_short", session_progress.get("next_objective", "재출격"))), 22)
+	var next_run_hint := _compact_ui_text(str(session_progress.get("next_run_hint", "")), 34)
 	clause_short = _compact_ui_text(clause_short, 22)
-	supply_label.text = "침묵 보급소\n%s\n%s\n반응: %s\n게시판: %s\n목표: %s\n약관: %s" % [
+	supply_label.text = "침묵 보급소\n%s\n목표: %s\n%s\n반응: %s" % [
 		_supply_currency_text(meta_progression),
-		allocation_summary,
-		reaction_summary,
-		board_text,
 		objective_short,
-		clause_short,
+		next_run_hint if next_run_hint != "" else "게시판: %s" % board_text,
+		reaction_summary if reaction_summary != "" else clause_short,
 	]
 	var event_lines := Array(session_progress.get("outpost_event_log", []))
 	var event_text := str(session_progress.get("r01_outpost_phrase", "보급소 기록 대기"))
@@ -657,15 +656,15 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 	var actions: Array[Dictionary] = supply_actions
 	if actions.is_empty():
 		actions = _fallback_supply_upgrade_actions(meta_progression)
-	supply_scroll_hint_label.text = _compact_supply_hint(clause_preview, next_change, boss_hint)
+	supply_scroll_hint_label.text = _compact_supply_hint(clause_preview, next_change, boss_hint, next_run_hint)
 	supply_feedback_label.visible = true
 	if applied_upgrade_name != "":
 		supply_feedback_label.add_theme_color_override("font_color", C.TOXIC_GREEN)
 		var last_reaction := str(session_progress.get("last_supply_reaction", ""))
-		supply_feedback_label.text = _compact_ui_text("적용 완료: %s" % applied_upgrade_name if last_reaction == "" else "적용 완료: %s - %s" % [applied_upgrade_name, last_reaction], 44)
+		supply_feedback_label.text = _compact_ui_text("적용: %s -> 다음 런 반영" % applied_upgrade_name if last_reaction == "" else "적용: %s -> %s" % [applied_upgrade_name, last_reaction], 44)
 	elif _has_usable_supply_action(actions):
 		supply_feedback_label.add_theme_color_override("font_color", C.INK)
-		supply_feedback_label.text = "선택 가능: 보급태그 배분 또는 정비대 강화"
+		supply_feedback_label.text = "선택 1개 -> 다음 런 변화"
 	else:
 		supply_feedback_label.add_theme_color_override("font_color", Color("#6b5b4a"))
 		var empty_hint := str(session_progress.get("supply_empty_hint", ""))
@@ -789,15 +788,20 @@ func _on_supply_upgrade_button_pressed(index: int) -> void:
 		supply_upgrade_callback.call(index)
 
 func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
-	var max_lines := 6
+	var max_lines := 4
 	var priority_prefixes := [
 		"절차 완료 기록:",
 		"절차 보상 후보:",
 		"압력 대응 기록:",
-		"목표 단계:",
+		"압력 대응:",
+		"목표:",
+		"정산:",
 		"절차 처리:",
+		"절차 ",
 		"반복 감산:",
-		"플레이테스트 계측:",
+		"보상 후보:",
+		"보상 잠김:",
+		"보스 후보:",
 		"확정 태그:",
 		"태그 후보:",
 		"후보 정산:",
@@ -806,10 +810,11 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 		"다음 출격 변화:",
 		"신호 단서 판정:",
 		"신호 추적 진행도:",
+		"플레이테스트 계측:",
 	]
 	var chosen: Array[String] = []
 	for prefix in priority_prefixes:
-		if chosen.size() >= max_lines - 1:
+		if chosen.size() >= max_lines:
 			break
 		for raw_line in progress_lines:
 			var line := str(raw_line)
@@ -817,14 +822,11 @@ func _compact_result_progress_lines(progress_lines: Array) -> Array[String]:
 				_append_unique_compact_line(chosen, line, 48)
 				break
 	for raw_line in progress_lines:
-		if chosen.size() >= max_lines - 1:
+		if chosen.size() >= max_lines:
 			break
 		var line := str(raw_line)
 		if line.begins_with("정산 사유:") or line.begins_with("카드 기여:") or line.begins_with("광고 감사 결과:"):
 			_append_unique_compact_line(chosen, line, 48)
-	var hidden_count := progress_lines.size() - chosen.size()
-	if hidden_count > 0 and chosen.size() < max_lines:
-		chosen.append("정산 기록 %d개 더 있음" % hidden_count)
 	return chosen
 
 func _append_unique_compact_line(lines: Array[String], line: String, max_chars: int) -> void:
@@ -833,8 +835,10 @@ func _append_unique_compact_line(lines: Array[String], line: String, max_chars: 
 		return
 	lines.append(compact)
 
-func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint: String) -> String:
+func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint: String, next_run_hint: String = "") -> String:
 	var parts: Array[String] = []
+	if next_run_hint != "":
+		parts.append(next_run_hint)
 	if clause_preview != "":
 		parts.append("약관 %s" % clause_preview)
 	if next_change != "" and next_change != "배분 효과 없음":
@@ -846,9 +850,9 @@ func _compact_supply_hint(clause_preview: String, next_change: String, boss_hint
 func _compact_supply_action_text(action: Dictionary, index: int, buy_marker: String, state_text: String, level_text: String, input_hint: String, extra: String) -> String:
 	var name := _compact_ui_text(str(action.get("name", "")), 14)
 	var cost := _compact_ui_text(str(action.get("cost_text", "")), 12)
-	var effect := _compact_ui_text(str(action.get("effect_text", "")), 24)
+	var effect := _compact_ui_text(str(action.get("effect_text", "")), 18)
 	var extra_text := _compact_ui_text(extra.strip_edges(), 18)
-	var text := "%s%d [%s] %s | %s | %s | %s | %s" % [
+	var text := "%s%d [%s] %s | %s %s | %s | %s" % [
 		buy_marker,
 		index + 1,
 		str(action.get("prefix", "보급")),

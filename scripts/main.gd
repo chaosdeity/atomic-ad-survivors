@@ -2041,6 +2041,19 @@ func _procedure_kind_action(kind: String) -> String:
 		_:
 			return "E: 표식 장치 확인"
 
+func _procedure_kind_short_label(kind: String) -> String:
+	match kind:
+		"checkin":
+			return "접수 장치"
+		"procedure_panel":
+			return "상담 패널"
+		"room_meal_access":
+			return "방/밥 슬롯"
+		"renewal_gate":
+			return "갱신 게이트"
+		_:
+			return "표식 장치"
+
 func _interaction_complete_label(kind: String) -> String:
 	var next_count := _procedure_progress_count()
 	match kind:
@@ -2071,11 +2084,13 @@ func _objective_hint_label() -> String:
 	if sortie_index <= 1 and not first_recall_done:
 		if _procedure_progress_count() >= 4:
 			return "압력이 오르면 버티기"
+		var target_kind := _next_incomplete_procedure_kind()
+		var target_label := _procedure_kind_short_label(target_kind)
 		if elapsed <= 10.0:
-			return "표식 장치로 이동"
+			return "다음: %s" % target_label
 		if procedure_interaction_total <= 0:
-			return "가까운 표식 장치"
-		return "다음 표식 장치"
+			return "다음: %s" % target_label
+		return "다음: %s / 표식 따라 이동" % target_label
 	return ""
 
 func _objective_hud_label() -> String:
@@ -2174,14 +2189,13 @@ func _objective_result_summary() -> String:
 	if procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4:
 		parts.append(_procedure_completion_reward_line())
 		parts.append(_procedure_completion_candidate_line())
-	parts.append("목표 단계: %s" % _objective_stage_label())
-	parts.append("절차 접촉: %d회 / %d종" % [procedure_interaction_total, objective_interaction_kinds.size()])
-	parts.append("감사 처리: %.0f / 통과 %d / 미달 %d / 압력 %d" % [audit_total_processing, audit_pass_count, audit_fail_count, audit_pressure_level])
+	parts.append("목표: %s" % _objective_stage_label())
+	parts.append("절차 %d회/%d종 | 감사 %.0f | 압%d" % [procedure_interaction_total, objective_interaction_kinds.size(), audit_total_processing, audit_pressure_level])
 	var repeat_line := _procedure_repeat_decision_line()
 	if repeat_line != "":
 		parts.append(repeat_line)
 	if last_procedure_interaction != "" and last_procedure_interaction != "대기":
-		parts.append("마지막 절차: %s" % last_procedure_interaction)
+		parts.append("마지막: %s" % last_procedure_interaction)
 	return " | ".join(parts)
 
 func _boss_signal_label() -> String:
@@ -2373,6 +2387,7 @@ func _session_progress_data() -> Dictionary:
 		"last_outpost_event": meta_progression.last_outpost_event_line(),
 		"last_outpost_npc_id": meta_progression.last_outpost_focus_npc_id(),
 		"last_supply_reaction": last_supply_reaction_line,
+		"next_run_hint": _next_run_hint_line(),
 		"s2_reward_choice": s2_reward_choice_selected,
 		"s2_reward_choice_line": s2_reward_choice_line,
 		"last_playtest_summary": _last_playtest_metrics_summary(),
@@ -2384,6 +2399,20 @@ func _session_progress_data() -> Dictionary:
 		"r01_contamination_summary": str(r01_state.get("r01_contamination_summary", meta_progression.r01_contamination_summary())),
 		"r01_contamination_total": int(r01_state.get("r01_contamination_total", 0)),
 	}
+
+func _next_run_hint_line() -> String:
+	if last_supply_reaction_line != "":
+		return "다음 런: %s" % last_supply_reaction_line
+	var next_change := meta_progression.next_run_change_summary()
+	if next_change != "" and next_change != "배분 효과 없음":
+		return "다음 런 변화: %s" % next_change
+	if s2_reward_choice_selected == "route_assist":
+		return "다음 런: 목표 표시 강화"
+	if s2_reward_choice_selected == "settlement_focus":
+		return "다음 런: 정산 보상 고정"
+	if procedure_completion_acknowledged or objective_interaction_kinds.size() >= 4:
+		return "다음 런: 보급 선택 반영"
+	return "다음 런: 표식 따라 재출격"
 
 func _r01_phrase_state() -> Dictionary:
 	var r01_state := meta_progression.r01_state_summary()
