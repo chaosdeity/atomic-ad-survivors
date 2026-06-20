@@ -2717,6 +2717,10 @@ func _apply_supply_choice(index: int) -> void:
 			applied = _apply_s2_reward_choice(String(action.get("choice_id", "")))
 			if applied:
 				last_supply_reaction_line = s2_reward_choice_line
+		"recommended_upgrade":
+			applied = _apply_s3_recommended_upgrade(action)
+			if applied:
+				last_supply_reaction_line = String(action.get("reason_text", "추천 보급 적용"))
 		"allocation":
 			var allocation_id := String(action.get("allocation_id", ""))
 			applied = meta_progression.allocate_ticket(allocation_id)
@@ -2754,6 +2758,9 @@ func _build_supply_actions() -> Array[Dictionary]:
 			"다음 출격 목표 안내 강화",
 			2
 		))
+	var s3_recommendation := _s3_recommended_upgrade_action()
+	if not s3_recommendation.is_empty():
+		actions.append(s3_recommendation)
 	actions.append(_allocation_action(
 		MetaProgression.ALLOCATION_HUMAN_ZONE,
 		"식량태그 -> 인간 구역",
@@ -2858,6 +2865,104 @@ func _s2_reward_choice_action(choice_id: String, name: String, effect_text: Stri
 		"applied": false,
 		"prefix": "선택",
 		"extra": "결과 보상",
+	}
+
+func _s3_recommended_upgrade_action() -> Dictionary:
+	if s2_reward_choice_selected == "":
+		return {}
+	match s2_reward_choice_selected:
+		"settlement_focus":
+			return _s3_upgrade_recommendation(
+				["recall_growth_routine", "field_learning_notes", "flyer_salvage_route", "decode_ad_afterimage"],
+				"정산 우선 후속",
+				"절차 보상을 다음 런 성장으로 연결"
+			)
+		"route_assist":
+			if meta_progression.ticket_count(MetaProgression.TICKET_SIGNAL) > 0:
+				return _s3_allocation_recommendation(
+					MetaProgression.ALLOCATION_SIGNAL_BOARD,
+					"추천: 출격 게시판",
+					"수신태그로 다음 목표 표시 강화",
+					"동선 보정 후속"
+				)
+			return _s3_upgrade_recommendation(
+				["extended_auto_sights", "duplicate_signal_sorter", "wide_charge_contact"],
+				"동선 보정 후속",
+				"다음 목표 접근 전투 안정화"
+			)
+		_:
+			return {}
+
+func _apply_s3_recommended_upgrade(action: Dictionary) -> bool:
+	match String(action.get("target_kind", "")):
+		"allocation":
+			return meta_progression.allocate_ticket(String(action.get("allocation_id", "")))
+		"upgrade":
+			return meta_progression.buy(String(action.get("upgrade_id", "")))
+		_:
+			return false
+
+func _s3_upgrade_recommendation(upgrade_ids: Array[String], reason_text: String, effect_hint: String) -> Dictionary:
+	var fallback := {}
+	for upgrade_id in upgrade_ids:
+		var upgrade := meta_progression.upgrade_by_id(upgrade_id)
+		if upgrade.is_empty():
+			continue
+		var level := meta_progression.upgrade_level(upgrade_id)
+		var max_level := int(upgrade.get("max_level", 1))
+		if level >= max_level:
+			continue
+		var can_use := meta_progression.can_buy(upgrade_id)
+		if can_use or fallback.is_empty():
+			fallback = _s3_recommended_upgrade_row(upgrade, can_use, reason_text, effect_hint)
+		if can_use:
+			return fallback
+	return fallback
+
+func _s3_recommended_upgrade_row(upgrade: Dictionary, can_use: bool, reason_text: String, effect_hint: String) -> Dictionary:
+	var upgrade_id := String(upgrade["id"])
+	var level := meta_progression.upgrade_level(upgrade_id)
+	var max_level := int(upgrade.get("max_level", 1))
+	return {
+		"kind": "recommended_upgrade",
+		"target_kind": "upgrade",
+		"upgrade_id": upgrade_id,
+		"name": "추천: %s" % String(upgrade["name"]),
+		"state": "적용 가능" if can_use else "보류",
+		"level": level,
+		"max_level": max_level,
+		"effect_text": effect_hint,
+		"cost_text": "%d %s" % [int(upgrade["cost"]), str(upgrade.get("trace_label", "전단"))],
+		"input_hint": "키1/클릭",
+		"can_use": can_use,
+		"locked": not meta_progression.is_unlocked(upgrade_id),
+		"applied": false,
+		"prefix": "추천",
+		"extra": reason_text,
+		"reason_text": reason_text,
+	}
+
+func _s3_allocation_recommendation(allocation_id: String, name: String, effect_hint: String, reason_text: String) -> Dictionary:
+	var ticket_id := MetaProgression.TICKET_SIGNAL
+	var count := meta_progression.ticket_count(ticket_id)
+	var can_use := count > 0
+	return {
+		"kind": "recommended_upgrade",
+		"target_kind": "allocation",
+		"allocation_id": allocation_id,
+		"name": name,
+		"state": "적용 가능" if can_use else "보류",
+		"level": meta_progression.allocation_count(allocation_id),
+		"max_level": 99,
+		"effect_text": effect_hint,
+		"cost_text": "수신태그 1 / 보유 %d" % count,
+		"input_hint": "키1/클릭",
+		"can_use": can_use,
+		"locked": false,
+		"applied": false,
+		"prefix": "추천",
+		"extra": reason_text,
+		"reason_text": reason_text,
 	}
 
 func _allocation_action(allocation_id: String, name: String, effect_text: String, ticket_id: String, cost_text: String, input_number: int) -> Dictionary:
