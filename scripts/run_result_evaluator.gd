@@ -431,10 +431,10 @@ static func _reward_lines(
 	var lines: Array[String] = []
 	if procedure_completion_bonus:
 		lines.append("절차 완료 기록: 4/4")
-		lines.append("절차 보상 후보: 보급소 정산 우선")
+		lines.append("절차 보상 후보: 보급소 선택 열림")
 		if procedure_completion_pressure_stage > 0:
-			lines.append("압력 대응 기록: 회수선 유지 %d단계" % procedure_completion_pressure_stage)
-	lines.append("런 정산 기준: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
+			lines.append("압력 대응: 회수선 %d단계" % procedure_completion_pressure_stage)
+	lines.append("정산: %s" % String(TIER_LABELS.get(reward_tier, reward_tier)))
 	if objective_result_summary != "":
 		lines.append(objective_result_summary)
 	elif objective_stage != "":
@@ -446,35 +446,35 @@ static func _reward_lines(
 	if procedure_repeat_penalty_count > 0:
 		lines.append("반복 감산: %d회 - 다음 장치 우선" % procedure_repeat_penalty_count)
 	if anti_farm_reason != "":
-		lines.append("일반 보상 잠김: %s" % anti_farm_reason)
+		lines.append("보상 잠김: %s" % anti_farm_reason)
 	elif general_reward_allowed:
-		lines.append("일반 보상 후보(미지급): 찢어진 광고 전단 +%d" % torn_ad_flyer_reward)
+		lines.append("보상 후보: 전단 +%d" % torn_ad_flyer_reward)
 	if campaign_core_fragment_reward > 0:
-		lines.append("보스 성과 후보(미지급): 캠페인 코어 파편 +%d" % campaign_core_fragment_reward)
+		lines.append("보스 후보: 코어 +%d" % campaign_core_fragment_reward)
 	for line in _ration_ticket_lines(ration_settlement):
 		lines.append(line)
 	if boss_result_reason == "boss_recall":
 		lines.append("스마일 홈 HP 성과: 잔여 %d%%" % int(round(boss_hp_ratio * 100.0)))
 	if audit_pass_count > 0 or audit_fail_count > 0:
-		lines.append("광고 감사 결과: 통과 %d / 미달 %d / 총 처리량 %.0f" % [audit_pass_count, audit_fail_count, audit_total_processing])
+		lines.append("감사: 통과 %d / 미달 %d / 처리 %.0f" % [audit_pass_count, audit_fail_count, audit_total_processing])
 	if audit_pressure_level > 0:
-		lines.append("감사 압력 잔여: +%d단계" % audit_pressure_level)
+		lines.append("압력 잔여: +%d" % audit_pressure_level)
 	if audit_last_result != "" and audit_last_result != "대기":
-		lines.append("마지막 감사: %s" % audit_last_result)
+		lines.append("최근 감사: %s" % audit_last_result)
 	for line in _card_contribution_lines(card_contributions, card_counts, ration_settlement, open_house_time, audit_pass_count, terms_failure_risk):
 		lines.append(line)
 	if open_house_processing_mult > 1.0:
-		lines.append("오픈하우스 처리량 보정: x%.2f (처치 %d -> %d 판정)" % [open_house_processing_mult, kills, effective_kills])
+		lines.append("오픈하우스 보정: x%.2f (K%d->%d)" % [open_house_processing_mult, kills, effective_kills])
 	if open_house_signal_stage >= 3 or open_house_time >= 75.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 모델하우스 신호가 선명해졌습니다." % open_house_time)
+		lines.append("오픈하우스 %.0f초: 모델하우스 신호+" % open_house_time)
 	elif open_house_signal_stage >= 2 or open_house_time >= 50.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 수신태그 승인 보정이 붙었습니다." % open_house_time)
+		lines.append("오픈하우스 %.0f초: 수신태그 보정+" % open_house_time)
 	elif open_house_signal_stage >= 1 or open_house_time >= 25.0:
-		lines.append("오픈하우스 체류 정산: %.0f초 - 수신태그 후보가 올라왔습니다." % open_house_time)
+		lines.append("오픈하우스 %.0f초: 수신태그 후보" % open_house_time)
 	if drain_pocket_time >= 20.0:
-		lines.append("지역 약관: 배수로 침묵 주머니 %.0f초 - 수신태그 후보가 조용히 올라왔습니다." % drain_pocket_time)
+		lines.append("배수로 %.0f초: 수신태그 후보" % drain_pocket_time)
 	if fake_return_time >= 20.0:
-		lines.append("지역 약관: 끊긴 광고 산책로 %.0f초 - 식량태그 후보와 오염 위험이 함께 생겼습니다." % fake_return_time)
+		lines.append("산책로 %.0f초: 식량 후보/오염" % fake_return_time)
 	if not signal_clue_candidates.is_empty():
 		lines.append("신호 단서 판정: %s" % ", ".join(signal_clue_candidates))
 	return lines
