@@ -6,15 +6,18 @@ Base HEAD: `48114607e7ca76721befea874cd0a791e8eee995`
 
 ## Final Verdict
 
-PASS / commit-ready after approval.
+PASS_WITH_NOTES / commit-ready after approval.
 
 Core loop S2 reward choice: 20% -> 75% implementation + QA.
+
+Note: the target ship batch failed when only the original five-file expected scope was copied. `scripts/run_result_evaluator.gd` was required as a minimal dependency because it carries `procedure_completion_bonus` and related S1/S2 result fields into the supply/reward choice state.
 
 ## Changed File List
 
 Expected implementation files:
 - `scripts/main.gd`
 - `scripts/hud_controller.gd`
+- `scripts/run_result_evaluator.gd` (target dependency discovered during ship batch QA)
 
 Expected report files:
 - `CORE_LOOP_S2_REWARD_CHOICE_IMPLEMENTATION_REPORT.md`
@@ -58,7 +61,7 @@ QA output:
 ## Static Checks
 
 PASS:
-- `git diff --check -- scripts/main.gd scripts/hud_controller.gd`
+- `git diff --check -- scripts/main.gd scripts/hud_controller.gd scripts/run_result_evaluator.gd CORE_LOOP_S2_REWARD_CHOICE_IMPLEMENTATION_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_QA_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_FINAL_DIFF_AUDIT.md`
 - Staged diff: 0
 
 Note:
@@ -69,13 +72,13 @@ Note:
 Use exact stage only after approval:
 
 ```powershell
-git add -- scripts/main.gd scripts/hud_controller.gd CORE_LOOP_S2_REWARD_CHOICE_IMPLEMENTATION_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_QA_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_FINAL_DIFF_AUDIT.md
+git add -- scripts/main.gd scripts/hud_controller.gd scripts/run_result_evaluator.gd CORE_LOOP_S2_REWARD_CHOICE_IMPLEMENTATION_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_QA_REPORT.md CORE_LOOP_S2_REWARD_CHOICE_FINAL_DIFF_AUDIT.md
 ```
 
 Suggested commit message:
 
 ```text
-Add core loop S2 reward choice
+Implement S2 reward choice flow
 ```
 
 Suggested PR title:
