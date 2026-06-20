@@ -117,6 +117,7 @@ var last_procedure_interaction := "대기"
 var procedure_interaction_feedback_timer := 0.0
 var objective_first_procedure_done := false
 var objective_interaction_kinds := {}
+var onboarding_marker_timer := 0.0
 var safe_combat_toasts: Array[Dictionary] = []
 var playtest_metrics := {}
 
@@ -216,6 +217,7 @@ func _process(delta: float) -> void:
 
 	elapsed += delta
 	_update_r01_zone(delta)
+	_update_onboarding_marker(delta)
 	_update_audit_director(delta)
 	_update_playtest_runtime_metrics()
 	_update_first_recall_event(delta)
@@ -466,7 +468,6 @@ func _try_procedure_interaction() -> void:
 	var pos := Vector2(target.get("pos", player_pos))
 	var kind := String(target.get("interaction_kind", "procedure"))
 	var label := String(target.get("interaction_label", "절차"))
-	var result := String(target.get("interaction_result", label))
 	var key := "%s/%s" % [String(target.get("zone_id", "")), kind]
 	var count := int(procedure_interaction_counts.get(key, 0)) + 1
 	procedure_interaction_counts[key] = count
@@ -481,9 +482,9 @@ func _try_procedure_interaction() -> void:
 	_register_attack_pose(pos - player_pos, 0.16)
 	_set_player_pose_override("cable_hook", 0.18)
 	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 38.0, 0.34)
-	var progress := _objective_progress_label()
-	effects.add_floater(pos + Vector2(0, -24), "%s / %s" % [result, progress], C.VITAMIN_YELLOW, 12)
-	_show_safe_combat_notice("%s 처리: %s" % [label, progress], C.VITAMIN_YELLOW)
+	var done_text := _interaction_complete_label(kind)
+	effects.add_floater(pos + Vector2(0, -24), done_text, C.VITAMIN_YELLOW, 12)
+	_show_safe_combat_notice("%s  %s" % [done_text, _procedure_progress_chip()], C.VITAMIN_YELLOW)
 
 func _update_enemies(delta: float) -> void:
 	var old_positions: Array[Vector2] = []
@@ -1398,6 +1399,7 @@ func _reset_audit_run_tracking() -> void:
 	procedure_interaction_feedback_timer = 0.0
 	objective_first_procedure_done = false
 	objective_interaction_kinds = {}
+	onboarding_marker_timer = 0.0
 
 func _update_audit_director(delta: float) -> void:
 	if int(player_stats.get("low_hp_allowance_level", 0)) > 0 and player_hp <= float(player_stats["max_hp"]) * 0.35:
@@ -1622,8 +1624,8 @@ func _audit_hud_data() -> Dictionary:
 			"threshold": 1.0,
 			"ratio": 1.0,
 			"time_left": 0.0,
-		"pressure": audit_pressure_level,
-		"objective": _objective_progress_label(),
+			"pressure": audit_pressure_level,
+			"objective": _procedure_progress_chip(),
 	}
 	var segment: Dictionary = AUDIT_SEGMENTS[audit_segment_index]
 	var threshold := _audit_threshold(segment)
@@ -1634,7 +1636,7 @@ func _audit_hud_data() -> Dictionary:
 		"ratio": audit_processing / maxf(1.0, threshold),
 		"time_left": maxf(0.0, float(segment["time"]) - elapsed),
 		"pressure": audit_pressure_level,
-		"objective": _objective_progress_label(),
+		"objective": _procedure_progress_chip(),
 	}
 
 func _ration_hud_data() -> Dictionary:
@@ -1951,6 +1953,108 @@ func _update_first_recall_event(delta: float) -> void:
 func _first_recall_active() -> bool:
 	return sortie_index == 1 and first_sortie and not first_recall_done and match_state == "playing"
 
+func _procedure_progress_count() -> int:
+	return clampi(objective_interaction_kinds.size(), 0, 4)
+
+func _procedure_progress_chip() -> String:
+	return "입주 절차 %d/4" % _procedure_progress_count()
+
+func _next_incomplete_procedure_kind() -> String:
+	for kind in ["checkin", "procedure_panel", "room_meal_access", "renewal_gate"]:
+		if not objective_interaction_kinds.has(kind):
+			return kind
+	return ""
+
+func _procedure_kind_action(kind: String) -> String:
+	match kind:
+		"checkin":
+			return "E: 접수 장치 확인"
+		"procedure_panel":
+			return "E: 상담 패널 확인"
+		"room_meal_access":
+			return "E: 방/밥 슬롯 확인"
+		"renewal_gate":
+			return "E: 갱신 게이트 확인"
+		_:
+			return "E: 표식 장치 확인"
+
+func _interaction_complete_label(kind: String) -> String:
+	var next_count := _procedure_progress_count()
+	match kind:
+		"checkin":
+			return "접수 완료 %d/4" % next_count
+		"procedure_panel":
+			return "상담 완료 %d/4" % next_count
+		"room_meal_access":
+			return "방/밥 확인 %d/4" % next_count
+		"renewal_gate":
+			return "갱신 완료 %d/4" % next_count
+		_:
+			return "절차 완료 %d/4" % next_count
+
+func _objective_action_prompt() -> String:
+	if sortie_index <= 1 and not first_recall_done:
+		if _procedure_progress_count() >= 4:
+			return "회수선 유지"
+		var target_kind := _next_incomplete_procedure_kind()
+		return _procedure_kind_action(target_kind)
+	if match_state == "supply":
+		return "보급소 배분"
+	if _boss_route_ready():
+		return "모델하우스 신호 확인"
+	return "다음 신호 확인"
+
+func _objective_hint_label() -> String:
+	if sortie_index <= 1 and not first_recall_done:
+		if _procedure_progress_count() >= 4:
+			return "압력이 오르면 버티기"
+		if elapsed <= 10.0:
+			return "표식 장치로 이동"
+		if procedure_interaction_total <= 0:
+			return "가까운 표식 장치"
+		return "다음 표식 장치"
+	return ""
+
+func _objective_hud_label() -> String:
+	if sortie_index <= 1 and not first_recall_done:
+		return "%s   %s" % [_objective_action_prompt(), _procedure_progress_chip()]
+	if match_state == "supply":
+		return "보급소 배분   %s" % meta_progression.next_run_change_summary()
+	if _boss_route_ready():
+		return "모델하우스 신호   %d/%d" % [meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
+	return "%s   신호 %d/%d" % [_objective_action_prompt(), meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
+
+func _next_objective_target() -> Dictionary:
+	if not R01LayoutBlockout.ENABLED or not (sortie_index <= 1 and not first_recall_done):
+		return {}
+	var target_kind := _next_incomplete_procedure_kind()
+	if target_kind == "":
+		return {}
+	var best := {}
+	var best_distance := INF
+	for record in r01_blockout.active_collision_records():
+		if String(record.get("interaction_kind", "")) != target_kind:
+			continue
+		var pos := Vector2(record.get("pos", player_pos))
+		var distance := player_pos.distance_squared_to(pos)
+		if distance < best_distance:
+			best_distance = distance
+			best = record
+	return best
+
+func _update_onboarding_marker(delta: float) -> void:
+	if match_state != "playing" or paused_for_card or elapsed > 30.0:
+		return
+	onboarding_marker_timer = maxf(0.0, onboarding_marker_timer - delta)
+	if onboarding_marker_timer > 0.0:
+		return
+	onboarding_marker_timer = 1.25
+	var target := _next_objective_target()
+	if target.is_empty():
+		return
+	var pos := Vector2(target.get("pos", player_pos))
+	effects.add_status_ring(pos, C.VITAMIN_YELLOW, 30.0, 0.28)
+
 func _objective_stage_id() -> String:
 	if match_state == "supply":
 		return "supply_decision"
@@ -1994,19 +2098,13 @@ func _objective_stage_label() -> String:
 			return "목표 확인"
 
 func _objective_progress_label() -> String:
-	var kind_count := objective_interaction_kinds.size()
 	if sortie_index <= 1 and not first_recall_done:
-		return "%s %d/4 | 감사 %.0f%% | 압%d" % [
-			_objective_stage_label(),
-			clampi(kind_count, 0, 4),
-			clampf(_audit_progress_ratio(), 0.0, 1.0) * 100.0,
-			audit_pressure_level,
-		]
+		return _objective_hud_label()
 	if match_state == "supply":
-		return "%s | %s" % [_objective_stage_label(), meta_progression.next_run_change_summary()]
+		return _objective_hud_label()
 	if _boss_route_ready():
-		return "%s | 신호 %d/%d" % [_objective_stage_label(), meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
-	return "%s | 신호 %d/%d" % [_objective_stage_label(), meta_progression.signal_clue_count(), MetaProgression.SIGNAL_CLUES.size()]
+		return _objective_hud_label()
+	return _objective_hud_label()
 
 func _objective_result_summary() -> String:
 	var parts: Array[String] = []
@@ -2034,12 +2132,12 @@ func _preboss_stage_label() -> String:
 
 func _next_objective_label() -> String:
 	if _route_display_sortie_index() <= 1:
-		return _objective_progress_label()
+		return _objective_hud_label()
 	return _next_goal_label().replace("목표: ", "")
 
 func _next_objective_short_label() -> String:
 	if _route_display_sortie_index() <= 1:
-		return _objective_stage_label()
+		return _procedure_progress_chip()
 	return RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())
 
 func _regional_clause_preview_line() -> String:
@@ -2149,14 +2247,14 @@ func _next_goal_label() -> String:
 	if boss.active:
 		return "목표: 스마일 홈 시어머니 처리"
 	if _route_display_sortie_index() <= 1:
-		return "목표: %s" % _objective_progress_label()
+		return "목표: %s" % _objective_hud_label()
 	return "목표: %s" % RoutePhraseResolver.r01_sortie_goal_phrase(_r01_phrase_state())
 
 func _combat_goal_label() -> String:
 	if boss.active:
 		return "시어머니 처리"
 	if sortie_index <= 1:
-		return "%s | %s" % [r01_map.current_zone_name(), _objective_progress_label()]
+		return _objective_hud_label()
 	return "%s | %s" % [r01_map.current_zone_name(), RoutePhraseResolver.r01_sortie_goal_short_phrase(_r01_phrase_state())]
 
 func _boss_route_ready() -> bool:
@@ -2809,6 +2907,8 @@ func _fire_feedback(directed: bool) -> void:
 func _active_notice_text() -> String:
 	if wave_notice_timer > 0.0:
 		return wave_notice_text
+	if match_state == "playing" and elapsed <= 30.0:
+		return _objective_hint_label()
 	return r01_map.active_notice_text()
 
 func _update_hud() -> void:

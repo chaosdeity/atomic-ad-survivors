@@ -160,7 +160,7 @@ func build(parent: Node) -> void:
 	route_goal_label = Label.new()
 	route_goal_label.position = Vector2(128, 20)
 	route_goal_label.size = Vector2(338, 24)
-	route_goal_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	route_goal_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	route_goal_label.clip_text = true
 	route_goal_label.add_theme_font_size_override("font_size", FONT_TINY)
 	route_goal_label.add_theme_color_override("font_color", Color("#433227"))
@@ -729,15 +729,16 @@ func set_debug_text(text: String) -> void:
 	debug_panel.visible = true
 
 func _update_audit_panel(audit_data: Dictionary, paused_for_card: bool, game_over: bool) -> void:
-	var visible := not audit_data.is_empty() and not paused_for_card and not game_over and not _blocking_panel_visible()
-	audit_panel.visible = visible
-	if not visible:
+	if audit_data.is_empty() or paused_for_card or game_over or _blocking_panel_visible():
+		audit_panel.visible = false
 		return
 	var ratio := clampf(float(audit_data.get("ratio", 0.0)), 0.0, 1.25)
 	var pressure := int(audit_data.get("pressure", 0))
 	var processing := float(audit_data.get("processing", 0.0))
-	var threshold := float(audit_data.get("threshold", 1.0))
-	var time_left := float(audit_data.get("time_left", 0.0))
+	var visible := processing > 0.0 or pressure > 0 or ratio >= 0.70
+	audit_panel.visible = visible
+	if not visible:
+		return
 	audit_bar.size.x = 146.0 * clampf(ratio, 0.0, 1.0)
 	if ratio >= 1.0:
 		audit_bar.color = C.TOXIC_GREEN
@@ -745,12 +746,10 @@ func _update_audit_panel(audit_data: Dictionary, paused_for_card: bool, game_ove
 		audit_bar.color = C.NEON_RED
 	else:
 		audit_bar.color = C.VITAMIN_YELLOW
-	var audit_name := str(audit_data.get("objective", audit_data.get("name", "광고 감사")))
-	audit_label.text = "%s %.0f/%.0f %.0fs 압%d" % [
-		_compact_ui_text(audit_name, 14),
-		processing,
-		threshold,
-		time_left,
+	var audit_name := str(audit_data.get("objective", "감사"))
+	audit_label.text = "%s  감사 %.0f%%  압%d" % [
+		_compact_ui_text(audit_name, 8),
+		clampf(ratio, 0.0, 1.0) * 100.0,
 		pressure,
 	]
 
