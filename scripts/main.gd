@@ -99,6 +99,10 @@ var last_boss_victory_report := {}
 var last_run_result := {}
 var current_supply_actions: Array[Dictionary] = []
 var last_supply_reaction_line := ""
+var s2_reward_choice_selected := ""
+var s2_reward_choice_line := ""
+var s2_reward_route_assist_active := false
+var s2_reward_settlement_focus_active := false
 var r01_visit_recorded_sortie_index := 0
 var r01_zone_times := {}
 var open_house_signal_stage := 0
@@ -2369,6 +2373,8 @@ func _session_progress_data() -> Dictionary:
 		"last_outpost_event": meta_progression.last_outpost_event_line(),
 		"last_outpost_npc_id": meta_progression.last_outpost_focus_npc_id(),
 		"last_supply_reaction": last_supply_reaction_line,
+		"s2_reward_choice": s2_reward_choice_selected,
+		"s2_reward_choice_line": s2_reward_choice_line,
 		"last_playtest_summary": _last_playtest_metrics_summary(),
 		"next_run_change_summary": meta_progression.next_run_change_summary(),
 		"signal_board_level": meta_progression.signal_board_level(),
@@ -2444,6 +2450,7 @@ func _finish_match(result_state: String) -> void:
 		last_boss_victory_report = meta_progression.record_boss_victory()
 	last_run_result = RunResultEvaluator.evaluate_run_result(_run_result_input(result_state))
 	_apply_run_result_progression()
+	_apply_s2_reward_choice_result_note()
 	print("RunResult: %s" % JSON.stringify(last_run_result))
 	match_state = result_state
 	game_over = result_state == "game_over"
@@ -2706,6 +2713,10 @@ func _apply_supply_choice(index: int) -> void:
 	var action_name := String(action.get("name", ""))
 	var applied := false
 	match String(action.get("kind", "")):
+		"reward_choice":
+			applied = _apply_s2_reward_choice(String(action.get("choice_id", "")))
+			if applied:
+				last_supply_reaction_line = s2_reward_choice_line
 		"allocation":
 			var allocation_id := String(action.get("allocation_id", ""))
 			applied = meta_progression.allocate_ticket(allocation_id)
@@ -2730,6 +2741,19 @@ func _apply_supply_choice(index: int) -> void:
 
 func _build_supply_actions() -> Array[Dictionary]:
 	var actions: Array[Dictionary] = []
+	if _s2_reward_choice_available():
+		actions.append(_s2_reward_choice_action(
+			"settlement_focus",
+			"정산 우선",
+			"절차 보상 후보를 보급소 기록으로 고정",
+			1
+		))
+		actions.append(_s2_reward_choice_action(
+			"route_assist",
+			"다음 동선 보정",
+			"다음 출격 목표 안내 강화",
+			2
+		))
 	actions.append(_allocation_action(
 		MetaProgression.ALLOCATION_HUMAN_ZONE,
 		"식량태그 -> 인간 구역",
@@ -2783,6 +2807,58 @@ func _build_supply_actions() -> Array[Dictionary]:
 			"extra": unlock_text,
 		})
 	return actions
+
+func _s2_reward_choice_available() -> bool:
+	if s2_reward_choice_selected != "":
+		return false
+	if last_run_result.is_empty():
+		return false
+	return bool(last_run_result.get("procedure_completion_bonus", false))
+
+func _apply_s2_reward_choice(choice_id: String) -> bool:
+	if not _s2_reward_choice_available():
+		return false
+	match choice_id:
+		"settlement_focus":
+			s2_reward_choice_selected = choice_id
+			s2_reward_settlement_focus_active = true
+			s2_reward_choice_line = "정산 우선: 절차 보상 후보 고정"
+		"route_assist":
+			s2_reward_choice_selected = choice_id
+			s2_reward_route_assist_active = true
+			s2_reward_choice_line = "다음 동선 보정: 목표 안내 강화"
+		_:
+			return false
+	return true
+
+func _apply_s2_reward_choice_result_note() -> void:
+	if s2_reward_choice_selected == "":
+		return
+	var reward_lines: Array = Array(last_run_result.get("reward_lines", []))
+	reward_lines.append("이전 선택 적용: %s" % s2_reward_choice_line)
+	last_run_result["reward_lines"] = reward_lines
+	s2_reward_choice_selected = ""
+	s2_reward_choice_line = ""
+	s2_reward_route_assist_active = false
+	s2_reward_settlement_focus_active = false
+
+func _s2_reward_choice_action(choice_id: String, name: String, effect_text: String, input_number: int) -> Dictionary:
+	return {
+		"kind": "reward_choice",
+		"choice_id": choice_id,
+		"name": name,
+		"state": "선택 가능",
+		"level": 0,
+		"max_level": 1,
+		"effect_text": effect_text,
+		"cost_text": "이번 정산 1회",
+		"input_hint": "키%d/클릭" % input_number,
+		"can_use": true,
+		"locked": false,
+		"applied": false,
+		"prefix": "선택",
+		"extra": "결과 보상",
+	}
 
 func _allocation_action(allocation_id: String, name: String, effect_text: String, ticket_id: String, cost_text: String, input_number: int) -> Dictionary:
 	var count := meta_progression.ticket_count(ticket_id)

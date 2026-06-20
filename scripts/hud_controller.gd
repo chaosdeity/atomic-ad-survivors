@@ -706,7 +706,8 @@ func show_supply_depot(meta_progression, upgrade_callback: Callable, sortie_call
 		button.add_theme_stylebox_override("hover", hover_style)
 		button.add_theme_stylebox_override("disabled", disabled_style)
 		var state_text := str(action.get("state", "선택 가능" if can_use else "불가"))
-		var level_text := "배분 %d회" % level if String(action.get("kind", "")) == "allocation" else "Lv%d/%d" % [level, max_level]
+		var action_kind := String(action.get("kind", ""))
+		var level_text := "1회 선택" if action_kind == "reward_choice" else ("배분 %d회" % level if action_kind == "allocation" else "Lv%d/%d" % [level, max_level])
 		var input_hint := str(action.get("input_hint", "클릭"))
 		var buy_marker := ">> " if can_use else ""
 		var extra := str(action.get("extra", ""))
