@@ -16,6 +16,32 @@ const YUNSEO_POSE_PATHS := {
 	"hurt_interrupted": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png",
 	"retrieval_escape": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png",
 }
+const YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS := {
+	"down": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_down_failed_edit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_down_failed_edit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_down_failed_edit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_down_failed_edit_v01_04.png",
+	],
+	"left": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_left_failed_edit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_left_failed_edit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_left_failed_edit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_left_failed_edit_v01_04.png",
+	],
+	"right": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_right_failed_edit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_right_failed_edit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_right_failed_edit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_right_failed_edit_v01_04.png",
+	],
+	"up": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_up_failed_edit_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_up_failed_edit_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_up_failed_edit_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_up_failed_edit_v01_04.png",
+	],
+}
 const YUNSEO_S2_R2_WALK_PATHS := {
 	"down": [
 		"res://assets/art_inbox/yunseo_runtime_v06_walk_s2_r2_v01/yunseo_v06_walk_down_s2_r2_v01_01.png",
@@ -104,6 +130,7 @@ const LARGE_ELITE_PATH := "res://assets/characters/enemies/tier2/elite_ad_mascot
 
 var player_texture: Texture2D
 var yunseo_pose_textures := {}
+var yunseo_failed_frame_walk_textures := {}
 var yunseo_walk_textures := {}
 var enemy_textures := {}
 var elite_texture: Texture2D
@@ -113,6 +140,7 @@ func load_all() -> void:
 	player_texture = _load_texture(PLAYER_PATH)
 	for pose_id in YUNSEO_POSE_PATHS:
 		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
+	yunseo_failed_frame_walk_textures = _load_yunseo_walk_set(YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS)
 	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_S2_R2_WALK_PATHS)
 	if yunseo_walk_textures.is_empty():
 		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
@@ -144,6 +172,15 @@ func draw_yunseo_pose(canvas: CanvasItem, pos: Vector2, pose_id: String) -> bool
 
 func draw_yunseo_walk(canvas: CanvasItem, pos: Vector2, direction: String, frame: int) -> bool:
 	var frames: Array = yunseo_walk_textures.get(direction, [])
+	return _draw_yunseo_walk_frames(canvas, pos, direction, frame, frames)
+
+func draw_yunseo_failed_frame_walk(canvas: CanvasItem, pos: Vector2, direction: String, frame: int) -> bool:
+	var frames: Array = yunseo_failed_frame_walk_textures.get(direction, [])
+	if not _draw_yunseo_walk_frames(canvas, pos, direction, frame, frames):
+		return draw_yunseo_walk(canvas, pos, direction, frame)
+	return true
+
+func _draw_yunseo_walk_frames(canvas: CanvasItem, pos: Vector2, direction: String, frame: int, frames: Array) -> bool:
 	if frames.is_empty():
 		return false
 	var texture: Texture2D = frames[posmod(frame, frames.size())]
