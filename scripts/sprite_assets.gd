@@ -156,6 +156,38 @@ func draw_yunseo_walk(canvas: CanvasItem, pos: Vector2, direction: String, frame
 	canvas.draw_texture_rect(texture, Rect2(top_left.round(), draw_size), false)
 	return true
 
+func draw_yunseo_walk_socket_debug(canvas: CanvasItem, pos: Vector2, direction: String, frame: int, socket_frame: Dictionary) -> bool:
+	if not draw_yunseo_walk(canvas, pos, direction, frame):
+		return false
+	_draw_socket_debug_overlay(canvas, pos, direction, socket_frame)
+	return true
+
+func _draw_socket_debug_overlay(canvas: CanvasItem, pos: Vector2, direction: String, socket_frame: Dictionary) -> void:
+	var side_scale := 0.985 if direction == "left" or direction == "right" else 1.0
+	var scale := Vector2(YUNSEO_POSE_SCALE * side_scale, YUNSEO_POSE_SCALE)
+	var origin := Vector2(YUNSEO_POSE_ORIGIN.x * scale.x, YUNSEO_POSE_ORIGIN.y * scale.y)
+	var top_left := pos - origin
+	var feet := _socket_point(socket_frame.get("feet_pivot", {}), top_left, scale)
+	var body := _socket_point(socket_frame.get("body_anchor", {}), top_left, scale)
+	var head := _socket_point(socket_frame.get("head_anchor", {}), top_left, scale)
+	canvas.draw_line(feet, body, Color(1.0, 0.18, 0.24, 0.60), 1.0)
+	canvas.draw_line(body, head, Color(0.08, 0.55, 1.0, 0.55), 1.0)
+	canvas.draw_circle(feet, 2.4, Color(1.0, 0.18, 0.24, 0.80))
+	canvas.draw_circle(body, 2.4, Color(0.08, 0.55, 1.0, 0.80))
+	canvas.draw_circle(head, 2.4, Color(0.2, 0.9, 0.55, 0.80))
+	_draw_socket_foot(canvas, socket_frame.get("leg_contact_l", {}), top_left, scale, Color(0.95, 0.0, 0.72, 0.88))
+	_draw_socket_foot(canvas, socket_frame.get("leg_contact_r", {}), top_left, scale, Color(1.0, 0.45, 0.75, 0.88))
+
+func _draw_socket_foot(canvas: CanvasItem, contact: Dictionary, top_left: Vector2, scale: Vector2, color: Color) -> void:
+	var foot := _socket_point(contact.get("foot_anchor", {}), top_left, scale)
+	var radius := 3.2 if bool(contact.get("contact", false)) else 2.0
+	canvas.draw_circle(foot, radius, color)
+	if bool(contact.get("contact", false)):
+		canvas.draw_arc(foot, radius + 2.0, 0.0, TAU, 18, color, 1.2)
+
+func _socket_point(data: Dictionary, top_left: Vector2, scale: Vector2) -> Vector2:
+	return top_left + Vector2(float(data.get("x", 0.0)) * scale.x, float(data.get("y", 0.0)) * scale.y)
+
 func draw_enemy(canvas: CanvasItem, enemy: Dictionary, frame: int) -> bool:
 	var pos: Vector2 = enemy["pos"]
 	var kind := str(enemy.get("sprite_kind", "billboard"))

@@ -17,6 +17,7 @@ const RunResultEvaluator := preload("res://scripts/run_result_evaluator.gd")
 const R01MapController := preload("res://scripts/r01_map_controller.gd")
 const R01LayoutBlockout := preload("res://scripts/r01_layout_blockout.gd")
 const OutpostLayoutBlockout := preload("res://scripts/outpost_layout_blockout.gd")
+const YunseoPseudoSocketManifest := preload("res://scripts/yunseo_pseudo_socket_manifest.gd")
 
 const FIRST_RECALL_WARNING_TIME := 70.0
 const FIRST_RECALL_SURGE_TIME := 88.0
@@ -65,6 +66,7 @@ const PLAYER_WALK_FPS := 6.0
 const PLAYER_WALK_SETTLE_FRAMES := 2.0
 const PLAYER_WALK_BOB_PIXELS := 1.0
 const PLAYER_USE_YUNSEO_WALK_FRAMES := false
+const PLAYER_USE_YUNSEO_PSEUDO_SOCKET_DEBUG := false
 const PLAYER_WALK_CONTACT_SHADOW_ENABLED := false
 const PLAYER_WALK_CONTACT_SHADOW_RADIUS := 5.5
 const PLAYER_WALK_CONTACT_SHADOW_ALPHA := 0.06
@@ -173,6 +175,7 @@ var effects := EffectsController.new()
 var enemies := EnemyController.new()
 var debug_tools := DebugTools.new()
 var sprite_assets := SpriteAssets.new()
+var yunseo_pseudo_socket := YunseoPseudoSocketManifest.new()
 var meta_progression := MetaProgression.new()
 var boss := BossController.new()
 var r01_map := R01MapController.new()
@@ -196,6 +199,8 @@ func _ready() -> void:
 	if _audio_runtime_enabled():
 		_set_music("amb_r01_suburb_loop")
 	sprite_assets.load_all()
+	if PLAYER_USE_YUNSEO_PSEUDO_SOCKET_DEBUG and not yunseo_pseudo_socket.load_manifest():
+		push_warning(yunseo_pseudo_socket.load_error)
 	hud.build(self)
 	r01_map.reset(elapsed, true)
 	_reset_r01_run_tracking()
@@ -3776,7 +3781,7 @@ func _draw_player() -> void:
 	var preview_dir := aim.normalized() if has_aim else _fallback_aim_dir()
 	var walk_frame := 0
 	var walk_contact := false
-	if PLAYER_USE_YUNSEO_WALK_FRAMES or PLAYER_WALK_CONTACT_SHADOW_ENABLED:
+	if PLAYER_USE_YUNSEO_WALK_FRAMES or PLAYER_WALK_CONTACT_SHADOW_ENABLED or PLAYER_USE_YUNSEO_PSEUDO_SOCKET_DEBUG:
 		walk_frame = int(player_walk_anim_time * PLAYER_WALK_FPS) % 4
 		walk_contact = player_is_moving and (walk_frame == 0 or walk_frame == 2)
 	draw_circle(player_pos + Vector2(2, 4), 10.0, Color(0, 0, 0, 0.14))
@@ -3791,7 +3796,17 @@ func _draw_player() -> void:
 			if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
 				sprite_assets.draw_player_fallback(self, player_pos)
 	elif player_is_moving:
-		if PLAYER_USE_YUNSEO_WALK_FRAMES:
+		if PLAYER_USE_YUNSEO_PSEUDO_SOCKET_DEBUG and yunseo_pseudo_socket.is_ready():
+			var direction := _player_walk_direction_id()
+			var socket_frame := yunseo_pseudo_socket.get_frame("s2_r2", direction, walk_frame)
+			var socket_drawn := false
+			if not socket_frame.is_empty():
+				socket_drawn = sprite_assets.draw_yunseo_walk_socket_debug(self, player_pos, direction, walk_frame, socket_frame)
+			if not socket_drawn:
+				if not sprite_assets.draw_yunseo_pose(self, player_pos, "idle"):
+					if not sprite_assets.draw_player(self, player_pos, _player_sprite_row(), player_frame):
+						sprite_assets.draw_player_fallback(self, player_pos)
+		elif PLAYER_USE_YUNSEO_WALK_FRAMES:
 			var walk_bob := -PLAYER_WALK_BOB_PIXELS if walk_frame == 1 or walk_frame == 3 else 0.0
 			var walk_draw_pos := player_pos + Vector2(0, walk_bob)
 			if not sprite_assets.draw_yunseo_walk(self, walk_draw_pos, _player_walk_direction_id(), walk_frame):
