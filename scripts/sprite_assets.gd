@@ -167,15 +167,7 @@ func load_all() -> void:
 	for pose_id in YUNSEO_POSE_PATHS:
 		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
 	yunseo_failed_frame_walk_textures = _load_yunseo_walk_set(YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS)
-	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_LAYERED_WALK_PATHS)
-	if yunseo_walk_textures.is_empty():
-		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS)
-	if yunseo_walk_textures.is_empty():
-		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_S2_R2_WALK_PATHS)
-	if yunseo_walk_textures.is_empty():
-		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
-	if yunseo_walk_textures.is_empty():
-		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_LEGACY_WALK_PATHS)
+	yunseo_walk_textures = {}
 	for kind in TIER1_PATHS:
 		enemy_textures[kind] = _load_texture(TIER1_PATHS[kind])
 	elite_texture = _load_texture(ELITE_PATH)
