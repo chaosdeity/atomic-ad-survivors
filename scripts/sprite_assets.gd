@@ -16,6 +16,32 @@ const YUNSEO_POSE_PATHS := {
 	"hurt_interrupted": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_07_hurt_interrupted.png",
 	"retrieval_escape": "res://assets/art_inbox/yunseo_runtime_v06/yunseo_v06_pose_08_retrieval_escape.png",
 }
+const YUNSEO_LAYERED_WALK_PATHS := {
+	"down": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_down_layered_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_down_layered_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_down_layered_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_down_layered_v01_04.png",
+	],
+	"left": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_left_layered_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_left_layered_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_left_layered_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_left_layered_v01_04.png",
+	],
+	"right": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_right_layered_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_right_layered_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_right_layered_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_right_layered_v01_04.png",
+	],
+	"up": [
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_up_layered_v01_01.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_up_layered_v01_02.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_up_layered_v01_03.png",
+		"res://assets/art_inbox/yunseo_runtime_v06_walk_layered_v01/yunseo_v06_walk_up_layered_v01_04.png",
+	],
+}
 const YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS := {
 	"down": [
 		"res://assets/art_inbox/yunseo_runtime_v06_walk_failed_frame_edit_v01/yunseo_v06_walk_down_failed_edit_v01_01.png",
@@ -141,7 +167,11 @@ func load_all() -> void:
 	for pose_id in YUNSEO_POSE_PATHS:
 		yunseo_pose_textures[pose_id] = _load_texture(String(YUNSEO_POSE_PATHS[pose_id]))
 	yunseo_failed_frame_walk_textures = _load_yunseo_walk_set(YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS)
-	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_S2_R2_WALK_PATHS)
+	yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_LAYERED_WALK_PATHS)
+	if yunseo_walk_textures.is_empty():
+		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_FAILED_FRAME_EDIT_WALK_PATHS)
+	if yunseo_walk_textures.is_empty():
+		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_S2_R2_WALK_PATHS)
 	if yunseo_walk_textures.is_empty():
 		yunseo_walk_textures = _load_yunseo_walk_set(YUNSEO_WALK_PATHS)
 	if yunseo_walk_textures.is_empty():
