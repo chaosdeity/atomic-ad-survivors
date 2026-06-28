@@ -6,7 +6,7 @@ Base HEAD: `48114607e7ca76721befea874cd0a791e8eee995`
 
 ## Final Verdict
 
-PASS: Core loop S2 reward choice implementation completed within the approved S2 scope.
+PASS_WITH_NOTES: Core loop S2 reward choice implementation completed and target QA passed. The ship target required one additional minimal dependency, `scripts/run_result_evaluator.gd`, because the target baseline did not yet carry `procedure_completion_bonus` and related procedure result fields into `last_run_result`.
 
 Progress:
 - Core loop S2 reward choice: 20% -> 75% implementation + QA
@@ -38,6 +38,10 @@ The choice is available only after a completed 4/4 procedure run that produces `
 - `scripts/hud_controller.gd`
   - Added compact `1회 선택` display for `reward_choice` rows.
   - Preserved existing supply panel structure.
+
+- `scripts/run_result_evaluator.gd`
+  - Carries `procedure_completion_bonus`, repeat penalty count, and completion pressure stage into the result payload.
+  - Keeps the reward choice eligibility signal available after result -> supply.
 
 No new helper script was added.
 
