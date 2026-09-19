@@ -28,14 +28,21 @@ motion-proof는 WORLD SYSTEM이 아니라 TECH PIPELINE proof다. Blender에서 
 - motion proof를 campaign law, resource ecology, persistence world state에 연결하지 않는다.
 - proof의 프레임 수, 임계값, 관절 수를 production 기준으로 자동 승격하지 않는다.
 
-## 원본 경로 불일치
+## 원본 경로 불일치 해결
 
-승인 지시의 다음 두 경로는 Workspace에 존재하지 않았다.
+**RESOLVED BY PM SOURCE PATH CORRECTION**
 
-- `run03/build_robot_v03.py`
-- `run03/assemble.py`
+초기 승인 경로 `run03/build_robot_v03.py`, `run03/assemble.py`는 Workspace에 존재하지 않았다.
 
-원본 README는 실제 최종 생성기와 조립 스크립트 경로를 각각 proof 루트의 `build_robot_v03.py`, `assemble.py`로 명시한다. 승인된 정확한 source path와 다르므로 자동 치환하지 않았고 PM 확인 대상으로 남긴다.
+원본 README가 최종 Blender 생성기와 시트 조립/검사 스크립트를 proof 루트의 `build_robot_v03.py`, `assemble.py`로 명시하는 것을 다시 검증했고 PM이 이 root source를 승인했다.
+
+회수 완료:
+- `build_robot_v03.py` → `docs/archive/technical_proofs/motion_pipeline/build_robot_v03.py`
+- `assemble.py` → `docs/archive/technical_proofs/motion_pipeline/assemble.py`
+
+로컬 승인 SHA를 확인한 뒤 격리 clone을 통해 `chatgpt-work`에 저장했고 GitHub read-back을 확인했다.
+
+Recovery commit: `1f0731e89d900071d499ba323d08548f1e5c3453`
 
 ## Binary Recovery Pending
 
