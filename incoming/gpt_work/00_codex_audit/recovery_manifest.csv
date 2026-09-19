@@ -1,0 +1,11 @@
+priority,classification,source_path,target_candidate,recovery,conflict,method,engine_compatibility
+1,B,"C:\workspace\campaign-logic-20260905-235627\README.md","docs/research/campaign_logic_proof_20260905/","assumptions and scope","do not canonize experiment","selective merge","engine independent"
+2,B,"C:\workspace\campaign-logic-20260905-235627\simulator.py","docs/research/campaign_logic_proof_20260905/","causal state simulator","not gameplay probability","preserve then port","Python"
+3,B,"C:\workspace\campaign-logic-20260905-235627\evaluate_layers.py","docs/research/campaign_logic_proof_20260905/","causal regression tests","37.5% benchmark only","preserve","Python"
+4,B,"C:\workspace\map-evolution-proof-20260906-055930\proof02\region.json","docs/world/evidence/map_evolution_20260906/","persistent local-state schema","not global node-density baseline","selective merge","data portable"
+5,B,"C:\workspace\map-evolution-proof-20260906-055930\proof02\runtime_results.json","docs/world/evidence/map_evolution_20260906/","runtime evidence","Godot PASS is not Unreal PASS","preserve evidence and rewrite tests","logic portable"
+6,B,"C:\workspace\map-evolution-proof-20260906-055930\proof02 key screenshots","docs/world/evidence/map_evolution_20260906/","before and after evidence","not final art","preserve","image"
+7,B,"C:\workspace\mystery-proof-20260906-011128\PLAYTEST_V3.md","docs/story/research/mystery_event_proof_20260906/","event structure","do not canonize event","selective merge","engine independent"
+8,B,"C:\workspace\mystery-proof-20260906-011128\story.py;verify.py","docs/story/research/mystery_event_proof_20260906/","state-machine validator","UI and fun unverified","preserve then port","Python"
+9,B,"C:\workspace\motion-proof-20260905-145830\README.md;failure-ledger.md;run03\evidence\final_checks.json","docs/animation/research/motion_pipeline_proof_20260905/","motion QA contract","robot proof is not Yunseo PASS","selective merge","method portable"
+10,B,"C:\workspace\motion-proof-20260905-145830\run03\robot.blend;robot.glb;build_robot_v03.py;assemble.py","docs/archive/technical_proofs/motion_pipeline/","editable technical proof","not product asset","preserve","Blender/GLB portable"
