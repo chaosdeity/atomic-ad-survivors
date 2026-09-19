@@ -1,0 +1,127 @@
+{
+  "checks": [
+    {
+      "name": "fresh_visit",
+      "passed": true
+    },
+    {
+      "name": "capture_01_first_visit",
+      "passed": true
+    },
+    {
+      "name": "walk_to_clinic",
+      "passed": true
+    },
+    {
+      "name": "clinic_heals_before_damage",
+      "passed": true
+    },
+    {
+      "name": "projectiles_destroy_clinic",
+      "passed": true
+    },
+    {
+      "name": "clinic_no_longer_heals",
+      "passed": true
+    },
+    {
+      "name": "npc_physically_moves_to_waiting_area",
+      "passed": true
+    },
+    {
+      "name": "walk_around_building",
+      "passed": true
+    },
+    {
+      "name": "walk_to_wall",
+      "passed": true
+    },
+    {
+      "name": "walk_to_gate",
+      "passed": true
+    },
+    {
+      "name": "first_visit_gate_blocks_actual_movement",
+      "passed": true
+    },
+    {
+      "name": "capture_02_after_damage",
+      "passed": true
+    },
+    {
+      "name": "return_lower_lane",
+      "passed": true
+    },
+    {
+      "name": "walk_to_exit",
+      "passed": true
+    },
+    {
+      "name": "returned_to_hub",
+      "passed": true
+    },
+    {
+      "name": "capture_03_hub",
+      "passed": true
+    },
+    {
+      "name": "second_visit",
+      "passed": true
+    },
+    {
+      "name": "revisit_derives_map_changes",
+      "passed": true
+    },
+    {
+      "name": "capture_04_revisit",
+      "passed": true
+    },
+    {
+      "name": "walk_lower_corridor",
+      "passed": true
+    },
+    {
+      "name": "approach_open_gate",
+      "passed": true
+    },
+    {
+      "name": "cross_open_gate_with_movement",
+      "passed": true
+    },
+    {
+      "name": "crossed_to_other_side",
+      "passed": true
+    },
+    {
+      "name": "capture_05_crossed_gate",
+      "passed": true
+    }
+  ],
+  "events": [
+    "clinic_interaction",
+    "projectile_destroyed_clinic",
+    "clinic_interaction",
+    "returned_to_hub"
+  ],
+  "frames": 81,
+  "memory": {
+    "clinic_destroyed": true,
+    "last_zone": "right",
+    "signal_checked": false,
+    "travel": {
+      "left": 19,
+      "right": 1
+    },
+    "visit": 2
+  },
+  "npc": [
+    650.0,
+    330.0
+  ],
+  "passed": true,
+  "player": [
+    507.715942382813,
+    241.7841796875
+  ],
+  "rendering": "NVIDIA GeForce RTX 4080 SUPER"
+}
