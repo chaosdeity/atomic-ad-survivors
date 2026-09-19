@@ -1,6 +1,6 @@
 # Recovery Audit V0.1
 
-판정: **HOLD**
+판정: **RECOVERY PASS**
 
 DELIVERY_MODE: **GITHUB_DIRECT**
 
@@ -42,36 +42,40 @@ Branch: `chatgpt-work`
    - PNG 3개, BLEND 1개, GLB 1개를 변환/재압축/placeholder로 대체하지 않음.
    - 모두 BINARY_RECOVERY_PENDING으로 source path, target path, size, SHA-256, reason 기록.
 
-9. **GitHub read-back: PASS FOR STORED ARTIFACTS**
-   - recovered source text 14개 read-back PASS.
-   - Recovery Context / Unreal Translation 7개 read-back PASS.
-   - Recovery Manifest MD/CSV read-back PASS.
-   - binary pending과 source missing 항목은 read-back 대상 아님.
+9. **GitHub read-back: PASS**
+   - 기존 recovered source text와 Recovery Context / Unreal Translation read-back PASS.
+   - PM corrected source 3개(`control_results.json`, `build_robot_v03.py`, `assemble.py`) GitHub read-back PASS.
+   - Recovery Manifest MD/CSV 및 갱신 Context read-back PASS.
+   - binary pending 5건은 NON-BLOCKING으로 read-back 대상 아님.
 
 10. **main 변경 0: PASS**
     - 모든 write call은 명시적으로 `chatgpt-work`에 수행.
     - 현재 main HEAD: `416bf2718f897c92c234220710e1d7c92bb46b84` (2026-06-28 기존 커밋).
     - main write/merge/push 호출 0.
 
-## HOLD Reasons
+## Source Path Corrections Resolved
 
-승인 지시에 적힌 정확한 source path 3개가 Workspace에 존재하지 않아 자동 치환하지 않았다.
+초기 승인 source path 3건의 불일치는 PM source-path correction으로 해결했다.
 
-1. `map-evolution-proof-20260906-055930/proof02/control01/control_results.json`
-   - 실제 후보: `map-evolution-proof-20260906-055930/control01/control_results.json`
-   - 후보 SHA-256: `8e84a66d528f343023f20496df78cd50583028f06e80aa3cba17f877dcd7df59`
+1. map-evolution
+   - old: `map-evolution-proof-20260906-055930/proof02/control01/control_results.json`
+   - corrected: `map-evolution-proof-20260906-055930/control01/control_results.json`
+   - source SHA-256: `8e84a66d528f343023f20496df78cd50583028f06e80aa3cba17f877dcd7df59`
 
-2. `motion-proof-20260905-145830/run03/build_robot_v03.py`
-   - 실제 후보: `motion-proof-20260905-145830/build_robot_v03.py`
-   - 후보 SHA-256: `ffb25274ccc6a51019fc86f1c05f6ebcd0ac40d64f87a6539f4f609fe9d8d6eb`
-   - motion README도 root 경로를 최종 생성기로 명시.
+2. motion generator
+   - old: `motion-proof-20260905-145830/run03/build_robot_v03.py`
+   - corrected: `motion-proof-20260905-145830/build_robot_v03.py`
+   - source SHA-256: `ffb25274ccc6a51019fc86f1c05f6ebcd0ac40d64f87a6539f4f609fe9d8d6eb`
 
-3. `motion-proof-20260905-145830/run03/assemble.py`
-   - 실제 후보: `motion-proof-20260905-145830/assemble.py`
-   - 후보 SHA-256: `fa905ebb524814408be9f055be3b30151ab375de37a0a30b4ff62cf8a2cb0957`
-   - motion README도 root 경로를 최종 조립/검사 스크립트로 명시.
+3. motion assembly/check
+   - old: `motion-proof-20260905-145830/run03/assemble.py`
+   - corrected: `motion-proof-20260905-145830/assemble.py`
+   - source SHA-256: `fa905ebb524814408be9f055be3b30151ab375de37a0a30b4ff62cf8a2cb0957`
 
-정확한 승인 경로가 없으므로 root 후보를 임의로 대신 회수하지 않았다.
+세 source는 로컬에서 승인 SHA를 재검증한 뒤 isolated clone에서 정확히 3개만 stage/commit/push했다.
+
+Recovery source commit:
+`1f0731e89d900071d499ba323d08548f1e5c3453`
 
 ## Binary Pending
 
@@ -86,9 +90,9 @@ PNG는 Workspace에서 bytes를 읽을 수 있었으나 GitHub binary blob write
 ## Recovery Summary
 
 - approved source entries: 22
-- recovered source text: 14
-- binary pending: 5
-- exact source path missing: 3
+- recovered source text: 17
+- binary pending: 5 (NON-BLOCKING TOOLING LIMITATION)
+- exact source path missing: 0
 - generated boundary/translation docs: 7
 - production code implementation: 0
 - Final Lock changes: 0
@@ -97,8 +101,12 @@ PNG는 Workspace에서 bytes를 읽을 수 있었으나 GitHub binary blob write
 
 ## Final
 
-**HOLD**
+**RECOVERY PASS**
 
-현재 상태는 안전하게 회수 가능한 항목의 회수와 검증은 완료했지만, 정확한 승인 source path 3건이 불일치한다. PM이 root candidate를 승인된 source로 정정해 주기 전에는 RECOVERY COMPLETE로 판정하지 않는다.
+**RECOVERY STATUS: COMPLETE**
+
+승인된 4개군의 텍스트/코드 회수는 완료했고 source-path mismatch는 0이다. PNG 3개, BLEND 1개, GLB 1개의 binary pending은 원본 path/size/SHA가 보존되고 placeholder/변환/재압축이 0이므로 **NON-BLOCKING TOOLING LIMITATION**으로 유지한다.
+
+Final Lock 변경 0, main 변경 0, 신규 campaign/local 0을 유지한다.
 
 E01 상세 재연결은 시작하지 않는다.
