@@ -1,0 +1,10 @@
+{
+  "clinic_destroyed": true,
+  "last_zone": "right",
+  "signal_checked": false,
+  "travel": {
+    "left": 19,
+    "right": 1
+  },
+  "visit": 2
+}
