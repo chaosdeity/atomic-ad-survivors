@@ -1,0 +1,1 @@
+dependency_edge_id,provider_campaign,consumer_campaign,resource_or_service,dependency_strength,failure_effect,recovery_condition,propagation_channel,state,evidence,notes
