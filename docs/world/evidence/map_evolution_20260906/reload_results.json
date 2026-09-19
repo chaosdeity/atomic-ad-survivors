@@ -1,0 +1,50 @@
+{
+  "checks": [
+    {
+      "name": "disk_reload_second_visit",
+      "passed": true
+    },
+    {
+      "name": "disk_reload_destroyed_clinic",
+      "passed": true
+    },
+    {
+      "name": "disk_reload_open_gate",
+      "passed": true
+    },
+    {
+      "name": "disk_reload_npc_and_patrol",
+      "passed": true
+    },
+    {
+      "name": "disk_reload_signal",
+      "passed": true
+    },
+    {
+      "name": "capture_06_fresh_process_reload",
+      "passed": true
+    }
+  ],
+  "events": [],
+  "frames": 0,
+  "memory": {
+    "clinic_destroyed": true,
+    "last_zone": "right",
+    "signal_checked": false,
+    "travel": {
+      "left": 19.0,
+      "right": 1.0
+    },
+    "visit": 2.0
+  },
+  "npc": [
+    650.0,
+    330.0
+  ],
+  "passed": true,
+  "player": [
+    100.0,
+    420.0
+  ],
+  "rendering": "NVIDIA GeForce RTX 4080 SUPER"
+}
