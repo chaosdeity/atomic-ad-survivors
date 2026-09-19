@@ -3,4 +3,4 @@
 FINAL GLOBAL WORLD LOCK CANDIDATE
 PM FINAL APPROVAL REQUIRED
 
-Probe stage only. Canonical content will replace this file after source validation.
+Probe create/update/read-back verified. Canonical content pending source validation.
