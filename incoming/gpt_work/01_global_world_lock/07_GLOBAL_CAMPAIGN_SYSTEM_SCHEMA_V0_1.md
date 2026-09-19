@@ -206,3 +206,87 @@ production entry 전에 최소 다음을 확인한다.
 - `persistence_profile`이 Direct/Rumor를 구분.
 - travel이 필요한 campaign은 `travel_access` 상태를 가짐.
 - `display_name_history` 구조 존재.
+
+
+## 10. Canonical reconciliation addendum: service / registration / refusal
+
+최신 109-audit의 질문은 새 top-level field를 만들지 않고 기존 필드 내부에 흡수한다.
+
+```yaml
+gameplay_law:
+  core_rule: <primary player-facing systemic rule>
+  service_contract:
+    offers: []
+    eligibility_basis: []
+  registration_cost:
+    requires: []
+    consequence: []
+  refusal_cost:
+    immediate: []
+    downstream_if_resource_linked: []
+
+human_recognition_rule:
+  recognized_roles: []
+  registration_basis: []
+  disqualifiers: []
+```
+
+기존 scalar `gameplay_law` / `human_recognition_rule` 표기는 draft shorthand로 허용하지만 production entry 시 위 구조로 확장할 수 있어야 한다.
+
+## 11. resource_ecology dependency sub-structure
+
+```yaml
+resource_ecology:
+  dependency_contract:
+    - provider: <campaign or infrastructure ref>
+      consumer: <campaign or infrastructure ref>
+      resource_or_service: <class>
+      dependency_strength: supporting | important | critical
+      failure_effect: <bounded service effect>
+      recovery_condition: <causal recovery>
+      propagation_channel: support_dependency | logistics | communications | administrative_record
+```
+
+실제 infrastructure 관계가 없으면 dependency를 만들지 않는다. all-to-all global simulation은 금지한다.
+
+## 12. persistence profile class
+
+`persistence_profile` 내부에 class를 둔다.
+
+- `NONE`: 장기 gameplay 상태 거의 없음. 최소 story flag만.
+- `LIGHT`: 태도/서비스/간단한 지역 상태 중심.
+- `STANDARD`: NPC/서비스/경로/중요 선택이 재방문에 영향을 줌.
+- `STRUCTURAL`: 시설/주민 이동/서비스 capacity/route 등 campaign의 물리 구조가 지속적으로 변함.
+
+이는 저장 용량 등급이 아니다. **무엇이 현실적으로 지속되는가**의 semantic class다.
+
+```yaml
+persistence_profile:
+  class: NONE | LIGHT | STANDARD | STRUCTURAL
+  remember: []
+  retention: {}
+  visibility: {}
+  propagation: {}
+  gameplay_effects: []
+  physical_state:
+    directly_persisted: []
+    mutation_requires_causal_action: true
+    rumor_only_mutation_allowed: false
+```
+
+현재 근거가 충분한 candidate 예:
+- E01_C01: STANDARD 후보
+- E09_C01: STANDARD 후보
+- E03_C03 / E08_C03 / E11_C03 / E12_C03: STANDARD 후보
+
+`STRUCTURAL`은 실제 facility/route/resident/service-capacity의 장기 변화가 campaign 제작에서 확인될 때만 올린다. C08 전체를 일괄 STRUCTURAL로 두지 않는다.
+
+## 13. Family boundary status contract
+
+registry의 `family_boundary_status`, `service_dependency_status`, `persistence_definition_status`는 `DEFINED | PARTIAL | TBD`만 사용한다.
+
+- `DEFINED`: 해당 층위의 계약과 campaign 적용 근거가 충분.
+- `PARTIAL`: 상위 계약은 있으나 campaign-specific 값이 production 단계에서 더 필요.
+- `TBD`: 현재 근거로는 적용값을 쓰지 않음.
+
+이 status 열은 96 campaign 세부설계를 대신하지 않는다.
