@@ -1,0 +1,88 @@
+{
+  "checks": [
+    {
+      "name": "control_fresh",
+      "passed": true
+    },
+    {
+      "name": "control_walk_to_signal",
+      "passed": true
+    },
+    {
+      "name": "signal_checked_by_actual_interaction",
+      "passed": true
+    },
+    {
+      "name": "control_right_route_up",
+      "passed": true
+    },
+    {
+      "name": "control_right_route_down",
+      "passed": true
+    },
+    {
+      "name": "control_right_route_up_again",
+      "passed": true
+    },
+    {
+      "name": "control_right_route_down_again",
+      "passed": true
+    },
+    {
+      "name": "control_return",
+      "passed": true
+    },
+    {
+      "name": "preserved_clinic_still_works_on_revisit",
+      "passed": true
+    },
+    {
+      "name": "preserved_gate_stays_closed",
+      "passed": true
+    },
+    {
+      "name": "preserved_npc_stays_at_clinic",
+      "passed": true
+    },
+    {
+      "name": "investigated_signal_not_false_on_revisit",
+      "passed": true
+    },
+    {
+      "name": "actual_right_movement_changes_patrol_anchor",
+      "passed": true
+    },
+    {
+      "name": "patrol_actually_moves",
+      "passed": true
+    },
+    {
+      "name": "capture_control_preserved_revisit",
+      "passed": true
+    }
+  ],
+  "events": [
+    "returned_to_hub"
+  ],
+  "frames": 0,
+  "memory": {
+    "clinic_destroyed": false,
+    "last_zone": "left",
+    "signal_checked": true,
+    "travel": {
+      "left": 7,
+      "right": 20
+    },
+    "visit": 2
+  },
+  "npc": [
+    400.0,
+    220.0
+  ],
+  "passed": true,
+  "player": [
+    100.0,
+    420.0
+  ],
+  "rendering": "NVIDIA GeForce RTX 4080 SUPER"
+}
