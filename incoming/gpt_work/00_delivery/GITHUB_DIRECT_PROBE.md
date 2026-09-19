@@ -16,3 +16,9 @@ Probe token: `prelock-artifact-recovery-2026-09-19-v1`
 This update tests delivery only. The historical PASS above does not establish the current execution's delivery mode. The caller must obtain the resulting commit SHA and read this exact token back from `chatgpt-work` before declaring `DELIVERY_MODE = GITHUB_DIRECT`.
 
 Scope after a successful gate: recover missing 07–14 artifacts and the 00 recovery report. Do not integrate the latest 109-container audit or create a final canonical PRELOCK.
+
+## Canonical PRELOCK reconciliation delivery gate
+
+Probe token: `canonical-prelock-reconciliation-2026-09-19-v1`
+
+This update tests write + branch read-back for the canonical PRELOCK reconciliation task. Historical PASS entries are not sufficient. The caller must confirm this token from `chatgpt-work` before creating or updating PRELOCK reconciliation artifacts.
