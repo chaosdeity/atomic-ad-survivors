@@ -40,8 +40,9 @@ C01 R01-L01/L02 canonical alignment 구현을 시작한다.
 2. `unreal/AtomicAdSurvivorsUE/Plugins/AASPlaytestRuntime/Source/AASPlaytestRuntime/Public/AASPlaytestRuntimeClasses.h`
 3. `unreal/AtomicAdSurvivorsUE/Content/Python/build_r01_rpg35.py`
 4. `unreal/AtomicAdSurvivorsUE/Run-R01RPG35.ps1`
-5. 신규 구현 기록 문서 1개: `docs/unreal/r01_c01_canonical_alignment_20260919.md`
-6. 실패가 실제 발생한 경우에 한해 `docs/failure-ledger.md` append-only
+5. 빌드/실행에 필요한 경우에 한해 위 1~2 runtime source의 **정확한 대응 external execution mirror** under `C:/UnrealWork/ElectricDreamsEnv/Plugins/AASPlaytestRuntime/Source/AASPlaytestRuntime/`를 동일 내용으로 동기화. mirror는 authoritative source가 아니며 preflight에서 대응 경로가 실제 존재하는 경우만 허용
+6. 신규 구현 기록 문서 1개: `docs/unreal/r01_c01_canonical_alignment_20260919.md`
+7. 실패가 실제 발생한 경우에 한해 `docs/failure-ledger.md` append-only
 
 ### READ-ONLY / PM REAPPROVAL REQUIRED
 
@@ -168,6 +169,7 @@ R01-L03는 다음 조건 뒤 별도 PM gate로 둔다.
 - 작업 시작 전 각 허용 파일의 존재 / tracked 여부 / hash를 기록
 - untracked 파일을 임의로 Git add하지 않음
 - main commit/push 금지
+- authoring source와 허용된 external mirror를 수정한 경우 최종 hash 일치 확인
 - 구현 완료를 Git diff만으로 증명하지 않음
 - 실제 파일 diff/hash + 빌드/런타임 evidence로 보고
 
