@@ -27,11 +27,15 @@ NOT UNREAL PASS
 - Godot PASS를 Unreal PASS로 해석 금지
 - proof의 좌표, 이동량, 프레임 수를 production 값으로 승격 금지
 
-## 원본 경로 불일치
+## 원본 경로 불일치 해결
 
-승인 지시의 `proof02/control01/control_results.json`은 Workspace에서 존재하지 않았다.
+**RESOLVED BY PM SOURCE PATH CORRECTION**
 
-Workspace에는 `control01/control_results.json`이 별도로 존재하며 SHA-256은 `8e84a66d528f343023f20496df78cd50583028f06e80aa3cba17f877dcd7df59`이다. 승인된 정확한 경로와 다르므로 자동 치환하지 않았고 PM 확인 대상으로 남긴다.
+초기 승인 경로 `proof02/control01/control_results.json`은 Workspace에 존재하지 않았다.
+
+PM 검증 후 실제 source `control01/control_results.json`을 승인했으며 SHA-256은 `8e84a66d528f343023f20496df78cd50583028f06e80aa3cba17f877dcd7df59`이다. 로컬 격리 clone을 통해 `docs/world/evidence/map_evolution_20260906/control_results.json`으로 회수했고, GitHub `chatgpt-work`에서 read-back을 확인했다.
+
+Recovery commit: `1f0731e89d900071d499ba323d08548f1e5c3453`
 
 ## Binary Recovery Pending
 
